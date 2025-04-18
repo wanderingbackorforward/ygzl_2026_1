@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Unity渲染流测试</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        #unityVideo {
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            background-color: #000;
+        }
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 10;
+            background-color: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 400px;
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .status {
+            margin: 10px 0;
+        }
+        #connectionStatus {
+            font-weight: bold;
+            color: #ff6347;
+        }
+        .connected {
+            color: #4CAF50 !important;
+        }
+        .focusPoints {
+            display: flex;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        details {
+            margin-top: 10px;
+        }
+        summary {
+            cursor: pointer;
+            margin-bottom: 8px;
+        }
+        textarea {
+            width: 100%;
+            background-color: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        .log {
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 12px;
+            background-color: #222;
+            padding: 8px;
+            margin-top: 10px;
+            border-radius: 4px;
+        }
+    </style>
+    <!-- 添加Font Awesome图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css">
+</head>
+<body>
+    <video id="unityVideo" autoplay playsinline></video>
+
+    <div id="controls">
+        <h3>Unity渲染流控制台</h3>
+        
+        <div class="status">
+            状态：<span id="connectionStatus">未连接</span>
+        </div>
+        
+        <div>
+            <button id="connectBtn" onclick="startConnection()">连接到Unity</button>
+            <button id="disconnectBtn" onclick="disconnect()" style="display:none;">断开连接</button>
+    </div>
+    
+        <div id="focusControls" style="display:none;">
+            <h4>摄像机控制</h4>
+            <div class="focusPoints">
+                <button onclick="sendFocusPoint(0, 0, 0, 'S1')">S1</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S2')">S2</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S3')">S3</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S4')">S4</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S5')">S5</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S6')">S6</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S7')">S7</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S8')">S8</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S9')">S9</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S10')">S10</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S11')">S11</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S12')">S12</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S13')">S13</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S14')">S14</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S15')">S15</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S16')">S16</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S17')">S17</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S18')">S18</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S19')">S19</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S20')">S20</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S21')">S21</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S22')">S22</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S23')">S23</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S24')">S24</button>
+                <button onclick="sendFocusPoint(0, 0, 0, 'S25')">S25</button>
+                <button onclick="sendResetView()">重置视图</button>            </div>
+        </div>
+        
+        <details>
+            <summary>连接设置</summary>
+            <div>
+                <label for="signalingUrl">信令服务器URL：</label>
+                <input type="text" id="signalingUrl" value="ws://localhost:80/signaling" style="width:100%; margin-bottom:10px; background:#333; color:white; border:1px solid #555; padding:5px;">
+            </div>
+        </details>
+        
+        <details>
+            <summary>日志</summary>
+            <div id="log" class="log"></div>
+        </details>
+    </div>
+
+    <script>
+        // 全局变量
+        let peerConnection = null;
+        let dataChannel = null;
+        let signalingConnection = null;
+        let connectionId = null;
+        let isConnected = false;
+
+        // 信令服务器连接
+        function connectToSignalingServer() {
+            const signalingUrl = document.getElementById('signalingUrl').value;
+            
+            log(`连接到信令服务器: ${signalingUrl}`);
+            signalingConnection = new WebSocket(signalingUrl);
+            
+            signalingConnection.onopen = () => {
+                log("信令服务器连接成功");
+                createPeerConnection();
+            };
+            
+            signalingConnection.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                handleSignalingMessage(message);
+            };
+            
+            signalingConnection.onerror = (error) => {
+                log(`信令服务器连接错误: ${error}`);
+                updateConnectionStatus("连接失败，请检查信令服务器");
+            };
+            
+            signalingConnection.onclose = () => {
+                log("信令服务器连接关闭");
+                disconnect();
+            };
+        }
+
+        // WebRTC连接配置
+        function createPeerConnection() {
+            const config = {
+                iceServers: [
+                    { urls: "stun:stun.l.google.com:19302" }
+                ]
+            };
+            
+            log("创建WebRTC连接...");
+            peerConnection = new RTCPeerConnection(config);
+            
+            // 创建数据通道
+            dataChannel = peerConnection.createDataChannel("data", {
+                ordered: true
+            });
+            
+            dataChannel.onopen = () => {
+                log("数据通道已打开");
+                document.getElementById("focusControls").style.display = "block";
+            };
+            
+            dataChannel.onclose = () => {
+                log("数据通道已关闭");
+                document.getElementById("focusControls").style.display = "none";
+            };
+            
+            dataChannel.onmessage = (event) => {
+                log(`收到数据通道消息: ${event.data}`);
+            };
+            
+            // 处理ICE候选
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    log("生成ICE候选");
+                    
+                    // 发送ICE候选到信令服务器
+                    const message = {
+                        type: "candidate",
+                        connectionId: connectionId,
+                        candidate: event.candidate
+                    };
+                    signalingConnection.send(JSON.stringify(message));
+                }
+            };
+            
+            // 接收视频流
+            peerConnection.ontrack = (event) => {
+                log("收到媒体流");
+                const videoElem = document.getElementById("unityVideo");
+                if (videoElem.srcObject !== event.streams[0]) {
+                    videoElem.srcObject = event.streams[0];
+                    updateConnectionStatus("已连接", true);
+                }
+            };
+            
+            // 创建并发送offer
+            createAndSendOffer();
+        }
+
+        // 创建并发送SDP offer
+        async function createAndSendOffer() {
+            try {
+                log("创建SDP offer...");
+                const offer = await peerConnection.createOffer({
+                    offerToReceiveAudio: true,
+                    offerToReceiveVideo: true
+                });
+                
+                await peerConnection.setLocalDescription(offer);
+                log("设置本地SDP offer成功");
+                
+                // 生成唯一连接ID
+                connectionId = generateId();
+                
+                // 发送offer到信令服务器
+                const message = {
+                    type: "offer",
+                    connectionId: connectionId,
+                    sdp: peerConnection.localDescription
+                };
+                signalingConnection.send(JSON.stringify(message));
+                log("已发送SDP offer到信令服务器");
+                
+            } catch (error) {
+                log(`创建SDP offer错误: ${error}`);
+            }
+        }
+
+        // 处理来自信令服务器的消息
+        async function handleSignalingMessage(message) {
+            try {
+                if (message.type === "answer" && message.connectionId === connectionId) {
+                    log("收到SDP answer");
+                    const answer = new RTCSessionDescription(message.sdp);
+                    await peerConnection.setRemoteDescription(answer);
+                    log("设置远程描述成功");
+                    
+                } else if (message.type === "candidate" && message.connectionId === connectionId) {
+                    log("收到ICE候选");
+                    const candidate = new RTCIceCandidate(message.candidate);
+                    await peerConnection.addIceCandidate(candidate);
+                    log("添加ICE候选成功");
+                    
+                } else if (message.type === "disconnect" && message.connectionId === connectionId) {
+                    log("收到断开连接消息");
+                    disconnect();
+                }
+            } catch (error) {
+                log(`处理信令消息错误: ${error}`);
+            }
+        }
+
+        // 发送焦点位置消息 (使用pointId而不是坐标)
+        function sendFocusPoint(x, y, z, pointId) {
+            if (!dataChannel || dataChannel.readyState !== "open") {
+                log("数据通道未打开，无法发送消息");
+                return;
+            }
+            
+            const message = {
+                type: "focusPoint",
+                pointId: pointId
+            };
+            
+            dataChannel.send(JSON.stringify(message));
+            log(`发送焦点位置消息: 点位ID=${pointId}`);
+        }
+
+        // 发送重置视图消息
+        function sendResetView() {
+            if (!dataChannel || dataChannel.readyState !== "open") {
+                log("数据通道未打开，无法发送消息");
+                return;
+            }
+            
+            const message = {
+                type: "resetView"
+            };
+            
+            dataChannel.send(JSON.stringify(message));
+            log("发送重置视图消息");
+        }
+
+        // 启动连接流程
+        function startConnection() {
+            if (signalingConnection && (signalingConnection.readyState === WebSocket.OPEN || signalingConnection.readyState === WebSocket.CONNECTING)) {
+                log("已有连接正在进行中");
+                    return;
+                }
+                
+            updateConnectionStatus("正在连接...");
+            document.getElementById("connectBtn").disabled = true;
+            
+            // 连接到信令服务器
+            connectToSignalingServer();
+            
+            // 更新UI
+            document.getElementById("connectBtn").style.display = "none";
+            document.getElementById("disconnectBtn").style.display = "inline-block";
+        }
+
+        // 断开所有连接
+        function disconnect() {
+            // 关闭数据通道
+            if (dataChannel) {
+                dataChannel.close();
+                dataChannel = null;
+            }
+            
+            // 关闭WebRTC连接
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            
+            // 关闭信令连接
+            if (signalingConnection && signalingConnection.readyState === WebSocket.OPEN) {
+                signalingConnection.close();
+            }
+            
+            // 更新UI
+            document.getElementById("focusControls").style.display = "none";
+            document.getElementById("connectBtn").style.display = "inline-block";
+            document.getElementById("connectBtn").disabled = false;
+            document.getElementById("disconnectBtn").style.display = "none";
+            updateConnectionStatus("未连接");
+            
+            // 清理视频元素
+            const videoElem = document.getElementById("unityVideo");
+            if (videoElem.srcObject) {
+                const tracks = videoElem.srcObject.getTracks();
+                tracks.forEach(track => track.stop());
+                videoElem.srcObject = null;
+            }
+            
+            log("已断开所有连接");
+        }
+
+        // 更新连接状态UI
+        function updateConnectionStatus(status, isConnected = false) {
+            const statusElem = document.getElementById("connectionStatus");
+            statusElem.textContent = status;
+            
+            if (isConnected) {
+                statusElem.classList.add("connected");
+            } else {
+                statusElem.classList.remove("connected");
+            }
+        }
+
+        // 记录日志
+        function log(message) {
+            console.log(message);
+            const logElem = document.getElementById("log");
+            const timestamp = new Date().toLocaleTimeString();
+            logElem.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logElem.scrollTop = logElem.scrollHeight;
+        }
+
+        // 生成唯一ID
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+        }
+
+        // 添加错误处理
+        window.onerror = function(message, source, lineno, colno, error) {
+            log(`JavaScript错误: ${message}`);
+        };
+    </script>
+</body>
+</html> 

@@ -1,0 +1,1549 @@
+// 温度监测图表绘制脚本
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化温度监测图表
+    initTemperatureCharts();
+
+    // 绑定上传按钮事件
+    document.getElementById('upload-button').addEventListener('click', showUploadModal);
+    document.getElementById('select-file-btn').addEventListener('click', function() {
+        document.getElementById('file-input').click();
+    });
+
+    // 绑定文件选择和拖放事件
+    document.getElementById('file-input').addEventListener('change', handleFileSelect);
+
+    // 绑定文件上传事件
+    document.getElementById('upload-file-btn').addEventListener('click', uploadFile);
+
+    // 绑定模态框关闭按钮
+    document.querySelector('.close').addEventListener('click', function() {
+        document.getElementById('upload-modal').style.display = 'none';
+    });
+
+    // 绑定拖放区域事件
+    const dropArea = document.getElementById('drop-area');
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, preventDefaults, false);
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener('change', highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, unhighlight, false);
+    });
+
+    dropArea.addEventListener('drop', handleDrop, false);
+
+    // 阻止默认行为
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    // 高亮拖放区域
+    function highlight() {
+        dropArea.classList.add('highlight');
+    }
+
+    // 取消高亮
+    function unhighlight() {
+        dropArea.classList.remove('highlight');
+    }
+});
+
+// 全局变量存储图表实例
+let charts = {
+    trendChart: null,
+    distributionChart: null,
+    seriesChart: null,
+    rangeChart: null
+};
+
+// 全局变量存储传感器数据
+let sensorData = [];
+// 全局变量存储当前选中的传感器ID列表
+let selectedSensorIds = [];
+
+// 初始化所有温度图表
+function initTemperatureCharts() {
+    console.log('开始初始化温度图表...');
+
+    // 加载温度统计概览数据
+    loadTemperatureStats()
+        .then(() => {
+            console.log('温度统计数据加载完成');
+            // 加载所有传感器数据
+            return loadSensorsData();
+        })
+        .then(() => {
+            console.log('传感器数据加载完成，开始初始化图表');
+
+            // 初始化趋势分析图表
+            initTrendChart();
+
+            // 初始化温度分布图表
+            initDistributionChart();
+
+            // 初始化传感器选择器
+            setupSensorSelector();
+
+            // 为图表添加放大功能
+            setupChartZoom();
+
+            console.log('温度图表初始化完成');
+        })
+        .catch(error => {
+            console.error('初始化温度图表失败:', error);
+            showNotification('初始化图表失败，请检查数据是否已导入', 'error');
+
+            // 显示空数据提示
+            showEmptyDataMessage('temperature-trend-chart', '暂无温度趋势数据');
+            showEmptyDataMessage('temperature-distribution-chart', '暂无温度分布数据');
+            showEmptyDataMessage('temperature-series-chart', '请选择传感器查看时间序列数据');
+            showEmptyDataMessage('temperature-range-chart', '请选择传感器查看温度范围变化');
+        });
+}
+
+// 加载温度统计概览数据
+function loadTemperatureStats() {
+    return fetch('/api/temperature/stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                console.log('温度统计数据:', data.data);
+                updateTemperatureStats(data.data);
+            } else {
+                console.error('获取温度统计数据失败:', data.message);
+                throw new Error(data.message);
+            }
+        });
+}
+
+// 加载所有传感器数据
+function loadSensorsData() {
+    return fetch('/api/temperature/summary')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                sensorData = data.data;
+                console.log('传感器数据:', sensorData);
+                return sensorData;
+            } else {
+                console.error('获取传感器数据失败:', data.message);
+                throw new Error(data.message);
+            }
+        });
+}
+
+// 更新温度统计概览
+function updateTemperatureStats(stats) {
+    // 更新当前平均温度
+    const avgTempElement = document.getElementById('current-avg-temp');
+    if (avgTempElement && stats.current_temperature.avg !== null) {
+        avgTempElement.textContent = `${stats.current_temperature.avg.toFixed(1)}°C`;
+    }
+
+    // 更新最低温度
+    const minTempElement = document.getElementById('current-min-temp');
+    if (minTempElement && stats.current_temperature.min !== null) {
+        minTempElement.textContent = `${stats.current_temperature.min.toFixed(1)}°C`;
+    }
+
+    // 更新最高温度
+    const maxTempElement = document.getElementById('current-max-temp');
+    if (maxTempElement && stats.current_temperature.max !== null) {
+        maxTempElement.textContent = `${stats.current_temperature.max.toFixed(1)}°C`;
+    }
+
+    // 更新温度范围
+    const tempRangeElement = document.getElementById('current-temp-range');
+    if (tempRangeElement && stats.current_temperature.min !== null && stats.current_temperature.max !== null) {
+        tempRangeElement.textContent = `${stats.current_temperature.min.toFixed(1)} ~ ${stats.current_temperature.max.toFixed(1)}°C`;
+    }
+
+    // 更新数据点数量
+    const pointCountElement = document.getElementById('current-point-count');
+    if (pointCountElement && stats.current_temperature.count !== undefined) {
+        pointCountElement.textContent = stats.current_temperature.count;
+    } else if (pointCountElement) {
+        pointCountElement.textContent = '未知';
+    }
+
+    // 更新日期
+    const dateElement = document.getElementById('current-temp-date');
+    if (dateElement && stats.current_temperature.date) {
+        dateElement.textContent = stats.current_temperature.date;
+    }
+
+    // 更新温度趋势统计
+    const trendStatsElement = document.getElementById('temp-trend-stats');
+    if (trendStatsElement) {
+        if (Object.keys(stats.trends).length > 0) {
+            let trendHTML = '';
+            for (const [trend, count] of Object.entries(stats.trends)) {
+                let badgeClass = 'badge-info';
+                if (trend.includes('显著升温')) badgeClass = 'badge-danger';
+                else if (trend.includes('显著降温')) badgeClass = 'badge-warning';
+                else if (trend.includes('升温')) badgeClass = 'badge-hot';
+                else if (trend.includes('降温')) badgeClass = 'badge-cold';
+                else badgeClass = 'badge-normal';
+
+                trendHTML += `<span class="stat-badge ${badgeClass}">${trend}: ${count}</span>`;
+            }
+            trendStatsElement.innerHTML = trendHTML;
+        } else {
+            trendStatsElement.innerHTML = '<span class="stat-badge badge-info">无趋势数据</span>';
+        }
+    }
+
+    // 更新预警状态统计
+    const alertStatsElement = document.getElementById('temp-alert-stats');
+    if (alertStatsElement) {
+        if (Object.keys(stats.alerts).length > 0) {
+            let alertHTML = '';
+            for (const [alert, count] of Object.entries(stats.alerts)) {
+                let badgeClass = 'badge-info';
+                if (alert.includes('警告')) badgeClass = 'badge-danger';
+                else if (alert.includes('需关注')) badgeClass = 'badge-warning';
+                else badgeClass = 'badge-normal';
+
+                alertHTML += `<span class="stat-badge ${badgeClass}">${alert}: ${count}</span>`;
+            }
+            alertStatsElement.innerHTML = alertHTML;
+        } else {
+            alertStatsElement.innerHTML = '<span class="stat-badge badge-info">无预警数据</span>';
+        }
+    }
+}
+
+// 初始化温度趋势分析图表
+function initTrendChart() {
+    const chartDom = document.getElementById('temperature-trend-chart');
+    if (!chartDom) return;
+
+    // 创建图表实例
+    charts.trendChart = echarts.init(chartDom);
+
+    // 准备数据
+    // 按照测量日期对所有传感器数据进行按天分组
+    const dateGroups = {};
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30); // 获取30天内的数据
+
+    // 加载最近30天的温度趋势数据
+    fetch('/api/temperature/trends')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success' && data.data.length > 0) {
+                // 初始化图表配置
+                const option = {
+                    title: {
+                        text: '温度趋势分析',
+                        left: 'center',
+                        textStyle: {
+                            color: '#eee',
+                            fontSize: 14
+                        }
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: {
+                            type: 'shadow'
+                        }
+                    },
+                    legend: {
+                        data: ['传感器数量'],
+                        textStyle: {
+                            color: '#ddd'
+                        }
+                    },
+                    grid: {
+                        left: '3%',
+                        right: '4%',
+                        bottom: '3%',
+                        containLabel: true
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: data.data.map(item => item.trend_type),
+                        axisLabel: {
+                            color: '#ddd',
+                            rotate: 45
+                        }
+                    },
+                    yAxis: {
+                        type: 'value',
+                        name: '传感器数量',
+                        nameTextStyle: {
+                            color: '#ddd'
+                        },
+                        axisLabel: {
+                            color: '#ddd'
+                        }
+                    },
+                    series: [
+                        {
+                            name: '传感器数量',
+                            type: 'bar',
+                            data: data.data.map(item => ({
+                                value: item.count,
+                                itemStyle: {
+                                    color: getTrendColor(item.trend_type)
+                                }
+                            })),
+                            label: {
+                                show: true,
+                                position: 'top',
+                                color: '#fff'
+                            },
+                            emphasis: {
+                                itemStyle: {
+                                    shadowBlur: 10,
+                                    shadowOffsetX: 0,
+                                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                }
+                            }
+                        }
+                    ]
+                };
+
+                // 设置图表配置
+                charts.trendChart.setOption(option);
+
+                // 为窗口大小变化添加监听器
+                window.addEventListener('resize', function() {
+                    charts.trendChart.resize();
+                });
+            } else {
+                showEmptyDataMessage('temperature-trend-chart', '暂无温度趋势数据');
+            }
+        })
+        .catch(error => {
+            console.error('加载温度趋势数据失败:', error);
+            showEmptyDataMessage('temperature-trend-chart', '加载温度趋势数据失败');
+        });
+}
+
+// 初始化温度分布图表
+function initDistributionChart() {
+    const chartDom = document.getElementById('temperature-distribution-chart');
+    if (!chartDom) return;
+
+    // 创建图表实例
+    charts.distributionChart = echarts.init(chartDom);
+
+    if (!sensorData || sensorData.length === 0) {
+        showEmptyDataMessage('temperature-distribution-chart', '暂无温度分布数据');
+        return;
+    }
+
+    // 准备温度分布数据
+    const tempRanges = [
+        '< 0°C', '0-5°C', '5-10°C', '10-15°C',
+        '15-20°C', '20-25°C', '25-30°C', '> 30°C'
+    ];
+
+    const tempCounts = new Array(tempRanges.length).fill(0);
+
+    // 对传感器的平均温度进行分组计数
+    sensorData.forEach(sensor => {
+        if (sensor.avg_temperature !== null) {
+            const temp = sensor.avg_temperature;
+            if (temp < 0) tempCounts[0]++;
+            else if (temp < 5) tempCounts[1]++;
+            else if (temp < 10) tempCounts[2]++;
+            else if (temp < 15) tempCounts[3]++;
+            else if (temp < 20) tempCounts[4]++;
+            else if (temp < 25) tempCounts[5]++;
+            else if (temp < 30) tempCounts[6]++;
+            else tempCounts[7]++;
+        }
+    });
+
+    // 配置图表
+    const option = {
+        title: {
+            text: '温度分布',
+            left: 'center',
+            textStyle: {
+                color: '#eee',
+                fontSize: 14
+            }
+        },
+        tooltip: {
+            trigger: 'item',
+            formatter: '{a} <br/>{b}: {c} ({d}%)'
+        },
+        legend: {
+            orient: 'vertical',
+            left: 'left',
+            data: tempRanges,
+            textStyle: {
+                color: '#ddd'
+            }
+        },
+        series: [
+            {
+                name: '温度分布',
+                type: 'pie',
+                radius: ['30%', '70%'],
+                avoidLabelOverlap: false,
+                itemStyle: {
+                    borderRadius: 10,
+                    borderColor: '#0e1622',
+                    borderWidth: 2
+                },
+                label: {
+                    show: false,
+                    position: 'center'
+                },
+                emphasis: {
+                    label: {
+                        show: true,
+                        fontSize: 16,
+                        fontWeight: 'bold',
+                        color: '#fff'
+                    }
+                },
+                labelLine: {
+                    show: false
+                },
+                data: tempRanges.map((range, index) => ({
+                    value: tempCounts[index],
+                    name: range,
+                    itemStyle: {
+                        color: getTemperatureColor(range)
+                    }
+                }))
+            }
+        ]
+    };
+
+    // 设置图表配置
+    charts.distributionChart.setOption(option);
+
+    // 为窗口大小变化添加监听器
+    window.addEventListener('resize', function() {
+        charts.distributionChart.resize();
+    });
+}
+
+// 设置传感器选择器
+function setupSensorSelector() {
+    const selectorElement = document.getElementById('sensor-selector');
+    if (!selectorElement) return;
+
+    // 清空当前选项
+    selectorElement.innerHTML = '<option value="">请选择传感器</option>';
+
+    // 如果没有数据，返回
+    if (!sensorData || sensorData.length === 0) return;
+
+    // 为每个传感器添加选项
+    sensorData.forEach(sensor => {
+        if (sensor.sensor_id) {
+            const option = document.createElement('option');
+            option.value = sensor.sensor_id;
+            option.textContent = `${sensor.sensor_id} - ${sensor.sensor_name || '未命名'}`;
+            selectorElement.appendChild(option);
+        }
+    });
+
+    // 绑定选择事件
+    selectorElement.addEventListener('change', function() {
+        // 获取所有选中的选项
+        const selectedOptions = Array.from(this.selectedOptions);
+        selectedSensorIds = selectedOptions.map(option => option.value).filter(Boolean); // Filter out empty value if "请选择传感器" is selected
+
+        if (selectedSensorIds.length === 0) {
+            // 清空图表
+            resetSensorCharts();
+        } else if (selectedSensorIds.length > 5) {
+            // 如果选择超过5个，显示提示并只处理前5个
+            showNotification('最多只能选择5个传感器进行比较', 'warning');
+            selectedSensorIds = selectedSensorIds.slice(0, 5);
+            // 更新选择器的视觉状态以反映实际处理的传感器 (可选)
+            Array.from(this.options).forEach(option => {
+                option.selected = selectedSensorIds.includes(option.value);
+            });
+            loadMultipleSensorData(selectedSensorIds);
+        } else if (selectedSensorIds.length === 1) {
+            // 如果只选择了一个，使用原有的单传感器加载逻辑
+            loadSensorData(selectedSensorIds[0]);
+        } else {
+            // 如果选择了2到5个，加载多传感器数据
+            loadMultipleSensorData(selectedSensorIds);
+        }
+    });
+}
+
+// 加载特定传感器的数据
+function loadSensorData(sensorId) {
+    // 显示加载中的提示
+    document.getElementById('selected-sensor').textContent = `${sensorId} (加载中...)`;
+    showEmptyDataMessage('temperature-series-chart', '正在加载传感器数据...', true); // Indicate loading
+    showEmptyDataMessage('temperature-range-chart', '正在加载传感器数据...', true); // Indicate loading
+    document.getElementById('sensor-details').innerHTML = '<p class="loading"><i class="fas fa-circle-notch fa-spin"></i> 正在加载传感器详情...</p>';
+
+    // 从API获取传感器数据
+    fetch(`/api/temperature/data/${sensorId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                console.log('传感器数据:', data.data);
+
+                // 更新传感器名称显示
+                document.getElementById('selected-sensor').textContent = sensorId;
+
+                // 更新时间序列图表 (pass false for isMultiSensor)
+                updateTimeSeriesChart(data.data.timeSeriesData, false);
+
+                // 更新温度范围图表
+                updateTemperatureRangeChart(data.data.timeSeriesData);
+
+                // 更新传感器详情
+                updateSensorDetails(data.data.analysisData);
+            } else {
+                console.error('获取传感器数据失败:', data.message);
+                showNotification(`获取传感器 ${sensorId} 数据失败: ${data.message}`, 'error');
+                resetSensorCharts();
+                // Explicitly show empty message for series chart on failure
+                showEmptyDataMessage('temperature-series-chart', `加载传感器 ${sensorId} 数据失败`);
+                 // Also show empty for range chart on failure
+                showEmptyDataMessage('temperature-range-chart', `加载传感器 ${sensorId} 数据失败`);
+            }
+        })
+        .catch(error => {
+            console.error('加载传感器数据失败:', error);
+            showNotification(`加载传感器 ${sensorId} 数据失败`, 'error');
+            resetSensorCharts();
+            // Explicitly show empty message for series chart on error
+            showEmptyDataMessage('temperature-series-chart', `加载传感器 ${sensorId} 数据失败`);
+             // Also show empty for range chart on error
+            showEmptyDataMessage('temperature-range-chart', `加载传感器 ${sensorId} 数据失败`);
+        });
+}
+
+// 新增函数：加载多个传感器的数据
+function loadMultipleSensorData(sensorIds) {
+    const sensorIdsString = sensorIds.join(',');
+    // 显示加载中的提示
+    document.getElementById('selected-sensor').textContent = `多个传感器 (${sensorIds.length}个)`;
+    showEmptyDataMessage('temperature-series-chart', '正在加载多个传感器数据...');
+    // 禁用或清空不适用于多传感器的图表和详情
+    showEmptyDataMessage('temperature-range-chart', '多传感器比较不支持日温差图');
+    // Also clear the range chart instance if it exists
+     if (charts.rangeChart) {
+        charts.rangeChart.clear();
+    }
+    // Update sensor details for multi-selection mode
+    updateSensorDetails(sensorIds); // Pass IDs to indicate multi mode
+
+    // 假设新的API端点 /api/temperature/data/multi?ids=id1,id2,...
+    // 返回格式: { status: 'success', data: { sensorId1: [...timeSeriesData], sensorId2: [...timeSeriesData] } }
+    fetch(`/api/temperature/data/multi?ids=${sensorIdsString}`)
+        .then(response => response.json())
+        .then(result => {
+            if (result.status === 'success' && result.data) {
+                console.log('多传感器数据:', result.data);
+                // 更新时间序列图表以显示多个系列
+                updateTimeSeriesChart(result.data, true); // Pass true to indicate multi-sensor mode
+            } else {
+                console.error('获取多传感器数据失败:', result.message);
+                showNotification(`获取多个传感器数据失败: ${result.message || '未知错误'}`, 'error');
+                resetSensorCharts();
+                 // Explicitly show empty message for series chart on failure
+                showEmptyDataMessage('temperature-series-chart', '加载多传感器数据失败');
+            }
+        })
+        .catch(error => {
+            console.error('加载多传感器数据失败:', error);
+            showNotification(`加载多个传感器数据失败`, 'error');
+            resetSensorCharts();
+            // Explicitly show empty message for series chart on error
+            showEmptyDataMessage('temperature-series-chart', '加载多传感器数据失败');
+        });
+}
+
+// 更新温度时间序列图表
+// Modify function signature to accept optional isMultiSensor flag
+function updateTimeSeriesChart(chartData, isMultiSensor = false) {
+    const chartDom = document.getElementById('temperature-series-chart');
+    if (!chartDom) return;
+
+    // Ensure the chart container is visible and has dimensions before init/setOption
+    // Remove potential empty message div first
+    const emptyDiv = chartDom.querySelector('.empty-chart');
+    if (emptyDiv) {
+        chartDom.removeChild(emptyDiv);
+    }
+     // Reset height in case it was collapsed by the empty message
+    if (!chartDom.style.height || chartDom.style.height === '0px') {
+         chartDom.style.height = '400px'; // Or your default chart height
+    }
+
+    // 创建图表实例（如果尚未创建）
+    if (!charts.seriesChart) {
+        try {
+            charts.seriesChart = echarts.init(chartDom);
+        } catch (e) {
+            console.error("Failed to initialize series chart:", e);
+            showEmptyDataMessage('temperature-series-chart', '图表初始化失败');
+            return;
+        }
+    } else {
+        // 清除之前的图表内容，防止残留
+        charts.seriesChart.clear();
+    }
+
+    // 准备图表数据
+    let seriesData = [];
+    let legendData = [];
+    let xAxisData = []; // Use the longest date range for x-axis
+
+    if (isMultiSensor) {
+        // 处理多传感器数据: chartData is { sensorId1: [...], sensorId2: [...] }
+        const sensorIds = Object.keys(chartData);
+        if (sensorIds.length === 0 || Object.values(chartData).every(data => !data || data.length === 0)) {
+             // Check if all sensors have no data
+            showEmptyDataMessage('temperature-series-chart', '选定传感器均无时间序列数据');
+            charts.seriesChart.clear(); // Ensure chart is cleared
+            return;
+        }
+
+        // 找到最全的日期轴
+        let allDates = new Set();
+        sensorIds.forEach(id => {
+            if (chartData[id] && Array.isArray(chartData[id])) {
+                chartData[id].forEach(item => {
+                    if(item && item.measurement_date) allDates.add(item.measurement_date);
+                });
+            }
+        });
+        xAxisData = Array.from(allDates).sort(); // Sort dates chronologically
+
+
+        sensorIds.forEach((sensorId, index) => {
+            const timeSeries = chartData[sensorId];
+            // Skip sensors explicitly marked as having no data or empty arrays
+            if (!timeSeries || timeSeries.length === 0) {
+                console.log(`Sensor ${sensorId} has no time series data.`);
+                return;
+            }
+
+            legendData.push(sensorId); // Use sensor ID for legend
+
+            // Create a map for quick lookup of temperature by date
+            const tempMap = new Map();
+            timeSeries.forEach(item => {
+                 if(item && item.measurement_date && item.avg_temperature !== null && item.avg_temperature !== undefined) {
+                     tempMap.set(item.measurement_date, item.avg_temperature);
+                 }
+            });
+
+
+            // Align data with the common xAxisData, using null for missing dates
+            const avgTemps = xAxisData.map(date => tempMap.get(date) ?? null);
+
+            // Only add series if it has some non-null data points
+             if (avgTemps.some(temp => temp !== null)) {
+                seriesData.push({
+                    name: sensorId,
+                    type: 'line',
+                    data: avgTemps,
+                    smooth: true,
+                    showSymbol: false, // Hide symbols for cleaner multi-line look
+                    connectNulls: false, // Don't connect over null points
+                    emphasis: {
+                        focus: 'series'
+                    },
+                    lineStyle: {
+                        width: 2 // Slightly thinner lines for multi-view
+                    }
+                    // Optional: assign distinct colors if needed
+                    // lineStyle: { color: getColorForIndex(index) },
+                    // itemStyle: { color: getColorForIndex(index) }
+                });
+             } else {
+                 console.log(`Sensor ${sensorId} has data points but all avg_temperatures are null/undefined or missing dates.`);
+             }
+        });
+
+        if (seriesData.length === 0) {
+            showEmptyDataMessage('temperature-series-chart', '选定传感器均无有效的平均温度数据');
+            charts.seriesChart.clear(); // Ensure chart is cleared
+            return;
+        }
+
+    } else {
+        // 处理单传感器数据: chartData is [...timeSeriesData]
+        const timeSeriesData = chartData;
+        if (!timeSeriesData || timeSeriesData.length === 0) {
+            showEmptyDataMessage('temperature-series-chart', '暂无该传感器的时间序列数据');
+            charts.seriesChart.clear(); // Ensure chart is cleared
+            return;
+        }
+
+        // Filter out entries with null/undefined date or temperatures for robustness
+        const validData = timeSeriesData.filter(item =>
+            item &&
+            item.measurement_date &&
+            item.avg_temperature !== null && item.avg_temperature !== undefined &&
+            item.min_temperature !== null && item.min_temperature !== undefined &&
+            item.max_temperature !== null && item.max_temperature !== undefined
+        );
+
+        if (validData.length === 0) {
+             showEmptyDataMessage('temperature-series-chart', '该传感器数据点均无效');
+             charts.seriesChart.clear(); // Ensure chart is cleared
+             return;
+        }
+
+
+        xAxisData = validData.map(item => item.measurement_date);
+        const avgTemps = validData.map(item => item.avg_temperature);
+        const minTemps = validData.map(item => item.min_temperature);
+        const maxTemps = validData.map(item => item.max_temperature);
+        legendData = ['平均温度', '最低温度', '最高温度'];
+
+        seriesData = [
+            {
+                name: '平均温度',
+                type: 'line',
+                data: avgTemps,
+                smooth: true,
+                lineStyle: { width: 3, color: '#00e5ff' },
+                itemStyle: { color: '#00e5ff' },
+                emphasis: { focus: 'series' },
+                connectNulls: false
+            },
+            {
+                name: '最低温度',
+                type: 'line',
+                data: minTemps,
+                smooth: true,
+                lineStyle: { width: 2, color: '#0088ff' },
+                itemStyle: { color: '#0088ff' },
+                emphasis: { focus: 'series' },
+                connectNulls: false
+            },
+            {
+                name: '最高温度',
+                type: 'line',
+                data: maxTemps,
+                smooth: true,
+                lineStyle: { width: 2, color: '#ff3e5f' },
+                itemStyle: { color: '#ff3e5f' },
+                emphasis: { focus: 'series' },
+                connectNulls: false
+            }
+        ];
+    }
+
+    // 配置图表
+    const option = {
+        title: {
+            text: isMultiSensor ? '多传感器温度对比' : '温度时间序列',
+            left: 'center',
+            textStyle: {
+                color: '#eee',
+                fontSize: 14
+            }
+        },
+        tooltip: {
+            trigger: 'axis',
+            // Use default axis tooltip which handles multiple series well
+             axisPointer: {
+                type: 'cross',
+                label: {
+                    backgroundColor: '#6a7985'
+                }
+            }
+            // formatter: isMultiSensor ? null : function(params) { // Default formatter is usually fine
+            //     let result = params[0].axisValue + '<br/>';
+            //     params.forEach(param => {
+            //         const value = param.value !== null && param.value !== undefined ? param.value.toFixed(2) + '°C' : '无数据';
+            //         result += param.marker + ' ' + param.seriesName + ': ' + value + '<br/>';
+            //     });
+            //     return result;
+            // }
+        },
+        legend: {
+            data: legendData,
+            textStyle: {
+                color: '#ddd'
+            },
+            top: 'bottom', // Move legend to bottom
+            type: 'scroll', // Enable scrollable legend
+             padding: [20, 10, 5, 10] // Add padding around legend
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '15%', // Increase bottom margin for legend and zoom
+            containLabel: true
+        },
+        xAxis: {
+            type: 'category',
+            boundaryGap: false,
+            data: xAxisData, // Use the common or single sensor date axis
+            axisLabel: {
+                color: '#ddd',
+                rotate: 45,
+                hideOverlap: true // Hide labels if they overlap
+            }
+        },
+        yAxis: {
+            type: 'value',
+            name: '温度 (°C)',
+            nameTextStyle: {
+                color: '#ddd'
+            },
+            axisLabel: {
+                color: '#ddd',
+                 formatter: '{value}°C' // Add units to axis labels
+            },
+            scale: true // Allow y-axis to scale based on data
+        },
+        dataZoom: [ // Add data zoom for better navigation
+             {
+                type: 'inside', // Enables zooming inside the chart area with mouse wheel/touch
+                start: 0,
+                end: 100,
+                filterMode: 'filter' // 'filter' mode recalculates displayed points based on zoom
+            },
+            {
+                type: 'slider', // Adds a slider bar for zooming
+                start: 0,
+                end: 100, // Show full range initially in slider
+                filterMode: 'filter',
+                handleIcon: 'M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z',
+                handleSize: '80%',
+                handleStyle: {
+                    color: '#fff',
+                    shadowBlur: 3,
+                    shadowColor: 'rgba(0, 0, 0, 0.6)',
+                    shadowOffsetX: 2,
+                    shadowOffsetY: 2
+                },
+                 bottom: '5%', // Position zoom slider
+                 height: 20, // Adjust slider height
+                 borderColor: '#444',
+                 backgroundColor: 'rgba(255,255,255,0.1)'
+            }
+        ],
+        series: seriesData // Assign the dynamically generated series
+    };
+
+    try {
+        // 设置图表配置
+        charts.seriesChart.setOption(option, true); // Use true to not merge with previous options
+    } catch (e) {
+        console.error("Failed to set option on series chart:", e);
+        showEmptyDataMessage('temperature-series-chart', '更新图表失败');
+    }
+
+
+    // 为窗口大小变化添加监听器 (ensure only one listener is attached)
+     if (!charts.seriesChart._hasResizeListener) {
+        window.addEventListener('resize', charts.seriesChart.resize);
+        charts.seriesChart._hasResizeListener = true; // Add a flag
+    }
+
+    // Ensure the chart container itself is visible (if previously hidden by empty message)
+    // chartDom.style.height = '400px'; // Moved this up before init
+}
+
+// 更新温度范围变化图表
+function updateTemperatureRangeChart(timeSeriesData) {
+    const chartDom = document.getElementById('temperature-range-chart');
+    if (!chartDom) return;
+
+    // 创建图表实例（如果尚未创建）
+    if (!charts.rangeChart) {
+        charts.rangeChart = echarts.init(chartDom);
+    } else {
+         // Explicitly clear previous chart content
+        charts.rangeChart.clear();
+    }
+
+    // 如果没有数据，显示空数据提示
+    if (!timeSeriesData || timeSeriesData.length === 0) {
+        showEmptyDataMessage('temperature-range-chart', '暂无该传感器的温度范围数据');
+        return;
+    }
+
+    // 准备数据
+    const dates = timeSeriesData.map(item => item.measurement_date);
+    const tempRanges = timeSeriesData.map(item => item.temperature_range || 0);
+
+    // 配置图表
+    const option = {
+        title: {
+            text: '日温差变化',
+            left: 'center',
+            textStyle: {
+                color: '#eee',
+                fontSize: 14
+            }
+        },
+        tooltip: {
+            trigger: 'axis',
+            formatter: function(params) {
+                return params[0].axisValue + '<br/>' +
+                       params[0].marker + ' 日温差: ' + params[0].value + '°C';
+            }
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            containLabel: true
+        },
+        xAxis: {
+            type: 'category',
+            boundaryGap: false,
+            data: dates,
+            axisLabel: {
+                color: '#ddd',
+                rotate: 45
+            }
+        },
+        yAxis: {
+            type: 'value',
+            name: '温度范围 (°C)',
+            nameTextStyle: {
+                color: '#ddd'
+            },
+            axisLabel: {
+                color: '#ddd'
+            }
+        },
+        series: [
+            {
+                name: '日温差',
+                type: 'bar',
+                data: tempRanges,
+                itemStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        { offset: 0, color: '#ff3e5f' },
+                        { offset: 1, color: '#0088ff' }
+                    ])
+                },
+                emphasis: {
+                    itemStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: '#ff5f7e' },
+                            { offset: 1, color: '#40a8ff' }
+                        ])
+                    }
+                }
+            }
+        ]
+    };
+
+    // 设置图表配置
+    charts.rangeChart.setOption(option, true); // Use true to not merge
+}
+
+// 更新传感器详情
+// Modify function to handle multi-sensor selection
+function updateSensorDetails(analysisDataOrIds) {
+    const detailsElement = document.getElementById('sensor-details');
+    if (!detailsElement) return;
+
+    // Check if we are in multi-sensor mode (passed an array of IDs)
+    if (Array.isArray(analysisDataOrIds)) {
+         detailsElement.innerHTML = `<p class="info-state"><i class="fas fa-info-circle"></i> 当前已选择 ${analysisDataOrIds.length} 个传感器进行比较。详细分析仅适用于单个传感器。</p>`;
+         return;
+    }
+
+    // Original single-sensor logic
+    const analysisData = analysisDataOrIds;
+    // 如果没有数据，显示空数据提示
+    if (!analysisData || Object.keys(analysisData).length === 0 || analysisData.sensor_id === undefined) {
+        // Check for a valid key like sensor_id to be more robust
+        detailsElement.innerHTML = '<p class="empty-state"><i class="fas fa-exclamation-circle"></i> 暂无该传感器的分析数据</p>';
+        return;
+    }
+
+    // Ensure values are numbers before calling toFixed
+    const formatNum = (num, digits = 2) => (typeof num === 'number' ? num.toFixed(digits) : '-');
+    const formatSlope = (num) => (typeof num === 'number' ? num.toFixed(4) : '-');
+    const formatPValue = (num) => {
+        if (typeof num !== 'number') return '-';
+        return num < 0.001 ? '< 0.001' : num.toFixed(4);
+    };
+
+
+    // 构建详情HTML (check for null/undefined before accessing properties)
+    let detailsHTML = `
+        <div class="sensor-info">
+            <div class="sensor-id">
+                <span class="label">传感器ID:</span>
+                <span class="value">${analysisData.sensor_id || '未知'}</span>
+            </div>
+            <div class="sensor-name">
+                <span class="label">传感器名称:</span>
+                <span class="value">${analysisData.sensor_name || '未命名'}</span>
+            </div>
+        </div>
+
+        <div class="data-table-wrapper">
+            <table class="data-table multi-column">
+                <thead>
+                    <tr>
+                        <th>测量指标</th>
+                        <th>数值</th>
+                        <th>统计指标</th>
+                        <th>数值</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>平均温度</td>
+                        <td class="numeric">${formatNum(analysisData.avg_temperature)}°C</td>
+                        <td>温度标准差</td>
+                        <td class="numeric">${formatNum(analysisData.std_deviation)}°C</td>
+                    </tr>
+                    <tr>
+                        <td>最高温度</td>
+                        <td class="numeric">${formatNum(analysisData.max_temperature)}°C</td>
+                        <td>平均日温差</td>
+                        <td class="numeric">${formatNum(analysisData.avg_daily_range)}°C</td>
+                    </tr>
+                    <tr>
+                        <td>最低温度</td>
+                        <td class="numeric">${formatNum(analysisData.min_temperature)}°C</td>
+                        <td>数据点数量</td>
+                        <td class="numeric">${analysisData.data_count ?? '-'}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="data-table-wrapper">
+            <table class="data-table multi-column">
+                <thead>
+                    <tr>
+                        <th>分析指标</th>
+                        <th>数值</th>
+                        <th>状态</th>
+                        <th>评估</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>温度趋势</td>
+                        <td>${analysisData.trend_type || '未知'}</td>
+                        <td>趋势斜率</td>
+                        <td class="numeric">${formatSlope(analysisData.trend_slope)}°C/天</td>
+                    </tr>
+                    <tr>
+                        <td>R²值</td>
+                        <td class="numeric">${formatSlope(analysisData.r_squared)}</td>
+                        <td>P值</td>
+                        <td class="numeric">${formatPValue(analysisData.p_value)}</td>
+                    </tr>
+                    <tr>
+                        <td>告警等级</td>
+                        <td colspan="3">
+                            <span class="alert-badge ${getAlertBadgeClass(analysisData.alert_level || '未知')}">${analysisData.alert_level || '未知'}</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="update-info">
+            <span class="label">最后更新:</span>
+            <span class="value">${analysisData.last_updated || '未知'}</span>
+        </div>
+    `;
+
+    // 更新详情内容
+    detailsElement.innerHTML = detailsHTML;
+}
+
+// 重置传感器图表
+function resetSensorCharts() {
+    selectedSensorIds = []; // Clear selected sensor IDs
+    document.getElementById('selected-sensor').textContent = '--';
+
+    // Clear or reset time series chart
+    if (charts.seriesChart) {
+        charts.seriesChart.clear(); // Clear the chart content
+    }
+    showEmptyDataMessage('temperature-series-chart', '请选择传感器查看时间序列数据');
+
+    // Clear or reset range chart
+    if (charts.rangeChart) {
+        charts.rangeChart.clear();
+    }
+    showEmptyDataMessage('temperature-range-chart', '请选择传感器查看温度范围变化');
+
+    // Reset sensor details area
+    document.getElementById('sensor-details').innerHTML = '<p class="empty-state"><i class="fas fa-hand-point-left"></i> 请在下拉菜单中选择一个或多个传感器</p>';
+
+    // Reset the selector itself if needed (e.g., deselect all visually)
+    const selector = document.getElementById('sensor-selector');
+    if (selector) {
+        Array.from(selector.options).forEach(option => option.selected = false);
+        // Optionally set the placeholder as selected if it exists
+         if (selector.options[0] && selector.options[0].value === "") {
+            // selector.options[0].selected = true; // This might re-trigger change event, be careful, usually not needed if resetSensorCharts is called from the change handler itself when length is 0.
+         }
+    }
+}
+
+// 显示空数据消息
+function showEmptyDataMessage(chartId, message, isLoading = false) {
+    const chartDom = document.getElementById(chartId);
+    if (!chartDom) return;
+
+    // Clear previous content and ensure container has height
+    chartDom.innerHTML = '';
+    // Always set a default height to prevent issues when ECharts initializes later
+    chartDom.style.height = '400px'; // Or your default chart height
+
+    const iconClass = isLoading ? 'fa-circle-notch fa-spin' : 'fa-chart-bar';
+
+    chartDom.innerHTML = `
+        <div class="empty-chart" style="display: flex; justify-content: center; align-items: center; height: 100%; flex-direction: column;">
+            <i class="fas ${iconClass}" style="font-size: 2em; color: #555; margin-bottom: 10px;"></i>
+            <p style="color: #888; font-size: 0.9em;">${message}</p>
+        </div>
+    `;
+}
+
+// 显示上传模态框
+function showUploadModal() {
+    document.getElementById('upload-modal').style.display = 'block';
+
+    // 重置上传表单
+    document.getElementById('file-input').value = '';
+    document.getElementById('file-info').style.display = 'none';
+    document.getElementById('drop-area').style.display = 'block';
+    document.getElementById('upload-progress').style.display = 'none';
+    document.getElementById('processing-status').style.display = 'none';
+    document.getElementById('progress-bar-fill').style.width = '0%';
+    document.getElementById('progress-text').textContent = '上传中... 0%';
+    document.getElementById('upload-message').textContent = '';
+}
+
+// 处理文件选择
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    handleSelectedFile(file);
+}
+
+// 处理拖放文件
+function handleDrop(event) {
+    const dt = event.dataTransfer;
+    const file = dt.files[0];
+    handleSelectedFile(file);
+}
+
+// 处理选择的文件
+function handleSelectedFile(file) {
+    if (!file) return;
+
+    // 检查文件类型
+    if (!file.name.match(/\.(mdb|accdb)$/i)) {
+        showNotification('请上传Access数据库文件 (.mdb, .accdb)', 'error');
+        return;
+    }
+
+    // 显示文件信息
+    document.getElementById('file-name').textContent = file.name;
+    document.getElementById('file-info').style.display = 'block';
+    document.getElementById('drop-area').style.display = 'none';
+}
+
+// 上传文件
+function uploadFile() {
+    const fileInput = document.getElementById('file-input');
+    if (!fileInput.files.length) return;
+
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // 显示上传进度条
+    document.getElementById('file-info').style.display = 'none';
+    document.getElementById('upload-progress').style.display = 'block';
+
+    // 执行AJAX请求上传文件
+    const xhr = new XMLHttpRequest();
+
+    // 处理上传进度
+    xhr.upload.addEventListener('progress', function(e) {
+        if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 100);
+            document.getElementById('progress-bar-fill').style.width = percentComplete + '%';
+            document.getElementById('progress-text').textContent = `上传中... ${percentComplete}%`;
+        }
+    });
+
+    // 上传完成
+    xhr.addEventListener('load', function() {
+        if (xhr.status === 200) {
+            const response = JSON.parse(xhr.responseText);
+
+            if (response.status === 'success') {
+                // 显示处理状态
+                document.getElementById('upload-progress').style.display = 'none';
+                document.getElementById('processing-status').style.display = 'block';
+                document.getElementById('status-text').textContent = '正在处理温度数据...';
+
+                // 开始轮询处理状态
+                checkProcessingStatus(response.task_id);
+            } else {
+                // 显示错误消息
+                document.getElementById('upload-progress').style.display = 'none';
+                document.getElementById('upload-message').textContent = response.message;
+                document.getElementById('upload-message').style.color = '#ff6060';
+            }
+        } else {
+            // 显示错误消息
+            document.getElementById('upload-progress').style.display = 'none';
+            document.getElementById('upload-message').textContent = '上传失败，请重试';
+            document.getElementById('upload-message').style.color = '#ff6060';
+        }
+    });
+
+    // 上传出错
+    xhr.addEventListener('error', function() {
+        document.getElementById('upload-progress').style.display = 'none';
+        document.getElementById('upload-message').textContent = '上传失败，请检查网络连接';
+        document.getElementById('upload-message').style.color = '#ff6060';
+    });
+
+    // 发送请求
+    xhr.open('POST', '/api/temperature/upload', true);
+    xhr.send(formData);
+}
+
+// 检查处理状态
+function checkProcessingStatus(taskId) {
+    const statusInterval = setInterval(function() {
+        fetch(`/api/process-status?task_id=${taskId}`)
+            .then(response => response.json())
+            .then(data => {
+                // 更新状态消息
+                document.getElementById('status-text').textContent = data.message;
+
+                if (data.status === 'completed') {
+                    // 处理完成
+                    clearInterval(statusInterval);
+                    document.getElementById('processing-status').style.display = 'none';
+                    document.getElementById('upload-message').textContent = '温度数据处理完成！页面将在3秒后刷新';
+                    document.getElementById('upload-message').style.color = '#60ff60';
+
+                    // 显示成功通知
+                    showNotification('温度数据导入和处理成功！');
+
+                    // 延迟关闭模态框并刷新页面
+                    setTimeout(function() {
+                        document.getElementById('upload-modal').style.display = 'none';
+                        location.reload();
+                    }, 3000);
+                } else if (data.status === 'failed') {
+                    // 处理失败
+                    clearInterval(statusInterval);
+                    document.getElementById('processing-status').style.display = 'none';
+                    document.getElementById('upload-message').textContent = `处理失败: ${data.message}`;
+                    document.getElementById('upload-message').style.color = '#ff6060';
+                }
+            })
+            .catch(error => {
+                console.error('状态检查错误:', error);
+            });
+    }, 2000); // 每2秒检查一次
+}
+
+// 显示通知
+function showNotification(message, type = 'success') {
+    const notification = document.getElementById('notification');
+    const notificationText = document.getElementById('notification-text');
+
+    notificationText.textContent = message;
+    notification.style.borderLeftColor = type === 'error' ? '#ff4040' : '#40c060';
+    notification.style.display = 'block';
+
+    setTimeout(function() {
+        notification.style.display = 'none';
+    }, 5000);
+}
+
+// 配置图表缩放功能
+function setupChartZoom() {
+    // 为每个图表容器添加缩放按钮
+    const chartContainers = document.querySelectorAll('.chart-container');
+
+    chartContainers.forEach(container => {
+        const chartBody = container.querySelector('.chart-body');
+        const chartTitle = container.querySelector('.chart-title').textContent;
+        const chart = chartBody.querySelector('.chart');
+
+        if (chart) {
+            const chartId = chart.id;
+
+            // 添加缩放按钮
+            const zoomButton = document.createElement('button');
+            zoomButton.className = 'zoom-button';
+            zoomButton.innerHTML = '<i class="fas fa-expand-alt"></i>';
+            zoomButton.title = '放大图表';
+
+            container.querySelector('.chart-header').appendChild(zoomButton);
+
+            // 绑定点击事件
+            zoomButton.addEventListener('click', function() {
+                openZoomModal(chartId, chartTitle);
+            });
+        }
+    });
+
+    // 创建缩放模态框（如果不存在）
+    if (!document.getElementById('zoom-modal')) {
+        const zoomModal = document.createElement('div');
+        zoomModal.id = 'zoom-modal';
+        zoomModal.className = 'modal zoom-modal';
+
+        zoomModal.innerHTML = `
+            <div class="modal-content zoom-modal-content">
+                <div class="modal-header">
+                    <h3 id="zoom-chart-title"></h3>
+                    <span class="close zoom-close">&times;</span>
+                </div>
+                <div class="modal-body zoom-modal-body">
+                    <div id="zoom-chart" class="zoom-chart"></div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(zoomModal);
+
+        // 添加样式
+        const style = document.createElement('style');
+        style.textContent = `
+            .zoom-modal {
+                display: none;
+                position: fixed;
+                z-index: 9999;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                overflow: auto;
+                background-color: rgba(0, 0, 0, 0.8);
+                backdrop-filter: blur(5px);
+            }
+
+            .zoom-modal-content {
+                background-color: rgba(12, 20, 38, 0.9);
+                margin: 5% auto;
+                padding: 20px;
+                border-radius: 8px;
+                width: 85%;
+                height: 85%;
+                box-shadow: 0 0 20px rgba(0, 229, 255, 0.6);
+                position: relative;
+            }
+
+            .zoom-modal-body {
+                height: calc(100% - 60px);
+                overflow: hidden;
+            }
+
+            .zoom-chart {
+                width: 100%;
+                height: 100%;
+                min-height: 400px;
+            }
+
+            .modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid rgba(0, 229, 255, 0.3);
+                padding-bottom: 15px;
+                margin-bottom: 20px;
+            }
+
+            .modal-header h3 {
+                margin: 0;
+                color: #00e5ff;
+            }
+
+            .zoom-close {
+                color: #aaa;
+                float: right;
+                font-size: 28px;
+                font-weight: bold;
+                cursor: pointer;
+            }
+
+            .zoom-close:hover,
+            .zoom-close:focus {
+                color: #00e5ff;
+                text-decoration: none;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // 绑定关闭按钮事件
+        document.querySelector('.zoom-close').addEventListener('click', closeZoomModal);
+
+        // 点击模态框外部关闭
+        zoomModal.addEventListener('click', function(event) {
+            if (event.target === zoomModal) {
+                closeZoomModal();
+            }
+        });
+    }
+}
+
+// 打开缩放模态框
+function openZoomModal(chartId, chartTitle) {
+    const zoomModal = document.getElementById('zoom-modal');
+    const zoomChartTitle = document.getElementById('zoom-chart-title');
+    const zoomChart = document.getElementById('zoom-chart');
+
+    // 清空之前的内容
+    zoomChart.innerHTML = '';
+
+    // 设置标题
+    zoomChartTitle.textContent = chartTitle;
+
+    // 显示模态框
+    zoomModal.style.display = 'block';
+
+    // 确保图表容器有明确的尺寸
+    zoomChart.style.width = '100%';
+    zoomChart.style.height = '500px';
+
+    // 根据原始图表ID获取对应的图表实例
+    let sourceChart = null;
+
+    switch (chartId) {
+        case 'temperature-trend-chart':
+            sourceChart = charts.trendChart;
+            break;
+        case 'temperature-distribution-chart':
+            sourceChart = charts.distributionChart;
+            break;
+        case 'temperature-series-chart':
+            sourceChart = charts.seriesChart;
+            break;
+        case 'temperature-range-chart':
+            sourceChart = charts.rangeChart;
+            break;
+    }
+
+    if (sourceChart) {
+        // 使用setTimeout确保模态框已完全显示并应用样式后再初始化图表
+        setTimeout(() => {
+            // 创建新的图表实例
+            const zoomedChart = echarts.init(zoomChart);
+
+            // 获取原始图表的选项并应用到放大图表
+            const option = sourceChart.getOption();
+            zoomedChart.setOption(option);
+
+            // 强制执行一次重绘以适应容器
+            zoomedChart.resize();
+
+            // 为窗口大小变化添加监听器
+            const resizeHandler = function() {
+                zoomedChart.resize();
+            };
+
+            window.addEventListener('resize', resizeHandler);
+
+            // 存储resize处理器以便关闭时移除
+            zoomModal._resizeHandler = resizeHandler;
+            zoomModal._zoomedChart = zoomedChart;
+        }, 100); // 短暂延迟以确保DOM已更新
+    } else {
+        zoomChart.innerHTML = '<div class="empty-chart"><p>无法加载图表数据</p></div>';
+    }
+}
+
+// 关闭缩放模态框
+function closeZoomModal() {
+    const zoomModal = document.getElementById('zoom-modal');
+
+    // Remove window resize listener
+    if (zoomModal._resizeHandler) {
+        window.removeEventListener('resize', zoomModal._resizeHandler);
+        zoomModal._resizeHandler = null; // Clear the stored handler
+    }
+
+    // Dispose of the ECharts instance in the modal
+    if (zoomModal._zoomedChart) {
+        try {
+            zoomModal._zoomedChart.dispose();
+        } catch(e) {
+            console.error("Error disposing zoomed chart:", e);
+        }
+        zoomModal._zoomedChart = null; // Clear the stored instance
+    }
+
+    // Hide the modal with transition
+    zoomModal.classList.remove('show');
+
+     // Optional: you might want to delay setting display: none until after the transition
+     /*
+    setTimeout(() => {
+        if (!zoomModal.classList.contains('show')) { // Check if it wasn't immediately reopened
+            zoomModal.style.display = 'none';
+        }
+    }, 300); // Match transition duration
+    */
+}
+
+// 获取温度范围的颜色
+function getTemperatureColor(range) {
+    switch (range) {
+        case '< 0°C': return '#1e90ff';
+        case '0-5°C': return '#00bfff';
+        case '5-10°C': return '#87cefa';
+        case '10-15°C': return '#90ee90';
+        case '15-20°C': return '#ffd700';
+        case '20-25°C': return '#ffa500';
+        case '25-30°C': return '#ff7f50';
+        case '> 30°C': return '#ff4500';
+        default: return '#999';
+    }
+}
+
+// 获取趋势的颜色
+function getTrendColor(trend) {
+    if (trend.includes('显著升温')) return '#ff3e5f';
+    if (trend.includes('缓慢升温')) return '#ff9e0d';
+    if (trend.includes('显著降温')) return '#0088ff';
+    if (trend.includes('缓慢降温')) return '#00bfff';
+    if (trend.includes('温度稳定')) return '#00e676';
+    return '#7986cb';
+}
+
+// 获取趋势徽章的样式类
+function getTrendBadgeClass(trend) {
+    if (trend.includes('显著升温')) return 'trend-hot';
+    if (trend.includes('缓慢升温')) return 'trend-warm';
+    if (trend.includes('显著降温')) return 'trend-cold';
+    if (trend.includes('缓慢降温')) return 'trend-cool';
+    if (trend.includes('温度稳定')) return 'trend-stable';
+    return 'trend-unknown';
+}
+
+// 获取告警徽章的样式类
+function getAlertBadgeClass(alert) {
+    if (alert.includes('警告')) return 'alert-danger';
+    if (alert.includes('需关注')) return 'alert-warning';
+    if (alert.includes('正常')) return 'alert-normal';
+    return 'alert-unknown';
+}

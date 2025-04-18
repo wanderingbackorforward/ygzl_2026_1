@@ -1,0 +1,25 @@
+# 忽略大型bundle文件
+static/StreamingAssets/aa/WebGL/*.bundle
+
+# 忽略大型模型文件
+static/glb/*.glb
+
+# 忽略临时上传目录中的大文件
+temp_uploads/**/*.mdb
+temp_uploads/vibration/**/*.csv
+
+# 忽略大型Excel文件
+data/*.xlsx
+
+# 忽略视频文件
+static/videos/*.mp4
+
+# 忽略WebGL插件
+*.jslib
+
+# 常见系统文件
+.DS_Store
+Thumbs.db
+
+# IDE相关文件（已经添加的可以保留）
+#.idea/workspace.xml

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>沉降监测数字孪生系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- 添加Font Awesome图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css">
+    <!-- 添加Rajdhani字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Unity作为整个背景 -->
+        <div class="unity-background">
+            <!-- 背景装饰效果 -->
+            <div class="bg-grid"></div>
+            <div class="bg-glow"></div>
+
+            <!-- Unity画布 -->
+            <canvas id="unity-canvas"></canvas>
+            <div id="unity-loading-bar">
+                <div id="unity-progress-bar"></div>
+            </div>
+
+            <!-- 动态粒子效果 -->
+            <div class="particle" style="top: 30%; left: 20%; animation-delay: 0s;"></div>
+            <div class="particle" style="top: 50%; left: 40%; animation-delay: 3s;"></div>
+            <div class="particle" style="top: 70%; left: 60%; animation-delay: 6s;"></div>
+            <div class="particle" style="top: 25%; left: 80%; animation-delay: 9s;"></div>
+            <div class="particle" style="top: 60%; left: 25%; animation-delay: 12s;"></div>
+        </div>
+
+        <!-- 控制面板悬浮在Unity背景之上 -->
+        <div class="dashboard-content">
+            <!-- 紧凑导航栏 -->
+            <nav class="compact-nav">
+                <ul>
+                    <li><a href="cover.html"><i class="fas fa-home"></i>封面</a></li>
+                    <li><a href="index.html" class="active"><i class="fas fa-chart-area"></i>沉降</a></li>
+                    <li><a href="cracks.html"><i class="fas fa-bug"></i>裂缝</a></li>
+                    <li><a href="temperature.html"><i class="fas fa-thermometer-half"></i>温度</a></li>
+                    <li><a href="vibration.html"><i class="fas fa-wave-square"></i>振动</a></li>
+                    <li><a href="insar.html"><i class="fas fa-satellite"></i>InSAR</a></li>
+                </ul>
+            </nav>
+
+            <header class="header">
+                <h1><i class="fas fa-project-diagram"></i> 沉降监测数字孪生系统</h1>
+                <div class="upload-container">
+                    <button id="upload-button" class="upload-button">
+                        <i class="fas fa-upload"></i> 上传新数据
+                    </button>
+                </div>
+            </header>
+
+            <div class="main-content">
+                <!-- 左侧图表区域 -->
+                <div class="chart-panel left-panel">
+                    <!-- 趋势分析图表 -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3 class="chart-title"><i class="fas fa-chart-bar"></i> 趋势分析</h3>
+                        </div>
+                        <div class="chart-body">
+                            <div id="trend-chart" class="chart"></div>
+                        </div>
+                    </div>
+
+                    <!-- 监测点分布图表 -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3 class="chart-title"><i class="fas fa-chart-pie"></i> 监测点分布</h3>
+                        </div>
+                        <div class="chart-body">
+                            <div id="points-chart" class="chart"></div>
+                        </div>
+                    </div>
+
+                    <!-- 点位选择器 -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3 class="chart-title"><i class="fas fa-map-marker-alt"></i> 点位选择</h3>
+                        </div>
+                        <div class="chart-body selector-container">
+                            <select id="point-selector" class="point-selector">
+                                <option value="">请选择监测点</option>
+                                <!-- 这里会通过JS动态填充 -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 中央Unity模型区域 -->
+                <div class="center-panel">
+                    <!-- 中央区域是空的，因为Unity已经作为背景 -->
+                    <!-- 在这里可以添加额外的控制元素 -->
+                </div>
+
+                <!-- 右侧图表区域 -->
+                <div class="chart-panel right-panel">
+                    <!-- 时间序列数据图表 -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3 class="chart-title"><i class="fas fa-chart-line"></i> 时间序列数据 <span id="selected-point">S19</span></h3>
+                        </div>
+                        <div class="chart-body">
+                            <div id="time-series-chart" class="chart"></div>
+                        </div>
+                    </div>
+
+                    <!-- 沉降速率图表 -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3 class="chart-title"><i class="fas fa-tachometer-alt"></i> 沉降速率</h3>
+                        </div>
+                        <div class="chart-body">
+                            <div id="rate-chart" class="chart"></div>
+                        </div>
+                    </div>
+
+                    <!-- 监测点详情 -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3 class="chart-title"><i class="fas fa-info-circle"></i> 监测点详情</h3>
+                        </div>
+                        <div class="chart-body">
+                            <div id="point-details" class="details-panel">
+                                <p class="empty-state"><i class="fas fa-hand-point-left"></i> 请在下拉菜单或3D模型中选择一个监测点</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Unity控制按钮 -->
+            <div class="unity-footer">
+                <div class="control-buttons">
+                    <button id="rotate-left" class="control-button"><i class="fas fa-undo"></i> 向左旋转</button>
+                    <button id="reset-view" class="control-button"><i class="fas fa-sync"></i> 重置视图</button>
+                    <button id="rotate-right" class="control-button"><i class="fas fa-redo"></i> 向右旋转</button>
+                </div>
+            </div>
+
+            <!-- 底部状态栏 -->
+            <footer class="footer">
+                <p><i class="fas fa-copyright"></i> 2024 沉降监测数字孪生系统 | <i class="fas fa-signal"></i> 数据同步中</p>
+            </footer>
+
+            <!-- 装饰性发光线 -->
+            <div class="glow-line" style="top: 25%; animation-delay: 0s;"></div>
+            <div class="glow-line" style="top: 40%; animation-delay: 3s;"></div>
+            <div class="glow-line" style="top: 60%; animation-delay: 5s;"></div>
+        </div>
+
+        <!-- 添加文件上传模态框 -->
+        <div id="upload-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-file-excel"></i> 上传沉降数据文件</h3>
+                    <span class="close">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="drop-area">
+                        <p class="drop-text"><i class="fas fa-cloud-upload-alt"></i> 拖放Excel文件到此处，或点击选择文件</p>
+                        <input type="file" id="file-input" accept=".xlsx,.xls" hidden />
+                        <button id="select-file-btn" class="select-file-btn">选择文件</button>
+                    </div>
+                    <div id="file-info" class="file-info" style="display: none;">
+                        <p><i class="fas fa-file-alt"></i> 已选择文件: <span id="file-name"></span></p>
+                        <button id="upload-file-btn" class="upload-file-btn">开始上传</button>
+                    </div>
+                    <div id="upload-progress" class="progress-container" style="display: none;">
+                        <div class="progress-bar">
+                            <div id="progress-bar-fill" class="progress-bar-fill"></div>
+                        </div>
+                        <p id="progress-text">上传中... 0%</p>
+                    </div>
+                    <div id="processing-status" class="processing-status" style="display: none;">
+                        <p><i class="fas fa-cog fa-spin"></i> <span id="status-text">正在处理数据...</span></p>
+                        <div class="progress-bar">
+                            <div id="processing-bar-fill" class="progress-bar-fill pulsing"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" id="modal-footer">
+                    <p id="upload-message"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加通知组件 -->
+        <div id="notification" class="notification">
+            <i class="fas fa-info-circle"></i>
+            <span id="notification-text">消息通知</span>
+        </div>
+    </div>
+
+    <!-- 引入JS库 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.3.2/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="js/chart-zoom.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/unity-loader.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

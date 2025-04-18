@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>沉降监测数字孪生系统 - 重定向</title>
+    <meta http-equiv="refresh" content="0;url=settlement.html">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #101729;
+            color: #e0f7fa;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+        .redirect-container {
+            background: rgba(10, 25, 47, 0.8);
+            border: 1px solid rgba(64, 174, 255, 0.5);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 0 15px rgba(64, 174, 255, 0.2);
+            max-width: 600px;
+        }
+        h1 {
+            color: #40aeff;
+            margin-top: 0;
+        }
+        p {
+            margin: 10px 0;
+        }
+        a {
+            color: #40aeff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .spinner {
+            border: 4px solid rgba(64, 174, 255, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #40aeff;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 15px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="redirect-container">
+        <h1>正在重定向...</h1>
+        <div class="spinner"></div>
+        <p>系统已升级，您正在被重定向到新的沉降监测页面</p>
+        <p>如果您未自动跳转，请<a href="settlement.html">点击此处</a></p>
+    </div>
+    <script>
+        // 确保重定向生效
+        window.onload = function() {
+            window.location.href = "settlement.html";
+        }
+    </script>
+</body>
+</html>

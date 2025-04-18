@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>振动监测系统</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Font Awesome 图标库 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css">
+  <!-- Rajdhani 字体 -->
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Unity背景效果 -->
+    <div class="unity-background">
+      <div class="bg-grid"></div>
+      <div class="bg-glow"></div>
+      <canvas id="unity-canvas"></canvas>
+      <div id="unity-loading-bar">
+        <div id="unity-progress-bar"></div>
+      </div>
+      <!-- 动态粒子效果 -->
+      <div class="particle" style="top: 30%; left: 20%; animation-delay: 0s;"></div>
+      <div class="particle" style="top: 50%; left: 40%; animation-delay: 3s;"></div>
+      <div class="particle" style="top: 70%; left: 60%; animation-delay: 6s;"></div>
+      <div class="particle" style="top: 25%; left: 80%; animation-delay: 9s;"></div>
+      <div class="particle" style="top: 60%; left: 25%; animation-delay: 12s;"></div>
+    </div>
+
+    <!-- 控制面板 -->
+    <div class="dashboard-content">
+      <!-- 紧凑导航栏 -->
+      <nav class="compact-nav">
+        <ul>
+          <li><a href="cover.html"><i class="fas fa-home"></i>封面</a></li>
+          <li><a href="settlement.html"><i class="fas fa-chart-area"></i>沉降</a></li>
+          <li><a href="cracks.html"><i class="fas fa-bug"></i>裂缝</a></li>
+          <li><a href="temperature.html"><i class="fas fa-thermometer-half"></i>温度</a></li>
+          <li><a href="vibration.html" class="active"><i class="fas fa-wave-square"></i>振动</a></li>
+          <li><a href="insar.html"><i class="fas fa-satellite"></i>InSAR</a></li>
+          <li><a href="three_test.html"><i class="fas fa-cubes"></i>3D模型</a></li>
+        </ul>
+      </nav>
+
+      <!-- 页头 -->
+      <header class="header">
+        <h1><i class="fas fa-wave-square"></i> 振动监测系统</h1>
+        <div class="upload-container">
+          <button id="upload-button" class="upload-button">
+            <i class="fas fa-upload"></i> 上传振动数据
+          </button>
+        </div>
+      </header>
+
+      <!-- 主体内容 -->
+      <div class="main-content">
+        <!-- 左侧图表区域 -->
+        <div class="chart-panel left-panel">
+          <!-- 振动统计概览 -->
+          <div class="chart-container" draggable="true">
+            <div class="chart-header">
+              <h3 class="chart-title"><i class="fas fa-chart-pie"></i> 振动指标概览</h3>
+            </div>
+            <div class="chart-body">
+              <div class="stats-panel">
+                <div class="stat-item">
+                  <div class="stat-label">均值</div>
+                  <div class="stat-value" id="mean-value">--</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-label">标准差</div>
+                  <div class="stat-value" id="std-value">--</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-label">峰值</div>
+                  <div class="stat-value" id="peak-value">--</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-label">均方根</div>
+                  <div class="stat-value" id="rms-value">--</div>
+                </div>
+                <div class="stat-item wide">
+                  <div class="stat-label">中心频率</div>
+                  <div class="stat-value" id="center-freq">-- Hz</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 波形因子分析图表 -->
+          <div class="chart-container" draggable="true">
+            <div class="chart-header">
+              <h3 class="chart-title"><i class="fas fa-chart-bar"></i> 波形/峰值因子分析</h3>
+            </div>
+            <div class="chart-body">
+              <div id="waveform-factor-chart" class="chart"></div>
+            </div>
+          </div>
+
+          <!-- 脉冲/间隙因子分析图表 -->
+          <div class="chart-container" draggable="true">
+            <div class="chart-header">
+              <h3 class="chart-title"><i class="fas fa-chart-bar"></i> 脉冲/间隙因子分析</h3>
+            </div>
+            <div class="chart-body">
+              <div id="pulse-factor-chart" class="chart"></div>
+            </div>
+          </div>
+
+          <!-- 通道选择器 -->
+          <div class="chart-container" draggable="true">
+            <div class="chart-header">
+              <h3 class="chart-title"><i class="fas fa-filter"></i> 通道选择</h3>
+            </div>
+            <div class="chart-body selector-container">
+              <select id="channel-selector" class="point-selector">
+                <option value="">请选择通道</option>
+                <option value="1">通道1</option>
+                <option value="2">通道2</option>
+                <option value="3">通道3</option>
+                <option value="4">通道4</option>
+                <option value="5">通道5</option>
+                <option value="6">通道6</option>
+                <option value="7">通道7</option>
+                <option value="8">通道8</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 中央图表区域 -->
+        <div class="center-panel">
+          <!-- 时域数据图表 -->
+          <div class="chart-container large-chart">
+            <div class="chart-header">
+              <h3 class="chart-title"><i class="fas fa-wave-square"></i> 时域波形数据 <span id="selected-channel">--</span></h3>
+              <div class="dataset-selector">
+                <span>数据集:</span>
+                <select id="dataset-selector">
+                  <option value="">请选择数据集</option>
+                </select>
+              </div>
+            </div>
+            <div class="chart-body">
+              <div id="time-domain-chart" class="chart"></div>
+            </div>
+          </div>
+          
+          <!-- 频域数据图表 -->
+          <div class="chart-container large-chart">
+            <div class="chart-header">
+              <h3 class="chart-title"><i class="fas fa-chart-line"></i> 频域分析</h3>
+            </div>
+            <div class="chart-body">
+              <div id="frequency-domain-chart" class="chart"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右侧图表区域 -->
+        <div class="chart-panel right-panel">
+          <!-- 频率指标分析 -->
+          <div class="chart-container" draggable="true">
+            <div class="chart-header">
+              <h3 class="chart-title"><i class="fas fa-chart-line"></i> 频率指标分析</h3>
+            </div>
+            <div class="chart-body">
+              <div id="frequency-metrics-chart" class="chart"></div>
+            </div>
+          </div>
+
+          <!-- 特征值雷达图 -->
+          <div class="chart-container" draggable="true">
+            <div class="chart-header">
+              <h3 class="chart-title"><i class="fas fa-star"></i> 特征值雷达图</h3>
+            </div>
+            <div class="chart-body">
+              <div id="feature-radar-chart" class="chart"></div>
+            </div>
+          </div>
+
+          <!-- 通道详情 -->
+          <div class="chart-container" draggable="true">
+            <div class="chart-header">
+              <h3 class="chart-title"><i class="fas fa-info-circle"></i> 详细特征指标</h3>
+            </div>
+            <div class="chart-body">
+              <div id="channel-details" class="details-panel">
+                <p class="empty-state"><i class="fas fa-hand-point-left"></i> 请在下拉菜单选择一个通道</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 页脚 -->
+      <footer class="footer">
+        <p><i class="fas fa-copyright"></i> 2024 振动监测系统 | <i class="fas fa-signal"></i> 数据同步中</p>
+      </footer>
+
+      <!-- 装饰性发光线 -->
+      <div class="glow-line" style="top: 25%; animation-delay: 0s;"></div>
+      <div class="glow-line" style="top: 40%; animation-delay: 3s;"></div>
+      <div class="glow-line" style="top: 60%; animation-delay: 5s;"></div>
+    </div>
+    
+    <!-- 添加文件上传模态框 -->
+    <div id="upload-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3><i class="fas fa-file-upload"></i> 上传振动数据文件</h3>
+          <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div id="drop-area">
+            <p class="drop-text"><i class="fas fa-cloud-upload-alt"></i> 拖放8个数据文件(data1.csv ~ data8.csv)到此处</p>
+            <input type="file" id="file-input" accept=".csv" multiple hidden />
+            <button id="select-file-btn" class="select-file-btn">选择文件</button>
+          </div>
+          <div id="file-info" class="file-info" style="display: none;">
+            <div id="selected-files-list" class="selected-files-list"></div>
+            <button id="upload-file-btn" class="upload-file-btn">开始上传</button>
+          </div>
+          <div id="upload-progress" class="progress-container" style="display: none;">
+            <div class="progress-bar">
+              <div id="progress-bar-fill" class="progress-bar-fill"></div>
+            </div>
+            <p id="progress-text">上传中... 0%</p>
+          </div>
+          <div id="processing-status" class="processing-status" style="display: none;">
+            <p><i class="fas fa-cog fa-spin"></i> <span id="status-text">正在处理数据...</span></p>
+            <div class="progress-bar">
+              <div id="processing-bar-fill" class="progress-bar-fill pulsing"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" id="modal-footer">
+          <p id="upload-message"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 添加通知组件 -->
+    <div id="notification" class="notification">
+      <i class="fas fa-info-circle"></i>
+      <span id="notification-text">消息通知</span>
+    </div>
+  </div>
+
+  <!-- 引入 JS 库 -->
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.3.2/dist/echarts.min.js"></script>
+  <script src="js/chart-zoom.js"></script>
+  <script src="js/vibration_charts.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
