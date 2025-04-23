@@ -148,6 +148,11 @@
     pointer-events: auto;
 }
 
+/* Override main-content to allow interaction with the background canvas */
+.main-content {
+    pointer-events: none;
+}
+
 /* Adjust panel background for transparency (optional) */
 /* If you want to see the 3D background through the panels, reduce alpha */
 :root {

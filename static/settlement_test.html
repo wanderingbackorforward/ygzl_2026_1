@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>沉降监测数字孪生系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/settlement_test.css">
+    <!-- 添加Font Awesome图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css">
+    <!-- 添加Rajdhani字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* 添加Unity点击交互提示样式 */
+        .unity-interaction-hint {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 100;
+            pointer-events: none;
+            border: 1px solid rgba(0, 229, 255, 0.5);
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+        }
+        
+        .unity-canvas:hover .unity-interaction-hint {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- NEW Three.js Background Container -->
+        <div id="threejs-background" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; overflow: hidden;">
+            <canvas id="viewer-canvas"></canvas>
+            <!-- Loading indicator can be added here if needed, managed by three_viewer.js -->
+             <div id="loading-indicator" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 1.2em; padding: 15px 25px; background: rgba(0, 0, 0, 0.7); border-radius: 5px; z-index: 10; display: none;">加载中...</div>
+        </div>
+
+        <!-- 控制面板悬浮在背景之上 (Ensure z-index is higher than background) -->
+        <div class="dashboard-content" style="position: relative; z-index: 1; pointer-events: none;">
+             <!-- Ensure child elements restore pointer events -->
+             <nav class="compact-nav" style="pointer-events: auto;">
+                <ul>
+                    <li><a href="cover.html"><i class="fas fa-home"></i>封面</a></li>
+                    <li><a href="settlement.html" class="active"><i class="fas fa-chart-area"></i>沉降</a></li>
+                    <li><a href="cracks.html"><i class="fas fa-bug"></i>裂缝</a></li>
+                    <li><a href="temperature.html"><i class="fas fa-thermometer-half"></i>温度</a></li>
+                    <li><a href="vibration.html"><i class="fas fa-wave-square"></i>振动</a></li>
+                    <li><a href="insar.html"><i class="fas fa-satellite"></i>InSAR</a></li>
+                    <li><a href="three_test.html"><i class="fas fa-cubes"></i>3D模型</a></li>
+                </ul>
+            </nav>
+            <header class="header" style="pointer-events: auto;">
+                <h1><i class="fas fa-project-diagram"></i> 沉降监测数字孪生系统</h1>
+                <div class="upload-container">
+                    <button id="upload-button" class="upload-button">
+                        <i class="fas fa-upload"></i> 上传新数据
+                    </button>
+                </div>
+            </header>
+            <div class="main-content" style="pointer-events: auto;">
+                 <!-- 3D Viewer Background now becomes the main content backdrop -->
+                 <div id="threejs-background"> <!-- Moved inside main-content -->
+                     <canvas id="viewer-canvas"></canvas>
+                     <div id="loading-indicator" style="display: none;">加载中...</div>
+                 </div>
+
+                 <!-- Point selector widget (will be positioned absolutely via CSS) -->
+                 <div class="chart-container" id="point-selector-widget">
+                     <div class="chart-header"> <!-- Keep header structure for consistency, hide with CSS -->
+                         <h3 class="chart-title"><i class="fas fa-map-marker-alt"></i> 点位选择</h3>
+                         <p class="chart-description">选择一个监测点以查看其详细数据和更新3D模型视角。</p>
+                     </div>
+                     <div class="chart-body selector-container">
+                         <select id="point-selector" class="point-selector">
+                             <option value="">请选择监测点</option>
+                             <!-- 这里会通过JS动态填充 -->
+                         </select>
+                         <!-- Hint removed for brevity, can be re-added via CSS if needed -->
+                     </div>
+                 </div>
+
+                 <!-- Left and Right panels (will be positioned absolutely via CSS) -->
+                 <div class="chart-panel left-panel">
+                     <!-- 趋势分析图表 -->
+                     <div class="chart-container" draggable="true">
+                         <div class="chart-header">
+                             <h3 class="chart-title"><i class="fas fa-chart-bar"></i> 趋势分析</h3>
+                             <p class="chart-description">统计所有监测点当前的沉降变化趋势（加速、匀速、减速、稳定）分布。</p>
+                         </div>
+                         <div class="chart-body">
+                             <div id="trend-chart" class="chart"></div>
+                         </div>
+                     </div>
+
+                     <!-- 监测点分布图表 -->
+                     <div class="chart-container" draggable="true">
+                         <div class="chart-header">
+                             <h3 class="chart-title"><i class="fas fa-chart-pie"></i> 监测点分布</h3>
+                             <p class="chart-description">统计所有监测点当前的告警等级（正常、蓝色、黄色、橙色、红色）分布。</p>
+                         </div>
+                         <div class="chart-body">
+                             <div id="points-chart" class="chart"></div>
+                         </div>
+                     </div>
+                 </div>
+                 <div class="chart-panel right-panel">
+                     <!-- 时间序列数据图表 -->
+                     <div class="chart-container" draggable="true">
+                         <div class="chart-header">
+                             <h3 class="chart-title"><i class="fas fa-chart-line"></i> 时间序列数据 <span id="selected-point">S19</span></h3>
+                             <p class="chart-description">显示选定监测点的原始沉降值、日变量和累积变量随时间的变化曲线。</p>
+                         </div>
+                         <div class="chart-body">
+                             <div id="time-series-chart" class="chart"></div>
+                         </div>
+                     </div>
+
+                     <!-- 沉降速率图表 -->
+                     <div class="chart-container" draggable="true">
+                         <div class="chart-header">
+                             <h3 class="chart-title"><i class="fas fa-tachometer-alt"></i> 沉降速率</h3>
+                             <p class="chart-description">显示选定监测点日变量（沉降速率）随时间的变化柱状图。</p>
+                         </div>
+                         <div class="chart-body">
+                             <div id="rate-chart" class="chart"></div>
+                         </div>
+                     </div>
+
+                     <!-- 监测点详情 -->
+                     <div class="chart-container" draggable="true">
+                         <div class="chart-header">
+                             <h3 class="chart-title"><i class="fas fa-info-circle"></i> 监测点详情</h3>
+                             <p class="chart-description">展示选定监测点的具体信息、当前状态和分析结果。</p>
+                         </div>
+                         <div class="chart-body">
+                             <div id="point-details" class="details-panel">
+                                 <p class="empty-state"><i class="fas fa-hand-point-left"></i> 请在下拉菜单或3D模型中选择一个监测点</p>
+                             </div>
+                         </div>
+                     </div>
+                 </div>
+            </div>
+             <footer class="footer" style="pointer-events: auto;">
+                 <p><i class="fas fa-copyright"></i> 2024 沉降监测数字孪生系统 | <i class="fas fa-signal"></i> 数据同步中</p>
+            </footer>
+             <!-- Other direct children of dashboard-content need pointer-events: auto; -->
+             <div class="unity-footer" style="pointer-events: auto;"></div>
+             <div id="upload-modal" class="modal" style="pointer-events: auto;"></div>
+             <div id="notification" class="notification" style="pointer-events: auto;"></div>
+
+        </div>
+    </div>
+
+    <!-- 引入JS库 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.3.2/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <!-- Remove Unity Loader if present -->
+    <!-- <script src="js/unity-loader.js"></script> -->
+
+    <!-- Add Three.js Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- Include necessary scripts -->
+    <!-- <script src="js/chart-zoom.js"></script> --> <!-- Temporarily disabled -->
+    <script src="js/settlement_test_viewer.js"></script> <!-- Keep this -->
+    <!-- <script src="js/charts.js"></script> -->      <!-- Temporarily disabled -->
+    <!-- <script src="js/main.js"></script> -->        <!-- Temporarily disabled -->
+</body>
+</html> 
