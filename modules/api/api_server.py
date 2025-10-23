@@ -217,7 +217,27 @@ def get_trends():
 def serve_static(path):
     # 使用绝对路径指向静态文件
     static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../static'))
-    return send_from_directory(static_dir, path)
+
+    # 设置正确的 MIME 类型
+    import mimetypes
+    mimetype = None
+
+    # 为 JavaScript 模块设置正确的 MIME 类型
+    if path.endswith('.js'):
+        mimetype = 'application/javascript'
+    elif path.endswith('.mjs'):
+        mimetype = 'application/javascript'
+    elif path.endswith('.css'):
+        mimetype = 'text/css'
+    elif path.endswith('.json'):
+        mimetype = 'application/json'
+    elif path.endswith('.wasm'):
+        mimetype = 'application/wasm'
+    else:
+        # 使用系统默认的 MIME 类型检测
+        mimetype, _ = mimetypes.guess_type(path)
+
+    return send_from_directory(static_dir, path, mimetype=mimetype)
 
 # =========================================================
 # 文件上传和处理API (保持不变)
