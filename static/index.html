@@ -57,17 +57,60 @@
     </style>
 </head>
 <body>
-    <div class="redirect-container">
-        <h1>正在进入数字孪生系统...</h1>
-        <div class="spinner"></div>
-        <p>欢迎访问盾构智能建造数字孪生系统</p>
-        <p>如果您未自动跳转，请<a href="cover.html">点击此处</a></p>
+    <div class="redirect-container" style="max-width: 900px;">
+        <h1>盾构智能建造数字孪生系统</h1>
+        <p style="margin: 20px 0; font-size: 1.1em;">欢迎访问盾构智能建造数字孪生系统</p>
+
+        <div style="margin: 40px 0; display: flex; justify-content: center; gap: 30px; flex-wrap: wrap;">
+            <!-- 地图选择器入口 -->
+            <a href="map-selector/index.html" class="module-card">
+                <i class="fas fa-map-marked-alt" style="font-size: 3em; display: block; margin-bottom: 15px; color: #40aeff;"></i>
+                <span style="font-size: 1.3em; font-weight: bold; display: block; margin-bottom: 10px;">地图选择器</span>
+                <p style="margin: 0; font-size: 0.9em; color: #8aabcc;">通过3D地图选择不同区域的隧道系统</p>
+            </a>
+
+            <!-- 杨高中路隧道直接入口 -->
+            <a href="cover.html" class="module-card">
+                <i class="fas fa-tunnel" style="font-size: 3em; display: block; margin-bottom: 15px; color: #40aeff;"></i>
+                <span style="font-size: 1.3em; font-weight: bold; display: block; margin-bottom: 10px;">杨高中路隧道</span>
+                <p style="margin: 0; font-size: 0.9em; color: #8aabcc;">直接进入杨高中路隧道监测系统</p>
+            </a>
+        </div>
+
+        <p style="margin-top: 30px; font-size: 14px; color: #8aabcc;">
+            请选择要访问的模块
+        </p>
     </div>
-    <script>
-        // 确保重定向生效
-        window.onload = function() {
-            window.location.href = "cover.html";
+
+    <style>
+        .module-card {
+            display: inline-block;
+            padding: 30px 40px;
+            background: rgba(64, 174, 255, 0.15);
+            border: 2px solid #40aeff;
+            border-radius: 12px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            min-width: 280px;
+            max-width: 350px;
+            text-align: center;
+            cursor: pointer;
         }
-    </script>
+
+        .module-card:hover {
+            background: rgba(64, 174, 255, 0.3);
+            transform: translateY(-8px);
+            box-shadow: 0 8px 25px rgba(64, 174, 255, 0.4);
+            border-color: #5fbfff;
+        }
+
+        .module-card i {
+            transition: transform 0.3s ease;
+        }
+
+        .module-card:hover i {
+            transform: scale(1.1);
+        }
+    </style>
 </body>
 </html>
