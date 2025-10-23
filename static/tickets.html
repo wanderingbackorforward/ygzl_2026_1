@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工单管理系统 - 沉降监测数字孪生系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css">
+    <style>
+        .ticket-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: rgba(10, 25, 47, 0.8);
+            border: 1px solid rgba(64, 174, 255, 0.5);
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(64, 174, 255, 0.2);
+        }
+
+        .ticket-header {
+            text-align: center;
+            color: #40aeff;
+            margin-bottom: 30px;
+            border-bottom: 2px solid rgba(64, 174, 255, 0.3);
+            padding-bottom: 15px;
+        }
+
+        .ticket-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(16, 23, 41, 0.8);
+            border: 1px solid rgba(64, 174, 255, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 20px rgba(64, 174, 255, 0.4);
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #40aeff;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            color: #8aabcc;
+            font-size: 14px;
+        }
+
+        .ticket-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-select, .search-input {
+            background: rgba(16, 23, 41, 0.8);
+            border: 1px solid rgba(64, 174, 255, 0.5);
+            border-radius: 5px;
+            color: #ffffff;
+            padding: 8px 12px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .filter-select:focus, .search-input:focus {
+            border-color: #40aeff;
+            box-shadow: 0 0 10px rgba(64, 174, 255, 0.3);
+        }
+
+        .btn {
+            background: rgba(64, 174, 255, 0.2);
+            border: 1px solid rgba(64, 174, 255, 0.8);
+            border-radius: 5px;
+            color: #40aeff;
+            padding: 8px 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: rgba(64, 174, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background: rgba(64, 174, 255, 0.3);
+            border-color: #40aeff;
+        }
+
+        .ticket-list {
+            background: rgba(16, 23, 41, 0.6);
+            border: 1px solid rgba(64, 174, 255, 0.3);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .ticket-item {
+            background: rgba(10, 25, 47, 0.8);
+            border-bottom: 1px solid rgba(64, 174, 255, 0.2);
+            padding: 15px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .ticket-item:hover {
+            background: rgba(64, 174, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .ticket-item:last-child {
+            border-bottom: none;
+        }
+
+        .ticket-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .ticket-number {
+            font-weight: bold;
+            color: #40aeff;
+            font-size: 16px;
+        }
+
+        .ticket-status {
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-pending {
+            background: rgba(250, 173, 20, 0.2);
+            border: 1px solid #faad14;
+            color: #faad14;
+        }
+
+        .status-in_progress {
+            background: rgba(24, 144, 255, 0.2);
+            border: 1px solid #1890ff;
+            color: #1890ff;
+        }
+
+        .status-resolved {
+            background: rgba(82, 196, 26, 0.2);
+            border: 1px solid #52c41a;
+            color: #52c41a;
+        }
+
+        .status-closed {
+            background: rgba(140, 140, 140, 0.2);
+            border: 1px solid #8c8c8c;
+            color: #8c8c8c;
+        }
+
+        .status-rejected {
+            background: rgba(255, 77, 79, 0.2);
+            border: 1px solid #ff4d4f;
+            color: #ff4d4f;
+        }
+
+        .ticket-title {
+            color: #ffffff;
+            font-size: 16px;
+            margin: 8px 0;
+            font-weight: 500;
+        }
+
+        .ticket-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #8aabcc;
+            font-size: 14px;
+        }
+
+        .ticket-info {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .ticket-type {
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            background: rgba(64, 174, 255, 0.2);
+            border: 1px solid rgba(64, 174, 255, 0.5);
+            color: #40aeff;
+        }
+
+        .priority-critical {
+            background: rgba(255, 77, 79, 0.2);
+            border: 1px solid #ff4d4f;
+            color: #ff4d4f;
+        }
+
+        .priority-high {
+            background: rgba(250, 140, 22, 0.2);
+            border: 1px solid #fa8c16;
+            color: #fa8c16;
+        }
+
+        .priority-medium {
+            background: rgba(24, 144, 255, 0.2);
+            border: 1px solid #1890ff;
+            color: #1890ff;
+        }
+
+        .priority-low {
+            background: rgba(82, 196, 26, 0.2);
+            border: 1px solid #52c41a;
+            color: #52c41a;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: rgba(10, 25, 47, 0.95);
+            border: 1px solid rgba(64, 174, 255, 0.5);
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            width: 90%;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(64, 174, 255, 0.3);
+            padding-bottom: 10px;
+        }
+
+        .modal-title {
+            color: #40aeff;
+            font-size: 18px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: #8aabcc;
+            font-size: 24px;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close-btn:hover {
+            color: #ff4d4f;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            display: block;
+            color: #40aeff;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            background: rgba(16, 23, 41, 0.8);
+            border: 1px solid rgba(64, 174, 255, 0.5);
+            border-radius: 5px;
+            color: #ffffff;
+            padding: 8px 12px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            border-color: #40aeff;
+            box-shadow: 0 0 10px rgba(64, 174, 255, 0.3);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #8aabcc;
+        }
+
+        .error-message {
+            background: rgba(255, 77, 79, 0.1);
+            border: 1px solid #ff4d4f;
+            border-radius: 5px;
+            color: #ff4d4f;
+            padding: 10px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .success-message {
+            background: rgba(82, 196, 26, 0.1);
+            border: 1px solid #52c41a;
+            border-radius: 5px;
+            color: #52c41a;
+            padding: 10px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            color: #40aeff;
+            text-decoration: none;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            transform: translateX(-5px);
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .page-btn {
+            background: rgba(64, 174, 255, 0.2);
+            border: 1px solid rgba(64, 174, 255, 0.5);
+            border-radius: 5px;
+            color: #40aeff;
+            padding: 5px 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .page-btn:hover {
+            background: rgba(64, 174, 255, 0.3);
+        }
+
+        .page-btn.active {
+            background: rgba(64, 174, 255, 0.5);
+            border-color: #40aeff;
+        }
+
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+            .ticket-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group {
+                justify-content: center;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .ticket-meta {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .ticket-details {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="ticket-container">
+        <!-- 返回链接 -->
+        <a href="cover.html" class="back-link">
+            <i class="fas fa-arrow-left"></i>
+            返回主界面
+        </a>
+
+        <!-- 标题 -->
+        <header class="ticket-header">
+            <h1><i class="fas fa-clipboard-list"></i> 工单管理系统</h1>
+            <p>沉降监测数字孪生系统 - 工单管理平台</p>
+        </header>
+
+        <!-- 统计信息 -->
+        <section class="ticket-stats" id="ticketStats">
+            <div class="stat-card">
+                <div class="stat-label">总工单数</div>
+                <div class="stat-number" id="totalTickets">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">待处理</div>
+                <div class="stat-number" id="pendingTickets" style="color: #faad14;">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">处理中</div>
+                <div class="stat-number" id="inProgressTickets" style="color: #1890ff;">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">已解决</div>
+                <div class="stat-number" id="resolvedTickets" style="color: #52c41a;">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">今日创建</div>
+                <div class="stat-number" id="todayTickets">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">逾期工单</div>
+                <div class="stat-number" id="overdueTickets" style="color: #ff4d4f;">-</div>
+            </div>
+        </section>
+
+        <!-- 控制栏 -->
+        <section class="ticket-controls">
+            <div class="filter-group">
+                <select class="filter-select" id="statusFilter">
+                    <option value="">所有状态</option>
+                </select>
+                <select class="filter-select" id="typeFilter">
+                    <option value="">所有类型</option>
+                </select>
+                <select class="filter-select" id="priorityFilter">
+                    <option value="">所有优先级</option>
+                </select>
+                <input type="text" class="search-input" id="searchInput" placeholder="搜索工单...">
+                <button class="btn" onclick="refreshTickets()">
+                    <i class="fas fa-search"></i> 搜索
+                </button>
+            </div>
+            <button class="btn btn-primary" onclick="showCreateModal()">
+                <i class="fas fa-plus"></i> 创建工单
+            </button>
+        </section>
+
+        <!-- 消息显示区 -->
+        <div id="messageArea"></div>
+
+        <!-- 工单列表 -->
+        <main class="ticket-list" id="ticketList">
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                正在加载工单数据...
+            </div>
+        </main>
+
+        <!-- 分页 -->
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <!-- 创建/编辑工单模态框 -->
+    <div class="modal" id="ticketModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">创建工单</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="ticketForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">工单标题 *</label>
+                        <input type="text" class="form-input" id="ticketTitle" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">工单类型 *</label>
+                        <select class="form-select" id="ticketType" required>
+                            <option value="">请选择工单类型</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">优先级</label>
+                        <select class="form-select" id="ticketPriority">
+                            <option value="MEDIUM">中</option>
+                            <option value="CRITICAL">紧急</option>
+                            <option value="HIGH">高</option>
+                            <option value="LOW">低</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">监测点</label>
+                        <input type="text" class="form-input" id="monitoringPoint" placeholder="监测点编号">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">详细描述</label>
+                    <textarea class="form-textarea" id="ticketDescription" placeholder="请详细描述问题情况..."></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">创建人</label>
+                        <input type="text" class="form-input" id="creatorName" value="当前用户" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">阈值</label>
+                        <input type="number" class="form-input" id="thresholdValue" step="0.001" placeholder="预警阈值">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">位置信息</label>
+                    <input type="text" class="form-input" id="locationInfo" placeholder="具体位置描述">
+                </div>
+
+                <div style="text-align: right; margin-top: 20px;">
+                    <button type="button" class="btn" onclick="closeModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> 保存
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 工单详情模态框 -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">工单详情</h2>
+                <button class="close-btn" onclick="closeDetailModal()">&times;</button>
+            </div>
+            <div id="ticketDetail">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    正在加载工单详情...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/tickets.js"></script>
+</body>
+</html>
