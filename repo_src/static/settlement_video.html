@@ -55,4 +55,14 @@
     </div>
   </div>
 </body>
+<script>
+  (function(){
+    var embedded = window.self !== window.top || window.location.search.indexOf('embedded=1') !== -1;
+    if (embedded) {
+      var el = document.querySelector('.compact-nav');
+      if (el) el.style.display = 'none';
+      document.body.style.paddingTop = '0';
+    }
+  })();
+</script>
 </html>

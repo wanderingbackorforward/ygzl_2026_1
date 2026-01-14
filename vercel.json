@@ -4,6 +4,7 @@
     { "src": "web/package.json", "use": "@vercel/static-build" }
   ],
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://backend.example.com/api/:path*" }
+    { "source": "/api/:path*", "destination": "https://backend.example.com/api/:path*" },
+    { "source": "/static/:path*", "destination": "https://backend.example.com/static/:path*" }
   ]
 }

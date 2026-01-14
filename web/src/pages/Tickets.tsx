@@ -1,8 +1,11 @@
 export default function Tickets() {
   return (
-    <div style={{ padding: 16, color: '#aaddff' }}>
-      <h2><i className="fas fa-ticket-alt" /> 工单</h2>
-      <p>React 版本页面占位，后续接入列表与详情。</p>
+    <div style={{ height: 'calc(100vh - 64px)' }}>
+      <iframe
+        title="tickets"
+        src="/static/tickets.html"
+        style={{ width: '100%', height: '100%', border: 'none' }}
+      />
     </div>
   )
 }
