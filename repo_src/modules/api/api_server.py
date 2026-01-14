@@ -54,6 +54,11 @@ app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 # 禁用Flask的自动重载静态文件功能，提升性能
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
 
+# React 构建产物目录（若存在则用于前端路由）
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
+WEB_DIST_DIR = os.path.join(PROJECT_ROOT, 'web', 'dist')
+WEB_INDEX_PATH = os.path.join(WEB_DIST_DIR, 'index.html')
+
 # 创建裂缝API蓝图
 crack_api = Blueprint('crack_api', __name__, url_prefix='/api')
 
@@ -148,6 +153,33 @@ def serve_glb(filename):
 # =========================================================
 @app.route('/')
 def index():
+    if os.path.exists(WEB_INDEX_PATH):
+        return send_from_directory(WEB_DIST_DIR, 'index.html')
+    return app.send_static_file('cover.html')
+
+# 为 React 构建产物提供静态资源访问（如 /assets/*）
+@app.route('/assets/<path:filename>')
+def react_assets(filename):
+    if os.path.exists(WEB_DIST_DIR):
+        return send_from_directory(os.path.join(WEB_DIST_DIR, 'assets'), filename)
+    return jsonify({'error': 'React 构建资源不存在'}), 404
+
+# 前端 SPA 路由兜底：当构建存在时，将非 /api 与非 /static 的路径交给 React
+SPA_ROUTES = {
+    'settlement', 'temperature', 'cracks', 'vibration',
+    'insar', 'overview', 'three', 'settlement-video', 'tickets'
+}
+
+@app.route('/<path:spa_path>')
+def spa_fallback(spa_path):
+    # 保留后端与静态直出路径
+    if spa_path.startswith('api/') or spa_path.startswith('static/'):
+        return jsonify({'error': '路径不在SPA兜底范围'}), 404
+    # React 构建存在且路径匹配 SPA 路由时返回 index.html
+    first_seg = spa_path.split('/')[0]
+    if os.path.exists(WEB_INDEX_PATH) and (first_seg in SPA_ROUTES or spa_path == ''):
+        return send_from_directory(WEB_DIST_DIR, 'index.html')
+    # 默认回退到封面
     return app.send_static_file('cover.html')
 
 @app.route('/health')
