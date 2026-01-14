@@ -53,3 +53,4 @@ web/node_modules/
 web/dist/
 .env
 .env.local
+.trae/
