@@ -27,8 +27,8 @@ def main():
     print("API服务已启动，等待服务就绪...")
     time.sleep(3)  # 等待API服务启动
 
-    # 打开浏览器访问封面页
-    webbrowser.open("http://localhost:5000/static/cover.html")
+    # 打开浏览器访问根路径（若存在 React 构建则进入 React 应用）
+    webbrowser.open("http://localhost:5000/")
 
     print("系统已启动，按Ctrl+C退出...")
 
