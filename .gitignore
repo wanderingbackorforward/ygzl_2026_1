@@ -23,3 +23,29 @@ Thumbs.db
 
 # IDE相关文件（已经添加的可以保留）
 #.idea/workspace.xml
+/.idea/
+
+# Python缓存
+**/__pycache__/
+*.pyc
+*.pyo
+
+# 虚拟环境
+/.venv/
+
+# 大型构建与资源
+/static/StreamingAssets/
+/static/TemplateData/
+/static/glb/
+
+# 数据与中间文件
+/data/*.csv
+/data/*.parquet
+/data/*.npy
+/data/*.npz
+
+# 日志与临时
+*.log
+*.bak
+* - 副本.*
+project_tree.txt

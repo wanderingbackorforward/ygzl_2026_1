@@ -14,7 +14,7 @@ import threading
 import uuid
 from decimal import Decimal # <--- 新增导入
 
-from flask import Flask, Blueprint, jsonify, request, send_from_directory, render_template
+from flask import Flask, Blueprint, jsonify, request, send_from_directory, render_template, redirect
 from flask_cors import CORS
 import mysql.connector
 import numpy as np
@@ -112,7 +112,9 @@ def serve_glb(filename):
     设置正确的MIME类型和缓存头，启用分块传输
     """
     try:
-        glb_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../static/glb'))
+        primary_glb_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../static/glb'))
+        fallback_glb_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../static/glb'))
+        glb_dir = primary_glb_dir if os.path.isdir(primary_glb_dir) else fallback_glb_dir
         file_path = os.path.join(glb_dir, filename)
 
         # 检查文件是否存在
@@ -124,13 +126,7 @@ def serve_glb(filename):
         file_size = os.path.getsize(file_path)
         print(f"开始传输GLB文件: {filename} (大小: {file_size / 1024 / 1024:.1f} MB)")
 
-        response = send_from_directory(
-            glb_dir,
-            filename,
-            mimetype='model/gltf-binary',
-            as_attachment=False,
-            conditional=True  # 支持Range请求
-        )
+        response = send_from_directory(glb_dir, filename, mimetype='model/gltf-binary', as_attachment=False, conditional=True)
 
         # 设置响应头，优化大文件传输
         response.headers['Cache-Control'] = 'public, max-age=31536000'
@@ -152,8 +148,11 @@ def serve_glb(filename):
 # =========================================================
 @app.route('/')
 def index():
-    # Render the main cover page
-    return render_template('index.html')
+    return app.send_static_file('cover.html')
+
+@app.route('/health')
+def health():
+    return jsonify({'status': 'ok'})
 
 @app.route('/api/points')
 def get_all_points():
@@ -405,55 +404,54 @@ def upload_crack_data():
 @crack_api.route('/crack/monitoring_points', methods=['GET'])
 def get_crack_monitoring_points():
     """获取所有裂缝监测点信息"""
-    # ... (代码保持不变) ...
     try:
-        engine = create_engine(f"mysql+mysqlconnector://{db_config['user']}:{db_config['password']}@{db_config['host']}/{db_config['database']}")
+        conn = mysql.connector.connect(**db_config)
         query = "SELECT * FROM crack_monitoring_points WHERE status = 'active'"
-        df = pd.read_sql(query, engine)
+        df = pd.read_sql(query, conn)
         if 'monitoring_start_date' in df.columns: df['monitoring_start_date'] = df['monitoring_start_date'].dt.strftime('%Y-%m-%d %H:%M:%S')
         if 'monitoring_end_date' in df.columns: df['monitoring_end_date'] = df['monitoring_end_date'].dt.strftime('%Y-%m-%d %H:%M:%S')
         df = clean_nan_values(df)
         result = df.to_dict(orient='records')
         return jsonify({'status': 'success','data': result,'message': f'成功获取{len(result)}个裂缝监测点'})
-    except Exception as e: return jsonify({'status': 'error','message': f'获取裂缝监测点失败: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'status': 'error','message': f'获取裂缝监测点失败: {str(e)}'}), 500
 
 @crack_api.route('/crack/data', methods=['GET'])
 def get_crack_data():
     """获取裂缝数据"""
-    # ... (代码保持不变) ...
     try:
-        engine = create_engine(f"mysql+mysqlconnector://{db_config['user']}:{db_config['password']}@{db_config['host']}/{db_config['database']}")
+        conn = mysql.connector.connect(**db_config)
         query = "SELECT * FROM raw_crack_data ORDER BY measurement_date"
-        df = pd.read_sql(query, engine)
+        df = pd.read_sql(query, conn)
         df['measurement_date'] = df['measurement_date'].dt.strftime('%Y-%m-%d %H:%M:%S')
         df = clean_nan_values(df)
         result = df.to_dict(orient='records')
         # 使用 json.dumps 处理 Decimal 和 NaN
         return json.dumps({'status': 'success', 'data': result, 'message': f'成功获取{len(result)}行裂缝数据'}, default=str)
-    except Exception as e: return jsonify({'status': 'error','message': f'获取裂缝数据失败: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'status': 'error','message': f'获取裂缝数据失败: {str(e)}'}), 500
 
 @crack_api.route('/crack/analysis_results', methods=['GET'])
 def get_crack_analysis_results():
     """获取裂缝分析结果"""
-    # ... (代码保持不变) ...
     try:
-        engine = create_engine(f"mysql+mysqlconnector://{db_config['user']}:{db_config['password']}@{db_config['host']}/{db_config['database']}")
+        conn = mysql.connector.connect(**db_config)
         query = "SELECT r.*, p.trend_type, p.change_type FROM crack_analysis_results r JOIN crack_monitoring_points p ON r.point_id = p.point_id ORDER BY r.analysis_date DESC"
-        df = pd.read_sql(query, engine)
+        df = pd.read_sql(query, conn)
         df['analysis_date'] = df['analysis_date'].dt.strftime('%Y-%m-%d %H:%M:%S')
         df = clean_nan_values(df)
         result = df.to_dict(orient='records')
         return jsonify({'status': 'success','data': result,'message': f'成功获取{len(result)}条裂缝分析结果'})
-    except Exception as e: return jsonify({'status': 'error','message': f'获取裂缝分析结果失败: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'status': 'error','message': f'获取裂缝分析结果失败: {str(e)}'}), 500
 
 @crack_api.route('/crack/trend_data', methods=['GET'])
 def get_crack_trend_data():
     """获取裂缝趋势数据，适用于前端图表展示"""
-    # ... (代码保持不变) ...
     try:
-        engine = create_engine(f"mysql+mysqlconnector://{db_config['user']}:{db_config['password']}@{db_config['host']}/{db_config['database']}")
+        conn = mysql.connector.connect(**db_config)
         query = "SELECT * FROM raw_crack_data ORDER BY measurement_date"
-        df = pd.read_sql(query, engine)
+        df = pd.read_sql(query, conn)
         if 'id' in df.columns: df.drop(columns=['id'], inplace=True)
         point_columns = [col for col in df.columns if col != 'measurement_date']
         dates = df['measurement_date'].dt.strftime('%Y-%m-%d %H:%M:%S').tolist()
@@ -462,16 +460,16 @@ def get_crack_trend_data():
         trend_data = {'dates': dates,'series': series_data}
         # 使用 json.dumps 处理可能存在的 Decimal/NaN
         return json.dumps({'status': 'success','data': trend_data,'message': '成功获取裂缝趋势数据'}, default=str)
-    except Exception as e: return jsonify({'status': 'error','message': f'获取裂缝趋势数据失败: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'status': 'error','message': f'获取裂缝趋势数据失败: {str(e)}'}), 500
 
 @crack_api.route('/crack/stats_overview', methods=['GET'])
 def get_crack_stats_overview():
     """获取裂缝监测点统计概况"""
-    # ... (代码保持不变) ...
     try:
-        engine = create_engine(f"mysql+mysqlconnector://{db_config['user']}:{db_config['password']}@{db_config['host']}/{db_config['database']}")
+        conn = mysql.connector.connect(**db_config)
         query = "SELECT * FROM crack_monitoring_points WHERE status = 'active'"
-        df = pd.read_sql(query, engine)
+        df = pd.read_sql(query, conn)
         if df.empty: return jsonify({'status': 'warning','message': '没有找到裂缝监测点数据'})
         overview = {
             'total_points': len(df),
@@ -483,7 +481,8 @@ def get_crack_stats_overview():
             'trend_types': df['trend_type'].value_counts().to_dict()
         }
         return jsonify({'status': 'success','data': overview,'message': '成功获取裂缝统计概况'})
-    except Exception as e: return jsonify({'status': 'error','message': f'获取裂缝统计概况失败: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'status': 'error','message': f'获取裂缝统计概况失败: {str(e)}'}), 500
 
 # =========================================================
 # 温度监测API路由 (保持不变)
@@ -504,71 +503,111 @@ def get_temperature_points():
 @temperature_api.route('/temperature/summary', methods=['GET'])
 def get_temperature_summary():
     """获取温度监测点的汇总分析"""
-    # ... (代码保持不变) ...
     try:
-        engine = create_engine(f"mysql+mysqlconnector://{db_config['user']}:{db_config['password']}@{db_config['host']}/{db_config['database']}")
+        conn = mysql.connector.connect(**db_config)
         query = "SELECT * FROM temperature_analysis ORDER BY CAST(REGEXP_REPLACE(sensor_id, '[^0-9]+', '') AS UNSIGNED), sensor_id"
-        df = pd.read_sql(query, engine)
+        df = pd.read_sql(query, conn)
         if 'last_updated' in df.columns: df['last_updated'] = df['last_updated'].dt.strftime('%Y-%m-%d %H:%M:%S')
         df = clean_nan_values(df)
         result = df.to_dict(orient='records')
         # 使用 json.dumps 处理 Decimal
         return json.dumps({'status': 'success','data': result,'message': f'成功获取{len(result)}个温度监测点的分析结果'}, default=str)
-    except Exception as e: return jsonify({'status': 'error','message': f'获取温度分析结果失败: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'status': 'error','message': f'获取温度分析结果失败: {str(e)}'}), 500
 
 @temperature_api.route('/temperature/data/<sensor_id>', methods=['GET'])
 def get_temperature_data(sensor_id):
     """获取特定传感器的温度数据"""
-    # ... (代码保持不变) ...
     try:
-        engine = create_engine(f"mysql+mysqlconnector://{db_config['user']}:{db_config['password']}@{db_config['host']}/{db_config['database']}")
-        query = "SELECT * FROM processed_temperature_data WHERE SID = %s ORDER BY measurement_date" # 使用参数化
-        data_df = pd.read_sql(query, engine, params=(sensor_id,))
-        data_df['measurement_date'] = data_df['measurement_date'].dt.strftime('%Y-%m-%d')
+        conn = mysql.connector.connect(**db_config)
+        data_df = pd.read_sql("SELECT * FROM processed_temperature_data WHERE SID = %s ORDER BY measurement_date", conn, params=(sensor_id,))
+        if 'measurement_date' in data_df.columns:
+            data_df['measurement_date'] = pd.to_datetime(data_df['measurement_date']).dt.strftime('%Y-%m-%d')
+        # 统一字段名称以匹配前端期望
+        rename_map = {}
+        if 'avg_temp' in data_df.columns and 'avg_temperature' not in data_df.columns: rename_map['avg_temp'] = 'avg_temperature'
+        if 'min_temp' in data_df.columns and 'min_temperature' not in data_df.columns: rename_map['min_temp'] = 'min_temperature'
+        if 'max_temp' in data_df.columns and 'max_temperature' not in data_df.columns: rename_map['max_temp'] = 'max_temperature'
+        if rename_map: data_df = data_df.rename(columns=rename_map)
+        # 计算 temperature_range 如果缺失
+        if 'temperature_range' not in data_df.columns and {'max_temperature','min_temperature'}.issubset(data_df.columns):
+            data_df['temperature_range'] = data_df['max_temperature'] - data_df['min_temperature']
         data_df = clean_nan_values(data_df)
-        analysis_query = "SELECT * FROM temperature_analysis WHERE sensor_id = %s" # 使用参数化
-        analysis_df = pd.read_sql(analysis_query, engine, params=(sensor_id,))
+        analysis_df = pd.read_sql("SELECT * FROM temperature_analysis WHERE sensor_id = %s", conn, params=(sensor_id,))
         analysis_data = {}
         if not analysis_df.empty:
             if 'last_updated' in analysis_df.columns: analysis_df['last_updated'] = analysis_df['last_updated'].dt.strftime('%Y-%m-%d %H:%M:%S')
-            analysis_data = clean_nan_values(analysis_df).to_dict(orient='records')[0]
+            analysis_df = clean_nan_values(analysis_df)
+            # 统一字段名称
+            if 'avg_temp' in analysis_df.columns and 'avg_temperature' not in analysis_df.columns: analysis_df = analysis_df.rename(columns={'avg_temp':'avg_temperature'})
+            if 'min_temp' in analysis_df.columns and 'min_temperature' not in analysis_df.columns: analysis_df = analysis_df.rename(columns={'min_temp':'min_temperature'})
+            if 'max_temp' in analysis_df.columns and 'max_temperature' not in analysis_df.columns: analysis_df = analysis_df.rename(columns={'max_temp':'max_temperature'})
+            analysis_data = analysis_df.to_dict(orient='records')[0]
         # 使用 json.dumps 处理 Decimal
         return json.dumps({'status': 'success','data': {'timeSeriesData': data_df.to_dict(orient='records'),'analysisData': analysis_data},'message': f'成功获取传感器 {sensor_id} 的温度数据'}, default=str)
-    except Exception as e: return jsonify({'status': 'error','message': f'获取温度数据失败: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'status': 'error','message': f'获取温度数据失败: {str(e)}'}), 500
+
+@temperature_api.route('/temperature/data/multi', methods=['GET'])
+def get_temperature_data_multi():
+    """获取多个传感器的时间序列数据"""
+    try:
+        ids_param = request.args.get('ids', '')
+        sensor_ids = [sid.strip() for sid in ids_param.split(',') if sid.strip()]
+        if not sensor_ids:
+            return jsonify({'status': 'error','message': '缺少传感器ID参数 ids'}), 400
+        engine = create_engine(f"mysql+mysqlconnector://{db_config['user']}:{db_config['password']}@{db_config['host']}/{db_config['database']}")
+        result = {}
+        for sensor_id in sensor_ids:
+            df = pd.read_sql("SELECT * FROM processed_temperature_data WHERE SID = %s ORDER BY measurement_date", conn, params=(sensor_id,))
+            if 'measurement_date' in df.columns:
+                df['measurement_date'] = pd.to_datetime(df['measurement_date']).dt.strftime('%Y-%m-%d')
+            # 字段统一
+            rename_map = {}
+            if 'avg_temp' in df.columns and 'avg_temperature' not in df.columns: rename_map['avg_temp'] = 'avg_temperature'
+            if 'min_temp' in df.columns and 'min_temperature' not in df.columns: rename_map['min_temp'] = 'min_temperature'
+            if 'max_temp' in df.columns and 'max_temperature' not in df.columns: rename_map['max_temp'] = 'max_temperature'
+            if rename_map: df = df.rename(columns=rename_map)
+            if 'temperature_range' not in df.columns and {'max_temperature','min_temperature'}.issubset(df.columns):
+                df['temperature_range'] = df['max_temperature'] - df['min_temperature']
+            df = clean_nan_values(df)
+            result[sensor_id] = df.to_dict(orient='records')
+        return jsonify({'status': 'success','data': result})
+    except Exception as e:
+        return jsonify({'status': 'error','message': f'获取多传感器数据失败: {str(e)}'}), 500
 
 @temperature_api.route('/temperature/trends', methods=['GET'])
 def get_temperature_trends():
     """获取温度趋势分类统计"""
-    # ... (代码保持不变) ...
     try:
-        engine = create_engine(f"mysql+mysqlconnector://{db_config['user']}:{db_config['password']}@{db_config['host']}/{db_config['database']}")
         query = "SELECT trend_type, COUNT(*) as count FROM temperature_analysis GROUP BY trend_type"
-        df = pd.read_sql(query, engine)
+        conn = mysql.connector.connect(**db_config)
+        df = pd.read_sql(query, conn)
         df = clean_nan_values(df)
         result = df.to_dict(orient='records')
         return jsonify({'status': 'success','data': result,'message': f'成功获取温度趋势分类统计'})
-    except Exception as e: return jsonify({'status': 'error','message': f'获取温度趋势分类统计失败: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'status': 'error','message': f'获取温度趋势分类统计失败: {str(e)}'}), 500
 
 @temperature_api.route('/temperature/stats', methods=['GET'])
 def get_temperature_stats():
     """获取温度数据的统计概览"""
-    # ... (代码基本保持不变, 清理和格式化略作调整) ...
     try:
-        engine = create_engine(f"mysql+mysqlconnector://{db_config['user']}:{db_config['password']}@{db_config['host']}/{db_config['database']}")
+        conn = mysql.connector.connect(**db_config)
         latest_query = "SELECT AVG(avg_temperature) as current_avg_temp, MAX(avg_temperature) as current_max_temp, MIN(avg_temperature) as current_min_temp FROM processed_temperature_data WHERE measurement_date = (SELECT MAX(measurement_date) FROM processed_temperature_data)"
-        latest_df = pd.read_sql(latest_query, engine)
+        latest_df = pd.read_sql(latest_query, conn)
         sensor_count_query = "SELECT COUNT(DISTINCT sensor_id) as sensor_count FROM temperature_analysis"
-        sensor_count_df = pd.read_sql(sensor_count_query, engine)
+        sensor_count_df = pd.read_sql(sensor_count_query, conn)
         total_sensors = int(sensor_count_df['sensor_count'].iloc[0]) if not sensor_count_df.empty else 0
         date_range_query = "SELECT MIN(measurement_date) as min_date, MAX(measurement_date) as max_date FROM processed_temperature_data"
-        date_range_df = pd.read_sql(date_range_query, engine)
+        date_range_df = pd.read_sql(date_range_query, conn)
         min_date_str = date_range_df['min_date'].iloc[0].strftime('%Y-%m-%d') if not date_range_df.empty and pd.notna(date_range_df['min_date'].iloc[0]) else None
         max_date_str = date_range_df['max_date'].iloc[0].strftime('%Y-%m-%d') if not date_range_df.empty and pd.notna(date_range_df['max_date'].iloc[0]) else None
         date_range_display = f"{min_date_str} ~ {max_date_str}" if min_date_str and max_date_str and min_date_str != max_date_str else (min_date_str or max_date_str)
         trends_query = "SELECT trend_type, COUNT(*) as count FROM temperature_analysis GROUP BY trend_type"
-        trends_df = pd.read_sql(trends_query, engine)
+        trends_df = pd.read_sql(trends_query, conn)
         alerts_query = "SELECT alert_level, COUNT(*) as count FROM temperature_analysis GROUP BY alert_level"
-        alerts_df = pd.read_sql(alerts_query, engine)
+        alerts_df = pd.read_sql(alerts_query, conn)
 
         stats = {
             'current_temperature': {
@@ -584,8 +623,7 @@ def get_temperature_stats():
         # 使用 json.dumps 处理 Decimal/NaN
         return json.dumps({'status': 'success', 'data': stats, 'message': '成功获取温度统计概览'}, default=str)
     except Exception as e:
-        import traceback; traceback.print_exc()
-        return jsonify({'status': 'error','message': f'获取温度统计概览失败: {str(e)}'}), 500
+        return jsonify({'status': 'error', 'message': f'获取温度统计概览失败: {str(e)}'}), 500
 
 @temperature_api.route('/temperature/upload', methods=['POST'])
 def upload_temperature_data():
@@ -779,9 +817,18 @@ if __name__ == '__main__':
             if os.path.exists(schema_path):
                 with open(schema_path, 'r', encoding='utf-8') as f:
                     sql_script = f.read()
-                    # 使用 execute 执行多语句（如果驱动支持）或分割
-                    for result in cursor.execute(sql_script, multi=True):
-                        pass # 消耗结果
+                statements = [s.strip() for s in sql_script.split(';') if s.strip()]
+                for stmt in statements:
+                    if stmt.upper().startswith('CREATE INDEX'):
+                        import re
+                        m = re.search(r'CREATE\s+INDEX\s+(\w+)\s+ON\s+(\w+)', stmt, re.IGNORECASE)
+                        if m:
+                            idx_name, table_name = m.group(1), m.group(2)
+                            cursor.execute(f"SHOW INDEX FROM {table_name} WHERE Key_name = %s", (idx_name,))
+                            exists = cursor.fetchone() is not None
+                            if exists:
+                                continue
+                    cursor.execute(stmt)
                 conn.commit()
                 print("振动数据库表初始化完成")
             else:
@@ -810,8 +857,8 @@ if __name__ == '__main__':
         '0.0.0.0',
         5000,
         app,
-        use_reloader=True,
-        use_debugger=True,
+        use_reloader=False,
+        use_debugger=False,
         threaded=True,
-        request_handler=None  # 使用默认处理器，自动支持大文件
+        request_handler=None
     )

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>杨高中路隧道 - 封面</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding: 20px; max-width: 1400px; margin: 0 auto; }
+    .grid-item { background: rgba(10, 25, 47, 0.8); border: 1px solid rgba(64, 174, 255, 0.5); border-radius: 10px; padding: 20px; box-shadow: 0 0 15px rgba(64, 174, 255, 0.2); transition: all 0.3s ease; }
+    .grid-item:hover { transform: translateY(-5px); box-shadow: 0 0 20px rgba(64, 174, 255, 0.4); }
+    .item-header { color: #40aeff; margin-bottom: 15px; text-align: center; border-bottom: 1px solid rgba(64, 174, 255, 0.3); padding-bottom: 10px; }
+    .data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 10px; }
+    .data-item { display: flex; justify-content: space-between; margin: 8px 0; color: #ccdfff; font-size: 14px; }
+    .data-value { font-weight: bold; color: #ffffff; }
+    .last-update { font-size: 12px; color: #8aabcc; margin-top: 10px; text-align: center; }
+    .web-link { text-align: center; }
+    .web-link a { font-size: 16px; color: #40aeff; text-decoration: none; display: inline-block; padding: 10px 25px; border: 1px solid rgba(64, 174, 255, 0.8); border-radius: 6px; background: rgba(64, 174, 255, 0.1); transition: all 0.3s ease; margin: 10px 0; }
+    .web-link a:hover { background: rgba(64, 174, 255, 0.2); transform: scale(1.05); }
+    .video-container { grid-column: span 2; }
+    .video-player { width: 100%; aspect-ratio: 16/9; background-color: rgba(16, 23, 41, 0.8); margin: 15px 0; border-radius: 8px; overflow: hidden; }
+    .video-player video { width: 100%; height: 100%; object-fit: cover; }
+    .video-controls { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    .video-btn { background: rgba(64, 174, 255, 0.2); border: 1px solid rgba(64, 174, 255, 0.8); border-radius: 5px; color: #40aeff; padding: 8px 16px; cursor: pointer; transition: all 0.3s ease; }
+    .video-btn:hover { background: rgba(64, 174, 255, 0.3); transform: translateY(-2px); }
+    .system-status { text-align: center; color: #8aabcc; }
+    .system-status p { margin: 5px 0; }
+    .status-normal { color: #7cfc00; }
+    @media (max-width: 768px) { .dashboard-grid { grid-template-columns: 1fr; padding: 10px; } .video-container { grid-column: span 1; } .data-grid { grid-template-columns: 1fr; } }
+    @media (min-width: 1200px) { .dashboard-grid { grid-template-columns: repeat(3, 1fr); } .video-container { grid-column: span 2; } }
+    .compact-nav a:hover { background: rgba(64, 174, 255, 0.3) !important; transform: translateY(-2px); }
+    .video-container.grid-item { background: rgba(10, 25, 47, 0.6); border: 1px solid rgba(64, 174, 255, 0.5); border-radius: 10px; padding: 15px; box-shadow: 0 0 15px rgba(64, 174, 255, 0.2); }
+    .video-header { color: #40aeff; margin-top: 0; padding-bottom: 10px; border-bottom: 1px solid rgba(64, 174, 255, 0.3); text-align: center; }
+    .video-player { width: 100%; aspect-ratio: 16/9; background-color: rgba(16, 23, 41, 0.8); margin: 15px 0; border-radius: 8px; overflow: hidden; position: relative; }
+    .video-player video { width: 100%; height: 100%; object-fit: contain; }
+    .video-controls { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    .video-btn { background: rgba(64, 174, 255, 0.2); border: 1px solid rgba(64, 174, 255, 0.8); border-radius: 5px; color: #40aeff; padding: 8px 16px; cursor: pointer; transition: all 0.3s ease; font-size: 14px; }
+    .video-btn:hover { background: rgba(64, 174, 255, 0.3); transform: translateY(-2px); }
+  </style>
+</head>
+<body style="background-color: #101729; color: #e0f7fa; margin: 0; padding: 20px 0; font-family: 'Rajdhani', sans-serif;">
+  <div class="container">
+    <nav class="compact-nav" style="text-align: center; margin-bottom: 30px; padding: 15px; background: rgba(10, 25, 47, 0.8); border-radius: 10px; border: 1px solid rgba(64, 174, 255, 0.3);">
+      <ul style="list-style: none; padding: 0; margin: 0; display: flex; justify-content: center; flex-wrap: wrap; gap: 15px;">
+        <li style="display: inline;"><a href="settlement.html" style="color: #40aeff; text-decoration: none; padding: 8px 15px; border-radius: 5px; transition: all 0.3s ease; background: rgba(64, 174, 255, 0.1);"><i class="fas fa-chart-area"></i>沉降</a></li>
+        <li style="display: inline;"><a href="temperature.html" style="color: #40aeff; text-decoration: none; padding: 8px 15px; border-radius: 5px; transition: all 0.3s ease; background: rgba(64, 174, 255, 0.1);"><i class="fas fa-thermometer-half"></i>温度</a></li>
+        <li style="display: inline;"><a href="cracks.html" style="color: #40aeff; text-decoration: none; padding: 8px 15px; border-radius: 5px; transition: all 0.3s ease; background: rgba(64, 174, 255, 0.1);"><i class="fas fa-bug"></i>裂缝</a></li>
+        <li style="display: inline;"><a href="vibration.html" style="color: #40aeff; text-decoration: none; padding: 8px 15px; border-radius: 5px; transition: all 0.3s ease; background: rgba(64, 174, 255, 0.1);"><i class="fas fa-wave-square"></i>振动</a></li>
+        <li style="display: inline;"><a href="insar.html" style="color: #40aeff; text-decoration: none; padding: 8px 15px; border-radius: 5px; transition: all 0.3s ease; background: rgba(64, 174, 255, 0.1);"><i class="fas fa-satellite"></i>InSAR</a></li>
+        <li style="display: inline;"><a href="overview.html" style="color: #40aeff; text-decoration: none; padding: 8px 15px; border-radius: 5px; transition: all 0.3s ease; background: rgba(64, 174, 255, 0.1);"><i class="fas fa-chart-line"></i>数据总览</a></li>
+        <li style="display: inline;"><a href="three_test.html" style="color: #40aeff; text-decoration: none; padding: 8px 15px; border-radius: 5px; transition: all 0.3s ease; background: rgba(64, 174, 255, 0.1);"><i class="fas fa-cubes"></i>3D模型</a></li>
+        <li style="display: inline;"><a href="settlement_video.html" style="color: #40aeff; text-decoration: none; padding: 8px 15px; border-radius: 5px; transition: all 0.3s ease; background: rgba(64, 174, 255, 0.1);"><i class="fas fa-video"></i>沉降视频</a></li>
+        <li style="display: inline;"><a href="tickets.html" style="color: #40aeff; text-decoration: none; padding: 8px 15px; border-radius: 5px; transition: all 0.3s ease; background: rgba(64, 174, 255, 0.1);"><i class="fas fa-ticket-alt"></i>工单</a></li>
+      </ul>
+    </nav>
+    <header style="text-align: center; margin-bottom: 40px;">
+      <h1 style="color: #40aeff; font-size: 2.5em; margin-bottom: 10px;"><i class="fas fa-tunnel"></i> 杨高中路隧道监测系统</h1>
+      <p style="color: #8aabcc; font-size: 1.2em;">数字孪生在线监测平台</p>
+    </header>
+    <div class="dashboard-grid">
+      <div class="grid-item">
+        <div class="item-header"><h3><i class="fas fa-chart-area"></i> 沉降数据</h3></div>
+        <div class="data-grid">
+          <div class="data-item"><span>监测点数量:</span><span class="data-value" id="settlement-points">86个</span></div>
+          <div class="data-item"><span>最大沉降值:</span><span class="data-value" id="max-settlement">-32.5mm</span></div>
+          <div class="data-item"><span>平均沉降速率:</span><span class="data-value" id="avg-settlement-rate">0.08mm/天</span></div>
+          <div class="data-item"><span>最近更新:</span><span class="data-value" id="settlement-update-date">2024-04-06</span></div>
+        </div>
+        <div class="last-update" id="settlement-last-update">上次数据更新于: 昨天 15:42</div>
+      </div>
+      <div class="grid-item">
+        <div class="item-header"><h3><i class="fas fa-bug"></i> 裂缝数据</h3></div>
+        <div class="data-grid">
+          <div class="data-item"><span>监测裂缝数量:</span><span class="data-value" id="crack-count">24条</span></div>
+          <div class="data-item"><span>最大裂缝宽度:</span><span class="data-value" id="max-crack-width">2.8mm</span></div>
+          <div class="data-item"><span>平均扩展速率:</span><span class="data-value" id="avg-crack-rate">0.003mm/天</span></div>
+          <div class="data-item"><span>最近更新:</span><span class="data-value" id="crack-update-date">2024-04-05</span></div>
+        </div>
+        <div class="last-update" id="crack-last-update">上次数据更新于: 2天前 09:18</div>
+      </div>
+      <div class="grid-item">
+        <div class="item-header"><h3><i class="fas fa-thermometer-half"></i> 温度数据</h3></div>
+        <div class="data-grid">
+          <div class="data-item"><span>温度传感器数量:</span><span class="data-value" id="temp-sensor-count">32个</span></div>
+          <div class="data-item"><span>当前平均温度:</span><span class="data-value" id="avg-temp">18.5°C</span></div>
+          <div class="data-item"><span>最高温度:</span><span class="data-value" id="max-temp">22.3°C</span></div>
+          <div class="data-item"><span>最近更新:</span><span class="data-value" id="temp-update-date">2024-04-07</span></div>
+        </div>
+        <div class="last-update" id="temp-last-update">上次数据更新于: 今天 08:35</div>
+      </div>
+      <div class="grid-item">
+        <div class="item-header"><h3><i class="fas fa-wave-square"></i> 振动数据</h3></div>
+        <div class="data-grid">
+          <div class="data-item"><span>监测通道数量:</span><span class="data-value" id="vibration-channel-count">8个</span></div>
+          <div class="data-item"><span>最大振幅值:</span><span class="data-value" id="max-amplitude">3.45g</span></div>
+          <div class="data-item"><span>中心频率:</span><span class="data-value" id="center-frequency">62.8Hz</span></div>
+          <div class="data-item"><span>最近更新:</span><span class="data-value" id="vibration-update-date">2024-04-07</span></div>
+        </div>
+        <div class="last-update" id="vibration-last-update">上次数据更新于: 今天 09:45</div>
+      </div>
+      <div class="grid-item video-container">
+        <h3 class="video-header"><i class="fas fa-video"></i> 隧道实时监控</h3>
+        <div class="video-player">
+          <video id="tunnel-video" autoplay loop muted poster="https://via.placeholder.com/800x450.png?text=隧道监控视频">
+            <source src="" type="video/mp4">您的浏览器不支持视频播放
+          </video>
+        </div>
+        <div class="video-controls">
+          <button class="video-btn" id="camera-1"><i class="fas fa-camera"></i> 入口摄像头</button>
+          <button class="video-btn" id="camera-2"><i class="fas fa-camera"></i> 中段摄像头</button>
+        </div>
+      </div>
+      <div class="grid-item">
+        <div class="item-header"><h3><i class="fas fa-clipboard-list"></i> 工单管理系统</h3></div>
+        <div class="web-link">
+          <a href="tickets.html"><i class="fas fa-arrow-right"></i> 进入工单管理系统</a>
+          <p style="margin-top: 15px; color: #8aabcc; font-size: 14px;">管理沉降预警、设备故障、维护保养等各类工单</p>
+        </div>
+      </div>
+      <div class="grid-item">
+        <div class="item-header"><h3><i class="fas fa-route"></i> 盾构机轨迹展示</h3></div>
+        <div class="web-link">
+          <a href="http://127.0.0.1:5050" target="_blank"><i class="fas fa-arrow-right"></i> 进入盾构机轨迹展示系统</a>
+          <p style="margin-top: 15px; color: #8aabcc; font-size: 14px;">查看盾构机施工轨迹及实时位置信息</p>
+        </div>
+      </div>
+      <div class="grid-item">
+        <div class="item-header"><h3><i class="fas fa-chart-line"></i> 数据总览</h3></div>
+        <div class="web-link">
+          <a href="overview.html"><i class="fas fa-arrow-right"></i> 进入数据总览页面</a>
+          <p style="margin-top: 15px; color: #8aabcc; font-size: 14px;">查看隧道监测数据汇总及3D地面模型展示</p>
+        </div>
+      </div>
+      <div class="grid-item">
+        <div class="item-header"><h3><i class="fas fa-server"></i> 系统状态</h3></div>
+        <div class="system-status">
+          <p>系统状态: <span class="status-normal">正常运行中</span></p>
+          <p>数据库状态: <span class="status-normal">已连接</span></p>
+          <p>上次系统维护: 2024-03-15</p>
+        </div>
+      </div>
+      <div class="grid-item">
+        <div class="item-header"><h3><i class="fas fa-home"></i> 返回主页</h3></div>
+        <div class="web-link">
+          <a href="/"><i class="fas fa-arrow-right"></i> 返回平台主页</a>
+          <p style="margin-top: 15px; color: #8aabcc; font-size: 14px;">选择其他隧道或查看整体信息</p>
+        </div>
+      </div>
+    </div>
+    <footer style="text-align: center; margin-top: 40px; color: #8aabcc; border-top: 1px solid rgba(64, 174, 255, 0.3); padding-top: 20px;">
+      <p><i class="fas fa-copyright"></i> 2024 杨高中路隧道监测系统 | <i class="fas fa-signal"></i> 数据同步中</p>
+    </footer>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const video = document.getElementById('tunnel-video');
+      if (video) { video.loop = true; video.muted = true; }
+      const camera1Btn = document.getElementById('camera-1');
+      const camera2Btn = document.getElementById('camera-2');
+      if (camera1Btn) camera1Btn.addEventListener('click', () => switchCamera('entrance'));
+      if (camera2Btn) camera2Btn.addEventListener('click', () => switchCamera('middle'));
+      switchCamera('entrance');
+    });
+    function switchCamera(cameraType) {
+      const video = document.getElementById('tunnel-video'); if (!video) return;
+      const videoSources = { 'entrance': 'videos/entrance.mp4', 'middle': 'videos/middle.mp4' };
+      video.src = videoSources[cameraType]; video.load();
+      video.addEventListener('loadeddata', function() { video.play().catch(()=>{}); }, { once: true });
+      updateCameraButtons(cameraType);
+    }
+    function updateCameraButtons(activeCamera) {
+      const buttons = document.querySelectorAll('.video-btn');
+      buttons.forEach(btn => { btn.style.background = 'rgba(64, 174, 255, 0.2)'; btn.style.color = '#40aeff'; });
+      const activeBtn = document.getElementById(`camera-${activeCamera === 'entrance' ? '1' : '2'}`);
+      if (activeBtn) { activeBtn.style.background = 'rgba(64, 174, 255, 0.5)'; activeBtn.style.color = '#ffffff'; }
+    }
+  </script>
+</body>
+</html>

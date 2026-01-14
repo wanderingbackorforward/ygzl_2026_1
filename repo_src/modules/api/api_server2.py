@@ -39,9 +39,6 @@ from modules.data_processing.process_temperature_data import process_data as pro
 # 振动模块
 from modules.api.vibration_handler import vibration_bp
 
-# 工单系统模块
-from modules.ticket_system.api import ticket_bp
-
 # =========================================================
 # 应用初始化：创建Flask应用和Blueprint
 # =========================================================
@@ -49,10 +46,6 @@ app = Flask(__name__, static_folder='../../static', template_folder='../../templ
 CORS(app)  # 允许跨域请求
 # 设置上传文件夹路径
 app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'temp_uploads')
-# 设置最大内容长度为 500MB，支持大文件传输
-app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
-# 禁用Flask的自动重载静态文件功能，提升性能
-app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
 
 # 创建裂缝API蓝图
 crack_api = Blueprint('crack_api', __name__, url_prefix='/api')
@@ -83,69 +76,13 @@ def allowed_file(filename):
 # 存储任务状态的字典
 processing_tasks = {}
 
-# modules/api/api_server.py
-
-# --- 导入 datetime (如果尚未导入) ---
-from datetime import date, datetime # 确保导入了 date 和 datetime
-
-# --- 辅助函数：扩展 Decimal 类型转换器 ---
+# --- 辅助函数：Decimal 类型转换器 --- (新增)
 def decimal_default(obj):
     if isinstance(obj, Decimal):
-        # 处理 Decimal 类型
+        # 保留几位小数可以根据需要调整，这里保留3位
         return float(round(obj, 3))
-    elif isinstance(obj, (datetime, date)): # 新增：处理 datetime 和 date 对象
-        # 将日期时间对象转换为 ISO 8601 格式的字符串
-        return obj.isoformat()
-    # 如果遇到其他无法处理的类型，则抛出错误
-    raise TypeError(f"类型 {type(obj)} 不能被序列化为 JSON")
+    raise TypeError
 
-# ... (文件的其余部分保持不变) ...
-
-
-# =========================================================
-# 静态文件路由 - GLB文件专用处理
-# =========================================================
-@app.route('/static/glb/<path:filename>')
-def serve_glb(filename):
-    """
-    专门处理GLB文件的路由，支持大文件传输
-    设置正确的MIME类型和缓存头，启用分块传输
-    """
-    try:
-        glb_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../static/glb'))
-        file_path = os.path.join(glb_dir, filename)
-
-        # 检查文件是否存在
-        if not os.path.exists(file_path):
-            print(f"GLB文件不存在: {file_path}")
-            return jsonify({'error': '文件不存在'}), 404
-
-        # 获取文件大小
-        file_size = os.path.getsize(file_path)
-        print(f"开始传输GLB文件: {filename} (大小: {file_size / 1024 / 1024:.1f} MB)")
-
-        response = send_from_directory(
-            glb_dir,
-            filename,
-            mimetype='model/gltf-binary',
-            as_attachment=False,
-            conditional=True  # 支持Range请求
-        )
-
-        # 设置响应头，优化大文件传输
-        response.headers['Cache-Control'] = 'public, max-age=31536000'
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
-        response.headers['Access-Control-Allow-Headers'] = 'Range'
-        response.headers['Accept-Ranges'] = 'bytes'  # 支持断点续传
-        response.headers['Connection'] = 'keep-alive'
-
-        return response
-    except Exception as e:
-        print(f"GLB文件加载错误: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': f'文件加载失败: {str(e)}'}), 500
 
 # =========================================================
 # 沉降监测API路由 (保持不变)
@@ -261,25 +198,12 @@ def get_trends():
 
     return jsonify(trends)
 
-# 使用 Flask 内置静态文件服务，并添加响应头处理
-@app.after_request
-def add_header(response):
-    # 为所有响应添加 CORS 头
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Range'
-
-    # 为 GLB/GLTF 文件添加特殊处理
-    if request.path.endswith(('.glb', '.gltf')):
-        response.headers['Content-Type'] = 'model/gltf-binary'
-        response.headers['Accept-Ranges'] = 'bytes'
-        response.headers['Cache-Control'] = 'public, max-age=31536000'
-
-    # 为 JavaScript 文件设置正确的 MIME 类型
-    elif request.path.endswith(('.js', '.mjs')):
-        response.headers['Content-Type'] = 'application/javascript; charset=utf-8'
-
-    return response
+# 静态文件服务（用于前端页面）
+@app.route('/static/<path:path>')
+def serve_static(path):
+    # 使用绝对路径指向静态文件
+    static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../static'))
+    return send_from_directory(static_dir, path)
 
 # =========================================================
 # 文件上传和处理API (保持不变)
@@ -741,8 +665,6 @@ app.register_blueprint(crack_api)
 app.register_blueprint(temperature_api)
 # 注册振动API蓝图
 app.register_blueprint(vibration_bp)
-# 注册工单系统API蓝图
-app.register_blueprint(ticket_bp)
 
 # 健康检查路由
 @app.route('/api/health')
@@ -802,16 +724,4 @@ if __name__ == '__main__':
     # 运行API服务
     # 注意：将 host 设置为 '0.0.0.0' 使其可以从局域网访问
     print("启动Flask应用...")
-    print("注意：大文件传输已优化，支持354MB GLB文件")
-
-    # 使用Werkzeug服务器，增加超时配置
-    from werkzeug.serving import run_simple
-    run_simple(
-        '0.0.0.0',
-        5000,
-        app,
-        use_reloader=True,
-        use_debugger=True,
-        threaded=True,
-        request_handler=None  # 使用默认处理器，自动支持大文件
-    )
+    app.run(debug=True, host='0.0.0.0', port=5000)

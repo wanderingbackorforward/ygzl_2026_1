@@ -367,7 +367,7 @@
       <div class="grid-item video-container">
         <h3 class="video-header"><i class="fas fa-video"></i> 隧道实时监控</h3>
         <div class="video-player">
-          <video id="tunnel-video" controls poster="https://via.placeholder.com/800x450.png?text=隧道监控视频">
+          <video id="tunnel-video" autoplay loop muted poster="https://via.placeholder.com/800x450.png?text=隧道监控视频">
             <source src="" type="video/mp4">
             您的浏览器不支持视频播放
           </video>
@@ -389,6 +389,21 @@
           </a>
           <p style="margin-top: 15px; color: #8aabcc; font-size: 14px;">
             管理沉降预警、设备故障、维护保养等各类工单
+          </p>
+        </div>
+      </div>
+
+      <!-- 盾构机轨迹展示 -->
+      <div class="grid-item">
+        <div class="item-header">
+          <h3><i class="fas fa-route"></i> 盾构机轨迹展示</h3>
+        </div>
+        <div class="web-link">
+          <a href="http://127.0.0.1:5050" target="_blank">
+            <i class="fas fa-arrow-right"></i> 进入盾构机轨迹展示系统
+          </a>
+          <p style="margin-top: 15px; color: #8aabcc; font-size: 14px;">
+            查看盾构机施工轨迹及实时位置信息
           </p>
         </div>
       </div>
@@ -447,6 +462,14 @@
     document.addEventListener('DOMContentLoaded', function() {
       console.log('网格布局页面初始化...');
 
+      const video = document.getElementById('tunnel-video');
+
+      // 设置视频循环播放
+      if (video) {
+        video.loop = true;
+        video.muted = true; // 静音以允许自动播放
+      }
+
       // 绑定视频切换按钮事件
       const camera1Btn = document.getElementById('camera-1');
       const camera2Btn = document.getElementById('camera-2');
@@ -454,7 +477,7 @@
       if (camera1Btn) camera1Btn.addEventListener('click', () => switchCamera('entrance'));
       if (camera2Btn) camera2Btn.addEventListener('click', () => switchCamera('middle'));
 
-      // 默认加载第一个视频
+      // 默认加载第一个视频并自动播放
       switchCamera('entrance');
     });
 
@@ -474,6 +497,13 @@
       // 更新视频源
       video.src = videoSources[cameraType];
       video.load(); // 重新加载视频
+
+      // 视频加载完成后自动播放
+      video.addEventListener('loadeddata', function() {
+        video.play().catch(err => {
+          console.log('自动播放失败:', err);
+        });
+      }, { once: true });
 
       // 更新按钮状态
       updateCameraButtons(cameraType);
