@@ -37,6 +37,7 @@ Thumbs.db
 /static/StreamingAssets/
 /static/TemplateData/
 /static/glb/
+/static/
 
 # 数据与中间文件
 /data/*.csv
@@ -57,3 +58,4 @@ web/dist/
 nul
 .vite/
 web/.vite/
+temp_uploads/
