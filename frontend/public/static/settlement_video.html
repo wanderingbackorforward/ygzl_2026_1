@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>沉降视频</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css">
+</head>
+<body>
+  <div class="dashboard">
+    <div class="dashboard-content">
+      <nav class="compact-nav">
+        <ul>
+          <li><a href="/settlement"><i class="fas fa-chart-area"></i>沉降</a></li>
+          <li><a href="/temperature"><i class="fas fa-thermometer-half"></i>温度</a></li>
+          <li><a href="/cracks"><i class="fas fa-bug"></i>裂缝</a></li>
+          <li><a href="/vibration"><i class="fas fa-wave-square"></i>振动</a></li>
+          <li><a href="/insar"><i class="fas fa-satellite"></i>InSAR</a></li>
+          <li><a href="/overview"><i class="fas fa-chart-line"></i>数据总览</a></li>
+          <li><a href="/three"><i class="fas fa-cubes"></i>3D模型</a></li>
+          <li><a href="/settlement-video" class="active"><i class="fas fa-video"></i>沉降视频</a></li>
+          <li><a href="/tickets"><i class="fas fa-ticket-alt"></i>工单</a></li>
+        </ul>
+      </nav>
+      <header class="header">
+        <h1><i class="fas fa-video"></i> 沉降视频</h1>
+      </header>
+      <div class="main-content">
+        <div class="chart-panel left-panel">
+          <div class="chart-container">
+            <div class="chart-header">
+              <h3 class="chart-title"><i class="fas fa-camera"></i> 入口摄像头</h3>
+            </div>
+            <div class="chart-body">
+              <video id="video-entrance" controls muted style="width:100%;height:auto;">
+                <source src="videos/entrance.mp4" type="video/mp4">
+              </video>
+            </div>
+          </div>
+        </div>
+        <div class="chart-panel right-panel">
+          <div class="chart-container">
+            <div class="chart-header">
+              <h3 class="chart-title"><i class="fas fa-camera"></i> 中段摄像头</h3>
+            </div>
+            <div class="chart-body">
+              <video id="video-middle" controls muted style="width:100%;height:auto;">
+                <source src="videos/middle.mp4" type="video/mp4">
+              </video>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+<script>
+  (function(){
+    var embedded = window.self !== window.top || window.location.search.indexOf('embedded=1') !== -1;
+    if (embedded) {
+      var el = document.querySelector('.compact-nav');
+      if (el) el.style.display = 'none';
+      document.body.style.paddingTop = '0';
+    }
+  })();
+</script>
+</html>

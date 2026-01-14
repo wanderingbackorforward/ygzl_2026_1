@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>裂缝监测系统</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/cracks.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.3.2/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+  <script src="js/chart-zoom.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav class="compact-nav">
+    <ul>
+      <li><a href="/settlement"><i class="fas fa-chart-area"></i>沉降</a></li>
+      <li><a href="/temperature"><i class="fas fa-thermometer-half"></i>温度</a></li>
+      <li><a href="/cracks" class="active"><i class="fas fa-bug"></i>裂缝</a></li>
+      <li><a href="/vibration"><i class="fas fa-wave-square"></i>振动</a></li>
+      <li><a href="/insar"><i class="fas fa-satellite"></i>InSAR</a></li>
+      <li><a href="/overview"><i class="fas fa-chart-line"></i>数据总览</a></li>
+      <li><a href="/three"><i class="fas fa-cubes"></i>3D模型</a></li>
+      <li><a href="/settlement-video"><i class="fas fa-video"></i>沉降视频</a></li>
+      <li><a href="/tickets"><i class="fas fa-ticket-alt"></i>工单</a></li>
+    </ul>
+  </nav>
+
+  <header class="header">
+    <h1><i class="fas fa-bug"></i> 裂缝监测数字孪生系统</h1>
+    <div class="upload-container">
+      <button id="upload-button" class="upload-button">
+        <i class="fas fa-upload"></i> 上传新数据
+      </button>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <div class="chart-panel left-panel">
+      <div class="chart-container" draggable="true">
+        <div class="chart-header">
+          <h3 class="chart-title"><i class="fas fa-chart-line"></i> 总体平均趋势</h3>
+          <p class="chart-description">显示所有监测点裂缝宽度的平均值及范围随时间的变化。</p>
+        </div>
+        <div class="chart-body">
+          <div id="chart-trend" class="chart"></div>
+        </div>
+      </div>
+      <div class="chart-container" draggable="true">
+        <div class="chart-header">
+          <h3 class="chart-title"><i class="fas fa-chart-pie"></i> 统计概览图</h3>
+          <p class="chart-description">按变化类型（扩展、收缩、稳定等）统计监测点数量分布。</p>
+        </div>
+        <div class="chart-body">
+          <div id="chart-overview" class="chart"></div>
+        </div>
+      </div>
+      <div class="chart-container" draggable="true">
+        <div class="chart-header">
+          <h3 class="chart-title"><i class="fas fa-chart-bar"></i> 日变化率分布</h3>
+          <p class="chart-description">显示监测点平均日变化率的分布情况（直方图）。</p>
+        </div>
+        <div class="chart-body">
+          <div id="chart-daily" class="chart"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="center-panel">
+      <div class="chart-container large-chart">
+        <div class="chart-header">
+          <h3 class="chart-title"><i class="fas fa-analytics"></i> 裂缝趋势分析</h3>
+        </div>
+        <div class="chart-controls">
+          <label for="main-trend-select">选择监测点 (最多5个):</label>
+          <select id="main-trend-select" multiple style="width: 200px; height: 80px; vertical-align: middle;"></select>
+          <button id="main-trend-refresh-btn" class="refresh-btn"><i class="fas fa-sync-alt"></i> 更新图表</button>
+        </div>
+        <div class="chart-body">
+          <div id="chart-main-trend" class="chart" style="height: 300px;"></div>
+        </div>
+      </div>
+      <div class="chart-container">
+        <div class="chart-header">
+          <h3 class="chart-title"><i class="fas fa-table"></i> 裂缝数据详情</h3>
+        </div>
+        <div class="chart-body">
+          <table class="data-table">
+            <thead>
+              <tr><th>日期</th><th>监测点</th><th>宽度(mm)</th><th>变化类型</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>2025-04-01</td><td>Crack_001</td><td>1.35</td><td>左洞拱顶</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-panel right-panel">
+      <div class="chart-container" draggable="true">
+        <div class="chart-header">
+          <h3 class="chart-title"><i class="fas fa-chart-area"></i> 斜率趋势图</h3>
+          <p class="chart-description">显示各监测点基于历史数据的整体变化趋势斜率。</p>
+        </div>
+        <div class="chart-body">
+          <div id="chart-slope" class="chart"></div>
+        </div>
+      </div>
+      <div class="chart-container" draggable="true">
+        <div class="chart-header">
+          <h3 class="chart-title"><i class="fas fa-tachometer-alt"></i> 平均裂缝变化速率图</h3>
+          <p class="chart-description">展示各类变化状态下监测点的平均每日变化速率大小（绝对值）。</p>
+        </div>
+        <div class="chart-body">
+          <div id="chart-rate" class="chart"></div>
+        </div>
+      </div>
+      <div class="chart-container" draggable="true">
+        <div class="chart-header">
+          <h3 class="chart-title"><i class="fas fa-project-diagram"></i> 各点相关性图</h3>
+        </div>
+        <div class="chart-body">
+          <div id="chart-correlation" class="chart"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="upload-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-file-excel"></i> 上传裂缝数据文件</h3>
+        <span class="close">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div id="drop-area">
+          <p class="drop-text"><i class="fas fa-cloud-upload-alt"></i> 拖放Excel文件到此处，或点击选择文件</p>
+          <input type="file" id="file-input" accept=".xlsx,.xls" hidden />
+          <button id="select-file-btn" class="select-file-btn">选择文件</button>
+        </div>
+        <div id="file-info" class="file-info" style="display: none;">
+          <p><i class="fas fa-file-alt"></i> 已选择文件: <span id="file-name"></span></p>
+          <button id="upload-file-btn" class="upload-file-btn">开始上传</button>
+        </div>
+        <div id="upload-progress" class="progress-container" style="display: none;">
+          <div class="progress-bar">
+            <div id="progress-bar-fill" class="progress-bar-fill"></div>
+          </div>
+          <p id="progress-text">上传中... 0%</p>
+        </div>
+        <div id="processing-status" class="processing-status" style="display: none;">
+          <p><i class="fas fa-cog fa-spin"></i> <span id="status-text">正在处理数据...</span></p>
+          <div class="progress-bar">
+            <div id="processing-bar-fill" class="progress-bar-fill pulsing"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" id="modal-footer">
+        <p id="upload-message"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="notification" class="notification">
+    <i class="fas fa-info-circle"></i>
+    <span id="notification-text">消息通知</span>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.3.2/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+  <script src="js/chart-zoom.js"></script>
+  <script src="js/cracks_charts.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    (function(){
+      var embedded = window.self !== window.top || window.location.search.indexOf('embedded=1') !== -1;
+      if (embedded) {
+        var el = document.querySelector('.compact-nav');
+        if (el) el.style.display = 'none';
+        document.body.style.paddingTop = '0';
+      }
+    })();
+  </script>
+</body>
+</html>

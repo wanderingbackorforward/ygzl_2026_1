@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>沉降监测数字孪生系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/settlement.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard">
+        <div id="threejs-background" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; overflow: hidden;">
+            <canvas id="viewer-canvas"></canvas>
+            <div id="loading-indicator" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 1.2em; padding: 15px 25px; background: rgba(0, 0, 0, 0.7); border-radius: 5px; z-index: 10; display: none;">加载中...</div>
+        </div>
+
+        <div class="dashboard-content" style="position: relative; z-index: 1; pointer-events: none;">
+            <nav class="compact-nav" style="pointer-events: auto;">
+                <ul>
+                    <li><a href="/settlement" class="active"><i class="fas fa-chart-area"></i>沉降</a></li>
+                    <li><a href="/temperature"><i class="fas fa-thermometer-half"></i>温度</a></li>
+                    <li><a href="/cracks"><i class="fas fa-bug"></i>裂缝</a></li>
+                    <li><a href="/vibration"><i class="fas fa-wave-square"></i>振动</a></li>
+                    <li><a href="/insar"><i class="fas fa-satellite"></i>InSAR</a></li>
+                    <li><a href="/overview"><i class="fas fa-chart-line"></i>数据总览</a></li>
+                    <li><a href="/three"><i class="fas fa-cubes"></i>3D模型</a></li>
+                    <li><a href="/settlement-video"><i class="fas fa-video"></i>沉降视频</a></li>
+                    <li><a href="/tickets"><i class="fas fa-ticket-alt"></i>工单</a></li>
+                </ul>
+            </nav>
+            <header class="header" style="pointer-events: auto;">
+                <h1><i class="fas fa-project-diagram"></i> 沉降监测数字孪生系统</h1>
+                <div class="upload-container">
+                    <button id="upload-button" class="upload-button">
+                        <i class="fas fa-upload"></i> 上传新数据
+                    </button>
+                </div>
+            </header>
+            <div class="main-content" style="pointer-events: auto;">
+                <div class="chart-panel left-panel" style="pointer-events: auto;">
+                    <div class="chart-container" draggable="true">
+                        <div class="chart-header">
+                            <h3 class="chart-title"><i class="fas fa-chart-bar"></i> 趋势分析</h3>
+                            <p class="chart-description">统计所有监测点变化趋势分布。</p>
+                        </div>
+                        <div class="chart-body">
+                            <div id="trend-chart" class="chart"></div>
+                        </div>
+                    </div>
+
+                    <div class="chart-container" draggable="true">
+                        <div class="chart-header">
+                            <h3 class="chart-title"><i class="fas fa-chart-pie"></i> 监测点分布</h3>
+                            <p class="chart-description">统计所有监测点当前的告警等级分布。</p>
+                        </div>
+                        <div class="chart-body">
+                            <div id="points-chart" class="chart"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="center-panel" style="pointer-events: auto;">
+                     <div class="chart-container" id="point-selector-widget" style="pointer-events: auto;">
+                         <div class="chart-header">
+                             <h3 class="chart-title"><i class="fas fa-map-marker-alt"></i> 点位选择</h3>
+                         </div>
+                         <div class="chart-body selector-container">
+                             <select id="point-selector" class="point-selector">
+                                 <option value="">请选择监测点</option>
+                             </select>
+                             <p class="selection-hint"><i class="fas fa-info-circle"></i> 选择监测点将同时更新图表和3D模型视角</p>
+                         </div>
+                     </div>
+                </div>
+                <div class="chart-panel right-panel" style="pointer-events: auto;">
+                    <div class="chart-container" draggable="true">
+                        <div class="chart-header">
+                            <h3 class="chart-title"><i class="fas fa-chart-line"></i> 时间序列数据 <span id="selected-point">S19</span></h3>
+                        </div>
+                        <div class="chart-body">
+                            <div id="time-series-chart" class="chart"></div>
+                        </div>
+                    </div>
+                    <div class="chart-container" draggable="true">
+                        <div class="chart-header">
+                            <h3 class="chart-title"><i class="fas fa-tachometer-alt"></i> 速率数据</h3>
+                        </div>
+                        <div class="chart-body">
+                            <div id="rate-chart" class="chart"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="point-details" style="padding:12px;color:#aaddff;"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>
+    <script src="js/three_viewer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.3.2/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+      (function(){
+        var embedded = window.self !== window.top || window.location.search.indexOf('embedded=1') !== -1;
+        if (embedded) {
+          var el = document.querySelector('.compact-nav');
+          if (el) el.style.display = 'none';
+          document.body.style.paddingTop = '0';
+        }
+      })();
+    </script>
+</body>
+</html>

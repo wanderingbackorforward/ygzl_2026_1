@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 模型查看器 (Three.js)</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard">
+        <div class="dashboard-content">
+            <nav class="compact-nav">
+                <ul>
+                    <li><a href="/settlement"><i class="fas fa-chart-area"></i>沉降</a></li>
+                    <li><a href="/temperature"><i class="fas fa-thermometer-half"></i>温度</a></li>
+                    <li><a href="/cracks"><i class="fas fa-bug"></i>裂缝</a></li>
+                    <li><a href="/vibration"><i class="fas fa-wave-square"></i>振动</a></li>
+                    <li><a href="/insar"><i class="fas fa-satellite"></i>InSAR</a></li>
+                    <li><a href="/overview"><i class="fas fa-chart-line"></i>数据总览</a></li>
+                    <li><a href="/three" class="active"><i class="fas fa-cubes"></i>3D模型</a></li>
+                    <li><a href="/settlement-video"><i class="fas fa-video"></i>沉降视频</a></li>
+                    <li><a href="/tickets"><i class="fas fa-ticket-alt"></i>工单</a></li>
+                </ul>
+            </nav>
+            <div class="main-content" style="display:flex;justify-content:center;align-items:center;height:calc(100vh - 65px);">
+                <div id="viewer-container" style="width:95%;height:95%;position:relative;border:1px solid rgba(0,229,255,0.3);border-radius:6px;">
+                    <canvas id="viewer-canvas"></canvas>
+                    <div id="loading-indicator" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;padding:12px 20px;background:rgba(0,0,0,0.6);border-radius:6px;display:none;">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>
+    <script src="js/three_viewer.js"></script>
+    <script>
+      (function(){
+        var embedded = window.self !== window.top || window.location.search.indexOf('embedded=1') !== -1;
+        if (embedded) {
+          var el = document.querySelector('.compact-nav');
+          if (el) el.style.display = 'none';
+          document.body.style.paddingTop = '0';
+        }
+      })();
+    </script>
+</body>
+</html>
