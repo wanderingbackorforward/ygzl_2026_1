@@ -55,3 +55,5 @@ web/dist/
 .env.local
 .trae/
 nul
+.vite/
+web/.vite/
