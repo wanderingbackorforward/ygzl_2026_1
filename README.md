@@ -1,54 +1,82 @@
-# Unity WebRTC渲染流项目
+# 沉降监测数字孪生系统（V1）
 
-这是一个Unity WebRTC渲染流项目，实现了从Unity向网页客户端发送实时视频流，并通过网页客户端控制Unity中的摄像机位置。
+一个面向市政/工程监测的数字孪生系统，提供沉降、裂缝、温度、振动等数据的采集、处理、分析与可视化。后端基于 Flask，前端基于 React + Vite，支持 MySQL 或 Supabase 作为数据源。
 
-## 已完成工作
+## 核心功能
+- 数据导入：支持 Excel（沉降/裂缝）与 Access MDB（温度）文件上传与入库
+- 数据处理：生成时间序列与统计分析（趋势分类、预警等级、变化率等）
+- API 服务：统一提供监测点列表、单点详情、汇总与趋势统计
+- 可视化前端：覆盖沉降、裂缝、温度、振动、概览等页面
+- 大文件静态资源优化：GLB 模型分块传输与断点续传支持
 
-1. 准备了网页客户端代码 (`static/unity_test.html`)，包含:
-   - WebRTC视频接收
-   - 信令服务器连接
-   - 数据通道通信
-   - 摄像机控制UI
+## 目录结构
+- backend：后端服务与业务模块
+  - modules/api/api_server.py：Flask API 服务
+  - modules/data_import/*：数据导入
+  - modules/data_processing/*：数据处理与分析
+  - modules/ticket_system/*：工单系统
+  - start_system.py：后端统一启动入口
+  - requirements.txt：后端依赖清单
+- frontend：React + Vite 前端（含静态页面与 TSX 页面）
+- static（未纳入版本控制）：大型资源目录（GLB/视频/地图等）
+- temp_uploads（未纳入版本控制）：上传临时目录
+- .env.example：示例环境变量
 
-2. 创建了信令服务器代码 (`signaling-server.js`):
-   - WebSocket服务器实现
-   - SDP交换处理
-   - ICE候选交换处理
-   - 连接管理
-
-3. Unity脚本准备:
-   - `SimpleRenderStreaming.cs` - 处理摄像机控制和焦点位置
-
-## 接下来的步骤
-
-要完全实现该功能，需要执行以下步骤:
-
-1. 安装Unity Render Streaming包:
-   ```
-   com.unity.renderstreaming
-   ```
-
-2. 详细步骤请参考 `unity-render-streaming-setup.md` 文件，其中包含:
-   - 安装Render Streaming包
-   - 设置信令服务器
-   - 配置Unity场景
-   - 连接网页客户端
-
-## 使用方法
-
-1. 启动信令服务器:
+## 快速开始
+### 后端
+1. 安装依赖
    ```bash
-   node signaling-server.js
+   pip install -r backend/requirements.txt
+   ```
+2. 配置环境（可选，Supabase HTTP 数据源）
+   ```bash
+   # 示例，占位值请自行替换
+   set DB_VENDOR=supabase_http
+   set SUPABASE_URL=https://your-project.supabase.co
+   set SUPABASE_ANON_KEY=sb_publishable_xxx
+   set SUPABASE_SERVICE_ROLE=sb_secret_xxx
+   set SUPABASE_USE_HTTP=1
+   ```
+   不使用 Supabase 时，将 `DB_VENDOR` 设为 `mysql` 并在 `backend/modules/database/db_config.py` 配置 MySQL。
+3. 启动服务
+   ```bash
+   python backend/start_system.py
+   ```
+4. 健康检查
+   ```bash
+   curl http://localhost:5000/health
    ```
 
-2. 启动Unity项目并确保Render Streaming设置正确
+### 前端
+1. 安装依赖
+   ```bash
+   cd frontend
+   npm i
+   ```
+2. 启动开发服务
+   ```bash
+   npm run dev
+   ```
+3. 访问浏览器开发端口（默认 5173）
 
-3. 在浏览器中打开 `static/unity_test.html`
+## 主要 API（示例）
+- GET /api/points：监测点列表（含预警与趋势）
+- GET /api/point/{point_id}：单点时间序列与分析
+- GET /api/summary：监测点汇总分析
+- GET /api/trends：趋势分类统计
+- POST /api/upload：上传沉降/裂缝 Excel（xlsx/xls）
+- POST /api/temperature/upload：上传温度 MDB/ACCDB
+- GET /api/temperature/points、/api/temperature/summary 等
 
-4. 点击 "连接到Unity" 按钮
+## 大资源与仓库体积
+- 已将历史中的超大文件从版本历史移除，显著降低仓库体积
+- 请将以下目录保持未纳入版本控制：`/static/`、`/temp_uploads/`
+- 如需长期版本化二进制资产，建议采用 Git LFS（如 .glb/.mp4/.bundle）
 
-5. 成功连接后，可以使用S1、S2、S3、S25按钮控制Unity中的摄像机位置
+## 部署提示
+- 后端为 Flask + WSGI，可部署到常见的 Linux/Windows 环境或容器
+- 前端可独立构建并部署到静态托管（含 Vite 构建）
+- 若采用 Supabase HTTP，注意密钥管理与最小权限原则
 
-## 故障排除
-
-参见 `unity-render-streaming-setup.md` 中的故障排除部分 
+## 许可
+暂未设定许可协议（如需要可补充 MIT/Apache-2.0 等）
