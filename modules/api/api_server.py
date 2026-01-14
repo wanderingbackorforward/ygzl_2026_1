@@ -821,6 +821,12 @@ def health_check():
         'status': 'healthy',
         'timestamp': datetime.now().isoformat()
     })
+@app.route('/api/source')
+def source_check():
+    vendor = os.getenv('DB_VENDOR', 'mysql').lower()
+    http_flag = os.getenv('SUPABASE_USE_HTTP', '0') == '1' or vendor == 'supabase_http'
+    src = 'supabase_http' if http_flag else ('supabase' if vendor == 'supabase' else 'mysql')
+    return jsonify({'source': src, 'db_vendor': os.getenv('DB_VENDOR'), 'supabase_url': os.getenv('SUPABASE_URL')})
 
 # 处理状态路由 - 确保只有一个定义
 @app.route('/api/process-status', methods=['GET'])
