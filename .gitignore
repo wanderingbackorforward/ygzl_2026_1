@@ -51,3 +51,5 @@ Thumbs.db
 project_tree.txt
 web/node_modules/
 web/dist/
+.env
+.env.local
