@@ -52,10 +52,13 @@ Thumbs.db
 project_tree.txt
 web/node_modules/
 web/dist/
+frontend/node_modules/
+frontend/dist/
 .env
 .env.local
 .trae/
 nul
 .vite/
 web/.vite/
+frontend/.vite/
 temp_uploads/
