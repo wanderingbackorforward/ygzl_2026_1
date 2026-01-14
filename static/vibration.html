@@ -187,6 +187,16 @@
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
   <script src="js/vibration_charts.js"></script>
   <script src="js/main.js"></script>
+  <script>
+    (function(){
+      var embedded = window.self !== window.top || window.location.search.indexOf('embedded=1') !== -1;
+      if (embedded) {
+        var el = document.querySelector('.compact-nav');
+        if (el) el.style.display = 'none';
+        document.body.style.paddingTop = '0';
+      }
+    })();
+  </script>
   
 </body>
 </html>

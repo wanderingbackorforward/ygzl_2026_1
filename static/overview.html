@@ -43,5 +43,15 @@
     <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
     <script src="js/overview_enhanced.js"></script>
+    <script>
+      (function(){
+        var embedded = window.self !== window.top || window.location.search.indexOf('embedded=1') !== -1;
+        if (embedded) {
+          var el = document.querySelector('.top-nav');
+          if (el) el.style.display = 'none';
+          document.body.style.paddingTop = '0';
+        }
+      })();
+    </script>
 </body>
 </html>
