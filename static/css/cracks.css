@@ -1,0 +1,116 @@
+/* Styles specific to cracks.html */
+
+/* Enhanced styling for the main data table in the center panel */
+.center-panel .data-table {
+    border-collapse: separate; /* Use separate for better border-radius */
+    border-spacing: 0;
+    width: 100%;
+    margin-top: 10px;
+    background-color: rgba(0, 20, 40, 0.2);
+    border: 1px solid rgba(0, 229, 255, 0.2);
+    border-radius: 6px;
+    overflow: hidden; /* Ensure border-radius clips content */
+    font-size: 14px; /* Slightly smaller font for potentially dense data */
+}
+
+.center-panel .data-table th,
+.center-panel .data-table td {
+    padding: 12px 15px; /* Increase padding */
+    text-align: left;
+    border-bottom: 1px solid rgba(0, 229, 255, 0.15); /* Lighter row separator */
+    white-space: normal; /* Allow wrapping */
+    overflow: visible; /* Override potential overflow hidden */
+}
+
+/* Remove bottom border from the last row */
+.center-panel .data-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.center-panel .data-table thead th {
+    background-color: rgba(0, 229, 255, 0.15);
+    color: var(--primary-color);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: sticky;
+    top: 0; /* Keep header sticky if container scrolls */
+    z-index: 1;
+    border-bottom: 1px solid rgba(0, 229, 255, 0.3); /* Stronger header border */
+}
+
+/* Zebra striping for better readability */
+.center-panel .data-table tbody tr:nth-child(even) {
+    background-color: rgba(0, 229, 255, 0.03);
+}
+
+.center-panel .data-table tbody tr:hover {
+    background-color: rgba(0, 229, 255, 0.1);
+}
+
+/* Styling for the point selector controls in the center panel */
+.center-panel .chart-controls {
+    padding: 10px 15px;
+    background-color: rgba(0, 30, 50, 0.3);
+    border-top: 1px solid rgba(0, 229, 255, 0.2);
+    border-bottom: 1px solid rgba(0, 229, 255, 0.2);
+    display: flex;
+    align-items: center; /* Vertically align items */
+    gap: 15px; /* Space between elements */
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+}
+
+.center-panel .chart-controls label {
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* Basic styling for the multi-select box */
+.center-panel .chart-controls select#main-trend-select {
+    background-color: rgba(0, 20, 40, 0.7);
+    border: 1px solid rgba(0, 229, 255, 0.5);
+    color: var(--text-color);
+    padding: 5px 8px;
+    border-radius: 4px;
+    min-width: 200px; /* Ensure it has some width */
+    height: 60px; /* Reduced height */
+    font-size: 13px;
+    vertical-align: middle; /* Align with button/label */
+}
+
+.center-panel .chart-controls select#main-trend-select option {
+    background-color: #0a1525;
+    color: #eee;
+    padding: 4px;
+}
+
+/* Style the refresh button */
+.center-panel .chart-controls button.refresh-btn {
+    background-color: rgba(0, 229, 255, 0.2);
+    border: 1px solid rgba(0, 229, 255, 0.6);
+    color: #eee;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 13px;
+    display: inline-flex; /* Align icon and text */
+    align-items: center;
+    gap: 5px;
+}
+
+.center-panel .chart-controls button.refresh-btn:hover {
+    background-color: rgba(0, 229, 255, 0.35);
+    box-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
+}
+
+.center-panel .chart-controls button.refresh-btn i {
+    font-size: 12px; /* Adjust icon size */
+}
+
+/* Adjustments for chart containers on this page if needed */
+/* Example: Add more spacing around chart containers */
+.cracks-page .chart-container {
+    /* margin-bottom: 20px; */ /* Uncomment if more spacing is desired */
+} 
