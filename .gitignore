@@ -49,3 +49,5 @@ Thumbs.db
 *.bak
 * - 副本.*
 project_tree.txt
+web/node_modules/
+web/dist/

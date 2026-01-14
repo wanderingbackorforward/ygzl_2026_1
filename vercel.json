@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "web/package.json", "use": "@vercel/static-build" }
+  ],
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://backend.example.com/api/:path*" }
+  ]
+}
