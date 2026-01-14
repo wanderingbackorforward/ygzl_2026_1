@@ -11,13 +11,15 @@ import Overview from './pages/Overview'
 import ThreeModel from './pages/ThreeModel'
 import SettlementVideo from './pages/SettlementVideo'
 import Tickets from './pages/Tickets'
+import Cover from './pages/Cover'
 
 function App() {
   return (
     <BrowserRouter>
       <Nav />
       <Routes>
-        <Route path="/" element={<Navigate to="/settlement" replace />} />
+        <Route path="/" element={<Navigate to="/cover" replace />} />
+        <Route path="/cover" element={<Cover />} />
         <Route path="/settlement" element={<Settlement />} />
         <Route path="/temperature" element={<Temperature />} />
         <Route path="/cracks" element={<Cracks />} />

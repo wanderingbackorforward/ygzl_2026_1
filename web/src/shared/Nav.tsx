@@ -19,6 +19,7 @@ export default function Nav() {
   return (
     <nav style={{ textAlign: 'center', marginBottom: 10, padding: 10, background: 'rgba(10,25,47,.8)', borderBottom: '1px solid rgba(64,174,255,.3)' }}>
       <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 10 }}>
+        <Item to="/cover" icon="fas fa-home" text="封面" />
         <Item to="/settlement" icon="fas fa-chart-area" text="沉降" />
         <Item to="/temperature" icon="fas fa-thermometer-half" text="温度" />
         <Item to="/cracks" icon="fas fa-bug" text="裂缝" />
