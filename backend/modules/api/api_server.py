@@ -246,6 +246,24 @@ def api_source():
     url = os.environ.get('SUPABASE_URL', '')
     return jsonify({'db_vendor': v, 'source': v or 'mysql', 'supabase_url': url})
 
+@app.route('/api/source/diagnostics')
+def api_source_diagnostics():
+    print("[API] GET /api/source/diagnostics")
+    v = os.environ.get('DB_VENDOR', '').strip().lower()
+    url = os.environ.get('SUPABASE_URL', '')
+    result = {'vendor': v, 'supabase_url': url, 'domains': {}}
+    def ok(fn):
+        try:
+            r = fn()
+            return True
+        except Exception:
+            return False
+    result['domains']['settlement'] = {'supabase_ok': ok(lambda: repo.get_all_points())}
+    result['domains']['crack'] = {'supabase_ok': ok(lambda: repo.crack_get_monitoring_points())}
+    result['domains']['temperature'] = {'supabase_ok': ok(lambda: repo.temperature_get_points())}
+    result['domains']['tickets'] = {'supabase_ok': ok(lambda: __import__('modules.ticket_system.models').ticket_system.models.ticket_model.get_tickets({}, 1, 0))}
+    return jsonify(result)
+
 # =========================================================
 # 文件上传和处理API (保持不变)
 # =========================================================
