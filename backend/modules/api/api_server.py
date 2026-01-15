@@ -37,7 +37,11 @@ from modules.data_processing.update_monitoring_points import update_monitoring_p
 from modules.data_import.crack_data_import import import_crack_excel, first_time_import
 from modules.data_processing.process_crack_data import process_crack_data
 # 温度模块
-from modules.data_import.temperature_data_import import import_mdb_to_mysql
+try:
+    from modules.data_import.temperature_data_import import import_mdb_to_mysql
+except Exception:
+    def import_mdb_to_mysql(*args, **kwargs):
+        raise RuntimeError("pyodbc 不可用：服务器环境不支持 MDB/ACCDB 导入")
 from modules.data_processing.process_temperature_data import process_data as process_temperature_data
 # 振动模块
 from modules.api.vibration_handler import vibration_bp

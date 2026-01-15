@@ -39,7 +39,7 @@ def process_data():
     )
 
     # 提取point_id中的数字部分用于正确排序
-    long_data['point_number'] = long_data['point_id'].str.extract('(\d+)').astype(int)
+    long_data['point_number'] = long_data['point_id'].str.extract(r'(\d+)').astype(int)
     long_data = long_data.sort_values(['point_number', 'measurement_date'])
     # 完成排序后可以删除临时列
     long_data = long_data.drop(columns=['point_number'])
@@ -158,7 +158,7 @@ def process_data():
     analysis_df = pd.DataFrame(analysis_results)
 
     # 添加用于排序的临时列，提取point_id的数字部分
-    analysis_df['point_number'] = analysis_df['point_id'].str.extract('(\d+)').astype(int)
+    analysis_df['point_number'] = analysis_df['point_id'].str.extract(r'(\d+)').astype(int)
     
     # 按照编号排序
     analysis_df = analysis_df.sort_values('point_number')
