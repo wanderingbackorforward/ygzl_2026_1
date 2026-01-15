@@ -54,11 +54,9 @@
             </div>
         </div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
-    <script src="js/overview_enhanced.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <script src="js/overview_viewer.js"></script>
     <script>
       (function(){
         var embedded = window.self !== window.top || window.location.search.indexOf('embedded=1') !== -1;
@@ -66,6 +64,34 @@
           var el = document.querySelector('.top-nav');
           if (el) el.style.display = 'none';
           document.body.style.paddingTop = '0';
+        }
+      })();
+    </script>
+    <script>
+      (function(){
+        var left = document.querySelector('.left-panel');
+        var right = document.querySelector('.right-panel');
+        if (left) {
+          left.innerHTML = ''
+            + '<div style="padding:12px;">'
+            + '<div style="font-weight:600;margin-bottom:8px;">概览图表</div>'
+            + '<div id="trend-chart" style="height:180px;"></div>'
+            + '<div id="alert-chart" style="height:180px;margin-top:8px;"></div>'
+            + '</div>';
+        }
+        if (right) {
+          var extra = document.createElement('div');
+          extra.style.padding = '12px';
+          extra.innerHTML = ''
+            + '<div style="font-weight:600;margin-bottom:8px;">关键指标</div>'
+            + '<div>监测点数: <span id="kpi-total-points">--</span></div>'
+            + '<div>平均温度: <span id="kpi-avg-temp">--</span> ℃</div>'
+            + '<div>告警数: <span id="alert-count">--</span></div>'
+            + '<div style="font-weight:600;margin:12px 0 8px;">分布与对比</div>'
+            + '<div id="temp-distribution-chart" style="height:160px;"></div>'
+            + '<div id="crack-compare-chart" style="height:160px;margin-top:8px;"></div>'
+            + '<div id="point-compare-chart" style="height:160px;margin-top:8px;"></div>';
+          right.appendChild(extra);
         }
       })();
     </script>

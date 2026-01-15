@@ -510,8 +510,7 @@ $(document).ready(function() {
     console.log('Three.js available:', typeof THREE !== 'undefined');
     console.log('ECharts available:', typeof echarts !== 'undefined');
 
-    // Initialize 3D viewer
-    init3DViewer();
+    // Skip 3D viewer
 
     // Initialize all charts
     initAllCharts();
