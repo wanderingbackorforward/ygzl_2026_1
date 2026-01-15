@@ -1,7 +1,7 @@
 import mysql.connector
 import pandas as pd
 import numpy as np
-from ..database.db_config import db_config
+from ...database.db_config import db_config
 
 class MySQLRepo:
     def get_all_points(self):
