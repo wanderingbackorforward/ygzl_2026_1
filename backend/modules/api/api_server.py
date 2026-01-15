@@ -187,29 +187,34 @@ def spa_fallback(spa_path):
 
 @app.route('/health')
 def health():
+    print("[API] GET /health")
     v = os.environ.get('DB_VENDOR', '').strip().lower()
     return jsonify({'status': 'healthy', 'vendor': v, 'timestamp': datetime.now().isoformat()})
 
 @app.route('/api/points')
 def get_all_points():
+    print("[API] GET /api/points")
     """获取所有监测点信息"""
     points = repo.get_all_points()
     return jsonify(points)
 
 @app.route('/api/point/<point_id>')
 def get_point_data(point_id):
+    print(f"[API] GET /api/point/{point_id}")
     """获取特定监测点的详细数据"""
     data = repo.get_point_detail(point_id)
     return jsonify(data)
 
 @app.route('/api/summary')
 def get_summary():
+    print("[API] GET /api/summary")
     """获取所有监测点的汇总分析"""
     summary = repo.get_summary()
     return json.dumps(summary, default=decimal_default)
 
 @app.route('/api/trends')
 def get_trends():
+    print("[API] GET /api/trends")
     """获取所有监测点的趋势分类统计"""
     trends = repo.get_trends()
     return jsonify(trends)
@@ -236,6 +241,7 @@ def add_header(response):
 
 @app.route('/api/source')
 def api_source():
+    print("[API] GET /api/source")
     v = os.environ.get('DB_VENDOR', '').strip().lower()
     url = os.environ.get('SUPABASE_URL', '')
     return jsonify({'db_vendor': v, 'source': v or 'mysql', 'supabase_url': url})
@@ -363,26 +369,31 @@ def upload_crack_data():
 
 @crack_api.route('/crack/monitoring_points', methods=['GET'])
 def get_crack_monitoring_points():
+    print("[API] GET /api/crack/monitoring_points")
     result = repo.crack_get_monitoring_points()
     return jsonify({'status': 'success','data': result,'message': f'成功获取{len(result)}个裂缝监测点'})
 
 @crack_api.route('/crack/data', methods=['GET'])
 def get_crack_data():
+    print("[API] GET /api/crack/data")
     result = repo.crack_get_data()
     return json.dumps({'status': 'success', 'data': result, 'message': f'成功获取{len(result)}行裂缝数据'}, default=str)
 
 @crack_api.route('/crack/analysis_results', methods=['GET'])
 def get_crack_analysis_results():
+    print("[API] GET /api/crack/analysis_results")
     result = repo.crack_get_analysis_results()
     return jsonify({'status': 'success','data': result,'message': f'成功获取{len(result)}条裂缝分析结果'})
 
 @crack_api.route('/crack/trend_data', methods=['GET'])
 def get_crack_trend_data():
+    print("[API] GET /api/crack/trend_data")
     trend_data = repo.crack_get_trend_data()
     return json.dumps({'status': 'success','data': trend_data,'message': '成功获取裂缝趋势数据'}, default=str)
 
 @crack_api.route('/crack/stats_overview', methods=['GET'])
 def get_crack_stats_overview():
+    print("[API] GET /api/crack/stats_overview")
     """获取裂缝监测点统计概况"""
     try:
         conn = mysql.connector.connect(**db_config)
@@ -407,21 +418,25 @@ def get_crack_stats_overview():
 # =========================================================
 @temperature_api.route('/temperature/points', methods=['GET'])
 def get_temperature_points():
+    print("[API] GET /api/temperature/points")
     result = repo.temperature_get_points()
     return jsonify({'status': 'success','data': result,'message': f'成功获取{len(result)}个温度监测点'})
 
 @temperature_api.route('/temperature/summary', methods=['GET'])
 def get_temperature_summary():
+    print("[API] GET /api/temperature/summary")
     result = repo.temperature_get_summary()
     return json.dumps({'status': 'success','data': result,'message': f'成功获取{len(result)}个温度监测点的分析结果'}, default=str)
 
 @temperature_api.route('/temperature/data/<sensor_id>', methods=['GET'])
 def get_temperature_data(sensor_id):
+    print(f"[API] GET /api/temperature/data/{sensor_id}")
     data = repo.temperature_get_data(sensor_id)
     return json.dumps({'status': 'success','data': data,'message': f'成功获取传感器 {sensor_id} 的温度数据'}, default=str)
 
 @temperature_api.route('/temperature/data/multi', methods=['GET'])
 def get_temperature_data_multi():
+    print("[API] GET /api/temperature/data/multi")
     ids_param = request.args.get('ids', '')
     sensor_ids = [sid.strip() for sid in ids_param.split(',') if sid.strip()]
     if not sensor_ids:
@@ -431,16 +446,19 @@ def get_temperature_data_multi():
 
 @temperature_api.route('/temperature/trends', methods=['GET'])
 def get_temperature_trends():
+    print("[API] GET /api/temperature/trends")
     result = repo.temperature_get_trends()
     return jsonify({'status': 'success','data': result,'message': f'成功获取温度趋势分类统计'})
 
 @temperature_api.route('/temperature/stats', methods=['GET'])
 def get_temperature_stats():
+    print("[API] GET /api/temperature/stats")
     stats = repo.temperature_get_stats()
     return json.dumps({'status': 'success', 'data': stats, 'message': '成功获取温度统计概览'}, default=str)
 
 @temperature_api.route('/temperature/upload', methods=['POST'])
 def upload_temperature_data():
+    print("[API] POST /api/temperature/upload")
     """处理MDB文件上传请求"""
     # ... (代码保持不变) ...
     if 'file' not in request.files: return jsonify({'status': 'error','message': '没有发现文件'}), 400
@@ -502,6 +520,7 @@ def process_temperature_file(task_id, file_path):
 # =========================================================
 @app.route('/api/viewpoints', methods=['POST'])
 def save_viewpoint():
+    print("[API] POST /api/viewpoints")
     """保存或更新单个视角数据"""
     data = request.get_json()
     if not data or 'point_id' not in data or 'position' not in data or 'target' not in data:
@@ -549,6 +568,7 @@ def save_viewpoint():
 
 @app.route('/api/viewpoints', methods=['GET'])
 def get_viewpoints():
+    print("[API] GET /api/viewpoints")
     """获取所有已保存的视角数据"""
     conn = get_db_connection() # 使用已有的辅助函数
     if not conn:
@@ -599,12 +619,14 @@ app.register_blueprint(ticket_bp)
 # 健康检查路由
 @app.route('/api/health')
 def health_check():
+    print("[API] GET /api/health")
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.now().isoformat()
     })
 @app.route('/api/source')
 def source_check():
+    print("[API] GET /api/source")
     vendor = os.getenv('DB_VENDOR', 'mysql').lower()
     http_flag = os.getenv('SUPABASE_USE_HTTP', '0') == '1' or vendor == 'supabase_http'
     src = 'supabase_http' if http_flag else ('supabase' if vendor == 'supabase' else 'mysql')
@@ -613,6 +635,7 @@ def source_check():
 # 处理状态路由 - 确保只有一个定义
 @app.route('/api/process-status', methods=['GET'])
 def process_status():
+    print("[API] GET /api/process-status")
     task_id = request.args.get('task_id')
     if not task_id or task_id not in processing_tasks:
         return jsonify({
