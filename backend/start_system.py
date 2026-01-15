@@ -9,6 +9,22 @@ import uuid
 import json
 from collections import defaultdict
 
+def _load_env():
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        env_path = os.path.join(base_dir, ".env")
+        if os.path.exists(env_path):
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    s = line.strip()
+                    if not s or s.startswith("#"):
+                        continue
+                    if "=" in s:
+                        k, v = s.split("=", 1)
+                        os.environ[k.strip()] = v.strip()
+    except Exception:
+        pass
+
 
 def main():
     print("启动沉降监测数字孪生系统...")
@@ -17,6 +33,7 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
     print(f"工作目录: {os.getcwd()}")
+    _load_env()
 
     # 启动API服务
     api_script = os.path.join(script_dir, "modules", "api", "api_server.py")
