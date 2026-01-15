@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine, text
-from scipy import stats
 from datetime import datetime
 import os
 import sys
@@ -114,11 +113,18 @@ def process_data():
         valid_days = days[valid_mask].values
         valid_temps = sensor_data['avg_temperature'][valid_mask].values
         
-        # 执行线性回归
+        # 线性回归（使用 numpy 计算斜率与相关系数）
         if len(valid_days) > 1:
-            slope, intercept, r_value, p_value, std_err = stats.linregress(valid_days, valid_temps)
+            slope, intercept = np.polyfit(valid_days, valid_temps, 1)
+            if np.std(valid_days) > 0 and np.std(valid_temps) > 0:
+                r_value = float(np.corrcoef(valid_days, valid_temps)[0, 1])
+            else:
+                r_value = 0.0
+            p_value = None
         else:
-            slope = r_value = p_value = 0
+            slope = 0.0
+            r_value = 0.0
+            p_value = None
         
         # 获取传感器名称
         sensor_name = "未知"
@@ -126,19 +132,18 @@ def process_data():
             sensor_name = sensors[sensors['SID'] == sid]['SName'].iloc[0]
         
         # 判断温度趋势类型
-        if p_value < 0.05:  # 统计显著性
-            if slope > 0.2:  # 每天温度增加超过0.2°C
-                trend_type = "显著升温"
-                alert_level = "需关注"
-            elif slope < -0.2:  # 每天温度下降超过0.2°C
-                trend_type = "显著降温"
-                alert_level = "需关注"
-            elif slope > 0:
-                trend_type = "缓慢升温"
-                alert_level = "正常"
-            else:
-                trend_type = "缓慢降温"
-                alert_level = "正常"
+        if slope > 0.2:
+            trend_type = "显著升温"
+            alert_level = "需关注"
+        elif slope < -0.2:
+            trend_type = "显著降温"
+            alert_level = "需关注"
+        elif slope > 0:
+            trend_type = "缓慢升温"
+            alert_level = "正常"
+        elif slope < 0:
+            trend_type = "缓慢降温"
+            alert_level = "正常"
         else:
             trend_type = "温度稳定"
             alert_level = "正常"

@@ -4,7 +4,6 @@ import mysql.connector
 from sqlalchemy import create_engine
 import os
 import sys
-from scipy import stats
 import datetime
 
 # 添加项目根目录到Python路径
@@ -162,20 +161,28 @@ def analyze_trends(df):
         # 计算有效数据点的时间差（以天为单位）
         time_deltas = (valid_data.index - valid_data.index[0]).total_seconds() / (24 * 3600)
 
-        # 进行线性回归
-        slope, intercept, r_value, p_value, std_err = stats.linregress(time_deltas, valid_data.values)
+        # 线性回归（使用 numpy 计算斜率与相关系数）
+        slope, intercept = np.polyfit(time_deltas, valid_data.values, 1)
+        if np.std(time_deltas) > 0 and np.std(valid_data.values) > 0:
+            r_value = float(np.corrcoef(time_deltas, valid_data.values)[0, 1])
+        else:
+            r_value = 0.0
+        p_value = None
 
         trends.loc[column, '斜率(mm/天)'] = slope
         trends.loc[column, 'R值'] = r_value
         trends.loc[column, 'P值'] = p_value
 
         # 判断趋势类型
-        trends.loc[column, '趋势类型'] = (
-            '显著扩展' if slope > 0.1 else
-            '显著收缩' if slope < -0.1 else
-            '轻微变化' if p_value < 0.05 else
-            '无显著趋势'
-        )
+        if slope > 0.1:
+            tt = '显著扩展'
+        elif slope < -0.1:
+            tt = '显著收缩'
+        elif abs(slope) > 0.02:
+            tt = '轻微变化'
+        else:
+            tt = '无显著趋势'
+        trends.loc[column, '趋势类型'] = tt
 
     return trends
 

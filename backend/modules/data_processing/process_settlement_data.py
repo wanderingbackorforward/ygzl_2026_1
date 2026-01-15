@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine
-from scipy import stats
 from datetime import datetime
 import mysql.connector
 import os
@@ -110,23 +109,29 @@ def process_data():
         valid_days = days[valid_mask].values
         valid_values = point_data['value'][valid_mask].values
 
-        # 执行线性回归
+        # 线性回归（使用 numpy 计算斜率与相关系数）
         if len(valid_days) > 1:
-            slope, intercept, r_value, p_value, std_err = stats.linregress(valid_days, valid_values)
+            slope, intercept = np.polyfit(valid_days, valid_values, 1)
+            if np.std(valid_days) > 0 and np.std(valid_values) > 0:
+                r_value = float(np.corrcoef(valid_days, valid_values)[0, 1])
+            else:
+                r_value = 0.0
+            p_value = None
         else:
-            slope = r_value = p_value = 0
+            slope = 0.0
+            r_value = 0.0
+            p_value = None
 
         # 判断趋势类型
-        if p_value < 0.05:
-            if slope < -0.1:
-                trend_type = "显著下沉"
-                alert_level = "高风险"
-            elif slope > 0.1:
-                trend_type = "显著隆起"
-                alert_level = "中风险"
-            else:
-                trend_type = "轻微变化"
-                alert_level = "低风险"
+        if slope < -0.1:
+            trend_type = "显著下沉"
+            alert_level = "高风险"
+        elif slope > 0.1:
+            trend_type = "显著隆起"
+            alert_level = "中风险"
+        elif abs(slope) > 0.02:
+            trend_type = "轻微变化"
+            alert_level = "低风险"
         else:
             trend_type = "无显著趋势"
             alert_level = "正常"
