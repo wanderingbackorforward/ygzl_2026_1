@@ -1,10 +1,9 @@
 {
   "version": 2,
   "builds": [
-    { "src": "frontend/package.json", "use": "@vercel/static-build" }
+    { "src": "frontend/package.json", "use": "@vercel/static-build", "config": { "distDir": "frontend/dist" } }
   ],
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://backend.example.com/api/:path*" },
-    { "source": "/static/:path*", "destination": "https://backend.example.com/static/:path*" }
+    { "source": "/api/:path*", "destination": "/api/index.py" }
   ]
 }

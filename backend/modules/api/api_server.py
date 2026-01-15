@@ -50,11 +50,14 @@ from modules.ticket_system.api import ticket_bp
 # =========================================================
 app = Flask(__name__, static_folder='../../static', template_folder='../../templates')
 CORS(app)  # 允许跨域请求
-# 设置上传文件夹路径
-app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'temp_uploads')
-# 设置最大内容长度为 10MB
+IS_VERCEL = os.environ.get('VERCEL') == '1'
+if IS_VERCEL:
+    upload_folder = '/tmp'
+else:
+    upload_folder = os.path.join(os.getcwd(), 'temp_uploads')
+    os.makedirs(upload_folder, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = upload_folder
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
-# 禁用Flask的自动重载静态文件功能，提升性能
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
 
 # React 构建产物目录（若存在则用于前端路由）
@@ -291,8 +294,7 @@ def upload_file():
     if not allowed_file(file.filename):
         return jsonify({'error': '不支持的文件类型，请上传.xlsx或.xls文件'}), 400
     try:
-        upload_folder = os.path.join(os.getcwd(), 'temp_uploads')
-        os.makedirs(upload_folder, exist_ok=True)
+        upload_folder = app.config['UPLOAD_FOLDER']
         filename = secure_filename(file.filename)
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
         unique_filename = f"{timestamp}_{filename}"
@@ -306,15 +308,18 @@ def upload_file():
             'created_at': datetime.now().isoformat(),
             'updated_at': datetime.now().isoformat()
         }
-        process_thread = threading.Thread(
-            target=process_uploaded_file,
-            args=(task_id, file_path)
-        )
-        process_thread.daemon = True
-        process_thread.start()
+        if IS_VERCEL:
+            process_uploaded_file(task_id, file_path)
+        else:
+            process_thread = threading.Thread(
+                target=process_uploaded_file,
+                args=(task_id, file_path)
+            )
+            process_thread.daemon = True
+            process_thread.start()
         return jsonify({
             'success': True,
-            'message': '文件上传成功，开始处理数据',
+            'message': '文件上传成功，开始处理数据' if not IS_VERCEL else '文件上传成功，已处理完成',
             'task_id': task_id
         })
     except Exception as e:
@@ -496,8 +501,7 @@ def upload_temperature_data():
     if file.filename == '': return jsonify({'status': 'error','message': '没有选择文件'}), 400
     if not file.filename.endswith(('.mdb', '.accdb')): return jsonify({'status': 'error','message': '只支持Access数据库文件(.mdb, .accdb)'}), 400
     try:
-        upload_folder = os.path.join(os.getcwd(), 'temp_uploads')
-        os.makedirs(upload_folder, exist_ok=True)
+        upload_folder = app.config['UPLOAD_FOLDER']
         filename = secure_filename(file.filename)
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
         unique_filename = f"{timestamp}_{filename}"
@@ -511,10 +515,14 @@ def upload_temperature_data():
             'created_at': datetime.now().isoformat(),
             'updated_at': datetime.now().isoformat()
         }
-        process_thread = threading.Thread(target=process_temperature_file, args=(task_id, file_path))
-        process_thread.daemon = True
-        process_thread.start()
-        return jsonify({'status': 'success','message': '文件上传成功，开始处理温度数据','task_id': task_id})
+        if IS_VERCEL:
+            process_temperature_file(task_id, file_path)
+            return jsonify({'status': 'success','message': '文件上传成功，已处理完成','task_id': task_id})
+        else:
+            process_thread = threading.Thread(target=process_temperature_file, args=(task_id, file_path))
+            process_thread.daemon = True
+            process_thread.start()
+            return jsonify({'status': 'success','message': '文件上传成功，开始处理温度数据','task_id': task_id})
     except Exception as e: return jsonify({'status': 'error','message': f'文件上传失败: {str(e)}'}), 500
 
 

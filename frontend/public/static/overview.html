@@ -23,20 +23,9 @@
             <a class="nav-link" href="/tickets"><i class="fas fa-ticket-alt"></i> 工单</a>
         </div>
     </div>
-    <div class="main-layout">
-        <div class="center-3d-container">
-            <div id="loading-indicator" style="display:none;"></div>
-            <div class="view-controls">
-                <button class="view-btn" data-view="default"><i class="fas fa-cube"></i> 默认视角</button>
-                <button class="view-btn" data-view="top"><i class="fas fa-arrow-up"></i> 顶视</button>
-                <button class="view-btn" data-view="front"><i class="fas fa-arrow-right"></i> 前视</button>
-                <button class="view-btn" data-view="side"><i class="fas fa-arrows-alt-h"></i> 侧视</button>
-                <button class="view-btn" data-view="bird"><i class="fas fa-dove"></i> 鸟瞰</button>
-            </div>
-            <canvas id="viewer-canvas"></canvas>
-        </div>
-        <div class="left-panel"></div>
-        <div class="right-panel">
+    <div class="main-content">
+        <div class="left-panel chart-panel"></div>
+        <div class="right-panel chart-panel">
             <div id="source-diagnostics" style="padding:12px;">
                 <div style="font-weight:600;margin-bottom:8px;">数据源状态</div>
                 <div class="diag-row" data-domain="settlement" style="margin-bottom:6px;">
