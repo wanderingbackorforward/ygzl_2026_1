@@ -36,7 +36,23 @@
             <canvas id="viewer-canvas"></canvas>
         </div>
         <div class="left-panel"></div>
-        <div class="right-panel"></div>
+        <div class="right-panel">
+            <div id="source-diagnostics" style="padding:12px;">
+                <div style="font-weight:600;margin-bottom:8px;">数据源状态</div>
+                <div class="diag-row" data-domain="settlement" style="margin-bottom:6px;">
+                    <span class="status-dot normal"></span> 沉降 Supabase
+                </div>
+                <div class="diag-row" data-domain="crack" style="margin-bottom:6px;">
+                    <span class="status-dot normal"></span> 裂缝 Supabase
+                </div>
+                <div class="diag-row" data-domain="temperature" style="margin-bottom:6px;">
+                    <span class="status-dot normal"></span> 温度 Supabase
+                </div>
+                <div class="diag-row" data-domain="tickets" style="margin-bottom:6px;">
+                    <span class="status-dot normal"></span> 工单 Supabase
+                </div>
+            </div>
+        </div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>

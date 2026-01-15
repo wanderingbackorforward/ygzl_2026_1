@@ -244,7 +244,19 @@ def api_source():
     print("[API] GET /api/source")
     v = os.environ.get('DB_VENDOR', '').strip().lower()
     url = os.environ.get('SUPABASE_URL', '')
-    return jsonify({'db_vendor': v, 'source': v or 'mysql', 'supabase_url': url})
+    def ok(fn):
+        try:
+            fn()
+            return True
+        except Exception:
+            return False
+    diagnostics = {
+        'settlement': {'supabase_ok': ok(lambda: repo.get_all_points())},
+        'crack': {'supabase_ok': ok(lambda: repo.crack_get_monitoring_points())},
+        'temperature': {'supabase_ok': ok(lambda: repo.temperature_get_points())},
+        'tickets': {'supabase_ok': ok(lambda: __import__('modules.ticket_system.models').ticket_system.models.ticket_model.get_tickets({}, 1, 0))}
+    }
+    return jsonify({'db_vendor': v, 'source': v or 'mysql', 'supabase_url': url, 'diagnostics': diagnostics})
 
 @app.route('/api/source/diagnostics')
 def api_source_diagnostics():

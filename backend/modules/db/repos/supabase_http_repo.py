@@ -245,3 +245,109 @@ class SupabaseHttpRepo:
             'alerts': alert_cnt
         }
         return stats
+
+    def tickets_get(self, filters=None, limit=50, offset=0):
+        params = []
+        if filters:
+            if 'status' in filters: params.append(f"status=eq.{filters['status']}")
+            if 'ticket_type' in filters: params.append(f"ticket_type=eq.{filters['ticket_type']}")
+            if 'priority' in filters: params.append(f"priority=eq.{filters['priority']}")
+            if 'creator_id' in filters: params.append(f"creator_id=eq.{filters['creator_id']}")
+            if 'assignee_id' in filters: params.append(f"assignee_id=eq.{filters['assignee_id']}")
+            if 'monitoring_point_id' in filters: params.append(f"monitoring_point_id=eq.{filters['monitoring_point_id']}")
+            if 'search_keyword' in filters:
+                kw = filters['search_keyword']
+                params.append(f"title=ilike.*{kw}*")
+        q = "/rest/v1/tickets?select=*&order=created_at.desc"
+        if params: q += "&" + "&".join(params)
+        q += f"&limit={limit}&offset={offset}"
+        r = requests.get(_url(q), headers=_headers())
+        r.raise_for_status()
+        rows = r.json()
+        return rows
+
+    def ticket_create(self, ticket_data):
+        h = _headers(); h['Prefer'] = 'return=representation'
+        r = requests.post(_url('/rest/v1/tickets'), headers=h, json=ticket_data)
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if isinstance(rows, list) and rows else {}
+
+    def ticket_get_by_id(self, ticket_id):
+        r = requests.get(_url(f'/rest/v1/tickets?select=*&id=eq.{ticket_id}'), headers=_headers())
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if isinstance(rows, list) and rows else None
+
+    def ticket_get_by_number(self, ticket_number):
+        r = requests.get(_url(f'/rest/v1/tickets?select=*&ticket_number=eq.{ticket_number}'), headers=_headers())
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if isinstance(rows, list) and rows else None
+
+    def ticket_update(self, ticket_id, update_data):
+        h = _headers(); h['Prefer'] = 'return=representation'
+        r = requests.patch(_url(f'/rest/v1/tickets?id=eq.{ticket_id}'), headers=h, json=update_data)
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if isinstance(rows, list) and rows else None
+
+    def ticket_delete(self, ticket_id):
+        r = requests.delete(_url(f'/rest/v1/tickets?id=eq.{ticket_id}'), headers=_headers())
+        r.raise_for_status()
+        return True
+
+    def tickets_statistics(self):
+        r = requests.get(_url('/rest/v1/tickets?select=status,ticket_type,priority,created_at'), headers=_headers())
+        r.raise_for_status()
+        rows = r.json()
+        total = len(rows)
+        by_status = {}
+        by_type = {}
+        by_priority = {}
+        from datetime import datetime
+        today = datetime.now().date()
+        today_created = 0
+        overdue = 0
+        for x in rows:
+            s = x.get('status')
+            by_status[s] = by_status.get(s, 0) + 1
+            t = x.get('ticket_type')
+            by_type[t] = by_type.get(t, 0) + 1
+            p = x.get('priority')
+            by_priority[p] = by_priority.get(p, 0) + 1
+            ca = x.get('created_at')
+            if ca:
+                try:
+                    d = str(ca).split('T')[0]
+                    if d == today.isoformat(): today_created += 1
+                except: pass
+        return {'total': total, 'by_status': by_status, 'by_type': by_type, 'by_priority': by_priority, 'today_created': today_created, 'overdue': overdue}
+
+    def ticket_comments_get(self, ticket_id, limit=50):
+        r = requests.get(_url(f'/rest/v1/ticket_comments?select=*&ticket_id=eq.{ticket_id}&order=created_at.asc&limit={limit}'), headers=_headers())
+        r.raise_for_status()
+        rows = r.json()
+        return rows
+
+    def ticket_comment_add(self, payload):
+        h = _headers(); h['Prefer'] = 'return=representation'
+        r = requests.post(_url('/rest/v1/ticket_comments'), headers=h, json=payload)
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if isinstance(rows, list) and rows else {}
+
+    def ticket_comment_update(self, comment_id, author_id, content):
+        h = _headers(); h['Prefer'] = 'return=representation'
+        r = requests.patch(_url(f'/rest/v1/ticket_comments?id=eq.{comment_id}&author_id=eq.{author_id}'), headers=h, json={'content': content})
+        r.raise_for_status()
+        rows = r.json()
+        return bool(rows)
+
+    def ticket_comment_delete(self, comment_id, author_id=None, is_admin=False):
+        if is_admin:
+            r = requests.delete(_url(f'/rest/v1/ticket_comments?id=eq.{comment_id}'), headers=_headers())
+        else:
+            r = requests.delete(_url(f'/rest/v1/ticket_comments?id=eq.{comment_id}&author_id=eq.{author_id}'), headers=_headers())
+        r.raise_for_status()
+        return True

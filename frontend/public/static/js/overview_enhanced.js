@@ -416,6 +416,7 @@ function easeInOutCubic(t) {
 function fetchDataAndUpdateUI() {
     console.log('[Overview] Fetching data for UI...');
 
+    updateSourceDiagnostics();
     // 更新沉降数据
     updateSettlementData();
 
@@ -434,6 +435,25 @@ function fetchDataAndUpdateUI() {
     }, 30000);
 }
 
+function updateSourceDiagnostics() {
+    $.ajax({
+        url: '/api/source/diagnostics',
+        method: 'GET',
+        success: function(data) {
+            var domains = (data && data.domains) || {};
+            ['settlement','crack','temperature','tickets'].forEach(function(name){
+                var row = document.querySelector('#source-diagnostics .diag-row[data-domain="'+name+'"]');
+                if (!row) return;
+                var ok = domains[name] && domains[name].supabase_ok;
+                var dot = row.querySelector('.status-dot');
+                if (dot) {
+                    dot.classList.remove('normal','warning','danger');
+                    dot.classList.add(ok ? 'normal' : 'danger');
+                }
+            });
+        }
+    });
+}
 // ========== 更新沉降数据 ==========
 function updateSettlementData() {
     // 从服务器获取沉降数据
