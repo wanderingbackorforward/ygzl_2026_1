@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 # 导入沉降需要的模块
 from modules.database.db_config import db_config
 from modules.db.vendor import get_repo
-from modules.db.repos.mysql_repo import MySQLRepo
+import requests
 repo = get_repo()
 from modules.data_import.settlement_data_import import import_excel_to_mysql
 from modules.data_processing.process_settlement_data import process_data
@@ -193,37 +193,25 @@ def health():
 @app.route('/api/points')
 def get_all_points():
     """获取所有监测点信息"""
-    try:
-        points = repo.get_all_points()
-    except Exception:
-        points = MySQLRepo().get_all_points()
+    points = repo.get_all_points()
     return jsonify(points)
 
 @app.route('/api/point/<point_id>')
 def get_point_data(point_id):
     """获取特定监测点的详细数据"""
-    try:
-        data = repo.get_point_detail(point_id)
-    except Exception:
-        data = MySQLRepo().get_point_detail(point_id)
+    data = repo.get_point_detail(point_id)
     return jsonify(data)
 
 @app.route('/api/summary')
 def get_summary():
     """获取所有监测点的汇总分析"""
-    try:
-        summary = repo.get_summary()
-    except Exception:
-        summary = MySQLRepo().get_summary()
+    summary = repo.get_summary()
     return json.dumps(summary, default=decimal_default)
 
 @app.route('/api/trends')
 def get_trends():
     """获取所有监测点的趋势分类统计"""
-    try:
-        trends = repo.get_trends()
-    except Exception:
-        trends = MySQLRepo().get_trends()
+    trends = repo.get_trends()
     return jsonify(trends)
 
 # 使用 Flask 内置静态文件服务，并添加响应头处理

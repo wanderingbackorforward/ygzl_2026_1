@@ -3,13 +3,12 @@ import requests
 
 def _headers():
     anon = os.environ.get('SUPABASE_ANON_KEY', '')
-    role = os.environ.get('SUPABASE_SERVICE_ROLE', '')
     h = {
         'apikey': anon,
         'Accept': 'application/json',
     }
-    if role:
-        h['Authorization'] = f'Bearer {role}'
+    if anon:
+        h['Authorization'] = f'Bearer {anon}'
     return h
 
 def _url(path):
