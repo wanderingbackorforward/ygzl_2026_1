@@ -363,34 +363,22 @@ def upload_crack_data():
 
 @crack_api.route('/crack/monitoring_points', methods=['GET'])
 def get_crack_monitoring_points():
-    try:
-        result = repo.crack_get_monitoring_points()
-    except Exception:
-        result = MySQLRepo().crack_get_monitoring_points()
+    result = repo.crack_get_monitoring_points()
     return jsonify({'status': 'success','data': result,'message': f'成功获取{len(result)}个裂缝监测点'})
 
 @crack_api.route('/crack/data', methods=['GET'])
 def get_crack_data():
-    try:
-        result = repo.crack_get_data()
-    except Exception:
-        result = MySQLRepo().crack_get_data()
+    result = repo.crack_get_data()
     return json.dumps({'status': 'success', 'data': result, 'message': f'成功获取{len(result)}行裂缝数据'}, default=str)
 
 @crack_api.route('/crack/analysis_results', methods=['GET'])
 def get_crack_analysis_results():
-    try:
-        result = repo.crack_get_analysis_results()
-    except Exception:
-        result = MySQLRepo().crack_get_analysis_results()
+    result = repo.crack_get_analysis_results()
     return jsonify({'status': 'success','data': result,'message': f'成功获取{len(result)}条裂缝分析结果'})
 
 @crack_api.route('/crack/trend_data', methods=['GET'])
 def get_crack_trend_data():
-    try:
-        trend_data = repo.crack_get_trend_data()
-    except Exception:
-        trend_data = MySQLRepo().crack_get_trend_data()
+    trend_data = repo.crack_get_trend_data()
     return json.dumps({'status': 'success','data': trend_data,'message': '成功获取裂缝趋势数据'}, default=str)
 
 @crack_api.route('/crack/stats_overview', methods=['GET'])
@@ -419,26 +407,17 @@ def get_crack_stats_overview():
 # =========================================================
 @temperature_api.route('/temperature/points', methods=['GET'])
 def get_temperature_points():
-    try:
-        result = repo.temperature_get_points()
-    except Exception:
-        result = MySQLRepo().temperature_get_points()
+    result = repo.temperature_get_points()
     return jsonify({'status': 'success','data': result,'message': f'成功获取{len(result)}个温度监测点'})
 
 @temperature_api.route('/temperature/summary', methods=['GET'])
 def get_temperature_summary():
-    try:
-        result = repo.temperature_get_summary()
-    except Exception:
-        result = MySQLRepo().temperature_get_summary()
+    result = repo.temperature_get_summary()
     return json.dumps({'status': 'success','data': result,'message': f'成功获取{len(result)}个温度监测点的分析结果'}, default=str)
 
 @temperature_api.route('/temperature/data/<sensor_id>', methods=['GET'])
 def get_temperature_data(sensor_id):
-    try:
-        data = repo.temperature_get_data(sensor_id)
-    except Exception:
-        data = MySQLRepo().temperature_get_data(sensor_id)
+    data = repo.temperature_get_data(sensor_id)
     return json.dumps({'status': 'success','data': data,'message': f'成功获取传感器 {sensor_id} 的温度数据'}, default=str)
 
 @temperature_api.route('/temperature/data/multi', methods=['GET'])
@@ -447,26 +426,17 @@ def get_temperature_data_multi():
     sensor_ids = [sid.strip() for sid in ids_param.split(',') if sid.strip()]
     if not sensor_ids:
         return jsonify({'status': 'error','message': '缺少传感器ID参数 ids'}), 400
-    try:
-        result = repo.temperature_get_data_multi(sensor_ids)
-    except Exception:
-        result = MySQLRepo().temperature_get_data_multi(sensor_ids)
+    result = repo.temperature_get_data_multi(sensor_ids)
     return jsonify({'status': 'success','data': result})
 
 @temperature_api.route('/temperature/trends', methods=['GET'])
 def get_temperature_trends():
-    try:
-        result = repo.temperature_get_trends()
-    except Exception:
-        result = MySQLRepo().temperature_get_trends()
+    result = repo.temperature_get_trends()
     return jsonify({'status': 'success','data': result,'message': f'成功获取温度趋势分类统计'})
 
 @temperature_api.route('/temperature/stats', methods=['GET'])
 def get_temperature_stats():
-    try:
-        stats = repo.temperature_get_stats()
-    except Exception:
-        stats = MySQLRepo().temperature_get_stats()
+    stats = repo.temperature_get_stats()
     return json.dumps({'status': 'success', 'data': stats, 'message': '成功获取温度统计概览'}, default=str)
 
 @temperature_api.route('/temperature/upload', methods=['POST'])
