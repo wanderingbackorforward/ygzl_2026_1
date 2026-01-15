@@ -82,7 +82,7 @@
 - Root Directory：`python_scripts`
 - 输出目录：`frontend/dist`（Vite 构建产物）
 - 环境变量：`VERCEL=1`、`DB_VENDOR=supabase_http`、`SUPABASE_URL`、`SUPABASE_ANON_KEY`
-- 安装依赖（Install Command）：`pip install -r api/requirements.txt`
+- 安装依赖：默认读取根目录 `requirements.txt`（已提供最小依赖）
 - API 入口：`api/index.py`（WSGI 桥接），`vercel.json` 将 `/api/:path*` 重写到该入口
 
 ## 许可
