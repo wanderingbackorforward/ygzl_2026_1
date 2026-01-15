@@ -4,5 +4,6 @@ Werkzeug
 mysql-connector-python
 requests
 numpy
+scipy
 pandas
 SQLAlchemy
