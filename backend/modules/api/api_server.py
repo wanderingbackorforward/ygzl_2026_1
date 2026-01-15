@@ -26,7 +26,9 @@ from werkzeug.utils import secure_filename
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 # 导入沉降需要的模块
-from modules.database.db_config import db_config # <-- 假设你的数据库配置在这里
+from modules.database.db_config import db_config
+from modules.db.vendor import get_repo
+repo = get_repo()
 from modules.data_import.settlement_data_import import import_excel_to_mysql
 from modules.data_processing.process_settlement_data import process_data
 from modules.data_processing.update_monitoring_points import update_monitoring_points
@@ -49,8 +51,8 @@ app = Flask(__name__, static_folder='../../static', template_folder='../../templ
 CORS(app)  # 允许跨域请求
 # 设置上传文件夹路径
 app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'temp_uploads')
-# 设置最大内容长度为 500MB，支持大文件传输
-app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
+# 设置最大内容长度为 10MB
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 # 禁用Flask的自动重载静态文件功能，提升性能
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
 
@@ -184,112 +186,31 @@ def spa_fallback(spa_path):
 
 @app.route('/health')
 def health():
-    return jsonify({'status': 'ok'})
+    v = os.environ.get('DB_VENDOR', '').strip().lower()
+    return jsonify({'status': 'healthy', 'vendor': v, 'timestamp': datetime.now().isoformat()})
 
 @app.route('/api/points')
 def get_all_points():
     """获取所有监测点信息"""
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-
-    query = """
-    SELECT mp.*, sa.alert_level, sa.trend_type
-    FROM monitoring_points mp
-    LEFT JOIN settlement_analysis sa ON mp.point_id = sa.point_id
-    """
-
-    cursor.execute(query)
-    points = cursor.fetchall()
-
-    cursor.close()
-    conn.close()
-
+    points = repo.get_all_points()
     return jsonify(points)
 
 @app.route('/api/point/<point_id>')
 def get_point_data(point_id):
     """获取特定监测点的详细数据"""
-    conn = get_db_connection()
-
-    # 获取时间序列数据
-    time_series_query = f"""
-        SELECT measurement_date, value, daily_change, cumulative_change
-        FROM processed_settlement_data
-        WHERE point_id = %s  -- 使用参数化查询
-        ORDER BY measurement_date
-    """
-    # 使用参数化查询防止SQL注入
-    time_series_df = pd.read_sql(time_series_query, conn, params=(point_id,))
-
-
-    # 转换datetime为字符串以便JSON序列化
-    time_series_df['measurement_date'] = time_series_df['measurement_date'].astype(str)
-
-    # 将 NaN 替换为 None
-    time_series_data = time_series_df.replace({np.nan: None}).to_dict('records')
-
-    # 获取分析结果
-    analysis_query = f"""
-        SELECT *
-        FROM settlement_analysis
-        WHERE point_id = %s -- 使用参数化查询
-    """
-    analysis_df = pd.read_sql(analysis_query, conn, params=(point_id,))
-
-    # 同样替换分析数据中的 NaN
-    analysis_data_dict = {}
-    if not analysis_df.empty:
-        analysis_data_dict = analysis_df.replace({np.nan: None}).to_dict('records')[0]
-
-
-    conn.close()
-
-    # 返回JSON结果
-    response = {
-        'timeSeriesData': time_series_data,
-        'analysisData': analysis_data_dict
-    }
-
-    return jsonify(response)
+    data = repo.get_point_detail(point_id)
+    return jsonify(data)
 
 @app.route('/api/summary')
 def get_summary():
     """获取所有监测点的汇总分析"""
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-
-    query = """
-    SELECT * FROM settlement_analysis
-    ORDER BY CAST(REGEXP_REPLACE(point_id, '[^0-9]+', '') AS UNSIGNED), point_id
-    """ # 改进排序，先按数字部分，再按原字符串
-
-    cursor.execute(query)
-    summary = cursor.fetchall()
-
-    cursor.close()
-    conn.close()
-
-    # 使用json.dumps处理可能存在的Decimal类型
+    summary = repo.get_summary()
     return json.dumps(summary, default=decimal_default)
 
 @app.route('/api/trends')
 def get_trends():
     """获取所有监测点的趋势分类统计"""
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-
-    query = """
-    SELECT trend_type, COUNT(*) as count
-    FROM settlement_analysis
-    GROUP BY trend_type
-    """
-
-    cursor.execute(query)
-    trends = cursor.fetchall()
-
-    cursor.close()
-    conn.close()
-
+    trends = repo.get_trends()
     return jsonify(trends)
 
 # 使用 Flask 内置静态文件服务，并添加响应头处理
@@ -311,6 +232,12 @@ def add_header(response):
         response.headers['Content-Type'] = 'application/javascript; charset=utf-8'
 
     return response
+
+@app.route('/api/source')
+def api_source():
+    v = os.environ.get('DB_VENDOR', '').strip().lower()
+    url = os.environ.get('SUPABASE_URL', '')
+    return jsonify({'db_vendor': v, 'source': v or 'mysql', 'supabase_url': url})
 
 # =========================================================
 # 文件上传和处理API (保持不变)
