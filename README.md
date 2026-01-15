@@ -78,5 +78,12 @@
 - 前端可独立构建并部署到静态托管（含 Vite 构建）
 - 若采用 Supabase HTTP，注意密钥管理与最小权限原则
 
+### Vercel 部署（Serverless）
+- Root Directory：`python_scripts`
+- 输出目录：`frontend/dist`（Vite 构建产物）
+- 环境变量：`VERCEL=1`、`DB_VENDOR=supabase_http`、`SUPABASE_URL`、`SUPABASE_ANON_KEY`
+- 安装依赖（Install Command）：`pip install -r api/requirements.txt`
+- API 入口：`api/index.py`（WSGI 桥接），`vercel.json` 将 `/api/:path*` 重写到该入口
+
 ## 许可
 暂未设定许可协议（如需要可补充 MIT/Apache-2.0 等）
