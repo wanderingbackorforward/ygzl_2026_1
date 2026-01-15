@@ -3,8 +3,7 @@ import json
 import uuid
 import numpy as np
 import pandas as pd
-from scipy.fft import fft, fftfreq
-import matplotlib.pyplot as plt
+from numpy.fft import fft, fftfreq
 from datetime import datetime
 from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
