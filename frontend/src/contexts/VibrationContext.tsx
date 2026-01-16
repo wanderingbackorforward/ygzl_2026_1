@@ -70,6 +70,16 @@ export const VibrationProvider: React.FC<VibrationProviderProps> = ({ children }
   const selectChannel = useCallback((channelId: string | null) => {
     setSelectedChannelId(channelId);
   }, []);
+  React.useEffect(() => {
+    if (!selectedDatasetId && datasets && datasets.length > 0) {
+      setSelectedDatasetId(datasets[0]);
+    }
+  }, [datasets, selectedDatasetId]);
+  React.useEffect(() => {
+    if (selectedDatasetId && !selectedChannelId && channels && channels.length > 0) {
+      setSelectedChannelId(channels[0].channel_id);
+    }
+  }, [selectedDatasetId, channels, selectedChannelId]);
 
   const value: VibrationContextValue = {
     datasets,

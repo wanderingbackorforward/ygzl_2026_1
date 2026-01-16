@@ -13,11 +13,12 @@ interface Props extends CardComponentProps {
 
 export const TemperatureRangeChart: React.FC<Props> = ({ sensorId, data, loading = false }) => {
   const option = useMemo((): EChartsOption => {
-    if (!data || data.length === 0) {
+    const arr = Array.isArray(data) ? data : [];
+    if (arr.length === 0) {
       return { title: { text: sensorId ? `${sensorId} - 日温差` : '请选择传感器', subtext: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#888', fontSize: 14 } } };
     }
-    const dates = data.map(d => d.measurement_date);
-    const ranges = data.map(d => d.temperature_range);
+    const dates = arr.map(d => d.measurement_date);
+    const ranges = arr.map(d => d.temperature_range);
     return {
       title: { text: `${sensorId} - 日温差`, left: 'center', textStyle: { fontSize: 14 } },
       tooltip: { trigger: 'axis', confine: true },

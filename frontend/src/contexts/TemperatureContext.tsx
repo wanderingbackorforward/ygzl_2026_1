@@ -6,6 +6,7 @@ import {
   useTemperatureRange,
   useTemperatureTrends,
 } from '../hooks/useTemperatureData';
+import { apiGet } from '../lib/api';
 import type { TemperatureSummary, TemperatureDataPoint } from '../types/api';
 
 interface TemperatureContextValue {
@@ -74,6 +75,35 @@ export const TemperatureProvider: React.FC<TemperatureProviderProps> = ({ childr
   const selectSensor = useCallback((sensorId: string | null) => {
     setSelectedSensorId(sensorId);
   }, []);
+  React.useEffect(() => {
+    if (!selectedSensorId) {
+      const firstValid = sensors.find(id => id && id !== 'null' && id !== 'undefined') || null;
+      if (firstValid) {
+        // 优先选择有数据的传感器（参考 master 行为）
+        const tryPick = async () => {
+          try {
+            const candidates = sensors.slice(0, 10).filter(Boolean);
+            if (candidates.length === 0) {
+              setSelectedSensorId(firstValid);
+              return;
+            }
+            const q = encodeURIComponent(candidates.join(','));
+            const multi = await apiGet<Record<string, unknown[]>>(`/temperature/data/multi?ids=${q}`);
+            const usable = candidates.find(id => Array.isArray(multi?.[id]) && (multi?.[id] as unknown[]).length > 0) || firstValid;
+            setSelectedSensorId(usable);
+          } catch {
+            setSelectedSensorId(firstValid);
+          }
+        };
+        void tryPick();
+      }
+    } else if (sensors.length > 0 && !sensors.includes(selectedSensorId)) {
+      // 当前选择不在列表中，回退到第一个有效
+      const firstValid = sensors.find(id => id && id !== 'null' && id !== 'undefined') || null;
+      if (firstValid) setSelectedSensorId(firstValid);
+      else setSelectedSensorId(null);
+    }
+  }, [sensors, selectedSensorId]);
 
   const value: TemperatureContextValue = {
     summary,

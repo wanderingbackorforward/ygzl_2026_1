@@ -27,7 +27,7 @@
     "vitest": "^1.5.0",
     "@testing-library/react": "^14.1.2",
     "jsdom": "^24.0.0"
-  }
+  },
   "vitest": {
     "environment": "jsdom"
   }

@@ -13,15 +13,16 @@ interface Props extends CardComponentProps {
 
 export const TemperatureSeriesChart: React.FC<Props> = ({ sensorId, data, loading = false }) => {
   const option = useMemo((): EChartsOption => {
-    if (!data || data.length === 0) {
+    const arr = Array.isArray(data) ? data : [];
+    if (arr.length === 0) {
       return {
         title: { text: sensorId ? `${sensorId} - 温度时间序列` : '请选择传感器', subtext: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#888', fontSize: 14 } }
       };
     }
-    const dates = data.map(d => d.measurement_date);
-    const avg = data.map(d => d.avg_temperature);
-    const min = data.map(d => d.min_temperature);
-    const max = data.map(d => d.max_temperature);
+    const dates = arr.map(d => d.measurement_date);
+    const avg = arr.map(d => d.avg_temperature);
+    const min = arr.map(d => d.min_temperature);
+    const max = arr.map(d => d.max_temperature);
     return {
       title: { text: `${sensorId} - 温度时间序列`, left: 'center', textStyle: { fontSize: 14 } },
       tooltip: { trigger: 'axis', confine: true },

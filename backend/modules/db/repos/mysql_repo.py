@@ -88,7 +88,21 @@ class MySQLRepo:
     def crack_get_analysis_results(self):
         conn = mysql.connector.connect(**db_config)
         df = pd.read_sql(
-            "SELECT r.*, p.trend_type, p.change_type FROM crack_analysis_results r JOIN crack_monitoring_points p ON r.point_id = p.point_id ORDER BY r.analysis_date DESC",
+            """
+            SELECT
+              r.*,
+              p.trend_type,
+              p.change_type,
+              p.total_change,
+              p.average_change_rate,
+              p.trend_slope,
+              r.mean_value AS avg_value,
+              p.average_change_rate AS avg_daily_rate,
+              p.trend_slope AS slope
+            FROM crack_analysis_results r
+            JOIN crack_monitoring_points p ON r.point_id = p.point_id
+            ORDER BY r.analysis_date DESC
+            """,
             conn
         )
         if 'analysis_date' in df.columns:

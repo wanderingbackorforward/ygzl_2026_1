@@ -31,15 +31,15 @@ const PointSelectorCard: React.FC = () => {
 };
 
 const CRACKS_CARDS: CardConfig[] = [
-  { id: 'crack-overview', title: '状态概览', icon: 'fas fa-chart-pie', component: CrackOverviewPieChart, defaultLayout: { x: 0, y: 0, w: 4, h: 3, minW: 3, minH: 2 } },
-  { id: 'crack-daily', title: '日变化直方图', icon: 'fas fa-chart-bar', component: CrackDailyHistogramChart, defaultLayout: { x: 4, y: 0, w: 4, h: 3, minW: 3, minH: 2 } },
-  { id: 'crack-average-trend', title: '平均趋势', icon: 'fas fa-chart-line', component: CrackAverageTrendChart, defaultLayout: { x: 8, y: 0, w: 8, h: 4, minW: 4, minH: 3 } },
-  { id: 'crack-main-trend', title: '主趋势', icon: 'fas fa-chart-line', component: CrackMainTrendChart, defaultLayout: { x: 0, y: 4, w: 8, h: 4, minW: 4, minH: 3 } },
-  { id: 'crack-slope', title: '斜率趋势', icon: 'fas fa-wave-square', component: CrackSlopeChart, defaultLayout: { x: 8, y: 4, w: 4, h: 3, minW: 3, minH: 2 } },
-  { id: 'crack-rate', title: '平均变化速率', icon: 'fas fa-tachometer-alt', component: CrackRateChart, defaultLayout: { x: 12, y: 4, w: 4, h: 3, minW: 3, minH: 2 } },
-  { id: 'crack-correlation', title: '相关性热力图', icon: 'fas fa-th', component: CrackCorrelationHeatmap, defaultLayout: { x: 0, y: 8, w: 8, h: 4, minW: 4, minH: 3 } },
-  { id: 'crack-table', title: '数据表格', icon: 'fas fa-table', component: CrackDataTableCard, defaultLayout: { x: 8, y: 8, w: 12, h: 4, minW: 6, minH: 3 } },
-  { id: 'crack-point-selector', title: '监测点选择', icon: 'fas fa-map-marker-alt', component: PointSelectorCard, defaultLayout: { x: 12, y: 0, w: 4, h: 3, minW: 3, minH: 2 } },
+  { id: 'crack-average-trend', title: '平均趋势', icon: 'fas fa-chart-line', component: CrackAverageTrendChart, defaultLayout: { x: 0, y: 0, w: 3, h: 4, minW: 3, minH: 3 } },
+  { id: 'crack-overview', title: '状态概览', icon: 'fas fa-chart-pie', component: CrackOverviewPieChart, defaultLayout: { x: 0, y: 4, w: 3, h: 3, minW: 3, minH: 2 } },
+  { id: 'crack-daily', title: '日变化直方图', icon: 'fas fa-chart-bar', component: CrackDailyHistogramChart, defaultLayout: { x: 0, y: 7, w: 3, h: 3, minW: 3, minH: 2 } },
+  { id: 'crack-point-selector', title: '监测点选择', icon: 'fas fa-map-marker-alt', component: PointSelectorCard, defaultLayout: { x: 3, y: 0, w: 6, h: 2, minW: 3, minH: 2 } },
+  { id: 'crack-main-trend', title: '主趋势', icon: 'fas fa-chart-line', component: CrackMainTrendChart, defaultLayout: { x: 3, y: 2, w: 6, h: 5, minW: 4, minH: 3 } },
+  { id: 'crack-table', title: '数据表格', icon: 'fas fa-table', component: CrackDataTableCard, defaultLayout: { x: 3, y: 7, w: 6, h: 4, minW: 6, minH: 3 } },
+  { id: 'crack-slope', title: '斜率趋势', icon: 'fas fa-wave-square', component: CrackSlopeChart, defaultLayout: { x: 9, y: 0, w: 3, h: 3, minW: 3, minH: 2 } },
+  { id: 'crack-rate', title: '平均变化速率', icon: 'fas fa-tachometer-alt', component: CrackRateChart, defaultLayout: { x: 9, y: 3, w: 3, h: 3, minW: 3, minH: 2 } },
+  { id: 'crack-correlation', title: '相关性热力图', icon: 'fas fa-th', component: CrackCorrelationHeatmap, defaultLayout: { x: 9, y: 6, w: 3, h: 5, minW: 3, minH: 3 } },
 ];
 
 const CracksDashboard: React.FC = () => {

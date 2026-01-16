@@ -83,11 +83,17 @@ export interface CrackDataPoint {
 
 export interface CrackAnalysisResult {
   point_id: string;
-  avg_value: number;
-  total_change: number;
-  avg_daily_rate: number;
-  trend_type: string;
-  alert_level: string;
+  avg_value?: number;
+  mean_value?: number;
+  total_change?: number;
+  avg_daily_rate?: number;
+  average_change_rate?: number;
+  trend_slope?: number;
+  slope?: number;
+  trend_type?: string;
+  change_type?: string;
+  alert_level?: string;
+  analysis_date?: string;
 }
 
 export interface CrackStatsOverview {
@@ -107,9 +113,10 @@ export interface VibrationChannel {
 }
 
 export interface VibrationData {
-  timestamp: string;
+  timestamps: (number | string)[];
   values: number[];
   sample_rate: number;
+  unit?: string;
 }
 
 export interface VibrationMetrics {

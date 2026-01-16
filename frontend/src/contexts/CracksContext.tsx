@@ -38,7 +38,7 @@ interface CracksContextValue {
   rateLoading: boolean;
   rateError: string | null;
 
-  correlation: number[][] | null;
+  correlation: { labels: string[]; matrix: number[][] } | null;
   correlationLoading: boolean;
   correlationError: string | null;
 }
@@ -62,6 +62,11 @@ export const CracksProvider: React.FC<CracksProviderProps> = ({ children }) => {
   const selectPoint = useCallback((pointId: string | null) => {
     setSelectedPointId(pointId);
   }, []);
+  React.useEffect(() => {
+    if (!selectedPointId && points && points.length > 0) {
+      setSelectedPointId(points[0]);
+    }
+  }, [points, selectedPointId]);
 
   const value: CracksContextValue = {
     points,

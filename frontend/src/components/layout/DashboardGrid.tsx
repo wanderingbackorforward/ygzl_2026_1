@@ -27,7 +27,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
   onCardFullscreen,
 }) => {
   const {
-    getPageLayout,
+    layouts,
     updateLayout,
     isCardCollapsed,
     toggleCollapse,
@@ -80,26 +80,49 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
 
   // Get current layout (saved or default)
   const currentLayout = useMemo(() => {
-    const saved = getPageLayout(pageId, currentBreakpoint);
-    return saved.length > 0 ? saved : defaultLayout;
-  }, [getPageLayout, pageId, currentBreakpoint, defaultLayout]);
+    const cols = COLS[currentBreakpoint];
+    const saved = layouts[pageId]?.[currentBreakpoint];
+    const isSavedLayoutValid = (layout: LayoutItem[]): boolean => {
+      return layout.every(item => (
+        Number.isFinite(item.x) &&
+        Number.isFinite(item.y) &&
+        Number.isFinite(item.w) &&
+        Number.isFinite(item.h) &&
+        item.x >= 0 &&
+        item.y >= 0 &&
+        item.w > 0 &&
+        item.h > 0 &&
+        item.x + item.w <= cols
+      ));
+    };
+
+    if (saved && saved.length > 0 && isSavedLayoutValid(saved)) {
+      return saved;
+    }
+
+    return defaultLayout;
+  }, [currentBreakpoint, defaultLayout, layouts, pageId]);
 
   // Handle layout change
   const handleLayoutChange = useCallback((newLayout: GridLayout.Layout[]) => {
-    const layoutItems: LayoutItem[] = newLayout.map(item => ({
-      i: item.i,
-      x: item.x,
-      y: item.y,
-      w: item.w,
-      h: item.h,
-      minW: item.minW,
-      maxW: item.maxW,
-      minH: item.minH,
-      maxH: item.maxH,
-      static: item.static,
-    }));
+    const layoutItems: LayoutItem[] = newLayout.map(item => {
+      const prev = currentLayout.find(l => l.i === item.i);
+      const collapsed = isCardCollapsed(item.i);
+      return {
+        i: item.i,
+        x: item.x,
+        y: item.y,
+        w: item.w,
+        h: collapsed && prev ? prev.h : item.h,
+        minW: item.minW,
+        maxW: item.maxW,
+        minH: item.minH,
+        maxH: item.maxH,
+        static: item.static,
+      };
+    });
     updateLayout(pageId, currentBreakpoint, layoutItems);
-  }, [updateLayout, pageId, currentBreakpoint]);
+  }, [updateLayout, pageId, currentBreakpoint, currentLayout, isCardCollapsed]);
 
   // Handle card collapse - adjust height
   const getCardHeight = useCallback((cardId: string, originalHeight: number): number => {

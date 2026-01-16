@@ -22,22 +22,25 @@ export const PointSelector: React.FC<PointSelectorProps> = ({
     );
   }
 
+  const items = Array.from(new Set(points.filter(id => id && id !== 'null' && id !== 'undefined')));
   return (
     <div className="point-selector">
       <div className="point-selector__header">
         <span className="point-selector__label">监测点</span>
-        <span className="point-selector__count">{points.length} 个点</span>
+        <span className="point-selector__count">{items.length} 个点</span>
       </div>
 
       <div className="point-selector__list">
-        {points.map(pointId => (
+        {items.length === 0 ? (
+          <div className="point-selector__empty">暂无数据</div>
+        ) : items.map((pointId, index) => (
           <button
-            key={pointId}
+            key={pointId || `sensor-${index}`}
             className={`point-selector__item ${selectedPoint === pointId ? 'point-selector__item--active' : ''}`}
             onClick={() => onSelectPoint(pointId)}
           >
             <i className="fas fa-map-marker-alt" />
-            <span>{pointId}</span>
+            <span>{pointId || '未知传感器'}</span>
           </button>
         ))}
       </div>
@@ -85,6 +88,11 @@ export const PointSelector: React.FC<PointSelectorProps> = ({
           grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
           gap: 6px;
           padding-right: 4px;
+        }
+        .point-selector__empty {
+          color: var(--text-secondary);
+          font-size: 12px;
+          padding: 8px;
         }
 
         .point-selector__item {

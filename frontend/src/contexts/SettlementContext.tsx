@@ -53,6 +53,15 @@ export const SettlementProvider: React.FC<SettlementProviderProps> = ({ children
   const selectPoint = useCallback((pointId: string | null) => {
     setSelectedPointId(pointId);
   }, []);
+  React.useEffect(() => {
+    if (!selectedPointId && points && points.length > 0) {
+      const firstValid = points.find(id => id && id !== 'null' && id !== 'undefined') || null;
+      if (firstValid) setSelectedPointId(firstValid);
+    } else if (selectedPointId && points.length > 0 && !points.includes(selectedPointId)) {
+      const firstValid = points.find(id => id && id !== 'null' && id !== 'undefined') || null;
+      setSelectedPointId(firstValid || null);
+    }
+  }, [points, selectedPointId]);
 
   const value: SettlementContextValue = {
     summaryData,
