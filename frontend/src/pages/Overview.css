@@ -69,6 +69,7 @@
   text-shadow: var(--tech-glow-text);
   background: linear-gradient(180deg, #fff 0%, #00e5ff 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   text-transform: uppercase;
 }

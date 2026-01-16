@@ -645,6 +645,157 @@ def get_viewpoints():
         if conn and conn.is_connected():
             conn.close()
 
+# =========================================================
+# 数据汇总页API路由 (Overview)
+# =========================================================
+@app.route('/api/overview/summary')
+def get_overview_summary():
+    """
+    获取仪表盘汇总数据，聚合沉降、裂缝、温度、振动四个领域的关键指标
+    """
+    print("[API] GET /api/overview/summary")
+    result = {
+        'settlement': {},
+        'cracks': {},
+        'temperature': {},
+        'vibration': {},
+        'safety_score': 0
+    }
+    
+    try:
+        # --- 沉降数据 ---
+        try:
+            settlement_points = repo.get_all_points()
+            settlement_summary = repo.get_summary()
+            settlement_trends = repo.get_trends()
+            
+            total_points = len(settlement_points) if settlement_points else 0
+            max_value = 0
+            alert_count = 0
+            if settlement_summary:
+                for item in settlement_summary:
+                    val = float(item.get('current_value', 0) or 0)
+                    if abs(val) > abs(max_value):
+                        max_value = val
+                    rate = float(item.get('change_rate', 0) or 0)
+                    if abs(rate) > 1.0:
+                        alert_count += 1
+            
+            trend_distribution = {}
+            if settlement_trends:
+                for t in settlement_trends:
+                    trend_distribution[t.get('trend_type', '未知')] = t.get('count', 0)
+            
+            result['settlement'] = {
+                'total_points': total_points,
+                'max_value': round(max_value, 2),
+                'alert_count': alert_count,
+                'trend_distribution': trend_distribution
+            }
+        except Exception as e:
+            print(f"[Overview] 沉降数据聚合失败: {e}")
+            result['settlement'] = {'error': str(e)}
+
+        # --- 裂缝数据 ---
+        try:
+            crack_points = repo.crack_get_monitoring_points()
+            total_cracks = len(crack_points) if crack_points else 0
+            expanding = shrinking = stable = 0
+            
+            if crack_points:
+                for pt in crack_points:
+                    ct = pt.get('change_type', '')
+                    if ct == '扩展':
+                        expanding += 1
+                    elif ct == '收缩':
+                        shrinking += 1
+                    elif ct == '稳定':
+                        stable += 1
+            
+            result['cracks'] = {
+                'total_points': total_cracks,
+                'expanding_count': expanding,
+                'shrinking_count': shrinking,
+                'stable_count': stable,
+                'critical_count': expanding
+            }
+        except Exception as e:
+            print(f"[Overview] 裂缝数据聚合失败: {e}")
+            result['cracks'] = {'error': str(e)}
+
+        # --- 温度数据 ---
+        try:
+            temp_points = repo.temperature_get_points()
+            temp_summary = repo.temperature_get_summary()
+            temp_trends = repo.temperature_get_trends()
+            
+            total_sensors = len(temp_points) if temp_points else 0
+            avg_temp = min_temp = max_temp = 0
+            
+            if temp_summary:
+                temps = [float(s.get('avg_temp', 0) or 0) for s in temp_summary if s.get('avg_temp')]
+                mins = [float(s.get('min_temp', 0) or 0) for s in temp_summary if s.get('min_temp')]
+                maxs = [float(s.get('max_temp', 0) or 0) for s in temp_summary if s.get('max_temp')]
+                if temps:
+                    avg_temp = round(sum(temps) / len(temps), 1)
+                if mins:
+                    min_temp = round(min(mins), 1)
+                if maxs:
+                    max_temp = round(max(maxs), 1)
+            
+            trend_distribution = {}
+            if temp_trends:
+                for t in temp_trends:
+                    trend_distribution[t.get('trend_type', '未知')] = t.get('count', 0)
+            
+            result['temperature'] = {
+                'total_sensors': total_sensors,
+                'avg_temp': avg_temp,
+                'min_temp': min_temp,
+                'max_temp': max_temp,
+                'trend_distribution': trend_distribution
+            }
+        except Exception as e:
+            print(f"[Overview] 温度数据聚合失败: {e}")
+            result['temperature'] = {'error': str(e)}
+
+        # --- 振动数据 ---
+        try:
+            conn = get_db_connection()
+            if conn:
+                try:
+                    cursor = conn.cursor(dictionary=True)
+                    cursor.execute("SELECT COUNT(*) as cnt FROM vibration_datasets")
+                    row = cursor.fetchone()
+                    dataset_count = row['cnt'] if row else 0
+                    cursor.close()
+                    conn.close()
+                except Exception:
+                    dataset_count = 0
+            else:
+                dataset_count = 0
+            result['vibration'] = {
+                'total_datasets': dataset_count,
+                'status': 'normal'
+            }
+        except Exception as e:
+            print(f"[Overview] 振动数据聚合失败: {e}")
+            result['vibration'] = {'error': str(e), 'total_datasets': 0}
+
+        # --- 计算综合安全评分 ---
+        score = 100
+        score -= result['settlement'].get('alert_count', 0) * 2
+        score -= result['cracks'].get('expanding_count', 0) * 3
+        score -= result['cracks'].get('critical_count', 0) * 2
+        score = max(0, min(100, score))
+        result['safety_score'] = round(score, 1)
+        
+        return json.dumps(result, default=decimal_default), 200, {'Content-Type': 'application/json'}
+    
+    except Exception as e:
+        print(f"[Overview] 汇总数据获取失败: {e}")
+        return jsonify({'error': str(e)}), 500
+
 
 # =========================================================
 # 注册Blueprint并启动应用
