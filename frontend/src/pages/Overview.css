@@ -264,11 +264,187 @@
   text-shadow: 0 0 5px var(--tech-accent);
 }
 
-/* Score Gauge Wrapper */
 .score-gauge-wrapper {
   position: relative;
   height: 140px;
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+/* ==================================
+   移动端适配 - 仅影响手机/平板
+   ================================== */
+
+/* 平板模式 (768px - 1024px) */
+@media (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+    gap: 12px;
+    padding: 10px 15px;
+  }
+
+  .header-title {
+    font-size: 24px;
+    letter-spacing: 4px;
+  }
+
+  .header-subtitle {
+    font-size: 12px;
+  }
+
+  .map-header-stats {
+    gap: 20px;
+  }
+
+  .map-stat-box {
+    min-width: 100px;
+    padding: 8px 15px;
+  }
+
+  .map-stat-value {
+    font-size: 22px;
+  }
+}
+
+/* 手机模式 (<768px) - 卡片切换器风格 */
+@media (max-width: 768px) {
+  .dashboard-container {
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+  }
+
+  .dashboard-header {
+    height: 56px;
+    padding: 0 12px;
+  }
+
+  .header-center-decoration {
+    width: auto;
+  }
+
+  .header-title {
+    font-size: 16px;
+    letter-spacing: 2px;
+  }
+
+  .header-subtitle {
+    display: none;
+  }
+
+  .header-time {
+    right: 12px;
+    font-size: 14px;
+  }
+
+  /* 单列布局 */
+  .dashboard-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .tech-panel {
+    padding: 12px;
+    min-height: 200px;
+  }
+
+  .panel-title {
+    font-size: 14px;
+    padding: 6px 10px;
+    margin-bottom: 10px;
+  }
+
+  /* 中心地图区域 */
+  .central-map-bg {
+    min-height: 200px;
+  }
+
+  .map-header-stats {
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .map-stat-box {
+    min-width: 120px;
+    padding: 8px 16px;
+  }
+
+  .map-stat-value {
+    font-size: 24px;
+  }
+
+  .map-stat-label {
+    font-size: 11px;
+  }
+
+  /* 统计圆圈 */
+  .stats-grid-circles {
+    gap: 10px;
+  }
+
+  .stat-circle {
+    width: 60px;
+    height: 60px;
+  }
+
+  .stat-circle span:first-child {
+    font-size: 16px !important;
+  }
+
+  /* 数据行 */
+  .data-row {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .rank-idx {
+    width: 36px;
+    font-size: 11px;
+  }
+
+  /* 图表容器增大最小高度 */
+  .chart-container-flex {
+    min-height: 180px;
+  }
+
+  /* 仪表盘 */
+  .score-gauge-wrapper {
+    height: 120px;
+  }
+}
+
+/* 超小屏手机 (<480px) */
+@media (max-width: 480px) {
+  .header-title {
+    font-size: 14px;
+    letter-spacing: 1px;
+  }
+
+  .header-time {
+    font-size: 12px;
+  }
+
+  .tech-panel {
+    padding: 10px;
+    min-height: 180px;
+  }
+
+  .panel-title {
+    font-size: 13px;
+    padding: 5px 8px;
+  }
+
+  .stat-circle {
+    width: 50px;
+    height: 50px;
+  }
+
+  .map-stat-value {
+    font-size: 20px;
+  }
 }

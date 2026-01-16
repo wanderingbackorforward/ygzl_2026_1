@@ -134,6 +134,13 @@ const TemperatureDashboard: React.FC = () => {
           background: radial-gradient(ellipse at center, #0a192f 0%, #040b14 100%);
           overflow: auto;
         }
+        @media (max-width: 768px) {
+          .temperature-page {
+            height: auto;
+            min-height: calc(100vh - 64px);
+            padding: 0;
+          }
+        }
       `}</style>
     </div>
   );

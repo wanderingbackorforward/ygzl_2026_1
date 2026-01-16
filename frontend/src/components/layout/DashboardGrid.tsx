@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useEffect, useState, useRef } from 'react'
 import GridLayout from 'react-grid-layout';
 import { useLayout } from '../../contexts/LayoutContext';
 import { CardBase } from '../cards/CardBase';
+import { MobileCardSwitcher } from './MobileCardSwitcher';
 import type { CardConfig, Breakpoint, LayoutItem } from '../../types/layout';
 import { BREAKPOINTS, COLS, ROW_HEIGHT, MARGIN } from '../../types/layout';
 
@@ -144,6 +145,19 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
     resetLayout(pageId);
   }, [resetLayout, pageId]);
 
+  // 移动端 (<768px) 使用卡片切换器模式
+  const isMobile = containerWidth > 0 && containerWidth < 768;
+
+  // 移动端渲染
+  if (isMobile) {
+    return (
+      <div className="dashboard-grid" ref={containerRef}>
+        <MobileCardSwitcher cards={cards} />
+      </div>
+    );
+  }
+
+  // 桌面端渲染（原有逻辑不变）
   return (
     <div className="dashboard-grid" ref={containerRef}>
       {/* Layout Controls */}
