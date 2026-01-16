@@ -20,7 +20,7 @@ export const TrendChart: React.FC<CardComponentProps> = () => {
     if (!data || data.length === 0) {
       return {
         title: {
-          text: 'No Data',
+          text: '暂无数据',
           left: 'center',
           top: 'center',
           textStyle: { color: '#888' }
@@ -42,15 +42,15 @@ export const TrendChart: React.FC<CardComponentProps> = () => {
 
     return {
       title: {
-        text: 'Settlement Trend Analysis',
-        subtext: 'Slope (mm/day)',
+        text: '沉降趋势分析',
+        subtext: '斜率 (mm/天)',
         left: 'center',
         textStyle: { fontSize: 16 },
         subtextStyle: { fontSize: 12 }
       },
       tooltip: {
         trigger: 'item',
-        formatter: '{b}: {c} mm/day'
+        formatter: '{b}: {c} mm/天'
       },
       grid: {
         left: '10%',
@@ -70,7 +70,7 @@ export const TrendChart: React.FC<CardComponentProps> = () => {
       },
       yAxis: {
         type: 'value',
-        name: 'Slope (mm/day)',
+        name: '斜率 (mm/天)',
         nameTextStyle: {
           fontSize: 11,
           padding: [0, 0, 0, 30]

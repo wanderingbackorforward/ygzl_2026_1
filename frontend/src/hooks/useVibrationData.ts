@@ -91,8 +91,11 @@ export function useVibrationSpectrum(datasetId: string | null, channelId: string
       setLoading(true);
       setError(null);
       try {
-        const result = await apiGet<{ freq: number[]; amp: number[] }>(`/vibration/spectrum/${datasetId}/${channelId}`);
-        setData(result);
+        const result = await apiGet<{ freq?: number[]; amp?: number[] }>(`/vibration/data/${datasetId}/${channelId}`);
+        setData({
+          freq: Array.isArray(result.freq) ? result.freq : [],
+          amp: Array.isArray(result.amp) ? result.amp : [],
+        });
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load spectrum');
       } finally {
@@ -121,8 +124,8 @@ export function useVibrationMetrics(datasetId: string | null, channelId: string 
       setLoading(true);
       setError(null);
       try {
-        const result = await apiGet<VibrationMetrics>(`/vibration/metrics/${datasetId}/${channelId}`);
-        setData(result);
+        const result = await apiGet<{ metrics?: VibrationMetrics }>(`/vibration/dataset/${datasetId}`);
+        setData(result.metrics || null);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load metrics');
       } finally {
@@ -145,8 +148,13 @@ export function useVibrationFactors(datasetId: string | null): {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const result = await apiGet<{ name: string; value: number }[]>('/vibration/factors');
-        setData(result);
+        if (!datasetId) {
+          setData(null);
+          setLoading(false);
+          return;
+        }
+        const result = await apiGet<{ factors?: { name: string; value: number }[] }>(`/vibration/dataset/${datasetId}`);
+        setData(result.factors || null);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load factors');
       } finally {
@@ -154,7 +162,7 @@ export function useVibrationFactors(datasetId: string | null): {
       }
     };
     fetchData();
-  }, []);
+  }, [datasetId]);
   return { data, loading, error };
 }
 
@@ -169,8 +177,13 @@ export function useVibrationRadar(datasetId: string | null): {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const result = await apiGet<{ indicator: string; value: number }[]>('/vibration/radar');
-        setData(result);
+        if (!datasetId) {
+          setData(null);
+          setLoading(false);
+          return;
+        }
+        const result = await apiGet<{ radar?: { indicator: string; value: number }[] }>(`/vibration/dataset/${datasetId}`);
+        setData(result.radar || null);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load radar');
       } finally {
@@ -178,6 +191,6 @@ export function useVibrationRadar(datasetId: string | null): {
       }
     };
     fetchData();
-  }, []);
+  }, [datasetId]);
   return { data, loading, error };
 }

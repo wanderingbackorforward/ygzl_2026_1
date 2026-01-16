@@ -10,10 +10,10 @@ export const TemperatureTrendChart: React.FC<CardComponentProps> = () => {
 
   const option = useMemo((): EChartsOption => {
     if (!data || data.values.length === 0) {
-      return { title: { text: 'No Data', left: 'center', top: 'center', textStyle: { color: '#888' } } };
+      return { title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#888' } } };
     }
     return {
-      title: { text: 'Temperature Trend Distribution', left: 'center', textStyle: { fontSize: 16 } },
+      title: { text: '温度趋势分布', left: 'center', textStyle: { fontSize: 16 } },
       tooltip: { trigger: 'item', formatter: '{b}: {c}' },
       grid: { left: '10%', right: '4%', bottom: '12%', top: '18%', containLabel: true },
       xAxis: { type: 'category', data: data.labels, axisLabel: { rotate: 45, fontSize: 11 } },

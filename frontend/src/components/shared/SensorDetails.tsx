@@ -17,7 +17,7 @@ export const SensorDetails: React.FC<SensorDetailsProps> = ({
     return (
       <div className="sensor-details sensor-details--empty">
         <i className="fas fa-thermometer-half" />
-        <span>Select a sensor to view details</span>
+        <span>选择传感器以查看详情</span>
       </div>
     );
   }
@@ -40,15 +40,15 @@ export const SensorDetails: React.FC<SensorDetailsProps> = ({
       </div>
       <div className="sensor-details__grid">
         <div className="sensor-details__item">
-          <span className="sensor-details__label">Avg Temp</span>
+          <span className="sensor-details__label">平均温度</span>
           <span className="sensor-details__value">{summary?.avg_temp?.toFixed(2)} °C</span>
         </div>
         <div className="sensor-details__item">
-          <span className="sensor-details__label">Min Temp</span>
+          <span className="sensor-details__label">最低温度</span>
           <span className="sensor-details__value">{summary?.min_temp?.toFixed(2)} °C</span>
         </div>
         <div className="sensor-details__item">
-          <span className="sensor-details__label">Max Temp</span>
+          <span className="sensor-details__label">最高温度</span>
           <span className="sensor-details__value">{summary?.max_temp?.toFixed(2)} °C</span>
         </div>
       </div>

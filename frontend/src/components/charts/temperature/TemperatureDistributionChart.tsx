@@ -9,7 +9,7 @@ export const TemperatureDistributionChart: React.FC<CardComponentProps> = () => 
 
   const option = useMemo((): EChartsOption => {
     if (!data) {
-      return { title: { text: 'No Data', left: 'center', top: 'center', textStyle: { color: '#888' } } };
+      return { title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#888' } } };
     }
     const seriesData = [
       { name: 'Avg', value: data.avg_temp },
@@ -17,7 +17,7 @@ export const TemperatureDistributionChart: React.FC<CardComponentProps> = () => 
       { name: 'Max', value: data.max_temp },
     ];
     return {
-      title: { text: 'Temperature Summary', left: 'center', textStyle: { fontSize: 16 } },
+      title: { text: '温度汇总', left: 'center', textStyle: { fontSize: 16 } },
       tooltip: { trigger: 'item', formatter: '{b}: {c}' },
       legend: { orient: 'vertical', right: 10, top: 'center', textStyle: { fontSize: 11 } },
       series: [{

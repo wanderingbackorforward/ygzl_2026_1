@@ -69,42 +69,42 @@ const RateChartCard: React.FC = () => {
 const SETTLEMENT_CARDS: CardConfig[] = [
   {
     id: 'trend-chart',
-    title: 'Trend Analysis',
+    title: '趋势分析',
     icon: 'fas fa-chart-bar',
     component: TrendChart,
     defaultLayout: { x: 0, y: 0, w: 6, h: 4, minW: 4, minH: 3 }
   },
   {
     id: 'distribution',
-    title: 'Alert Distribution',
+    title: '趋势类型分布',
     icon: 'fas fa-chart-pie',
     component: DistributionChart,
     defaultLayout: { x: 0, y: 4, w: 6, h: 4, minW: 4, minH: 3 }
   },
   {
     id: 'point-selector',
-    title: 'Point Selector',
+    title: '监测点选择',
     icon: 'fas fa-map-marker-alt',
     component: PointSelectorCard,
     defaultLayout: { x: 6, y: 0, w: 3, h: 3, minW: 2, minH: 2 }
   },
   {
     id: 'point-details',
-    title: 'Point Details',
+    title: '监测点详情',
     icon: 'fas fa-info-circle',
     component: PointDetailsCard,
     defaultLayout: { x: 9, y: 0, w: 3, h: 3, minW: 2, minH: 2 }
   },
   {
     id: 'time-series',
-    title: 'Time Series',
+    title: '时间序列',
     icon: 'fas fa-chart-line',
     component: TimeSeriesChartCard,
     defaultLayout: { x: 6, y: 3, w: 6, h: 4, minW: 4, minH: 3 }
   },
   {
     id: 'rate-chart',
-    title: 'Settlement Rate',
+    title: '沉降速率',
     icon: 'fas fa-tachometer-alt',
     component: RateChartCard,
     defaultLayout: { x: 0, y: 8, w: 12, h: 4, minW: 6, minH: 3 }

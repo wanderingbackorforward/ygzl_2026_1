@@ -43,15 +43,15 @@ const ChannelSelectorCard: React.FC = () => {
 };
 
 const VIBRATION_CARDS: CardConfig[] = [
-  { id: 'dataset-selector', title: 'Dataset Selector', icon: 'fas fa-database', component: DatasetSelectorCard, defaultLayout: { x: 0, y: 0, w: 3, h: 3, minW: 2, minH: 2 } },
-  { id: 'channel-selector', title: 'Channel Selector', icon: 'fas fa-wave-square', component: ChannelSelectorCard, defaultLayout: { x: 3, y: 0, w: 3, h: 3, minW: 2, minH: 2 } },
-  { id: 'channel-details', title: 'Channel Details', icon: 'fas fa-info-circle', component: ChannelDetails, defaultLayout: { x: 6, y: 0, w: 3, h: 3, minW: 2, minH: 2 } },
-  { id: 'channel-time-series', title: 'Time Series', icon: 'fas fa-chart-line', component: ChannelTimeSeriesChart, defaultLayout: { x: 9, y: 0, w: 6, h: 4, minW: 4, minH: 3 } },
-  { id: 'frequency-spectrum', title: 'Spectrum', icon: 'fas fa-chart-bar', component: FrequencySpectrumChart, defaultLayout: { x: 0, y: 3, w: 6, h: 4, minW: 4, minH: 3 } },
-  { id: 'frequency-metrics', title: 'Metrics', icon: 'fas fa-sliders-h', component: FrequencyMetricsChart, defaultLayout: { x: 6, y: 3, w: 6, h: 4, minW: 4, minH: 3 } },
-  { id: 'waveform-crest', title: 'Waveform/Crest', icon: 'fas fa-chart-bar', component: WaveformCrestFactorChart, defaultLayout: { x: 0, y: 7, w: 6, h: 4, minW: 4, minH: 3 } },
-  { id: 'pulse-gap', title: 'Pulse/Gap', icon: 'fas fa-chart-bar', component: PulseGapFactorChart, defaultLayout: { x: 6, y: 7, w: 6, h: 4, minW: 4, minH: 3 } },
-  { id: 'feature-radar', title: 'Feature Radar', icon: 'fas fa-bullseye', component: FeatureRadarChart, defaultLayout: { x: 0, y: 11, w: 12, h: 4, minW: 6, minH: 3 } },
+  { id: 'dataset-selector', title: '数据集选择', icon: 'fas fa-database', component: DatasetSelectorCard, defaultLayout: { x: 0, y: 0, w: 3, h: 3, minW: 2, minH: 2 } },
+  { id: 'channel-selector', title: '通道选择', icon: 'fas fa-wave-square', component: ChannelSelectorCard, defaultLayout: { x: 3, y: 0, w: 3, h: 3, minW: 2, minH: 2 } },
+  { id: 'channel-details', title: '通道详情', icon: 'fas fa-info-circle', component: ChannelDetails, defaultLayout: { x: 6, y: 0, w: 3, h: 3, minW: 2, minH: 2 } },
+  { id: 'channel-time-series', title: '时间序列', icon: 'fas fa-chart-line', component: ChannelTimeSeriesChart, defaultLayout: { x: 9, y: 0, w: 6, h: 4, minW: 4, minH: 3 } },
+  { id: 'frequency-spectrum', title: '频谱', icon: 'fas fa-chart-bar', component: FrequencySpectrumChart, defaultLayout: { x: 0, y: 3, w: 6, h: 4, minW: 4, minH: 3 } },
+  { id: 'frequency-metrics', title: '频率指标', icon: 'fas fa-sliders-h', component: FrequencyMetricsChart, defaultLayout: { x: 6, y: 3, w: 6, h: 4, minW: 4, minH: 3 } },
+  { id: 'waveform-crest', title: '波形/峰值因子', icon: 'fas fa-chart-bar', component: WaveformCrestFactorChart, defaultLayout: { x: 0, y: 7, w: 6, h: 4, minW: 4, minH: 3 } },
+  { id: 'pulse-gap', title: '脉冲/间隙因子', icon: 'fas fa-chart-bar', component: PulseGapFactorChart, defaultLayout: { x: 6, y: 7, w: 6, h: 4, minW: 4, minH: 3 } },
+  { id: 'feature-radar', title: '特征雷达图', icon: 'fas fa-bullseye', component: FeatureRadarChart, defaultLayout: { x: 0, y: 11, w: 12, h: 4, minW: 6, minH: 3 } },
 ];
 
 const VibrationDashboard: React.FC = () => {

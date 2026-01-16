@@ -25,8 +25,8 @@ export const PointSelector: React.FC<PointSelectorProps> = ({
   return (
     <div className="point-selector">
       <div className="point-selector__header">
-        <span className="point-selector__label">Monitoring Point</span>
-        <span className="point-selector__count">{points.length} points</span>
+        <span className="point-selector__label">监测点</span>
+        <span className="point-selector__count">{points.length} 个点</span>
       </div>
 
       <div className="point-selector__list">

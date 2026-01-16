@@ -64,12 +64,12 @@ const TemperatureRangeChartCard: React.FC = () => {
 };
 
 const TEMPERATURE_CARDS: CardConfig[] = [
-  { id: 'temperature-trend', title: 'Trend', icon: 'fas fa-chart-bar', component: TemperatureTrendChart, defaultLayout: { x: 0, y: 0, w: 6, h: 4, minW: 4, minH: 3 } },
-  { id: 'temperature-distribution', title: 'Distribution', icon: 'fas fa-chart-pie', component: TemperatureDistributionChart, defaultLayout: { x: 6, y: 0, w: 6, h: 4, minW: 4, minH: 3 } },
-  { id: 'sensor-selector', title: 'Sensor Selector', icon: 'fas fa-thermometer-half', component: SensorSelectorCard, defaultLayout: { x: 0, y: 4, w: 3, h: 3, minW: 2, minH: 2 } },
-  { id: 'sensor-details', title: 'Sensor Details', icon: 'fas fa-info-circle', component: SensorDetailsCard, defaultLayout: { x: 3, y: 4, w: 3, h: 3, minW: 2, minH: 2 } },
-  { id: 'temperature-series', title: 'Series', icon: 'fas fa-chart-line', component: TemperatureSeriesChartCard, defaultLayout: { x: 6, y: 4, w: 6, h: 4, minW: 4, minH: 3 } },
-  { id: 'temperature-range', title: 'Daily Range', icon: 'fas fa-temperature-high', component: TemperatureRangeChartCard, defaultLayout: { x: 0, y: 8, w: 12, h: 4, minW: 6, minH: 3 } },
+  { id: 'temperature-trend', title: '温度趋势分布', icon: 'fas fa-chart-bar', component: TemperatureTrendChart, defaultLayout: { x: 0, y: 0, w: 6, h: 4, minW: 4, minH: 3 } },
+  { id: 'temperature-distribution', title: '温度汇总', icon: 'fas fa-chart-pie', component: TemperatureDistributionChart, defaultLayout: { x: 6, y: 0, w: 6, h: 4, minW: 4, minH: 3 } },
+  { id: 'sensor-selector', title: '传感器选择', icon: 'fas fa-thermometer-half', component: SensorSelectorCard, defaultLayout: { x: 0, y: 4, w: 3, h: 3, minW: 2, minH: 2 } },
+  { id: 'sensor-details', title: '传感器详情', icon: 'fas fa-info-circle', component: SensorDetailsCard, defaultLayout: { x: 3, y: 4, w: 3, h: 3, minW: 2, minH: 2 } },
+  { id: 'temperature-series', title: '温度时间序列', icon: 'fas fa-chart-line', component: TemperatureSeriesChartCard, defaultLayout: { x: 6, y: 4, w: 6, h: 4, minW: 4, minH: 3 } },
+  { id: 'temperature-range', title: '日温差', icon: 'fas fa-temperature-high', component: TemperatureRangeChartCard, defaultLayout: { x: 0, y: 8, w: 12, h: 4, minW: 6, minH: 3 } },
 ];
 
 const TemperatureDashboard: React.FC = () => {

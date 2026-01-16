@@ -20,8 +20,8 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     if (!data || data.length === 0) {
       return {
         title: {
-          text: pointId ? `${pointId} - Time Series` : 'Select a point',
-          subtext: 'No data available',
+          text: pointId ? `${pointId} - 时间序列` : '请选择监测点',
+          subtext: '暂无数据',
           left: 'center',
           top: 'center',
           textStyle: { color: '#888', fontSize: 14 }
@@ -36,7 +36,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
 
     return {
       title: {
-        text: `${pointId} - Time Series Data`,
+        text: `${pointId} - 时间序列数据`,
         left: 'center',
         textStyle: { fontSize: 14 }
       },
@@ -48,7 +48,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
         textStyle: { fontSize: 11 }
       },
       legend: {
-        data: ['Original Value', 'Daily Change', 'Cumulative Change'],
+        data: ['原始值', '日变化', '累计变化'],
         bottom: 5,
         textStyle: { fontSize: 10 },
         itemWidth: 15,
@@ -77,7 +77,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       yAxis: [
         {
           type: 'value',
-          name: 'Value (mm)',
+          name: '值 (mm)',
           nameTextStyle: { fontSize: 10 },
           axisLabel: { fontSize: 10 },
           splitLine: {
@@ -86,7 +86,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
         },
         {
           type: 'value',
-          name: 'Change (mm)',
+          name: '变化 (mm)',
           nameTextStyle: { fontSize: 10 },
           axisLabel: { fontSize: 10 },
           splitLine: { show: false }

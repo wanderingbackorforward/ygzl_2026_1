@@ -20,8 +20,8 @@ export const RateChart: React.FC<RateChartProps> = ({
     if (!data || data.length === 0) {
       return {
         title: {
-          text: pointId ? `${pointId} - Rate Analysis` : 'Select a point',
-          subtext: 'No data available',
+          text: pointId ? `${pointId} - 速率分析` : '请选择监测点',
+          subtext: '暂无数据',
           left: 'center',
           top: 'center',
           textStyle: { color: '#888', fontSize: 14 }
@@ -42,7 +42,7 @@ export const RateChart: React.FC<RateChartProps> = ({
 
     return {
       title: {
-        text: `${pointId} - Settlement Rate`,
+        text: `${pointId} - 沉降速率`,
         left: 'center',
         textStyle: { fontSize: 14 }
       },
@@ -55,12 +55,12 @@ export const RateChart: React.FC<RateChartProps> = ({
           const point = params[0];
           if (!point) return '';
           const value = point.value;
-          const status = value > 0.01 ? 'Rising' : value < -0.01 ? 'Sinking' : 'Stable';
+          const status = value > 0.01 ? '上升' : value < -0.01 ? '下沉' : '稳定';
           return `
             <div style="padding: 4px;">
               <div style="margin-bottom: 4px;">${point.axisValue}</div>
-              <div>Rate: <strong style="color: ${point.color}">${value.toFixed(4)} mm/day</strong></div>
-              <div>Status: ${status}</div>
+              <div>速率: <strong style="color: ${point.color}">${value.toFixed(4)} mm/天</strong></div>
+              <div>状态: ${status}</div>
             </div>
           `;
         }
@@ -87,7 +87,7 @@ export const RateChart: React.FC<RateChartProps> = ({
       },
       yAxis: {
         type: 'value',
-        name: 'Rate (mm/day)',
+        name: '速率 (mm/天)',
         nameTextStyle: { fontSize: 10 },
         axisLabel: { fontSize: 10 },
         splitLine: {

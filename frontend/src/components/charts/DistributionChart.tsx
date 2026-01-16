@@ -25,7 +25,7 @@ export const DistributionChart: React.FC<CardComponentProps> = () => {
     if (!data || data.length === 0) {
       return {
         title: {
-          text: 'No Data',
+          text: '暂无数据',
           left: 'center',
           top: 'center',
           textStyle: { color: '#888' }
@@ -50,7 +50,7 @@ export const DistributionChart: React.FC<CardComponentProps> = () => {
 
     return {
       title: {
-        text: 'Alert Level Distribution',
+        text: '趋势类型分布',
         left: 'center',
         textStyle: { fontSize: 16 }
       },
@@ -75,7 +75,7 @@ export const DistributionChart: React.FC<CardComponentProps> = () => {
         }
       },
       series: [{
-        name: 'Alert Level',
+        name: '趋势类型',
         type: 'pie',
         radius: ['40%', '70%'],
         center: ['40%', '55%'],

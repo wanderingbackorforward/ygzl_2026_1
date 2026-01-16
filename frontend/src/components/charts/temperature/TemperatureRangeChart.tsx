@@ -14,12 +14,12 @@ interface Props extends CardComponentProps {
 export const TemperatureRangeChart: React.FC<Props> = ({ sensorId, data, loading = false }) => {
   const option = useMemo((): EChartsOption => {
     if (!data || data.length === 0) {
-      return { title: { text: sensorId ? `${sensorId} - Daily Range` : 'Select a sensor', subtext: 'No data available', left: 'center', top: 'center', textStyle: { color: '#888', fontSize: 14 } } };
+      return { title: { text: sensorId ? `${sensorId} - 日温差` : '请选择传感器', subtext: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#888', fontSize: 14 } } };
     }
     const dates = data.map(d => d.measurement_date);
     const ranges = data.map(d => d.temperature_range);
     return {
-      title: { text: `${sensorId} - Daily Temperature Range`, left: 'center', textStyle: { fontSize: 14 } },
+      title: { text: `${sensorId} - 日温差`, left: 'center', textStyle: { fontSize: 14 } },
       tooltip: { trigger: 'axis', confine: true },
       grid: { left: '10%', right: '5%', bottom: '20%', top: '20%', containLabel: true },
       xAxis: { type: 'category', data: dates, boundaryGap: false, axisLabel: { fontSize: 10, rotate: 30 } },

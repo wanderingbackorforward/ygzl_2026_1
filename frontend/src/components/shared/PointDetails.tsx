@@ -16,11 +16,11 @@ const ALERT_COLORS: Record<string, string> = {
 };
 
 const TREND_LABELS: Record<string, string> = {
-  '[XZ]': 'Significant Sinking',
-  '[QX]': 'Mild Sinking',
-  '[WD]': 'Stable',
-  '[QL]': 'Mild Rising',
-  '[XL]': 'Significant Rising',
+  '[XZ]': '显著下沉',
+  '[QX]': '轻微下沉',
+  '[WD]': '稳定',
+  '[QL]': '轻微上升',
+  '[XL]': '显著上升',
 };
 
 export const PointDetails: React.FC<PointDetailsProps> = ({
@@ -32,7 +32,7 @@ export const PointDetails: React.FC<PointDetailsProps> = ({
     return (
       <div className="point-details point-details--empty">
         <i className="fas fa-hand-pointer" />
-        <span>Select a monitoring point to view details</span>
+        <span>选择监测点以查看详情</span>
       </div>
     );
   }
@@ -49,7 +49,7 @@ export const PointDetails: React.FC<PointDetailsProps> = ({
     return (
       <div className="point-details point-details--empty">
         <i className="fas fa-exclamation-circle" />
-        <span>No data available for {pointId}</span>
+        <span>{pointId} 暂无数据</span>
       </div>
     );
   }
@@ -74,15 +74,15 @@ export const PointDetails: React.FC<PointDetailsProps> = ({
 
       <div className="point-details__grid">
         <div className="point-details__item">
-          <span className="point-details__label">Trend Type</span>
+          <span className="point-details__label">趋势类型</span>
           <span className="point-details__value">{trendLabel}</span>
         </div>
         <div className="point-details__item">
-          <span className="point-details__label">Average Value</span>
+          <span className="point-details__label">平均值</span>
           <span className="point-details__value">{data.avg_value?.toFixed(4)} mm</span>
         </div>
         <div className="point-details__item">
-          <span className="point-details__label">Total Change</span>
+          <span className="point-details__label">总变化</span>
           <span className="point-details__value" style={{
             color: data.total_change < 0 ? '#ff3e5f' : data.total_change > 0 ? '#00e676' : 'inherit'
           }}>
@@ -90,8 +90,8 @@ export const PointDetails: React.FC<PointDetailsProps> = ({
           </span>
         </div>
         <div className="point-details__item">
-          <span className="point-details__label">Avg Daily Rate</span>
-          <span className="point-details__value">{data.avg_daily_rate?.toFixed(6)} mm/day</span>
+          <span className="point-details__label">日均速率</span>
+          <span className="point-details__value">{data.avg_daily_rate?.toFixed(6)} mm/天</span>
         </div>
       </div>
 

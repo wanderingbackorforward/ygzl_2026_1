@@ -39,7 +39,7 @@ export function useTemperatureSensors(): { sensors: string[]; loading: boolean }
   useEffect(() => {
     const fetchSensors = async () => {
       try {
-        const result = await apiGet<{ sensor_id: string }[]>('/temperature/stats');
+        const result = await apiGet<{ sensor_id: string }[]>('/temperature/points');
         setSensors(result.map(s => s.sensor_id));
       } catch (e) {
         setSensors([]);

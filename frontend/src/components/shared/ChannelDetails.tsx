@@ -15,11 +15,11 @@ export const ChannelDetails: React.FC<CardComponentProps> = () => {
       </div>
       <div className="channel-details__grid">
         <div className="channel-details__item">
-          <span className="channel-details__label">Name</span>
+          <span className="channel-details__label">名称</span>
           <span className="channel-details__value">{channel?.name || '-'}</span>
         </div>
         <div className="channel-details__item">
-          <span className="channel-details__label">Unit</span>
+          <span className="channel-details__label">单位</span>
           <span className="channel-details__value">{channel?.unit || '-'}</span>
         </div>
       </div>
