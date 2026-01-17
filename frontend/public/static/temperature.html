@@ -12,20 +12,10 @@
 </head>
 <body>
   <div class="dashboard">
-    <!-- Unity背景效果 -->
-    <div class="unity-background">
-      <div class="bg-grid"></div>
-      <div class="bg-glow"></div>
-      <canvas id="unity-canvas"></canvas>
-      <div id="unity-loading-bar">
-        <div id="unity-progress-bar"></div>
-      </div>
-      <!-- 动态粒子效果 -->
-      <div class="particle" style="top: 30%; left: 20%; animation-delay: 0s;"></div>
-      <div class="particle" style="top: 50%; left: 40%; animation-delay: 3s;"></div>
-      <div class="particle" style="top: 70%; left: 60%; animation-delay: 6s;"></div>
-      <div class="particle" style="top: 25%; left: 80%; animation-delay: 9s;"></div>
-      <div class="particle" style="top: 60%; left: 25%; animation-delay: 12s;"></div>
+    <!-- 3D Background (Three.js) -->
+    <div id="threejs-background" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; overflow: hidden;">
+      <canvas id="viewer-canvas"></canvas>
+      <div id="loading-indicator" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 1.2em; padding: 15px 25px; background: rgba(0, 0, 0, 0.7); border-radius: 5px; z-index: 10; display: none;">Loading...</div>
     </div>
 
     <!-- 控制面板 -->
@@ -255,11 +245,23 @@
   </div>
 
   <!-- 引入JS库 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>
+  <script src="js/three_viewer_enhanced.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.3.2/dist/echarts.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
   <script src="js/chart-zoom.js"></script>
   <script src="js/temperature_charts.js"></script>
   <script src="js/main.js"></script>
+  <script>
+    // Initialize Three.js viewer in temperature mode
+    document.addEventListener('threeViewerReady', function() {
+      if (typeof window.switchThreeViewerDataType === 'function') {
+        window.switchThreeViewerDataType(); // Switch to temperature mode
+      }
+    });
+  </script>
   <script>
     (function(){
       var embedded = window.self !== window.top || window.location.search.indexOf('embedded=1') !== -1;
