@@ -97,7 +97,7 @@ class SupabaseHttpRepo:
 
     def crack_get_analysis_results(self):
         r1 = requests.get(_url('/rest/v1/crack_analysis_results?select=*'), headers=_headers())
-        r2 = requests.get(_url('/rest/v1/crack_monitoring_points?select=point_id,trend_type,change_type'), headers=_headers())
+        r2 = requests.get(_url('/rest/v1/crack_monitoring_points?select=point_id,trend_type,change_type,total_change,average_change_rate,trend_slope'), headers=_headers())
         r1.raise_for_status(); r2.raise_for_status()
         ana = r1.json()
         mp = {row.get('point_id'): row for row in r2.json()}
@@ -109,6 +109,13 @@ class SupabaseHttpRepo:
             if x:
                 merged['trend_type'] = x.get('trend_type')
                 merged['change_type'] = x.get('change_type')
+                merged['total_change'] = x.get('total_change')
+                merged['average_change_rate'] = x.get('average_change_rate')
+                merged['trend_slope'] = x.get('trend_slope')
+                merged['avg_daily_rate'] = x.get('average_change_rate')
+                merged['slope'] = x.get('trend_slope')
+            if 'avg_value' not in merged and 'mean_value' in merged:
+                merged['avg_value'] = merged.get('mean_value')
             if 'analysis_date' in merged and merged['analysis_date'] is not None:
                 merged['analysis_date'] = str(merged['analysis_date']).replace('T', ' ').split('.')[0]
             res.append(merged)

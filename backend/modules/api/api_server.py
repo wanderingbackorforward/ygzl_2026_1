@@ -31,7 +31,7 @@ from modules.db.vendor import get_repo
 import requests
 repo = get_repo()
 from modules.data_import.settlement_data_import import import_excel_to_mysql
-from modules.data_processing.process_settlement_data import process_data
+from modules.data_processing.process_settlement_data import process_data, get_point_prediction, get_all_predictions_summary
 from modules.data_processing.update_monitoring_points import update_monitoring_points
 # 裂缝模块
 from modules.data_import.crack_data_import import import_crack_excel, first_time_import
@@ -225,6 +225,67 @@ def get_trends():
     """获取所有监测点的趋势分类统计"""
     trends = repo.get_trends()
     return jsonify(trends)
+
+@app.route('/api/prediction/<point_id>')
+def get_prediction(point_id):
+    print(f"[API] GET /api/prediction/{point_id}")
+    """获取特定监测点的趋势预测数据"""
+    try:
+        # 获取预测天数参数，默认30天
+        days = request.args.get('days', 30, type=int)
+        days = max(7, min(days, 90))  # 限制在7-90天之间
+
+        prediction = get_point_prediction(point_id, days)
+        if prediction is None:
+            return jsonify({'error': f'未找到监测点 {point_id} 的数据或数据不足'}), 404
+
+        return json.dumps(prediction, default=decimal_default)
+    except Exception as e:
+        print(f"获取预测数据失败: {str(e)}")
+        return jsonify({'error': f'获取预测数据失败: {str(e)}'}), 500
+
+@app.route('/api/predictions/summary')
+def get_predictions_summary():
+    print("[API] GET /api/predictions/summary")
+    """获取所有监测点的预测汇总和风险评估"""
+    try:
+        summary = get_all_predictions_summary()
+        return json.dumps(summary, default=decimal_default)
+    except Exception as e:
+        print(f"获取预测汇总失败: {str(e)}")
+        return jsonify({'error': f'获取预测汇总失败: {str(e)}'}), 500
+
+@app.route('/api/risk/alerts')
+def get_risk_alerts():
+    print("[API] GET /api/risk/alerts")
+    """获取风险预警列表，按风险等级排序"""
+    try:
+        summary = get_all_predictions_summary()
+        # 过滤出有风险的监测点
+        alerts = [
+            item for item in summary
+            if item.get('risk_level') in ['critical', 'high', 'medium']
+        ]
+        # 按风险评分降序排列
+        alerts.sort(key=lambda x: x.get('risk_score', 0), reverse=True)
+
+        # 统计各风险等级数量
+        stats = {
+            'critical': len([a for a in alerts if a.get('risk_level') == 'critical']),
+            'high': len([a for a in alerts if a.get('risk_level') == 'high']),
+            'medium': len([a for a in alerts if a.get('risk_level') == 'medium']),
+            'low': len([a for a in summary if a.get('risk_level') == 'low']),
+            'normal': len([a for a in summary if a.get('risk_level') == 'normal']),
+            'total': len(summary)
+        }
+
+        return json.dumps({
+            'alerts': alerts,
+            'stats': stats
+        }, default=decimal_default)
+    except Exception as e:
+        print(f"获取风险预警失败: {str(e)}")
+        return jsonify({'error': f'获取风险预警失败: {str(e)}'}), 500
 
 # 使用 Flask 内置静态文件服务，并添加响应头处理
 @app.after_request
@@ -644,6 +705,157 @@ def get_viewpoints():
             cursor.close()
         if conn and conn.is_connected():
             conn.close()
+
+# =========================================================
+# 数据汇总页API路由 (Overview)
+# =========================================================
+@app.route('/api/overview/summary')
+def get_overview_summary():
+    """
+    获取仪表盘汇总数据，聚合沉降、裂缝、温度、振动四个领域的关键指标
+    """
+    print("[API] GET /api/overview/summary")
+    result = {
+        'settlement': {},
+        'cracks': {},
+        'temperature': {},
+        'vibration': {},
+        'safety_score': 0
+    }
+    
+    try:
+        # --- 沉降数据 ---
+        try:
+            settlement_points = repo.get_all_points()
+            settlement_summary = repo.get_summary()
+            settlement_trends = repo.get_trends()
+            
+            total_points = len(settlement_points) if settlement_points else 0
+            max_value = 0
+            alert_count = 0
+            if settlement_summary:
+                for item in settlement_summary:
+                    val = float(item.get('current_value', 0) or 0)
+                    if abs(val) > abs(max_value):
+                        max_value = val
+                    rate = float(item.get('change_rate', 0) or 0)
+                    if abs(rate) > 1.0:
+                        alert_count += 1
+            
+            trend_distribution = {}
+            if settlement_trends:
+                for t in settlement_trends:
+                    trend_distribution[t.get('trend_type', '未知')] = t.get('count', 0)
+            
+            result['settlement'] = {
+                'total_points': total_points,
+                'max_value': round(max_value, 2),
+                'alert_count': alert_count,
+                'trend_distribution': trend_distribution
+            }
+        except Exception as e:
+            print(f"[Overview] 沉降数据聚合失败: {e}")
+            result['settlement'] = {'error': str(e)}
+
+        # --- 裂缝数据 ---
+        try:
+            crack_points = repo.crack_get_monitoring_points()
+            total_cracks = len(crack_points) if crack_points else 0
+            expanding = shrinking = stable = 0
+            
+            if crack_points:
+                for pt in crack_points:
+                    ct = pt.get('change_type', '')
+                    if ct == '扩展':
+                        expanding += 1
+                    elif ct == '收缩':
+                        shrinking += 1
+                    elif ct == '稳定':
+                        stable += 1
+            
+            result['cracks'] = {
+                'total_points': total_cracks,
+                'expanding_count': expanding,
+                'shrinking_count': shrinking,
+                'stable_count': stable,
+                'critical_count': expanding
+            }
+        except Exception as e:
+            print(f"[Overview] 裂缝数据聚合失败: {e}")
+            result['cracks'] = {'error': str(e)}
+
+        # --- 温度数据 ---
+        try:
+            temp_points = repo.temperature_get_points()
+            temp_summary = repo.temperature_get_summary()
+            temp_trends = repo.temperature_get_trends()
+            
+            total_sensors = len(temp_points) if temp_points else 0
+            avg_temp = min_temp = max_temp = 0
+            
+            if temp_summary:
+                temps = [float(s.get('avg_temp', 0) or 0) for s in temp_summary if s.get('avg_temp')]
+                mins = [float(s.get('min_temp', 0) or 0) for s in temp_summary if s.get('min_temp')]
+                maxs = [float(s.get('max_temp', 0) or 0) for s in temp_summary if s.get('max_temp')]
+                if temps:
+                    avg_temp = round(sum(temps) / len(temps), 1)
+                if mins:
+                    min_temp = round(min(mins), 1)
+                if maxs:
+                    max_temp = round(max(maxs), 1)
+            
+            trend_distribution = {}
+            if temp_trends:
+                for t in temp_trends:
+                    trend_distribution[t.get('trend_type', '未知')] = t.get('count', 0)
+            
+            result['temperature'] = {
+                'total_sensors': total_sensors,
+                'avg_temp': avg_temp,
+                'min_temp': min_temp,
+                'max_temp': max_temp,
+                'trend_distribution': trend_distribution
+            }
+        except Exception as e:
+            print(f"[Overview] 温度数据聚合失败: {e}")
+            result['temperature'] = {'error': str(e)}
+
+        # --- 振动数据 ---
+        try:
+            conn = get_db_connection()
+            if conn:
+                try:
+                    cursor = conn.cursor(dictionary=True)
+                    cursor.execute("SELECT COUNT(*) as cnt FROM vibration_datasets")
+                    row = cursor.fetchone()
+                    dataset_count = row['cnt'] if row else 0
+                    cursor.close()
+                    conn.close()
+                except Exception:
+                    dataset_count = 0
+            else:
+                dataset_count = 0
+            result['vibration'] = {
+                'total_datasets': dataset_count,
+                'status': 'normal'
+            }
+        except Exception as e:
+            print(f"[Overview] 振动数据聚合失败: {e}")
+            result['vibration'] = {'error': str(e), 'total_datasets': 0}
+
+        # --- 计算综合安全评分 ---
+        score = 100
+        score -= result['settlement'].get('alert_count', 0) * 2
+        score -= result['cracks'].get('expanding_count', 0) * 3
+        score -= result['cracks'].get('critical_count', 0) * 2
+        score = max(0, min(100, score))
+        result['safety_score'] = round(score, 1)
+        
+        return json.dumps(result, default=decimal_default), 200, {'Content-Type': 'application/json'}
+    
+    except Exception as e:
+        print(f"[Overview] 汇总数据获取失败: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 # =========================================================

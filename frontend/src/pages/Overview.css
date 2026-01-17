@@ -1,0 +1,451 @@
+:root {
+  --tech-bg-dark: #0b1120;
+  /* Slightly lighter deep blue for better contrast */
+  --tech-bg-panel: rgba(14, 26, 48, 0.65);
+  --tech-border-color: rgba(64, 169, 255, 0.25);
+  /* More subtle blue */
+  --tech-primary: #00e5ff;
+  /* Cyan */
+  --tech-secondary: #2f54eb;
+  /* Deep Blue */
+  --tech-accent: #faad14;
+  /* Orange/Gold */
+  --tech-danger: #f5222d;
+  /* Red */
+  --tech-success: #52c41a;
+  /* Green */
+  --tech-text-main: #e6f7ff;
+  --tech-text-dim: #8ba0b6;
+  --tech-glow-primary: 0 0 8px rgba(0, 229, 255, 0.4);
+  --tech-glow-text: 0 0 5px rgba(230, 247, 255, 0.3);
+}
+
+.dashboard-container {
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  background-color: #050a14;
+  background-image:
+    radial-gradient(circle at 50% 10%, #1a2a47 0%, #050a14 60%),
+    linear-gradient(rgba(0, 229, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 229, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 30px 30px, 30px 30px;
+  color: var(--tech-text-main);
+  font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+  /* Explicit Chinese font support */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.dashboard-header {
+  height: 70px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(0, 21, 41, 0.9) 0%, rgba(0, 0, 0, 0) 100%),
+    url('data:image/svg+xml;utf8,<svg width="100%" height="100%" viewBox="0 0 1000 70" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><path d="M0,0 L1000,0 L900,70 L100,70 Z" fill="rgba(11, 33, 61, 0.7)"/></svg>');
+  background-size: cover;
+  margin-bottom: 5px;
+  z-index: 10;
+}
+
+.header-center-decoration {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  width: 600px;
+}
+
+.header-title {
+  font-size: 32px;
+  font-weight: bold;
+  letter-spacing: 6px;
+  text-shadow: var(--tech-glow-text);
+  background: linear-gradient(180deg, #fff 0%, #00e5ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-transform: uppercase;
+}
+
+.header-subtitle {
+  font-size: 14px;
+  color: var(--tech-text-dim);
+  letter-spacing: 4px;
+  margin-top: -5px;
+}
+
+.header-time {
+  position: absolute;
+  right: 30px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 20px;
+  color: var(--tech-primary);
+  text-shadow: 0 0 5px var(--tech-primary);
+}
+
+/* Main Grid */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 28% 44% 28%;
+  /* Wider center */
+  grid-template-rows: 60% 36%;
+  /* Map taller */
+  gap: 15px;
+  padding: 10px 20px 20px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Panels */
+.tech-panel {
+  background: var(--tech-bg-panel);
+  border: 1px solid var(--tech-border-color);
+  position: relative;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  /* box-shadow: 0 0 20px rgba(0, 0, 0, 0.3) inset; */
+}
+
+/* Tech Corners - Styled like the reference */
+.tech-panel::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 15px;
+  height: 15px;
+  border-top: 2px solid var(--tech-primary);
+  border-left: 2px solid var(--tech-primary);
+  box-shadow: -1px -1px 5px var(--tech-primary);
+}
+
+.tech-panel::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 15px;
+  height: 15px;
+  border-bottom: 2px solid var(--tech-primary);
+  border-right: 2px solid var(--tech-primary);
+  box-shadow: 1px 1px 5px var(--tech-primary);
+}
+
+.panel-title {
+  font-size: 16px;
+  color: var(--tech-primary);
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(90deg, rgba(0, 229, 255, 0.15) 0%, transparent 100%);
+  padding: 8px 10px;
+  border-left: 4px solid var(--tech-primary);
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+/* Map/Center Area */
+.central-map-bg {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  /* background: url('/assets/map_bg_placeholder.png') center/cover no-repeat; */
+  background: radial-gradient(circle at center, #162c4f 0%, #050a14 90%);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.map-header-stats {
+  display: flex;
+  gap: 40px;
+  margin-top: 20px;
+  z-index: 2;
+}
+
+.map-stat-box {
+  background: rgba(0, 20, 40, 0.8);
+  border: 1px solid var(--tech-secondary);
+  padding: 10px 20px;
+  min-width: 140px;
+  text-align: center;
+  position: relative;
+}
+
+.map-stat-box::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--tech-primary);
+}
+
+.map-stat-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 10px var(--tech-secondary);
+}
+
+.map-stat-label {
+  font-size: 12px;
+  color: var(--tech-text-dim);
+}
+
+/* Right Side Stats Grid */
+.stats-grid-circles {
+  display: flex;
+  justify-content: space-around;
+  margin: 10px 0;
+}
+
+.stat-circle {
+  width: 70px;
+  height: 70px;
+  border: 2px solid var(--tech-border-color);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.1);
+}
+
+/* Charts Generic */
+.chart-container-flex {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+/* Data Lists */
+.data-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 13px;
+  border-left: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.data-row:hover {
+  background: rgba(0, 229, 255, 0.1);
+  border-left: 2px solid var(--tech-primary);
+}
+
+.data-row.header-row {
+  background: rgba(0, 80, 120, 0.3);
+  color: var(--tech-primary);
+  font-weight: bold;
+}
+
+.rank-idx {
+  width: 20px;
+  text-align: center;
+  color: var(--tech-text-dim);
+}
+
+.rank-top {
+  color: var(--tech-accent);
+  font-weight: bold;
+  text-shadow: 0 0 5px var(--tech-accent);
+}
+
+.score-gauge-wrapper {
+  position: relative;
+  height: 140px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ==================================
+   移动端适配 - 仅影响手机/平板
+   ================================== */
+
+/* 平板模式 (768px - 1024px) */
+@media (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+    gap: 12px;
+    padding: 10px 15px;
+  }
+
+  .header-title {
+    font-size: 24px;
+    letter-spacing: 4px;
+  }
+
+  .header-subtitle {
+    font-size: 12px;
+  }
+
+  .map-header-stats {
+    gap: 20px;
+  }
+
+  .map-stat-box {
+    min-width: 100px;
+    padding: 8px 15px;
+  }
+
+  .map-stat-value {
+    font-size: 22px;
+  }
+}
+
+/* 手机模式 (<768px) - 卡片切换器风格 */
+@media (max-width: 768px) {
+  .dashboard-container {
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+  }
+
+  .dashboard-header {
+    height: 56px;
+    padding: 0 12px;
+  }
+
+  .header-center-decoration {
+    width: auto;
+  }
+
+  .header-title {
+    font-size: 16px;
+    letter-spacing: 2px;
+  }
+
+  .header-subtitle {
+    display: none;
+  }
+
+  .header-time {
+    right: 12px;
+    font-size: 14px;
+  }
+
+  /* 单列布局 */
+  .dashboard-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .tech-panel {
+    padding: 12px;
+    min-height: 200px;
+  }
+
+  .panel-title {
+    font-size: 14px;
+    padding: 6px 10px;
+    margin-bottom: 10px;
+  }
+
+  /* 中心地图区域 */
+  .central-map-bg {
+    min-height: 200px;
+  }
+
+  .map-header-stats {
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .map-stat-box {
+    min-width: 120px;
+    padding: 8px 16px;
+  }
+
+  .map-stat-value {
+    font-size: 24px;
+  }
+
+  .map-stat-label {
+    font-size: 11px;
+  }
+
+  /* 统计圆圈 */
+  .stats-grid-circles {
+    gap: 10px;
+  }
+
+  .stat-circle {
+    width: 60px;
+    height: 60px;
+  }
+
+  .stat-circle span:first-child {
+    font-size: 16px !important;
+  }
+
+  /* 数据行 */
+  .data-row {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .rank-idx {
+    width: 36px;
+    font-size: 11px;
+  }
+
+  /* 图表容器增大最小高度 */
+  .chart-container-flex {
+    min-height: 180px;
+  }
+
+  /* 仪表盘 */
+  .score-gauge-wrapper {
+    height: 120px;
+  }
+}
+
+/* 超小屏手机 (<480px) */
+@media (max-width: 480px) {
+  .header-title {
+    font-size: 14px;
+    letter-spacing: 1px;
+  }
+
+  .header-time {
+    font-size: 12px;
+  }
+
+  .tech-panel {
+    padding: 10px;
+    min-height: 180px;
+  }
+
+  .panel-title {
+    font-size: 13px;
+    padding: 5px 8px;
+  }
+
+  .stat-circle {
+    width: 50px;
+    height: 50px;
+  }
+
+  .map-stat-value {
+    font-size: 20px;
+  }
+}

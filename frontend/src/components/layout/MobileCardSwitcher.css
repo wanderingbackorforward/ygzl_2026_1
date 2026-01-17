@@ -1,0 +1,167 @@
+/* Mobile Card Switcher - 仅在移动端 (<768px) 生效 */
+
+.mobile-card-switcher {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: radial-gradient(ellipse at center, #0a192f 0%, #040b14 100%);
+}
+
+/* 标签导航栏 */
+.mobile-tabs {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    background: rgba(10, 18, 30, 0.95);
+    border-bottom: 1px solid rgba(0, 229, 255, 0.2);
+    padding: 0 8px;
+    gap: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    min-height: 48px;
+    flex-shrink: 0;
+}
+
+.mobile-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.mobile-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 2px solid transparent;
+    flex-shrink: 0;
+}
+
+.mobile-tab:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.mobile-tab.active {
+    color: #00e5ff;
+    border-bottom-color: #00e5ff;
+    text-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
+}
+
+.mobile-tab i {
+    font-size: 14px;
+}
+
+/* 卡片内容区域 */
+.mobile-card-content {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    padding: 12px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.mobile-card-wrapper {
+    height: 100%;
+    min-height: 300px;
+    background: rgba(10, 18, 30, 0.9);
+    border: 1px solid rgba(0, 229, 255, 0.25);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 卡片标题栏（移动端简化版） */
+.mobile-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: linear-gradient(90deg,
+            rgba(0, 229, 255, 0.05),
+            rgba(0, 229, 255, 0.1),
+            rgba(0, 229, 255, 0.05));
+    border-bottom: 1px solid rgba(0, 229, 255, 0.15);
+}
+
+.mobile-card-header i {
+    color: #00e5ff;
+    font-size: 16px;
+}
+
+.mobile-card-header span {
+    color: #00e5ff;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* 卡片内容 */
+.mobile-card-body {
+    flex: 1;
+    padding: 12px;
+    overflow: auto;
+    min-height: 0;
+}
+
+/* 滑动切换动画 */
+.mobile-card-content.slide-left .mobile-card-wrapper {
+    animation: slideInLeft 0.25s ease-out;
+}
+
+.mobile-card-content.slide-right .mobile-card-wrapper {
+    animation: slideInRight 0.25s ease-out;
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* 页码指示器 */
+.mobile-page-indicator {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 0;
+    background: rgba(10, 18, 30, 0.95);
+    border-top: 1px solid rgba(0, 229, 255, 0.1);
+}
+
+.mobile-page-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transition: all 0.2s ease;
+}
+
+.mobile-page-dot.active {
+    background: #00e5ff;
+    box-shadow: 0 0 6px #00e5ff;
+}
