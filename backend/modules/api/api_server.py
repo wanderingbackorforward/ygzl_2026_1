@@ -47,7 +47,7 @@ from modules.data_processing.process_temperature_data import process_data as pro
 from modules.api.vibration_handler import vibration_bp
 
 # 工单系统模块
-from modules.ticket_system.api import ticket_bp
+from modules.ticket_system.api import ticket_bp, user_bp
 
 # =========================================================
 # 应用初始化：创建Flask应用和Blueprint
@@ -869,6 +869,8 @@ app.register_blueprint(temperature_api)
 app.register_blueprint(vibration_bp)
 # 注册工单系统API蓝图
 app.register_blueprint(ticket_bp)
+# 注册用户管理API蓝图
+app.register_blueprint(user_bp)
 
 # 健康检查路由
 @app.route('/api/health')

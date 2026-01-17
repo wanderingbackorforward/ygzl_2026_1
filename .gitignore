@@ -56,7 +56,12 @@ frontend/node_modules/
 frontend/dist/
 .env
 .env.local
+/backend/.env
+/backend/.env.local
 .trae/
+.claude/
+.cursor/
+.continue/
 nul
 .vite/
 web/.vite/

@@ -37,7 +37,7 @@ class TicketModel:
 
             due_at = None
             if sla_hours:
-                due_at = datetime.datetime.now() + datetime.timedelta(hours=sla_hours)
+                due_at = (datetime.datetime.now() + datetime.timedelta(hours=sla_hours)).isoformat()
 
             # 准备插入数据
             insert_data = {
@@ -122,14 +122,14 @@ class TicketModel:
         try:
             update_data = {
                 'status': new_status,
-                'updated_at': datetime.datetime.now()
+                'updated_at': datetime.datetime.now().isoformat()
             }
 
             # 根据状态设置相应的时间字段
             if new_status == 'RESOLVED':
-                update_data['resolved_at'] = datetime.datetime.now()
+                update_data['resolved_at'] = datetime.datetime.now().isoformat()
             elif new_status == 'CLOSED':
-                update_data['closed_at'] = datetime.datetime.now()
+                update_data['closed_at'] = datetime.datetime.now().isoformat()
 
             # 添加评论到元数据
             ticket = self.get_ticket_by_id(ticket_id)
@@ -161,7 +161,7 @@ class TicketModel:
                 'assignee_id': assignee_id,
                 'assignee_name': assignee_name,
                 'status': 'IN_PROGRESS',
-                'updated_at': datetime.datetime.now()
+                'updated_at': datetime.datetime.now().isoformat()
             }
 
             return self.update_ticket(ticket_id, update_data)

@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
 import os
 import requests
+import datetime
 
 def _headers():
     anon = os.environ.get('SUPABASE_ANON_KEY', '')
@@ -358,3 +360,244 @@ class SupabaseHttpRepo:
             r = requests.delete(_url(f'/rest/v1/ticket_comments?id=eq.{comment_id}&author_id=eq.{author_id}'), headers=_headers())
         r.raise_for_status()
         return True
+
+    # =========================================================================
+    # Ticket Archive and Reminder Methods
+    # =========================================================================
+
+    def tickets_get_due_soon(self, hours=24):
+        """Get tickets due within specified hours"""
+        r = requests.get(_url(f'/rest/v1/v_tickets_due_soon?select=*'), headers=_headers())
+        r.raise_for_status()
+        return r.json()
+
+    def tickets_get_overdue(self):
+        """Get all overdue tickets"""
+        r = requests.get(_url(f'/rest/v1/v_tickets_overdue?select=*'), headers=_headers())
+        r.raise_for_status()
+        return r.json()
+
+    def tickets_get_to_archive(self):
+        """Get tickets ready for archiving (closed/rejected > 7 days)"""
+        r = requests.get(_url(f'/rest/v1/v_tickets_to_archive?select=*'), headers=_headers())
+        r.raise_for_status()
+        return r.json()
+
+    def ticket_archive(self, ticket_id):
+        """Archive a single ticket"""
+        # First get the ticket with its comments
+        ticket = self.ticket_get_by_id(ticket_id)
+        if not ticket:
+            return False
+
+        comments = self.ticket_comments_get(ticket_id, limit=1000)
+
+        # Prepare archive data
+        archive_data = {
+            'original_id': ticket['id'],
+            'ticket_number': ticket.get('ticket_number'),
+            'title': ticket.get('title'),
+            'description': ticket.get('description'),
+            'ticket_type': ticket.get('ticket_type'),
+            'sub_type': ticket.get('sub_type'),
+            'priority': ticket.get('priority'),
+            'status': ticket.get('status'),
+            'creator_id': ticket.get('creator_id'),
+            'creator_name': ticket.get('creator_name'),
+            'assignee_id': ticket.get('assignee_id'),
+            'assignee_name': ticket.get('assignee_name'),
+            'monitoring_point_id': ticket.get('monitoring_point_id'),
+            'location_info': ticket.get('location_info'),
+            'equipment_id': ticket.get('equipment_id'),
+            'threshold_value': ticket.get('threshold_value'),
+            'current_value': ticket.get('current_value'),
+            'alert_data': ticket.get('alert_data'),
+            'due_at': ticket.get('due_at'),
+            'resolved_at': ticket.get('resolved_at'),
+            'closed_at': ticket.get('closed_at'),
+            'attachment_paths': ticket.get('attachment_paths'),
+            'metadata': ticket.get('metadata'),
+            'created_at': ticket.get('created_at'),
+            'updated_at': ticket.get('updated_at'),
+            'comments_snapshot': comments
+        }
+
+        # Insert into archive table
+        h = _headers(); h['Prefer'] = 'return=representation'
+        r = requests.post(_url('/rest/v1/ticket_archive'), headers=h, json=archive_data)
+        r.raise_for_status()
+
+        # Mark original ticket as archived
+        self.ticket_update(ticket_id, {'is_archived': True, 'archived_at': datetime.datetime.now().isoformat()})
+        return True
+
+    def tickets_archive_batch(self, ticket_ids):
+        """Archive multiple tickets"""
+        results = {'success': [], 'failed': []}
+        for tid in ticket_ids:
+            try:
+                if self.ticket_archive(tid):
+                    results['success'].append(tid)
+                else:
+                    results['failed'].append(tid)
+            except Exception as e:
+                print(f"Archive ticket {tid} failed: {e}")
+                results['failed'].append(tid)
+        return results
+
+    def tickets_auto_archive(self):
+        """Auto archive all eligible tickets"""
+        to_archive = self.tickets_get_to_archive()
+        if not to_archive:
+            return {'archived_count': 0, 'tickets': []}
+        ticket_ids = [t['id'] for t in to_archive]
+        results = self.tickets_archive_batch(ticket_ids)
+        return {
+            'archived_count': len(results['success']),
+            'failed_count': len(results['failed']),
+            'tickets': results
+        }
+
+    def tickets_get_active(self, filters=None, limit=50, offset=0):
+        """Get active (non-archived) tickets only"""
+        params = []
+        # Try with is_archived filter first, fall back to all tickets if column doesn't exist
+        try:
+            test_url = _url('/rest/v1/tickets?select=is_archived&limit=1')
+            test_r = requests.get(test_url, headers=_headers())
+            if test_r.status_code == 200:
+                params.append('is_archived=eq.false')
+        except:
+            pass
+
+        if filters:
+            if 'status' in filters: params.append(f"status=eq.{filters['status']}")
+            if 'ticket_type' in filters: params.append(f"ticket_type=eq.{filters['ticket_type']}")
+            if 'priority' in filters: params.append(f"priority=eq.{filters['priority']}")
+            if 'creator_id' in filters: params.append(f"creator_id=eq.{filters['creator_id']}")
+            if 'assignee_id' in filters: params.append(f"assignee_id=eq.{filters['assignee_id']}")
+            if 'monitoring_point_id' in filters: params.append(f"monitoring_point_id=eq.{filters['monitoring_point_id']}")
+            if 'search_keyword' in filters:
+                kw = filters['search_keyword']
+                params.append(f"title=ilike.*{kw}*")
+        q = "/rest/v1/tickets?select=*&order=created_at.desc"
+        if params: q += "&" + "&".join(params)
+        q += f"&limit={limit}&offset={offset}"
+        r = requests.get(_url(q), headers=_headers())
+        r.raise_for_status()
+        return r.json()
+
+    def tickets_get_archived(self, limit=50, offset=0):
+        """Get archived tickets from archive table"""
+        r = requests.get(_url(f'/rest/v1/ticket_archive?select=*&order=archived_at.desc&limit={limit}&offset={offset}'), headers=_headers())
+        r.raise_for_status()
+        return r.json()
+
+    # =========================================================================
+    # User Management Methods
+    # =========================================================================
+
+    def users_get_all(self, active_only=True):
+        """Get all system users"""
+        q = '/rest/v1/system_users?select=*&order=created_at.desc'
+        if active_only:
+            q += '&is_active=eq.true'
+        r = requests.get(_url(q), headers=_headers())
+        r.raise_for_status()
+        return r.json()
+
+    def user_get_by_id(self, user_id):
+        """Get user by user_id"""
+        r = requests.get(_url(f'/rest/v1/system_users?select=*&user_id=eq.{user_id}'), headers=_headers())
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if rows else None
+
+    def user_create(self, user_data):
+        """Create a new user"""
+        h = _headers(); h['Prefer'] = 'return=representation'
+        r = requests.post(_url('/rest/v1/system_users'), headers=h, json=user_data)
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if rows else {}
+
+    def user_update(self, user_id, update_data):
+        """Update user information"""
+        h = _headers(); h['Prefer'] = 'return=representation'
+        r = requests.patch(_url(f'/rest/v1/system_users?user_id=eq.{user_id}'), headers=h, json=update_data)
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if rows else None
+
+    def user_delete(self, user_id):
+        """Delete a user (soft delete by setting is_active=false)"""
+        return self.user_update(user_id, {'is_active': False})
+
+    def user_get_notification_settings(self, user_id):
+        """Get user notification settings"""
+        r = requests.get(_url(f'/rest/v1/user_notification_settings?select=*&user_id=eq.{user_id}'), headers=_headers())
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if rows else None
+
+    def user_update_notification_settings(self, user_id, settings_data):
+        """Update or create user notification settings"""
+        existing = self.user_get_notification_settings(user_id)
+        h = _headers(); h['Prefer'] = 'return=representation'
+
+        if existing:
+            r = requests.patch(_url(f'/rest/v1/user_notification_settings?user_id=eq.{user_id}'), headers=h, json=settings_data)
+        else:
+            settings_data['user_id'] = user_id
+            r = requests.post(_url('/rest/v1/user_notification_settings'), headers=h, json=settings_data)
+
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if rows else None
+
+    def user_get_email(self, user_id):
+        """Get notification email for a user"""
+        # First try notification settings
+        settings = self.user_get_notification_settings(user_id)
+        if settings and settings.get('email_address') and settings.get('email_enabled', True):
+            return settings['email_address']
+
+        # Fall back to user's primary email
+        user = self.user_get_by_id(user_id)
+        if user:
+            return user.get('email')
+
+        return None
+
+    def users_get_with_email(self):
+        """Get all active users with their notification emails"""
+        try:
+            r = requests.get(_url('/rest/v1/v_users_with_email?select=*'), headers=_headers())
+            r.raise_for_status()
+            return r.json()
+        except:
+            # Fallback if view doesn't exist
+            users = self.users_get_all(active_only=True)
+            result = []
+            for user in users:
+                user_id = user.get('user_id')
+                email = self.user_get_email(user_id)
+                user['notification_email'] = email
+                result.append(user)
+            return result
+
+    def users_get_by_role(self, role):
+        """Get users by role"""
+        r = requests.get(_url(f'/rest/v1/system_users?select=*&role=eq.{role}&is_active=eq.true'), headers=_headers())
+        r.raise_for_status()
+        return r.json()
+
+    def users_get_emails_by_role(self, role):
+        """Get email addresses of users with specific role"""
+        users = self.users_get_by_role(role)
+        emails = []
+        for user in users:
+            email = self.user_get_email(user.get('user_id'))
+            if email:
+                emails.append(email)
+        return emails

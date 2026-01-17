@@ -463,6 +463,204 @@ def delete_ticket(ticket_id):
         return create_response(None, "工单删除成功")
 
     except Exception as e:
-        print(f"❌ 删除工单失败: {e}")
+        print(f"[ERROR] Delete ticket failed: {e}")
         print(traceback.format_exc())
         return create_response(None, f"删除工单失败: {str(e)}", False, 500)
+
+
+# =========================================================================
+# Archive and Reminder API Endpoints
+# =========================================================================
+
+@ticket_bp.route('/due-soon', methods=['GET'])
+def get_due_soon_tickets():
+    """Get tickets due within 24 hours"""
+    try:
+        from modules.db.vendor import get_repo
+        repo = get_repo()
+        tickets = repo.tickets_get_due_soon(hours=24)
+        return create_response({
+            'tickets': tickets,
+            'count': len(tickets)
+        }, "Get due soon tickets successfully")
+
+    except Exception as e:
+        print(f"[ERROR] Get due soon tickets failed: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"Get due soon tickets failed: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/overdue', methods=['GET'])
+def get_overdue_tickets():
+    """Get all overdue tickets"""
+    try:
+        from modules.db.vendor import get_repo
+        repo = get_repo()
+        tickets = repo.tickets_get_overdue()
+        return create_response({
+            'tickets': tickets,
+            'count': len(tickets)
+        }, "Get overdue tickets successfully")
+
+    except Exception as e:
+        print(f"[ERROR] Get overdue tickets failed: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"Get overdue tickets failed: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/archive', methods=['GET'])
+def get_archived_tickets():
+    """Get archived tickets"""
+    try:
+        from modules.db.vendor import get_repo
+        repo = get_repo()
+
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 20, type=int)
+        offset = (page - 1) * limit
+
+        tickets = repo.tickets_get_archived(limit=limit, offset=offset)
+        return create_response({
+            'tickets': tickets,
+            'pagination': {
+                'page': page,
+                'limit': limit,
+                'total': len(tickets)
+            }
+        }, "Get archived tickets successfully")
+
+    except Exception as e:
+        print(f"[ERROR] Get archived tickets failed: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"Get archived tickets failed: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/<int:ticket_id>/archive', methods=['POST'])
+def archive_ticket(ticket_id):
+    """Archive a single ticket"""
+    try:
+        from modules.db.vendor import get_repo
+        repo = get_repo()
+
+        # Check if ticket exists
+        ticket = ticket_model.get_ticket_by_id(ticket_id)
+        if not ticket:
+            return create_response(None, "Ticket not found", False, 404)
+
+        # Check if ticket can be archived (must be CLOSED or REJECTED)
+        if ticket.get('status') not in ['CLOSED', 'REJECTED']:
+            return create_response(None, "Only closed or rejected tickets can be archived", False, 400)
+
+        success = repo.ticket_archive(ticket_id)
+        if not success:
+            return create_response(None, "Archive ticket failed", False, 500)
+
+        return create_response({'ticket_id': ticket_id}, "Ticket archived successfully")
+
+    except Exception as e:
+        print(f"[ERROR] Archive ticket failed: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"Archive ticket failed: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/archive/auto', methods=['POST'])
+def auto_archive_tickets():
+    """Auto archive eligible tickets (closed/rejected > 7 days)"""
+    try:
+        from modules.db.vendor import get_repo
+        repo = get_repo()
+
+        result = repo.tickets_auto_archive()
+        return create_response(result, f"Auto archived {result.get('archived_count', 0)} tickets")
+
+    except Exception as e:
+        print(f"[ERROR] Auto archive tickets failed: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"Auto archive tickets failed: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/scheduler/status', methods=['GET'])
+def get_scheduler_status():
+    """Get ticket scheduler status"""
+    try:
+        from ..services import ticket_scheduler
+        status = ticket_scheduler.get_status()
+        return create_response(status, "Get scheduler status successfully")
+
+    except Exception as e:
+        print(f"[ERROR] Get scheduler status failed: {e}")
+        return create_response(None, f"Get scheduler status failed: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/scheduler/run', methods=['POST'])
+def run_scheduler_once():
+    """Manually trigger scheduler tasks"""
+    try:
+        from ..services import ticket_scheduler
+        results = ticket_scheduler.run_once()
+        return create_response(results, "Scheduler tasks executed successfully")
+
+    except Exception as e:
+        print(f"[ERROR] Run scheduler failed: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"Run scheduler failed: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/active', methods=['GET'])
+def get_active_tickets():
+    """Get active (non-archived) tickets only"""
+    try:
+        from modules.db.vendor import get_repo
+        repo = get_repo()
+
+        # Get query parameters
+        filters = {}
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 20, type=int)
+        search = request.args.get('search', '')
+
+        if search:
+            filters['search_keyword'] = search
+
+        status = request.args.get('status')
+        if status:
+            filters['status'] = status
+
+        ticket_type = request.args.get('type')
+        if ticket_type:
+            filters['ticket_type'] = ticket_type
+
+        priority = request.args.get('priority')
+        if priority:
+            filters['priority'] = priority
+
+        creator_id = request.args.get('creator_id')
+        if creator_id:
+            filters['creator_id'] = creator_id
+
+        assignee_id = request.args.get('assignee_id')
+        if assignee_id:
+            filters['assignee_id'] = assignee_id
+
+        monitoring_point_id = request.args.get('monitoring_point_id')
+        if monitoring_point_id:
+            filters['monitoring_point_id'] = monitoring_point_id
+
+        offset = (page - 1) * limit
+
+        tickets = repo.tickets_get_active(filters, limit, offset)
+
+        return create_response({
+            'tickets': tickets,
+            'pagination': {
+                'page': page,
+                'limit': limit,
+                'total': len(tickets)
+            },
+            'filters': filters
+        }, "Get active tickets successfully")
+
+    except Exception as e:
+        print(f"[ERROR] Get active tickets failed: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"Get active tickets failed: {str(e)}", False, 500)

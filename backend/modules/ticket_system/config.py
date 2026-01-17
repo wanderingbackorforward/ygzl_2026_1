@@ -360,12 +360,13 @@ def calculate_sla(ticket_type, priority):
     return int(base_hours * multiplier)
 
 def generate_ticket_number():
-    """生成工单编号"""
+    """Generate unique ticket number using timestamp + microseconds"""
     import datetime
-    import random
+    import uuid
 
-    today = datetime.datetime.now()
-    date_str = today.strftime(TICKET_NUMBER_RULES['date_format'])
-    sequence = random.randint(1, 999)
+    now = datetime.datetime.now()
+    date_str = now.strftime(TICKET_NUMBER_RULES['date_format'])
+    # Use timestamp microseconds + short uuid for uniqueness
+    unique_suffix = f"{now.microsecond:06d}"[-3:] + uuid.uuid4().hex[:3].upper()
 
-    return f"{TICKET_NUMBER_RULES['prefix']}{TICKET_NUMBER_RULES['separator']}{date_str}{TICKET_NUMBER_RULES['separator']}{sequence:03d}"
+    return f"{TICKET_NUMBER_RULES['prefix']}{TICKET_NUMBER_RULES['separator']}{date_str}{TICKET_NUMBER_RULES['separator']}{unique_suffix}"
