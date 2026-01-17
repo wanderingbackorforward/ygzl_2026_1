@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 
 # 导入数据库配置
 from modules.database.db_config import db_config
+from modules.db.vendor import get_repo
 
 # 预测配置
 PREDICTION_DAYS = 30  # 预测未来30天
@@ -327,6 +328,89 @@ def get_point_prediction(point_id, prediction_days=30):
     """
     print(f"获取监测点 {point_id} 的趋势预测数据...")
 
+    v = os.environ.get('DB_VENDOR', '').strip().lower()
+    if v == 'supabase_http':
+        repo = get_repo()
+        detail = repo.get_point_detail(point_id)
+        ts_rows = detail.get('timeSeriesData') if isinstance(detail, dict) else None
+        analysis = detail.get('analysisData') if isinstance(detail, dict) else None
+        ts_rows = ts_rows if isinstance(ts_rows, list) else []
+        analysis = analysis if isinstance(analysis, dict) else {}
+
+        if len(ts_rows) < 3:
+            return None
+
+        point_data = pd.DataFrame(ts_rows)
+        if point_data.empty:
+            return None
+
+        if 'measurement_date' not in point_data.columns or 'value' not in point_data.columns:
+            return None
+
+        point_data['measurement_date'] = pd.to_datetime(point_data['measurement_date'], errors='coerce')
+        point_data = point_data.dropna(subset=['measurement_date'])
+        if point_data.empty:
+            return None
+
+        point_data['value'] = pd.to_numeric(point_data['value'], errors='coerce')
+
+        first_date = point_data['measurement_date'].min()
+        days = (point_data['measurement_date'] - first_date).dt.total_seconds() / (24 * 3600)
+
+        valid_mask = ~point_data['value'].isna()
+        valid_days = days[valid_mask].values
+        valid_values = point_data['value'][valid_mask].values
+        valid_dates = point_data['measurement_date'][valid_mask].tolist()
+
+        if len(valid_days) < 3:
+            return None
+
+        slope, intercept = np.polyfit(valid_days, valid_values, 1)
+        slope = float(slope)
+        intercept = float(intercept)
+        r_squared = float(analysis.get('r_squared') or 0)
+
+        fitted_values = (slope * valid_days + intercept).tolist()
+
+        prediction = calculate_prediction(valid_days, valid_values, slope, intercept, prediction_days)
+        if prediction is None:
+            return None
+
+        last_valid_date = valid_dates[-1]
+        future_dates = [(last_valid_date + timedelta(days=i)).isoformat() for i in range(1, prediction_days + 1)]
+
+        return {
+            'point_id': point_id,
+            'historical': {
+                'dates': [d.isoformat() for d in valid_dates],
+                'days': valid_days.tolist(),
+                'values': valid_values.tolist(),
+                'fitted_values': fitted_values
+            },
+            'regression': {
+                'slope': slope,
+                'intercept': intercept,
+                'r_squared': r_squared,
+                'equation': f"y = {slope:.6f}x + {intercept:.4f}"
+            },
+            'prediction': {
+                'dates': future_dates,
+                'days': prediction['future_days'],
+                'values': prediction['future_predictions'],
+                'confidence_intervals': prediction['confidence_intervals'],
+                'end_prediction': prediction['end_prediction'],
+                'predicted_change': prediction['predicted_change']
+            },
+            'risk_assessment': {
+                'risk_level': prediction['risk_level'],
+                'risk_score': prediction['risk_score'],
+                'warnings': prediction['warnings'],
+                'trend_type': str(analysis.get('trend_type') or '未知'),
+                'alert_level': str(analysis.get('alert_level') or '正常')
+            },
+            'model_quality': prediction['model_quality']
+        }
+
     # 使用 mysql.connector 直接查询
     conn = mysql.connector.connect(**db_config)
     cursor = conn.cursor(dictionary=True)
@@ -440,6 +524,64 @@ def get_all_predictions_summary():
         list: 包含所有监测点的风险评分和预警信息
     """
     print("获取所有监测点的预测汇总...")
+
+    v = os.environ.get('DB_VENDOR', '').strip().lower()
+    if v == 'supabase_http':
+        repo = get_repo()
+        rows = repo.get_summary()
+        if not rows:
+            return []
+
+        results = []
+        for row in rows:
+            slope = float(row.get('trend_slope') or 0)
+
+            daily_rate = abs(slope)
+            if daily_rate > 0.15:
+                risk_level = "critical"
+                risk_score = 90
+            elif daily_rate > 0.08:
+                risk_level = "high"
+                risk_score = 70
+            elif daily_rate > 0.03:
+                risk_level = "medium"
+                risk_score = 50
+            elif daily_rate > 0.01:
+                risk_level = "low"
+                risk_score = 30
+            else:
+                risk_level = "normal"
+                risk_score = 10
+
+            predicted_change_30d = slope * 30
+
+            warnings = []
+            if slope < -0.1:
+                warnings.append("沉降速率过快")
+            if predicted_change_30d < -3.0:
+                warnings.append("预测将超过警戒阈值")
+
+            avg_value = row.get('avg_value')
+            try:
+                avg_value = float(avg_value) if avg_value is not None else 0.0
+            except Exception:
+                avg_value = 0.0
+
+            results.append({
+                'point_id': row.get('point_id'),
+                'trend_slope': slope,
+                'r_squared': float(row.get('r_squared') or 0),
+                'trend_type': str(row.get('trend_type') or '未知'),
+                'alert_level': str(row.get('alert_level') or '正常'),
+                'risk_score': risk_score,
+                'risk_level': risk_level,
+                'predicted_change_30d': predicted_change_30d,
+                'predicted_value_30d': avg_value + predicted_change_30d,
+                'warnings': str(warnings)
+            })
+
+        results.sort(key=lambda x: x['risk_score'], reverse=True)
+        return results
 
     # 使用 mysql.connector 直接查询
     conn = mysql.connector.connect(**db_config)
