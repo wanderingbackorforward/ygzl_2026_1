@@ -35,6 +35,86 @@ export interface TrendStats {
   falling: number;
 }
 
+// Prediction API Types
+export interface ConfidenceInterval {
+  day: number;
+  lower: number;
+  upper: number;
+}
+
+export interface PredictionHistorical {
+  dates: string[];
+  days: number[];
+  values: number[];
+  fitted_values: number[];
+}
+
+export interface PredictionRegression {
+  slope: number;
+  intercept: number;
+  r_squared: number;
+  equation: string;
+}
+
+export interface PredictionForecast {
+  dates: string[];
+  days: number[];
+  values: number[];
+  confidence_intervals: ConfidenceInterval[];
+  end_prediction: number;
+  predicted_change: number;
+}
+
+export interface RiskAssessment {
+  risk_level: 'critical' | 'high' | 'medium' | 'low' | 'normal';
+  risk_score: number;
+  warnings: string[];
+  trend_type: string;
+  alert_level: string;
+}
+
+export interface ModelQuality {
+  mse: number;
+  rmse: number;
+  data_points: number;
+}
+
+export interface PointPredictionData {
+  point_id: string;
+  historical: PredictionHistorical;
+  regression: PredictionRegression;
+  prediction: PredictionForecast;
+  risk_assessment: RiskAssessment;
+  model_quality: ModelQuality;
+}
+
+export interface PredictionSummaryItem {
+  point_id: string;
+  trend_slope: number;
+  r_squared: number;
+  trend_type: string;
+  alert_level: string;
+  risk_score: number;
+  risk_level: string;
+  predicted_change_30d: number;
+  predicted_value_30d: number;
+  warnings: string;
+}
+
+export interface RiskAlertStats {
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  normal: number;
+  total: number;
+}
+
+export interface RiskAlertsResponse {
+  alerts: PredictionSummaryItem[];
+  stats: RiskAlertStats;
+}
+
 // Temperature API Types
 export interface TemperatureSensor {
   sensor_id: string;

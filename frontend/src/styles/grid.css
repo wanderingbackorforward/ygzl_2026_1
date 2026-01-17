@@ -145,9 +145,12 @@
 
 /* Layout Controls */
 .layout-controls {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 100;
   display: flex;
   gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
 }
 
 .layout-controls__btn {

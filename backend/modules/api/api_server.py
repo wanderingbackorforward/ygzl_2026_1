@@ -31,7 +31,7 @@ from modules.db.vendor import get_repo
 import requests
 repo = get_repo()
 from modules.data_import.settlement_data_import import import_excel_to_mysql
-from modules.data_processing.process_settlement_data import process_data
+from modules.data_processing.process_settlement_data import process_data, get_point_prediction, get_all_predictions_summary
 from modules.data_processing.update_monitoring_points import update_monitoring_points
 # 裂缝模块
 from modules.data_import.crack_data_import import import_crack_excel, first_time_import
@@ -225,6 +225,67 @@ def get_trends():
     """获取所有监测点的趋势分类统计"""
     trends = repo.get_trends()
     return jsonify(trends)
+
+@app.route('/api/prediction/<point_id>')
+def get_prediction(point_id):
+    print(f"[API] GET /api/prediction/{point_id}")
+    """获取特定监测点的趋势预测数据"""
+    try:
+        # 获取预测天数参数，默认30天
+        days = request.args.get('days', 30, type=int)
+        days = max(7, min(days, 90))  # 限制在7-90天之间
+
+        prediction = get_point_prediction(point_id, days)
+        if prediction is None:
+            return jsonify({'error': f'未找到监测点 {point_id} 的数据或数据不足'}), 404
+
+        return json.dumps(prediction, default=decimal_default)
+    except Exception as e:
+        print(f"获取预测数据失败: {str(e)}")
+        return jsonify({'error': f'获取预测数据失败: {str(e)}'}), 500
+
+@app.route('/api/predictions/summary')
+def get_predictions_summary():
+    print("[API] GET /api/predictions/summary")
+    """获取所有监测点的预测汇总和风险评估"""
+    try:
+        summary = get_all_predictions_summary()
+        return json.dumps(summary, default=decimal_default)
+    except Exception as e:
+        print(f"获取预测汇总失败: {str(e)}")
+        return jsonify({'error': f'获取预测汇总失败: {str(e)}'}), 500
+
+@app.route('/api/risk/alerts')
+def get_risk_alerts():
+    print("[API] GET /api/risk/alerts")
+    """获取风险预警列表，按风险等级排序"""
+    try:
+        summary = get_all_predictions_summary()
+        # 过滤出有风险的监测点
+        alerts = [
+            item for item in summary
+            if item.get('risk_level') in ['critical', 'high', 'medium']
+        ]
+        # 按风险评分降序排列
+        alerts.sort(key=lambda x: x.get('risk_score', 0), reverse=True)
+
+        # 统计各风险等级数量
+        stats = {
+            'critical': len([a for a in alerts if a.get('risk_level') == 'critical']),
+            'high': len([a for a in alerts if a.get('risk_level') == 'high']),
+            'medium': len([a for a in alerts if a.get('risk_level') == 'medium']),
+            'low': len([a for a in summary if a.get('risk_level') == 'low']),
+            'normal': len([a for a in summary if a.get('risk_level') == 'normal']),
+            'total': len(summary)
+        }
+
+        return json.dumps({
+            'alerts': alerts,
+            'stats': stats
+        }, default=decimal_default)
+    except Exception as e:
+        print(f"获取风险预警失败: {str(e)}")
+        return jsonify({'error': f'获取风险预警失败: {str(e)}'}), 500
 
 # 使用 Flask 内置静态文件服务，并添加响应头处理
 @app.after_request

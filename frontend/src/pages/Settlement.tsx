@@ -7,8 +7,10 @@ import { TrendChart } from '../components/charts/TrendChart';
 import { DistributionChart } from '../components/charts/DistributionChart';
 import { TimeSeriesChart } from '../components/charts/TimeSeriesChart';
 import { RateChart } from '../components/charts/RateChart';
+import { TrendPredictionChart } from '../components/charts/TrendPredictionChart';
 import { PointSelector } from '../components/shared/PointSelector';
 import { PointDetails } from '../components/shared/PointDetails';
+import { RiskAlertCard } from '../components/shared/RiskAlertCard';
 import type { CardConfig } from '../types/layout';
 
 import '../styles/variables.css';
@@ -65,6 +67,26 @@ const RateChartCard: React.FC = () => {
   );
 };
 
+const TrendPredictionChartCard: React.FC = () => {
+  const { selectedPointId } = useSettlement();
+  return (
+    <TrendPredictionChart
+      cardId="trend-prediction"
+      pointId={selectedPointId}
+    />
+  );
+};
+
+const RiskAlertCardWrapper: React.FC = () => {
+  const { selectPoint } = useSettlement();
+  return (
+    <RiskAlertCard
+      cardId="risk-alerts"
+      onSelectPoint={selectPoint}
+    />
+  );
+};
+
 // Card configurations
 const SETTLEMENT_CARDS: CardConfig[] = [
   {
@@ -75,39 +97,53 @@ const SETTLEMENT_CARDS: CardConfig[] = [
     defaultLayout: { x: 0, y: 0, w: 6, h: 4, minW: 4, minH: 3 }
   },
   {
-    id: 'distribution',
-    title: '趋势类型分布',
-    icon: 'fas fa-chart-pie',
-    component: DistributionChart,
-    defaultLayout: { x: 0, y: 4, w: 6, h: 4, minW: 4, minH: 3 }
+    id: 'risk-alerts',
+    title: '风险预警',
+    icon: 'fas fa-exclamation-triangle',
+    component: RiskAlertCardWrapper,
+    defaultLayout: { x: 6, y: 0, w: 3, h: 4, minW: 2, minH: 3 }
   },
   {
     id: 'point-selector',
     title: '监测点选择',
     icon: 'fas fa-map-marker-alt',
     component: PointSelectorCard,
-    defaultLayout: { x: 6, y: 0, w: 3, h: 3, minW: 2, minH: 2 }
+    defaultLayout: { x: 9, y: 0, w: 3, h: 2, minW: 2, minH: 2 }
   },
   {
     id: 'point-details',
     title: '监测点详情',
     icon: 'fas fa-info-circle',
     component: PointDetailsCard,
-    defaultLayout: { x: 9, y: 0, w: 3, h: 3, minW: 2, minH: 2 }
+    defaultLayout: { x: 9, y: 2, w: 3, h: 2, minW: 2, minH: 2 }
+  },
+  {
+    id: 'trend-prediction',
+    title: '趋势预测',
+    icon: 'fas fa-crystal-ball',
+    component: TrendPredictionChartCard,
+    defaultLayout: { x: 0, y: 4, w: 6, h: 5, minW: 4, minH: 4 }
+  },
+  {
+    id: 'distribution',
+    title: '趋势类型分布',
+    icon: 'fas fa-chart-pie',
+    component: DistributionChart,
+    defaultLayout: { x: 6, y: 4, w: 3, h: 5, minW: 3, minH: 3 }
   },
   {
     id: 'time-series',
     title: '时间序列',
     icon: 'fas fa-chart-line',
     component: TimeSeriesChartCard,
-    defaultLayout: { x: 6, y: 3, w: 6, h: 4, minW: 4, minH: 3 }
+    defaultLayout: { x: 9, y: 4, w: 3, h: 5, minW: 3, minH: 3 }
   },
   {
     id: 'rate-chart',
     title: '沉降速率',
     icon: 'fas fa-tachometer-alt',
     component: RateChartCard,
-    defaultLayout: { x: 0, y: 8, w: 12, h: 4, minW: 6, minH: 3 }
+    defaultLayout: { x: 0, y: 9, w: 12, h: 4, minW: 6, minH: 3 }
   },
 ];
 
@@ -133,6 +169,13 @@ const SettlementDashboard: React.FC = () => {
         return <TrendChart cardId="trend-chart-fullscreen" />;
       case 'distribution':
         return <DistributionChart cardId="distribution-fullscreen" />;
+      case 'trend-prediction':
+        return (
+          <TrendPredictionChart
+            cardId="trend-prediction-fullscreen"
+            pointId={selectedPointId}
+          />
+        );
       case 'time-series':
         return (
           <TimeSeriesChart
