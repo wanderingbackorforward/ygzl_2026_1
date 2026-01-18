@@ -12,6 +12,7 @@ import ThreeModel from './pages/ThreeModel'
 import SettlementVideo from './pages/SettlementVideo'
 import Tickets from './pages/Tickets'
 import Cover from './pages/Cover'
+import MetricsDashboard from './pages/MetricsDashboard'
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
         <Route path="/three" element={<ThreeModel />} />
         <Route path="/settlement-video" element={<SettlementVideo />} />
         <Route path="/tickets" element={<Tickets />} />
+        <Route path="/metrics" element={<MetricsDashboard />} />
       </Routes>
     </BrowserRouter>
   )

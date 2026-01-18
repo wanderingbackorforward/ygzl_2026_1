@@ -190,7 +190,7 @@ def react_assets(filename):
 # 前端 SPA 路由兜底：当构建存在时，将非 /api 与非 /static 的路径交给 React
 SPA_ROUTES = {
     'settlement', 'temperature', 'cracks', 'vibration',
-    'insar', 'overview', 'three', 'settlement-video', 'tickets'
+    'insar', 'overview', 'three', 'settlement-video', 'tickets', 'metrics'
 }
 
 @app.route('/<path:spa_path>')

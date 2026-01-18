@@ -29,6 +29,7 @@ export default function Nav() {
         <Item to="/three" icon="fas fa-cubes" text="3D模型" />
         <Item to="/settlement-video" icon="fas fa-video" text="沉降视频" />
         <Item to="/tickets" icon="fas fa-ticket-alt" text="工单" />
+        <Item to="/metrics" icon="fas fa-tachometer-alt" text="指标引擎" />
       </ul>
     </nav>
   )
