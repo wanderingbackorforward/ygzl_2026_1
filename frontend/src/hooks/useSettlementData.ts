@@ -114,7 +114,10 @@ export function useSettlementPoints(): { points: string[]; loading: boolean } {
   useEffect(() => {
     const fetchPoints = async () => {
       try {
-        const result = await apiGet<{ point_id: string }[]>('/points');
+        // Use /api/summary instead of /api/points to match legacy version
+        // /api/summary queries settlement_analysis table which has real monitoring data
+        // /api/points queries monitoring_points table which may only have mock data
+        const result = await apiGet<{ point_id: string }[]>('/summary');
         setPoints(result.map(p => p.point_id));
       } catch (e) {
         console.error('Failed to load points:', e);
