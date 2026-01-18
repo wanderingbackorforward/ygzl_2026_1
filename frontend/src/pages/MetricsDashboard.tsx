@@ -25,9 +25,9 @@ const StatusBadge: React.FC<{ status: ThresholdStatus }> = ({ status }) => {
     critical: '#ff3e5f',
   }
   const labels: Record<ThresholdStatus, string> = {
-    normal: '[OK]',
-    warning: '[WARNING]',
-    critical: '[CRITICAL]',
+    normal: '[正常]',
+    warning: '[警告]',
+    critical: '[严重]',
   }
   return (
     <span
@@ -57,19 +57,30 @@ const EngineStatusCard: React.FC<CardComponentProps> = () => {
   } = useMetrics()
 
   const handleToggle = async () => {
-    if (engineStatus?.background_processing) {
-      await stopEngine()
-    } else {
-      await startEngine(60)
+    try {
+      if (engineStatus?.background_processing) {
+        await stopEngine()
+      } else {
+        await startEngine(60)
+      }
+    } catch (e) {
+      console.error('Engine toggle error:', e)
     }
   }
 
   if (engineLoading) {
-    return <div style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Loading...</div>
+    return <div style={{ padding: '1rem', color: 'var(--text-secondary)' }}>加载中...</div>
   }
 
   if (engineError) {
-    return <div style={{ padding: '1rem', color: '#ff3e5f' }}>{engineError}</div>
+    return (
+      <div style={{ padding: '1rem' }}>
+        <div style={{ color: '#ff3e5f', marginBottom: '0.5rem' }}>连接错误</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+          请确保后端服务已启动
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -78,7 +89,7 @@ const EngineStatusCard: React.FC<CardComponentProps> = () => {
         <>
           <div style={{ marginBottom: '1rem' }}>
             <span style={{ color: 'var(--text-secondary)', marginRight: '0.5rem' }}>
-              Background Processing:
+              后台处理:
             </span>
             <span
               style={{
@@ -86,23 +97,23 @@ const EngineStatusCard: React.FC<CardComponentProps> = () => {
                 fontWeight: 'bold',
               }}
             >
-              {engineStatus.background_processing ? '[ACTIVE]' : '[INACTIVE]'}
+              {engineStatus.background_processing ? '[运行中]' : '[已停止]'}
             </span>
           </div>
           <div style={{ marginBottom: '1rem' }}>
             <span style={{ color: 'var(--text-secondary)', marginRight: '0.5rem' }}>
-              Interval:
+              处理间隔:
             </span>
             <span style={{ color: 'var(--text-primary)' }}>
-              {engineStatus.processing_interval}s
+              {engineStatus.processing_interval}秒
             </span>
           </div>
           <div style={{ marginBottom: '1rem' }}>
             <span style={{ color: 'var(--text-secondary)', marginRight: '0.5rem' }}>
-              Config Cache:
+              配置缓存:
             </span>
             <span style={{ color: 'var(--text-primary)' }}>
-              {engineStatus.config_cache_size} items
+              {engineStatus.config_cache_size} 项
             </span>
           </div>
           <button
@@ -121,7 +132,7 @@ const EngineStatusCard: React.FC<CardComponentProps> = () => {
               width: '100%',
             }}
           >
-            {engineStatus.background_processing ? '[STOP ENGINE]' : '[START ENGINE]'}
+            {engineStatus.background_processing ? '[停止引擎]' : '[启动引擎]'}
           </button>
         </>
       )}
@@ -138,11 +149,18 @@ const AlertsSummaryCard: React.FC<CardComponentProps> = () => {
     useMetrics()
 
   if (alertsLoading) {
-    return <div style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Loading...</div>
+    return <div style={{ padding: '1rem', color: 'var(--text-secondary)' }}>加载中...</div>
   }
 
   if (alertsError) {
-    return <div style={{ padding: '1rem', color: '#ff3e5f' }}>{alertsError}</div>
+    return (
+      <div style={{ padding: '1rem' }}>
+        <div style={{ color: '#ff3e5f', marginBottom: '0.5rem' }}>连接错误</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+          请确保后端服务已启动
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -167,7 +185,7 @@ const AlertsSummaryCard: React.FC<CardComponentProps> = () => {
           <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ff3e5f' }}>
             {criticalCount}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>CRITICAL</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>严重告警</div>
         </div>
         <div
           style={{
@@ -182,7 +200,7 @@ const AlertsSummaryCard: React.FC<CardComponentProps> = () => {
           <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ffab00' }}>
             {warningCount}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>WARNING</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>警告</div>
         </div>
       </div>
       <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
@@ -221,7 +239,7 @@ const AlertsSummaryCard: React.FC<CardComponentProps> = () => {
           ))
         ) : (
           <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '1rem' }}>
-            No active alerts
+            暂无活跃告警
           </div>
         )}
       </div>
@@ -246,19 +264,26 @@ const PointsOverviewCard: React.FC<CardComponentProps> = () => {
 
   const pointTypes: (PointType | null)[] = [null, 'settlement', 'crack', 'temperature', 'vibration']
   const typeLabels: Record<string, string> = {
-    '': 'ALL',
-    settlement: 'Settlement',
-    crack: 'Crack',
-    temperature: 'Temperature',
-    vibration: 'Vibration',
+    '': '全部',
+    settlement: '沉降',
+    crack: '裂缝',
+    temperature: '温度',
+    vibration: '振动',
   }
 
   if (pointsLoading) {
-    return <div style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Loading...</div>
+    return <div style={{ padding: '1rem', color: 'var(--text-secondary)' }}>加载中...</div>
   }
 
   if (pointsError) {
-    return <div style={{ padding: '1rem', color: '#ff3e5f' }}>{pointsError}</div>
+    return (
+      <div style={{ padding: '1rem' }}>
+        <div style={{ color: '#ff3e5f', marginBottom: '0.5rem' }}>连接错误</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+          请确保后端服务已启动
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -314,16 +339,16 @@ const PointsOverviewCard: React.FC<CardComponentProps> = () => {
                   justifyContent: 'space-between',
                 }}
               >
-                <span>{point.point_type.toUpperCase()}</span>
+                <span>{typeLabels[point.point_type] || point.point_type}</span>
                 <span style={{ color: point.status === 'active' ? '#00e5ff' : '#888' }}>
-                  [{point.status.toUpperCase()}]
+                  [{point.status === 'active' ? '启用' : '停用'}]
                 </span>
               </div>
             </div>
           ))
         ) : (
           <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '1rem' }}>
-            No monitoring points found
+            暂无监测点
           </div>
         )}
       </div>
@@ -338,12 +363,26 @@ const PointsOverviewCard: React.FC<CardComponentProps> = () => {
 const PointDetailsCard: React.FC<CardComponentProps> = () => {
   const { selectedPoint, selectedPointLoading, selectedPointError } = useMetrics()
 
+  const typeLabels: Record<string, string> = {
+    settlement: '沉降',
+    crack: '裂缝',
+    temperature: '温度',
+    vibration: '振动',
+  }
+
   if (selectedPointLoading) {
-    return <div style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Loading...</div>
+    return <div style={{ padding: '1rem', color: 'var(--text-secondary)' }}>加载中...</div>
   }
 
   if (selectedPointError) {
-    return <div style={{ padding: '1rem', color: '#ff3e5f' }}>{selectedPointError}</div>
+    return (
+      <div style={{ padding: '1rem' }}>
+        <div style={{ color: '#ff3e5f', marginBottom: '0.5rem' }}>加载失败</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+          {selectedPointError}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -367,37 +406,37 @@ const PointDetailsCard: React.FC<CardComponentProps> = () => {
           </div>
           <div style={{ display: 'grid', gap: '0.5rem' }}>
             <div>
-              <span style={{ color: 'var(--text-secondary)' }}>Type: </span>
+              <span style={{ color: 'var(--text-secondary)' }}>类型: </span>
               <span style={{ color: 'var(--text-primary)' }}>
-                {selectedPoint.point_type.toUpperCase()}
+                {typeLabels[selectedPoint.point_type] || selectedPoint.point_type}
               </span>
             </div>
             <div>
-              <span style={{ color: 'var(--text-secondary)' }}>Status: </span>
+              <span style={{ color: 'var(--text-secondary)' }}>状态: </span>
               <span style={{ color: selectedPoint.status === 'active' ? '#00e5ff' : '#888' }}>
-                [{selectedPoint.status.toUpperCase()}]
+                [{selectedPoint.status === 'active' ? '启用' : '停用'}]
               </span>
             </div>
             {selectedPoint.description && (
               <div>
-                <span style={{ color: 'var(--text-secondary)' }}>Description: </span>
+                <span style={{ color: 'var(--text-secondary)' }}>描述: </span>
                 <span style={{ color: 'var(--text-primary)' }}>{selectedPoint.description}</span>
               </div>
             )}
             {selectedPoint.threshold_config && (
               <div style={{ marginTop: '0.5rem' }}>
                 <div style={{ color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
-                  Thresholds:
+                  阈值配置:
                 </div>
                 <div style={{ paddingLeft: '0.5rem', fontSize: '0.85rem' }}>
                   <div>
-                    <span style={{ color: '#ffab00' }}>Warning: </span>
+                    <span style={{ color: '#ffab00' }}>警告: </span>
                     <span style={{ color: 'var(--text-primary)' }}>
                       {selectedPoint.threshold_config.warning}
                     </span>
                   </div>
                   <div>
-                    <span style={{ color: '#ff3e5f' }}>Critical: </span>
+                    <span style={{ color: '#ff3e5f' }}>严重: </span>
                     <span style={{ color: 'var(--text-primary)' }}>
                       {selectedPoint.threshold_config.critical}
                     </span>
@@ -416,7 +455,7 @@ const PointDetailsCard: React.FC<CardComponentProps> = () => {
                   paddingTop: '0.5rem',
                 }}
               >
-                Latest Metrics:
+                最新指标:
               </div>
               {selectedPoint.latest_metrics.map((metric, idx) => (
                 <div
@@ -450,7 +489,7 @@ const PointDetailsCard: React.FC<CardComponentProps> = () => {
         </>
       ) : (
         <div style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>
-          Select a monitoring point to view details
+          请选择一个监测点查看详情
         </div>
       )}
     </div>
@@ -464,12 +503,27 @@ const PointDetailsCard: React.FC<CardComponentProps> = () => {
 const MetricConfigsCard: React.FC<CardComponentProps> = () => {
   const { configs, configsLoading, configsError } = useMetrics()
 
+  const methodLabels: Record<string, string> = {
+    difference: '差值计算',
+    cumulative: '累计计算',
+    average: '平均值',
+    regression: '回归分析',
+    rate: '变化率',
+  }
+
   if (configsLoading) {
-    return <div style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Loading...</div>
+    return <div style={{ padding: '1rem', color: 'var(--text-secondary)' }}>加载中...</div>
   }
 
   if (configsError) {
-    return <div style={{ padding: '1rem', color: '#ff3e5f' }}>{configsError}</div>
+    return (
+      <div style={{ padding: '1rem' }}>
+        <div style={{ color: '#ff3e5f', marginBottom: '0.5rem' }}>连接错误</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+          请确保后端服务已启动
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -495,8 +549,8 @@ const MetricConfigsCard: React.FC<CardComponentProps> = () => {
                 marginTop: '0.25rem',
               }}
             >
-              <span>Method: {config.calculation_method}</span>
-              <span>Unit: {config.unit}</span>
+              <span>方法: {methodLabels[config.calculation_method] || config.calculation_method}</span>
+              <span>单位: {config.unit}</span>
             </div>
             <div
               style={{
@@ -506,14 +560,14 @@ const MetricConfigsCard: React.FC<CardComponentProps> = () => {
                 marginTop: '0.25rem',
               }}
             >
-              <span style={{ color: '#ffab00' }}>W: {config.warning_threshold}</span>
-              <span style={{ color: '#ff3e5f' }}>C: {config.critical_threshold}</span>
+              <span style={{ color: '#ffab00' }}>警告: {config.warning_threshold}</span>
+              <span style={{ color: '#ff3e5f' }}>严重: {config.critical_threshold}</span>
             </div>
           </div>
         ))
       ) : (
         <div style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>
-          No metric configurations found
+          暂无指标配置
         </div>
       )}
     </div>
@@ -539,7 +593,14 @@ const ProcessAllCard: React.FC<CardComponentProps> = () => {
   }
 
   if (calculationError) {
-    return <div style={{ padding: '1rem', color: '#ff3e5f' }}>{calculationError}</div>
+    return (
+      <div style={{ padding: '1rem' }}>
+        <div style={{ color: '#ff3e5f', marginBottom: '0.5rem' }}>处理失败</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+          {calculationError}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -560,11 +621,11 @@ const ProcessAllCard: React.FC<CardComponentProps> = () => {
           opacity: calculating ? 0.6 : 1,
         }}
       >
-        {calculating ? '[PROCESSING...]' : '[PROCESS ALL POINTS]'}
+        {calculating ? '[处理中...]' : '[批量处理所有点位]'}
       </button>
       {lastResult && (
         <div style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
-          Last run: Processed {lastResult.processed} points
+          上次处理: 已处理 {lastResult.processed} 个点位
         </div>
       )}
     </div>
@@ -578,42 +639,42 @@ const ProcessAllCard: React.FC<CardComponentProps> = () => {
 const METRICS_CARDS: CardConfig[] = [
   {
     id: 'engine-status',
-    title: '[ENGINE] Status',
+    title: '引擎状态',
     icon: 'fas fa-cogs',
     component: EngineStatusCard,
     defaultLayout: { x: 0, y: 0, w: 3, h: 3, minW: 2, minH: 3 },
   },
   {
     id: 'alerts-summary',
-    title: '[ALERTS] Summary',
+    title: '告警汇总',
     icon: 'fas fa-exclamation-triangle',
     component: AlertsSummaryCard,
     defaultLayout: { x: 3, y: 0, w: 4, h: 3, minW: 3, minH: 3 },
   },
   {
     id: 'process-all',
-    title: '[ACTION] Process',
+    title: '批量处理',
     icon: 'fas fa-play-circle',
     component: ProcessAllCard,
     defaultLayout: { x: 7, y: 0, w: 5, h: 3, minW: 3, minH: 2 },
   },
   {
     id: 'points-overview',
-    title: '[POINTS] Overview',
+    title: '监测点列表',
     icon: 'fas fa-map-marker-alt',
     component: PointsOverviewCard,
     defaultLayout: { x: 0, y: 3, w: 4, h: 5, minW: 3, minH: 4 },
   },
   {
     id: 'point-details',
-    title: '[POINT] Details',
+    title: '点位详情',
     icon: 'fas fa-info-circle',
     component: PointDetailsCard,
     defaultLayout: { x: 4, y: 3, w: 4, h: 5, minW: 3, minH: 4 },
   },
   {
     id: 'metric-configs',
-    title: '[CONFIG] Metrics',
+    title: '指标配置',
     icon: 'fas fa-sliders-h',
     component: MetricConfigsCard,
     defaultLayout: { x: 8, y: 3, w: 4, h: 5, minW: 3, minH: 4 },
@@ -644,7 +705,7 @@ const MetricsDashboardContent: React.FC = () => {
       <div className="dashboard-header">
         <h1 className="dashboard-title">
           <i className="fas fa-chart-line" style={{ marginRight: '0.5rem' }} />
-          METRICS ENGINE DASHBOARD
+          指标计算引擎仪表板
         </h1>
       </div>
       <DashboardGrid
