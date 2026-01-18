@@ -224,6 +224,16 @@ export interface AlertSummary {
   computed_at: string;
 }
 
+export interface AlertsResponse {
+  alerts: AlertSummary[];
+  total_alerts: number;
+  warning_count: number;
+  critical_count: number;
+  affected_points: number;
+  by_point: Record<string, AlertSummary[]>;
+  generated_at: string;
+}
+
 // =============================================================================
 // API Response Wrappers
 // =============================================================================

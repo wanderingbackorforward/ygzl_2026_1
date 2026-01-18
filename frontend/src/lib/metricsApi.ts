@@ -14,6 +14,7 @@ import type {
   MetricSnapshot,
   EngineStatus,
   AlertSummary,
+  AlertsResponse,
   CalculationResult,
   MetricsApiResponse,
   MetricsListResponse,
@@ -211,12 +212,12 @@ export async function processAllActivePoints(): Promise<{
 export async function getAlerts(
   status?: 'warning' | 'critical',
   pointType?: string
-): Promise<AlertSummary[]> {
+): Promise<AlertsResponse> {
   const params = new URLSearchParams()
   if (status) params.append('status', status)
   if (pointType) params.append('point_type', pointType)
   const query = params.toString()
-  return metricsGet<AlertSummary[]>(`/engineering/alerts${query ? `?${query}` : ''}`)
+  return metricsGet<AlertsResponse>(`/engineering/alerts${query ? `?${query}` : ''}`)
 }
 
 // =============================================================================

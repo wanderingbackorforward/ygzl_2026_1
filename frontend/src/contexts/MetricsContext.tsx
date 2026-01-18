@@ -15,6 +15,7 @@ import type {
   MonitoringPoint,
   MonitoringPointWithMetrics,
   AlertSummary,
+  AlertsResponse,
   MetricConfig,
   EngineStatus,
   CalculationResult,
@@ -113,11 +114,14 @@ export const MetricsProvider: React.FC<MetricsProviderProps> = ({ children }) =>
 
   // Fetch alerts
   const {
-    data: alerts,
+    data: alertsResponse,
     loading: alertsLoading,
     error: alertsError,
     refetch: refetchAlerts,
   } = useAlerts()
+
+  // Extract alerts array from response
+  const alerts = alertsResponse?.alerts || null
 
   // Fetch metric configs
   const {
@@ -160,9 +164,9 @@ export const MetricsProvider: React.FC<MetricsProviderProps> = ({ children }) =>
     }
   }, [points, selectedPointId])
 
-  // Calculate alert counts
-  const criticalCount = alerts?.filter((a) => a.threshold_status === 'critical').length || 0
-  const warningCount = alerts?.filter((a) => a.threshold_status === 'warning').length || 0
+  // Get alert counts from response
+  const criticalCount = alertsResponse?.critical_count || 0
+  const warningCount = alertsResponse?.warning_count || 0
 
   // Context value
   const value: MetricsContextValue = {

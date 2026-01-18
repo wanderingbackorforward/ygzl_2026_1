@@ -13,6 +13,7 @@ import type {
   EngineeringMetric,
   AlertRule,
   AlertSummary,
+  AlertsResponse,
   EngineStatus,
   CalculationResult,
 } from '../types/metrics'
@@ -233,8 +234,8 @@ export function useLatestMetrics(pointId: string | null): UseDataResult<Engineer
 export function useAlerts(
   status?: 'warning' | 'critical',
   pointType?: string
-): UseDataResult<AlertSummary[]> {
-  const [data, setData] = useState<AlertSummary[] | null>(null)
+): UseDataResult<AlertsResponse> {
+  const [data, setData] = useState<AlertsResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
