@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # modules/api/api_server.py
 """
 监测系统API服务器
@@ -10,6 +11,10 @@ import json
 from datetime import datetime
 import os
 import sys
+
+# 加载环境变量
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), '../../..', '.env'))
 import threading
 import uuid
 from decimal import Decimal # <--- 新增导入
