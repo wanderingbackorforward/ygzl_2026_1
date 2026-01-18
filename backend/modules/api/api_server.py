@@ -49,6 +49,14 @@ from modules.api.vibration_handler import vibration_bp
 # 工单系统模块
 from modules.ticket_system.api import ticket_bp, user_bp
 
+# 指标计算引擎模块
+try:
+    from modules.metrics_engine.api import metrics_bp
+    METRICS_ENGINE_AVAILABLE = True
+except ImportError:
+    METRICS_ENGINE_AVAILABLE = False
+    print("[Warning] Metrics engine module not available")
+
 # =========================================================
 # 应用初始化：创建Flask应用和Blueprint
 # =========================================================
@@ -871,6 +879,10 @@ app.register_blueprint(vibration_bp)
 app.register_blueprint(ticket_bp)
 # 注册用户管理API蓝图
 app.register_blueprint(user_bp)
+# 注册指标引擎API蓝图
+if METRICS_ENGINE_AVAILABLE:
+    app.register_blueprint(metrics_bp)
+    print("[API] Metrics engine API registered")
 
 # 健康检查路由
 @app.route('/api/health')
