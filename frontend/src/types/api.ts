@@ -146,6 +146,28 @@ export interface TemperatureSummary {
   };
 }
 
+export interface TemperatureAnalysisData {
+  sensor_id?: string;
+  sensor_name?: string;
+  avg_temperature?: number;
+  min_temperature?: number;
+  max_temperature?: number;
+  std_deviation?: number;
+  avg_daily_range?: number;
+  data_count?: number;
+  trend_type?: string;
+  trend_slope?: number;
+  r_squared?: number;
+  p_value?: number;
+  alert_level?: string;
+  last_updated?: string;
+}
+
+export interface TemperatureDetailData {
+  timeSeriesData: TemperatureDataPoint[];
+  analysisData: TemperatureAnalysisData;
+}
+
 // Crack API Types
 export interface CrackMonitoringPoint {
   point_id: string;

@@ -14,11 +14,24 @@ interface Props extends CardComponentProps {
 export const TemperatureRangeChart: React.FC<Props> = ({ sensorId, data, loading = false }) => {
   const option = useMemo((): EChartsOption => {
     const arr = Array.isArray(data) ? data : [];
-    if (arr.length === 0) {
+    const validRangeData = arr
+      .map(d => {
+        if (!d || !d.measurement_date) return null;
+        const range =
+          (d.temperature_range as any) != null
+            ? (d.temperature_range as any)
+            : (d.max_temperature as any) != null && (d.min_temperature as any) != null
+              ? ((d.max_temperature as any) - (d.min_temperature as any))
+              : null;
+        if (range == null) return null;
+        return { measurement_date: d.measurement_date, temperature_range: range };
+      })
+      .filter(Boolean) as { measurement_date: string; temperature_range: any }[];
+    if (validRangeData.length === 0) {
       return { title: { text: sensorId ? `${sensorId} - 日温差` : '请选择传感器', subtext: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#888', fontSize: 14 } } };
     }
-    const dates = arr.map(d => d.measurement_date);
-    const ranges = arr.map(d => d.temperature_range);
+    const dates = validRangeData.map(d => d.measurement_date);
+    const ranges = validRangeData.map(d => d.temperature_range);
     return {
       title: { text: `${sensorId} - 日温差`, left: 'center', textStyle: { fontSize: 14 } },
       tooltip: { trigger: 'axis', confine: true },

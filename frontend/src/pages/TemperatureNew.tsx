@@ -31,8 +31,8 @@ const SensorSelectorCard: React.FC = () => {
 };
 
 const SensorDetailsCard: React.FC = () => {
-  const { selectedSensorId, summary, summaryLoading } = useTemperature();
-  return <SensorDetails cardId="sensor-details" sensorId={selectedSensorId} summary={summary} loading={summaryLoading} />;
+  const { selectedSensorId, analysisData, analysisLoading } = useTemperature();
+  return <SensorDetails cardId="sensor-details" sensorId={selectedSensorId} analysis={analysisData} loading={analysisLoading} />;
 };
 
 const TemperatureSeriesChartCard: React.FC = () => {

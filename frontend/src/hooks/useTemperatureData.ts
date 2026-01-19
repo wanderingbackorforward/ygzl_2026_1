@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiGet } from '../lib/api';
-import type { TemperatureSummary, TemperatureDataPoint } from '../types/api';
+import type { TemperatureSummary, TemperatureDataPoint, TemperatureDetailData } from '../types/api';
 
 export function useTemperatureSummary(): {
   data: TemperatureSummary | null;
@@ -57,10 +57,24 @@ export function useTemperatureSensors(): { sensors: string[]; loading: boolean }
   useEffect(() => {
     const fetchSensors = async () => {
       try {
-        const result = await apiGet<{ sensor_id?: string; point_id?: string; SID?: string }[]>('/temperature/points');
+        const summaryResult = await apiGet<any>('/temperature/summary');
+        if (Array.isArray(summaryResult)) {
+          const cleaned = Array.from(
+            new Set(
+              summaryResult
+                .map((row: any) => row?.sensor_id ?? row?.SID ?? row?.point_id ?? '')
+                .map((id: any) => (id != null ? String(id) : ''))
+                .filter((id: string) => id && id !== 'null' && id !== 'undefined')
+            )
+          );
+          setSensors(cleaned);
+          return;
+        }
+
+        const pointsResult = await apiGet<{ sensor_id?: string; point_id?: string; SID?: string }[]>('/temperature/points');
         const cleaned = Array.from(
           new Set(
-            (result || [])
+            (pointsResult || [])
               .map(s => {
                 const id = s.sensor_id ?? s.point_id ?? s.SID ?? '';
                 return id != null ? String(id) : '';
@@ -79,6 +93,45 @@ export function useTemperatureSensors(): { sensors: string[]; loading: boolean }
   }, []);
 
   return { sensors, loading };
+}
+
+export function useTemperatureDetail(sensorId: string | null): {
+  data: TemperatureDetailData | null;
+  loading: boolean;
+  error: string | null;
+  refetch: () => void;
+} {
+  const [data, setData] = useState<TemperatureDetailData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (!sensorId) {
+      setData(null);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await apiGet<any>(`/temperature/data/${sensorId}`);
+      const timeSeriesData = Array.isArray(result?.timeSeriesData) ? (result.timeSeriesData as TemperatureDataPoint[]) : [];
+      const analysisData = result && typeof result === 'object' && result.analysisData && typeof result.analysisData === 'object'
+        ? result.analysisData
+        : {};
+      setData({ timeSeriesData, analysisData });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load detail');
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [sensorId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { data, loading, error, refetch: fetchData };
 }
 
 export function useTemperatureSeries(sensorId: string | null): {

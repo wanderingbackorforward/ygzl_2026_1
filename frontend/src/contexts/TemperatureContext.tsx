@@ -2,12 +2,11 @@ import React, { createContext, useContext, useState, useCallback, type ReactNode
 import {
   useTemperatureSummary,
   useTemperatureSensors,
-  useTemperatureSeries,
-  useTemperatureRange,
+  useTemperatureDetail,
   useTemperatureTrends,
 } from '../hooks/useTemperatureData';
 import { apiGet } from '../lib/api';
-import type { TemperatureSummary, TemperatureDataPoint } from '../types/api';
+import type { TemperatureSummary, TemperatureDataPoint, TemperatureAnalysisData } from '../types/api';
 
 interface TemperatureContextValue {
   summary: TemperatureSummary | null;
@@ -20,6 +19,10 @@ interface TemperatureContextValue {
 
   selectedSensorId: string | null;
   selectSensor: (sensorId: string | null) => void;
+
+  analysisData: TemperatureAnalysisData | null;
+  analysisLoading: boolean;
+  analysisError: string | null;
 
   seriesData: TemperatureDataPoint[] | null;
   seriesLoading: boolean;
@@ -54,17 +57,11 @@ export const TemperatureProvider: React.FC<TemperatureProviderProps> = ({ childr
   const { sensors, loading: sensorsLoading } = useTemperatureSensors();
 
   const {
-    data: seriesData,
-    loading: seriesLoading,
-    error: seriesError,
-    refetch: refetchSeries,
-  } = useTemperatureSeries(selectedSensorId);
-
-  const {
-    data: rangeData,
-    loading: rangeLoading,
-    error: rangeError,
-  } = useTemperatureRange(selectedSensorId);
+    data: detailData,
+    loading: detailLoading,
+    error: detailError,
+    refetch: refetchDetail,
+  } = useTemperatureDetail(selectedSensorId);
 
   const {
     data: trendStats,
@@ -114,13 +111,16 @@ export const TemperatureProvider: React.FC<TemperatureProviderProps> = ({ childr
     sensorsLoading,
     selectedSensorId,
     selectSensor,
-    seriesData,
-    seriesLoading,
-    seriesError,
-    refetchSeries,
-    rangeData,
-    rangeLoading,
-    rangeError,
+    analysisData: detailData?.analysisData ?? null,
+    analysisLoading: detailLoading,
+    analysisError: detailError,
+    seriesData: detailData?.timeSeriesData ?? null,
+    seriesLoading: detailLoading,
+    seriesError: detailError,
+    refetchSeries: refetchDetail,
+    rangeData: detailData?.timeSeriesData ?? null,
+    rangeLoading: detailLoading,
+    rangeError: detailError,
     trendStats,
     trendLoading,
     trendError,

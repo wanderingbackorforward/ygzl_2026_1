@@ -127,6 +127,13 @@ def decimal_default(obj):
     # 如果遇到其他无法处理的类型，则抛出错误
     raise TypeError(f"类型 {type(obj)} 不能被序列化为 JSON")
 
+def json_dumps_response(payload, status_code=200):
+    return app.response_class(
+        json.dumps(payload, default=decimal_default),
+        status=status_code,
+        mimetype='application/json'
+    )
+
 # ... (文件的其余部分保持不变) ...
 
 
@@ -608,13 +615,13 @@ def get_temperature_points():
 def get_temperature_summary():
     print("[API] GET /api/temperature/summary")
     result = repo.temperature_get_summary()
-    return json.dumps({'status': 'success','data': result,'message': f'成功获取{len(result)}个温度监测点的分析结果'}, default=str)
+    return json_dumps_response({'status': 'success','data': result,'message': f'成功获取{len(result)}个温度监测点的分析结果'})
 
 @temperature_api.route('/temperature/data/<sensor_id>', methods=['GET'])
 def get_temperature_data(sensor_id):
     print(f"[API] GET /api/temperature/data/{sensor_id}")
     data = repo.temperature_get_data(sensor_id)
-    return json.dumps({'status': 'success','data': data,'message': f'成功获取传感器 {sensor_id} 的温度数据'}, default=str)
+    return json_dumps_response({'status': 'success','data': data,'message': f'成功获取传感器 {sensor_id} 的温度数据'})
 
 @temperature_api.route('/temperature/data/multi', methods=['GET'])
 def get_temperature_data_multi():
@@ -636,7 +643,7 @@ def get_temperature_trends():
 def get_temperature_stats():
     print("[API] GET /api/temperature/stats")
     stats = repo.temperature_get_stats()
-    return json.dumps({'status': 'success', 'data': stats, 'message': '成功获取温度统计概览'}, default=str)
+    return json_dumps_response({'status': 'success', 'data': stats, 'message': '成功获取温度统计概览'})
 
 @temperature_api.route('/temperature/upload', methods=['POST'])
 def upload_temperature_data():
@@ -671,6 +678,34 @@ def upload_temperature_data():
             process_thread.start()
             return jsonify({'status': 'success','message': '文件上传成功，开始处理温度数据','task_id': task_id})
     except Exception as e: return jsonify({'status': 'error','message': f'文件上传失败: {str(e)}'}), 500
+
+@app.route('/temperature/points', methods=['GET'])
+def get_temperature_points_alias():
+    return get_temperature_points()
+
+@app.route('/temperature/summary', methods=['GET'])
+def get_temperature_summary_alias():
+    return get_temperature_summary()
+
+@app.route('/temperature/data/<sensor_id>', methods=['GET'])
+def get_temperature_data_alias(sensor_id):
+    return get_temperature_data(sensor_id)
+
+@app.route('/temperature/data/multi', methods=['GET'])
+def get_temperature_data_multi_alias():
+    return get_temperature_data_multi()
+
+@app.route('/temperature/trends', methods=['GET'])
+def get_temperature_trends_alias():
+    return get_temperature_trends()
+
+@app.route('/temperature/stats', methods=['GET'])
+def get_temperature_stats_alias():
+    return get_temperature_stats()
+
+@app.route('/temperature/upload', methods=['POST'])
+def upload_temperature_data_alias():
+    return upload_temperature_data()
 
 
 def process_temperature_file(task_id, file_path):
@@ -776,7 +811,7 @@ def get_viewpoints():
         # 使用 json.dumps 处理 Decimal（如果数据库字段是 Decimal 且未在上面转为 float）
         # 如果上面已转为float，可以直接 jsonify
         # 注意: 之前的 get_summary 返回了 json string, 这里保持一致也用 json.dumps
-        return json.dumps({'success': True, 'data': formatted_viewpoints}, default=decimal_default)
+        return json_dumps_response({'success': True, 'data': formatted_viewpoints})
 
 
     except mysql.connector.Error as err:
