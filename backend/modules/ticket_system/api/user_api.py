@@ -36,12 +36,12 @@ def get_users():
         return create_response({
             'users': users,
             'count': len(users)
-        }, "Get users successfully")
+        }, "获取用户列表成功")
 
     except Exception as e:
-        print(f"[ERROR] Get users failed: {e}")
+        print(f"[ERROR] 获取用户列表失败: {e}")
         traceback.print_exc()
-        return create_response(None, f"Get users failed: {str(e)}", False, 500)
+        return create_response(None, f"获取用户列表失败: {str(e)}", False, 500)
 
 
 @user_bp.route('/<string:user_id>', methods=['GET'])
@@ -52,18 +52,18 @@ def get_user(user_id):
         user = repo.user_get_by_id(user_id)
 
         if not user:
-            return create_response(None, "User not found", False, 404)
+            return create_response(None, "用户不存在", False, 404)
 
         # Also get notification settings
         settings = repo.user_get_notification_settings(user_id)
         user['notification_settings'] = settings
 
-        return create_response(user, "Get user successfully")
+        return create_response(user, "获取用户信息成功")
 
     except Exception as e:
-        print(f"[ERROR] Get user failed: {e}")
+        print(f"[ERROR] 获取用户信息失败: {e}")
         traceback.print_exc()
-        return create_response(None, f"Get user failed: {str(e)}", False, 500)
+        return create_response(None, f"获取用户信息失败: {str(e)}", False, 500)
 
 
 @user_bp.route('', methods=['POST'])
@@ -72,20 +72,20 @@ def create_user():
     try:
         data = request.get_json()
         if not data:
-            return create_response(None, "Request data is required", False, 400)
+            return create_response(None, "请求数据不能为空", False, 400)
 
         # Validate required fields
         required_fields = ['user_id', 'username']
         for field in required_fields:
             if not data.get(field):
-                return create_response(None, f"Missing required field: {field}", False, 400)
+                return create_response(None, f"缺少必填字段: {field}", False, 400)
 
         repo = get_repo()
 
         # Check if user already exists
         existing = repo.user_get_by_id(data['user_id'])
         if existing:
-            return create_response(None, "User already exists", False, 400)
+            return create_response(None, "用户已存在", False, 400)
 
         # Create user
         user = repo.user_create(data)
@@ -97,12 +97,12 @@ def create_user():
                 'email_enabled': True
             })
 
-        return create_response(user, "User created successfully", True, 201)
+        return create_response(user, "用户创建成功", True, 201)
 
     except Exception as e:
-        print(f"[ERROR] Create user failed: {e}")
+        print(f"[ERROR] 创建用户失败: {e}")
         traceback.print_exc()
-        return create_response(None, f"Create user failed: {str(e)}", False, 500)
+        return create_response(None, f"创建用户失败: {str(e)}", False, 500)
 
 
 @user_bp.route('/<string:user_id>', methods=['PUT'])
@@ -111,24 +111,24 @@ def update_user(user_id):
     try:
         data = request.get_json()
         if not data:
-            return create_response(None, "Request data is required", False, 400)
+            return create_response(None, "请求数据不能为空", False, 400)
 
         repo = get_repo()
 
         # Check if user exists
         existing = repo.user_get_by_id(user_id)
         if not existing:
-            return create_response(None, "User not found", False, 404)
+            return create_response(None, "用户不存在", False, 404)
 
         # Update user
         user = repo.user_update(user_id, data)
 
-        return create_response(user, "User updated successfully")
+        return create_response(user, "用户更新成功")
 
     except Exception as e:
-        print(f"[ERROR] Update user failed: {e}")
+        print(f"[ERROR] 更新用户失败: {e}")
         traceback.print_exc()
-        return create_response(None, f"Update user failed: {str(e)}", False, 500)
+        return create_response(None, f"更新用户失败: {str(e)}", False, 500)
 
 
 @user_bp.route('/<string:user_id>', methods=['DELETE'])
@@ -140,17 +140,17 @@ def delete_user(user_id):
         # Check if user exists
         existing = repo.user_get_by_id(user_id)
         if not existing:
-            return create_response(None, "User not found", False, 404)
+            return create_response(None, "用户不存在", False, 404)
 
         # Soft delete
         repo.user_delete(user_id)
 
-        return create_response({'user_id': user_id}, "User deleted successfully")
+        return create_response({'user_id': user_id}, "用户删除成功")
 
     except Exception as e:
-        print(f"[ERROR] Delete user failed: {e}")
+        print(f"[ERROR] 删除用户失败: {e}")
         traceback.print_exc()
-        return create_response(None, f"Delete user failed: {str(e)}", False, 500)
+        return create_response(None, f"删除用户失败: {str(e)}", False, 500)
 
 
 @user_bp.route('/<string:user_id>/notification-settings', methods=['GET'])
@@ -173,12 +173,12 @@ def get_notification_settings(user_id):
                 'notify_on_overdue': True
             }
 
-        return create_response(settings, "Get notification settings successfully")
+        return create_response(settings, "获取通知设置成功")
 
     except Exception as e:
-        print(f"[ERROR] Get notification settings failed: {e}")
+        print(f"[ERROR] 获取通知设置失败: {e}")
         traceback.print_exc()
-        return create_response(None, f"Get notification settings failed: {str(e)}", False, 500)
+        return create_response(None, f"获取通知设置失败: {str(e)}", False, 500)
 
 
 @user_bp.route('/<string:user_id>/notification-settings', methods=['PUT'])
@@ -187,24 +187,24 @@ def update_notification_settings(user_id):
     try:
         data = request.get_json()
         if not data:
-            return create_response(None, "Request data is required", False, 400)
+            return create_response(None, "请求数据不能为空", False, 400)
 
         repo = get_repo()
 
         # Check if user exists
         existing = repo.user_get_by_id(user_id)
         if not existing:
-            return create_response(None, "User not found", False, 404)
+            return create_response(None, "用户不存在", False, 404)
 
         # Update notification settings
         settings = repo.user_update_notification_settings(user_id, data)
 
-        return create_response(settings, "Notification settings updated successfully")
+        return create_response(settings, "通知设置更新成功")
 
     except Exception as e:
-        print(f"[ERROR] Update notification settings failed: {e}")
+        print(f"[ERROR] 更新通知设置失败: {e}")
         traceback.print_exc()
-        return create_response(None, f"Update notification settings failed: {str(e)}", False, 500)
+        return create_response(None, f"更新通知设置失败: {str(e)}", False, 500)
 
 
 @user_bp.route('/<string:user_id>/email', methods=['GET'])
@@ -217,12 +217,12 @@ def get_user_email(user_id):
         return create_response({
             'user_id': user_id,
             'email': email
-        }, "Get user email successfully")
+        }, "获取用户邮箱成功")
 
     except Exception as e:
-        print(f"[ERROR] Get user email failed: {e}")
+        print(f"[ERROR] 获取用户邮箱失败: {e}")
         traceback.print_exc()
-        return create_response(None, f"Get user email failed: {str(e)}", False, 500)
+        return create_response(None, f"获取用户邮箱失败: {str(e)}", False, 500)
 
 
 @user_bp.route('/with-email', methods=['GET'])
@@ -235,12 +235,12 @@ def get_users_with_email():
         return create_response({
             'users': users,
             'count': len(users)
-        }, "Get users with email successfully")
+        }, "获取用户邮箱列表成功")
 
     except Exception as e:
-        print(f"[ERROR] Get users with email failed: {e}")
+        print(f"[ERROR] 获取用户邮箱列表失败: {e}")
         traceback.print_exc()
-        return create_response(None, f"Get users with email failed: {str(e)}", False, 500)
+        return create_response(None, f"获取用户邮箱列表失败: {str(e)}", False, 500)
 
 
 @user_bp.route('/by-role/<string:role>', methods=['GET'])
@@ -254,9 +254,9 @@ def get_users_by_role(role):
             'users': users,
             'count': len(users),
             'role': role
-        }, f"Get users with role '{role}' successfully")
+        }, f"获取角色为“{role}”的用户成功")
 
     except Exception as e:
-        print(f"[ERROR] Get users by role failed: {e}")
+        print(f"[ERROR] 按角色获取用户失败: {e}")
         traceback.print_exc()
-        return create_response(None, f"Get users by role failed: {str(e)}", False, 500)
+        return create_response(None, f"按角色获取用户失败: {str(e)}", False, 500)

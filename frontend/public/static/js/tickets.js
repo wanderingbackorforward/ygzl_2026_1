@@ -39,10 +39,10 @@ async function initTicketSystem() {
         // 绑定表单事件
         bindFormEvents();
 
-        console.log('[OK] Ticket system initialized');
+        console.log('[OK] 工单系统初始化完成');
     } catch (error) {
-        console.error('[ERROR] Ticket system init failed:', error);
-        showMessage('System init failed: ' + error.message, 'error');
+        console.error('[ERROR] 工单系统初始化失败:', error);
+        showMessage('系统初始化失败：' + error.message, 'error');
     }
 }
 
@@ -60,12 +60,12 @@ async function loadSystemUsers() {
             populateUserSelectors();
         }
     } catch (error) {
-        console.error('[WARN] Failed to load users:', error);
+        console.error('[WARN] 加载用户失败:', error);
         // 使用默认用户
         systemUsers = [
-            { user_id: 'admin', display_name: 'System Administrator', role: 'admin' },
-            { user_id: 'monitoring_engineer', display_name: 'Monitoring Engineer 1', role: 'monitoring_engineer' },
-            { user_id: 'field_technician', display_name: 'Field Technician 1', role: 'field_technician' }
+            { user_id: 'admin', display_name: '系统管理员', role: 'admin' },
+            { user_id: 'monitoring_engineer', display_name: '监测工程师1', role: 'monitoring_engineer' },
+            { user_id: 'field_technician', display_name: '现场技术员1', role: 'field_technician' }
         ];
         populateUserSelectors();
     }
@@ -105,13 +105,13 @@ function populateUserSelectors() {
  */
 function getRoleName(role) {
     const roleNames = {
-        'admin': 'Admin',
-        'monitoring_engineer': 'Engineer',
-        'field_technician': 'Technician',
-        'data_analyst': 'Analyst',
-        'operator': 'Operator'
+        'admin': '系统管理员',
+        'monitoring_engineer': '监测工程师',
+        'field_technician': '现场技术员',
+        'data_analyst': '数据分析师',
+        'operator': '操作员'
     };
-    return roleNames[role] || role;
+    return roleNames[role] || '未知角色';
 }
 
 /**
@@ -140,9 +140,9 @@ async function loadTicketConfig() {
             ticketConfig.priority = priorityData.data;
         }
 
-        console.log('[OK] Ticket config loaded');
+        console.log('[OK] 工单配置加载完成');
     } catch (error) {
-        console.error('[ERROR] Load ticket config failed:', error);
+        console.error('[ERROR] 加载工单配置失败:', error);
         throw error;
     }
 }
@@ -242,7 +242,7 @@ async function loadTicketStatistics() {
             }
         }
     } catch (error) {
-        console.error('[ERROR] Load statistics failed:', error);
+        console.error('[ERROR] 加载统计信息失败:', error);
     }
 }
 
@@ -251,7 +251,7 @@ async function loadTicketStatistics() {
  */
 async function loadTickets() {
     try {
-        showMessage('Loading tickets...', 'info');
+        showMessage('正在加载工单...', 'info');
 
         let url;
         const params = new URLSearchParams({
@@ -280,7 +280,7 @@ async function loadTickets() {
 
         const response = await fetch(url);
         if (!response.ok) {
-            throw new Error('Failed to load tickets');
+            throw new Error('加载工单失败');
         }
 
         const result = await response.json();
@@ -308,10 +308,10 @@ async function loadTickets() {
             document.getElementById('pagination').innerHTML = '';
         }
 
-        showMessage(`Loaded ${tickets.length} tickets`, 'success');
+        showMessage(`已加载 ${tickets.length} 条工单`, 'success');
     } catch (error) {
-        console.error('[ERROR] Load tickets failed:', error);
-        showMessage('Load tickets failed: ' + error.message, 'error');
+        console.error('[ERROR] 加载工单列表失败:', error);
+        showMessage('加载工单失败：' + error.message, 'error');
     }
 }
 
@@ -325,7 +325,7 @@ function renderTicketList(tickets, isArchive = false) {
         listContainer.innerHTML = `
             <div style="text-align: center; padding: 40px; color: #8aabcc;">
                 <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 10px;"></i>
-                <p>${isArchive ? 'No archived tickets' : 'No tickets found'}</p>
+                <p>${isArchive ? '暂无归档工单' : '暂无工单'}</p>
             </div>
         `;
         return;
@@ -342,7 +342,7 @@ function renderTicketList(tickets, isArchive = false) {
                 <div class="ticket-status status-${ticket.status.toLowerCase()}">
                     ${getTicketStatusName(ticket.status)}
                 </div>
-                ${isArchive ? '<span class="archived-badge"><i class="fas fa-archive"></i> Archived</span>' : ''}
+                ${isArchive ? '<span class="archived-badge"><i class="fas fa-archive"></i> 已归档</span>' : ''}
                 ${dueInfo.badge}
             </div>
             <div class="ticket-title">${ticket.title}</div>
@@ -352,17 +352,17 @@ function renderTicketList(tickets, isArchive = false) {
                     <span class="priority-${ticket.priority.toLowerCase()}">
                         ${getPriorityName(ticket.priority)}
                     </span>
-                    <span><i class="fas fa-user"></i> ${ticket.creator_name || 'Unknown'}</span>
-                    <span><i class="fas fa-user-cog"></i> ${ticket.assignee_name || 'Unassigned'}</span>
+                    <span><i class="fas fa-user"></i> ${ticket.creator_name || '未知'}</span>
+                    <span><i class="fas fa-user-cog"></i> ${ticket.assignee_name || '未分配'}</span>
                     <span><i class="fas fa-clock"></i> ${formatDate(ticket.created_at)}</span>
                     ${ticket.monitoring_point_id ? `<span><i class="fas fa-map-marker-alt"></i> ${ticket.monitoring_point_id}</span>` : ''}
-                    ${ticket.due_at ? `<span class="${dueInfo.class}"><i class="fas fa-hourglass-half"></i> Due: ${formatDueDate(ticket.due_at)}</span>` : ''}
+                    ${ticket.due_at ? `<span class="${dueInfo.class}"><i class="fas fa-hourglass-half"></i> 到期：${formatDueDate(ticket.due_at)}</span>` : ''}
                 </div>
             </div>
             ${!isArchive && ticket.status !== 'CLOSED' && ticket.status !== 'REJECTED' ? `
             <div class="quick-actions" onclick="event.stopPropagation();">
-                ${!ticket.assignee_id ? `<button class="action-btn assign" onclick="showAssignModal(${ticket.id})"><i class="fas fa-user-plus"></i> Assign</button>` : ''}
-                ${(ticket.status === 'CLOSED' || ticket.status === 'REJECTED') ? `<button class="action-btn archive" onclick="archiveTicket(${ticket.id})"><i class="fas fa-archive"></i> Archive</button>` : ''}
+                ${!ticket.assignee_id ? `<button class="action-btn assign" onclick="showAssignModal(${ticket.id})"><i class="fas fa-user-plus"></i> 分配</button>` : ''}
+                ${(ticket.status === 'CLOSED' || ticket.status === 'REJECTED') ? `<button class="action-btn archive" onclick="archiveTicket(${ticket.id})"><i class="fas fa-archive"></i> 归档</button>` : ''}
             </div>
             ` : ''}
         </div>
@@ -390,12 +390,12 @@ function getDueInfo(ticket) {
     if (hoursUntilDue < 0) {
         return {
             class: 'overdue',
-            badge: '<span class="due-badge overdue"><i class="fas fa-exclamation-circle"></i> Overdue</span>'
+            badge: '<span class="due-badge overdue"><i class="fas fa-exclamation-circle"></i> 已超期</span>'
         };
     } else if (hoursUntilDue < 24) {
         return {
             class: 'due-soon',
-            badge: '<span class="due-badge due-soon"><i class="fas fa-clock"></i> Due Soon</span>'
+            badge: '<span class="due-badge due-soon"><i class="fas fa-clock"></i> 即将到期</span>'
         };
     }
 
@@ -496,7 +496,7 @@ function refreshTickets() {
  * 显示创建工单模态框
  */
 function showCreateModal() {
-    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Create Ticket';
+    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> 创建工单';
     document.getElementById('ticketForm').reset();
     document.getElementById('ticketModal').style.display = 'flex';
 }
@@ -532,7 +532,7 @@ async function confirmAssign() {
     const assigneeId = document.getElementById('assigneeSelect').value;
 
     if (!assigneeId) {
-        showMessage('Please select an assignee', 'error');
+        showMessage('请选择处理人', 'error');
         return;
     }
 
@@ -554,18 +554,18 @@ async function confirmAssign() {
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.message || 'Assign failed');
+            throw new Error(errorData.message || '分配失败');
         }
 
-        showMessage('Ticket assigned successfully!', 'success');
+        showMessage('工单分配成功！', 'success');
         closeAssignModal();
 
         // 重新加载工单列表
         await loadTickets();
 
     } catch (error) {
-        console.error('[ERROR] Assign ticket failed:', error);
-        showMessage('Assign failed: ' + error.message, 'error');
+        console.error('[ERROR] 分配工单失败:', error);
+        showMessage('分配失败：' + error.message, 'error');
     }
 }
 
@@ -573,7 +573,7 @@ async function confirmAssign() {
  * 归档工单
  */
 async function archiveTicket(ticketId) {
-    if (!confirm('Are you sure you want to archive this ticket?')) {
+    if (!confirm('确定要归档该工单吗？')) {
         return;
     }
 
@@ -587,18 +587,18 @@ async function archiveTicket(ticketId) {
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.message || 'Archive failed');
+            throw new Error(errorData.message || '归档失败');
         }
 
-        showMessage('Ticket archived successfully!', 'success');
+        showMessage('工单归档成功！', 'success');
 
         // 重新加载工单列表和统计信息
         await loadTickets();
         await loadTicketStatistics();
 
     } catch (error) {
-        console.error('[ERROR] Archive ticket failed:', error);
-        showMessage('Archive failed: ' + error.message, 'error');
+        console.error('[ERROR] 归档工单失败:', error);
+        showMessage('归档失败：' + error.message, 'error');
     }
 }
 
@@ -612,7 +612,7 @@ async function showTicketDetail(ticketId, isArchive = false) {
         const url = isArchive ? `/api/tickets/archive/${ticketId}` : `/api/tickets/${ticketId}`;
         const response = await fetch(url);
         if (!response.ok) {
-            throw new Error('Failed to get ticket details');
+            throw new Error('获取工单详情失败');
         }
 
         const result = await response.json();
@@ -620,8 +620,8 @@ async function showTicketDetail(ticketId, isArchive = false) {
 
         renderTicketDetail(ticket, isArchive);
     } catch (error) {
-        console.error('[ERROR] Get ticket detail failed:', error);
-        showMessage('Get ticket detail failed: ' + error.message, 'error');
+        console.error('[ERROR] 获取工单详情失败:', error);
+        showMessage('获取工单详情失败：' + error.message, 'error');
         closeDetailModal();
     }
 }
@@ -642,52 +642,52 @@ function renderTicketDetail(ticket, isArchive = false) {
                     <span class="ticket-status status-${ticket.status.toLowerCase()}">
                         ${getTicketStatusName(ticket.status)}
                     </span>
-                    ${isArchive ? '<span class="archived-badge" style="margin-left:5px;"><i class="fas fa-archive"></i> Archived</span>' : ''}
+                    ${isArchive ? '<span class="archived-badge" style="margin-left:5px;"><i class="fas fa-archive"></i> 已归档</span>' : ''}
                     ${dueInfo.badge}
                 </div>
             </div>
 
             <div style="background: rgba(16, 23, 41, 0.8); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <h4 style="color: #ffffff; margin-top: 0;">${ticket.title}</h4>
-                <p style="color: #8aabcc; margin: 10px 0;">${ticket.description || 'No description'}</p>
+                <p style="color: #8aabcc; margin: 10px 0;">${ticket.description || '暂无描述'}</p>
             </div>
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
                 <div style="background: rgba(16, 23, 41, 0.8); padding: 10px; border-radius: 5px;">
-                    <div style="color: #8aabcc; font-size: 12px;">Type</div>
+                    <div style="color: #8aabcc; font-size: 12px;">类型</div>
                     <div style="color: #40aeff; font-weight: bold;">${getTicketTypeName(ticket.ticket_type)}</div>
                 </div>
                 <div style="background: rgba(16, 23, 41, 0.8); padding: 10px; border-radius: 5px;">
-                    <div style="color: #8aabcc; font-size: 12px;">Priority</div>
+                    <div style="color: #8aabcc; font-size: 12px;">优先级</div>
                     <div style="color: #40aeff; font-weight: bold;">${getPriorityName(ticket.priority)}</div>
                 </div>
                 <div style="background: rgba(16, 23, 41, 0.8); padding: 10px; border-radius: 5px;">
-                    <div style="color: #8aabcc; font-size: 12px;">Creator</div>
-                    <div style="color: #40aeff; font-weight: bold;">${ticket.creator_name || 'Unknown'}</div>
+                    <div style="color: #8aabcc; font-size: 12px;">创建人</div>
+                    <div style="color: #40aeff; font-weight: bold;">${ticket.creator_name || '未知'}</div>
                 </div>
                 <div style="background: rgba(16, 23, 41, 0.8); padding: 10px; border-radius: 5px;">
-                    <div style="color: #8aabcc; font-size: 12px;">Assignee</div>
-                    <div style="color: #40aeff; font-weight: bold;">${ticket.assignee_name || 'Unassigned'}</div>
+                    <div style="color: #8aabcc; font-size: 12px;">处理人</div>
+                    <div style="color: #40aeff; font-weight: bold;">${ticket.assignee_name || '未分配'}</div>
                 </div>
                 ${ticket.monitoring_point_id ? `
                 <div style="background: rgba(16, 23, 41, 0.8); padding: 10px; border-radius: 5px;">
-                    <div style="color: #8aabcc; font-size: 12px;">Monitoring Point</div>
+                    <div style="color: #8aabcc; font-size: 12px;">监测点</div>
                     <div style="color: #40aeff; font-weight: bold;">${ticket.monitoring_point_id}</div>
                 </div>
                 ` : ''}
                 ${ticket.current_value ? `
                 <div style="background: rgba(16, 23, 41, 0.8); padding: 10px; border-radius: 5px;">
-                    <div style="color: #8aabcc; font-size: 12px;">Current Value</div>
+                    <div style="color: #8aabcc; font-size: 12px;">当前值</div>
                     <div style="color: #40aeff; font-weight: bold;">${ticket.current_value}</div>
                 </div>
                 ` : ''}
                 <div style="background: rgba(16, 23, 41, 0.8); padding: 10px; border-radius: 5px;">
-                    <div style="color: #8aabcc; font-size: 12px;">Created At</div>
+                    <div style="color: #8aabcc; font-size: 12px;">创建时间</div>
                     <div style="color: #40aeff; font-weight: bold;">${formatDate(ticket.created_at)}</div>
                 </div>
                 ${ticket.due_at ? `
                 <div style="background: rgba(16, 23, 41, 0.8); padding: 10px; border-radius: 5px;">
-                    <div style="color: #8aabcc; font-size: 12px;">Due Date</div>
+                    <div style="color: #8aabcc; font-size: 12px;">到期时间</div>
                     <div class="${dueInfo.class}" style="font-weight: bold;">${formatDueDate(ticket.due_at)}</div>
                 </div>
                 ` : ''}
@@ -695,45 +695,45 @@ function renderTicketDetail(ticket, isArchive = false) {
 
             ${ticket.resolution ? `
             <div style="background: rgba(82, 196, 26, 0.1); border: 1px solid #52c41a; border-radius: 5px; padding: 15px; margin-bottom: 15px;">
-                <h5 style="color: #52c41a; margin-top: 0;">Resolution</h5>
+                <h5 style="color: #52c41a; margin-top: 0;">解决方案</h5>
                 <p style="color: #ffffff; margin: 0;">${ticket.resolution}</p>
             </div>
             ` : ''}
         </div>
 
         <div style="border-top: 1px solid rgba(64, 174, 255, 0.3); padding-top: 15px;">
-            <h4 style="color: #40aeff; margin-top: 0;">Comments</h4>
+            <h4 style="color: #40aeff; margin-top: 0;">评论</h4>
             <div id="commentsContainer">
                 ${renderComments(ticket.comments || [])}
             </div>
         </div>
 
         <div style="text-align: right; margin-top: 20px;">
-            <button class="btn" onclick="closeDetailModal()">Close</button>
+            <button class="btn" onclick="closeDetailModal()">关闭</button>
             ${!isArchive ? `
                 ${!ticket.assignee_id ? `
                 <button class="btn" onclick="showAssignModal(${ticketId}); closeDetailModal();">
-                    <i class="fas fa-user-plus"></i> Assign
+                    <i class="fas fa-user-plus"></i> 分配
                 </button>
                 ` : ''}
                 ${ticket.status === 'PENDING' ? `
                 <button class="btn btn-primary" onclick="updateTicketStatus(${ticketId}, 'IN_PROGRESS')">
-                    <i class="fas fa-play"></i> Start
+                    <i class="fas fa-play"></i> 开始处理
                 </button>
                 ` : ''}
                 ${ticket.status === 'IN_PROGRESS' ? `
                 <button class="btn btn-primary" onclick="updateTicketStatus(${ticketId}, 'RESOLVED')">
-                    <i class="fas fa-check"></i> Resolve
+                    <i class="fas fa-check"></i> 标记已解决
                 </button>
                 ` : ''}
                 ${ticket.status === 'RESOLVED' ? `
                 <button class="btn btn-primary" onclick="updateTicketStatus(${ticketId}, 'CLOSED')">
-                    <i class="fas fa-times"></i> Close
+                    <i class="fas fa-times"></i> 关闭工单
                 </button>
                 ` : ''}
                 ${(ticket.status === 'CLOSED' || ticket.status === 'REJECTED') ? `
                 <button class="btn" onclick="archiveTicket(${ticketId}); closeDetailModal();">
-                    <i class="fas fa-archive"></i> Archive
+                    <i class="fas fa-archive"></i> 归档
                 </button>
                 ` : ''}
             ` : ''}
@@ -748,7 +748,7 @@ function renderTicketDetail(ticket, isArchive = false) {
  */
 function renderComments(comments) {
     if (!comments || comments.length === 0) {
-        return '<p style="color: #8aabcc; text-align: center;">No comments</p>';
+        return '<p style="color: #8aabcc; text-align: center;">暂无评论</p>';
     }
 
     return comments.map(comment => `
@@ -816,7 +816,7 @@ async function saveTicket() {
             threshold_value: parseFloat(document.getElementById('thresholdValue').value) || null,
             location_info: document.getElementById('locationInfo').value,
             creator_id: creatorId || 'current_user',
-            creator_name: creatorName || 'User'
+            creator_name: creatorName || '用户'
         };
 
         // 如果选择了分配人，添加到请求
@@ -835,11 +835,11 @@ async function saveTicket() {
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.message || 'Create ticket failed');
+            throw new Error(errorData.message || '创建工单失败');
         }
 
         const result = await response.json();
-        showMessage('Ticket created successfully!', 'success');
+        showMessage('工单创建成功！', 'success');
         closeModal();
 
         // 重新加载工单列表和统计信息
@@ -847,8 +847,8 @@ async function saveTicket() {
         await loadTicketStatistics();
 
     } catch (error) {
-        console.error('[ERROR] Create ticket failed:', error);
-        showMessage('Create ticket failed: ' + error.message, 'error');
+        console.error('[ERROR] 创建工单失败:', error);
+        showMessage('创建工单失败：' + error.message, 'error');
     }
 }
 
@@ -871,10 +871,10 @@ async function updateTicketStatus(ticketId, newStatus) {
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.message || 'Update status failed');
+            throw new Error(errorData.message || '更新状态失败');
         }
 
-        showMessage('Ticket status updated!', 'success');
+        showMessage('工单状态已更新！', 'success');
 
         // 重新加载工单详情
         await showTicketDetail(ticketId);
@@ -884,8 +884,8 @@ async function updateTicketStatus(ticketId, newStatus) {
         await loadTicketStatistics();
 
     } catch (error) {
-        console.error('[ERROR] Update ticket status failed:', error);
-        showMessage('Update status failed: ' + error.message, 'error');
+        console.error('[ERROR] 更新工单状态失败:', error);
+        showMessage('更新状态失败：' + error.message, 'error');
     }
 }
 
@@ -906,25 +906,50 @@ function showMessage(message, type = 'info') {
     }, 3000);
 }
 
+const FALLBACK_STATUS_NAMES = {
+    'PENDING': '待处理',
+    'IN_PROGRESS': '处理中',
+    'SUSPENDED': '已挂起',
+    'RESOLVED': '已解决',
+    'CLOSED': '已关闭',
+    'REJECTED': '已拒绝'
+};
+
+const FALLBACK_TYPE_NAMES = {
+    'SETTLEMENT_ALERT': '沉降预警',
+    'CRACK_ALERT': '裂缝预警',
+    'EQUIPMENT_FAULT': '设备故障',
+    'MAINTENANCE': '维护保养',
+    'INSPECTION': '巡检任务',
+    'DATA_ANALYSIS': '数据分析'
+};
+
+const FALLBACK_PRIORITY_NAMES = {
+    'CRITICAL': '紧急',
+    'HIGH': '高',
+    'MEDIUM': '中',
+    'LOW': '低'
+};
+
 /**
  * 获取工单状态名称
  */
 function getTicketStatusName(statusCode) {
-    return ticketConfig.status?.[statusCode]?.name || statusCode;
+    return ticketConfig.status?.[statusCode]?.name || FALLBACK_STATUS_NAMES[statusCode] || '未知状态';
 }
 
 /**
  * 获取工单类型名称
  */
 function getTicketTypeName(typeCode) {
-    return ticketConfig.types?.[typeCode]?.name || typeCode;
+    return ticketConfig.types?.[typeCode]?.name || FALLBACK_TYPE_NAMES[typeCode] || '未知类型';
 }
 
 /**
  * 获取优先级名称
  */
 function getPriorityName(priorityCode) {
-    return ticketConfig.priority?.[priorityCode]?.name || priorityCode;
+    return ticketConfig.priority?.[priorityCode]?.name || FALLBACK_PRIORITY_NAMES[priorityCode] || '未知';
 }
 
 /**
@@ -940,10 +965,10 @@ function formatDate(dateString) {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffMins < 1) return '刚刚';
+    if (diffMins < 60) return `${diffMins}分钟前`;
+    if (diffHours < 24) return `${diffHours}小时前`;
+    if (diffDays < 7) return `${diffDays}天前`;
 
     return date.toLocaleDateString('zh-CN');
 }

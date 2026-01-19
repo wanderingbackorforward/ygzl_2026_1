@@ -617,7 +617,7 @@ def delete_ticket(ticket_id):
         return create_response(None, "工单删除成功")
 
     except Exception as e:
-        print(f"[ERROR] Delete ticket failed: {e}")
+        print(f"[ERROR] 删除工单失败: {e}")
         print(traceback.format_exc())
         return create_response(None, f"删除工单失败: {str(e)}", False, 500)
 
@@ -636,12 +636,12 @@ def get_due_soon_tickets():
         return create_response({
             'tickets': tickets,
             'count': len(tickets)
-        }, "Get due soon tickets successfully")
+        }, "获取即将到期工单成功")
 
     except Exception as e:
-        print(f"[ERROR] Get due soon tickets failed: {e}")
+        print(f"[ERROR] 获取即将到期工单失败: {e}")
         print(traceback.format_exc())
-        return create_response(None, f"Get due soon tickets failed: {str(e)}", False, 500)
+        return create_response(None, f"获取即将到期工单失败: {str(e)}", False, 500)
 
 
 @ticket_bp.route('/overdue', methods=['GET'])
@@ -654,12 +654,12 @@ def get_overdue_tickets():
         return create_response({
             'tickets': tickets,
             'count': len(tickets)
-        }, "Get overdue tickets successfully")
+        }, "获取超期工单成功")
 
     except Exception as e:
-        print(f"[ERROR] Get overdue tickets failed: {e}")
+        print(f"[ERROR] 获取超期工单失败: {e}")
         print(traceback.format_exc())
-        return create_response(None, f"Get overdue tickets failed: {str(e)}", False, 500)
+        return create_response(None, f"获取超期工单失败: {str(e)}", False, 500)
 
 
 @ticket_bp.route('/archive', methods=['GET'])
@@ -681,12 +681,12 @@ def get_archived_tickets():
                 'limit': limit,
                 'total': len(tickets)
             }
-        }, "Get archived tickets successfully")
+        }, "获取归档工单成功")
 
     except Exception as e:
-        print(f"[ERROR] Get archived tickets failed: {e}")
+        print(f"[ERROR] 获取归档工单失败: {e}")
         print(traceback.format_exc())
-        return create_response(None, f"Get archived tickets failed: {str(e)}", False, 500)
+        return create_response(None, f"获取归档工单失败: {str(e)}", False, 500)
 
 
 @ticket_bp.route('/<int:ticket_id>/archive', methods=['POST'])
@@ -699,22 +699,22 @@ def archive_ticket(ticket_id):
         # Check if ticket exists
         ticket = ticket_model.get_ticket_by_id(ticket_id)
         if not ticket:
-            return create_response(None, "Ticket not found", False, 404)
+            return create_response(None, "工单不存在", False, 404)
 
         # Check if ticket can be archived (must be CLOSED or REJECTED)
         if ticket.get('status') not in ['CLOSED', 'REJECTED']:
-            return create_response(None, "Only closed or rejected tickets can be archived", False, 400)
+            return create_response(None, "仅已关闭或已拒绝的工单可归档", False, 400)
 
         success = repo.ticket_archive(ticket_id)
         if not success:
-            return create_response(None, "Archive ticket failed", False, 500)
+            return create_response(None, "归档工单失败", False, 500)
 
-        return create_response({'ticket_id': ticket_id}, "Ticket archived successfully")
+        return create_response({'ticket_id': ticket_id}, "工单归档成功")
 
     except Exception as e:
         print(f"[ERROR] Archive ticket failed: {e}")
         print(traceback.format_exc())
-        return create_response(None, f"Archive ticket failed: {str(e)}", False, 500)
+        return create_response(None, f"归档工单失败: {str(e)}", False, 500)
 
 
 @ticket_bp.route('/archive/auto', methods=['POST'])
@@ -725,12 +725,12 @@ def auto_archive_tickets():
         repo = get_repo()
 
         result = repo.tickets_auto_archive()
-        return create_response(result, f"Auto archived {result.get('archived_count', 0)} tickets")
+        return create_response(result, f"已自动归档 {result.get('archived_count', 0)} 条工单")
 
     except Exception as e:
         print(f"[ERROR] Auto archive tickets failed: {e}")
         print(traceback.format_exc())
-        return create_response(None, f"Auto archive tickets failed: {str(e)}", False, 500)
+        return create_response(None, f"自动归档工单失败: {str(e)}", False, 500)
 
 
 @ticket_bp.route('/scheduler/status', methods=['GET'])
@@ -739,11 +739,11 @@ def get_scheduler_status():
     try:
         from ..services import ticket_scheduler
         status = ticket_scheduler.get_status()
-        return create_response(status, "Get scheduler status successfully")
+        return create_response(status, "获取定时任务状态成功")
 
     except Exception as e:
-        print(f"[ERROR] Get scheduler status failed: {e}")
-        return create_response(None, f"Get scheduler status failed: {str(e)}", False, 500)
+        print(f"[ERROR] 获取定时任务状态失败: {e}")
+        return create_response(None, f"获取定时任务状态失败: {str(e)}", False, 500)
 
 
 @ticket_bp.route('/scheduler/run', methods=['POST'])
@@ -752,12 +752,12 @@ def run_scheduler_once():
     try:
         from ..services import ticket_scheduler
         results = ticket_scheduler.run_once()
-        return create_response(results, "Scheduler tasks executed successfully")
+        return create_response(results, "定时任务执行完成")
 
     except Exception as e:
-        print(f"[ERROR] Run scheduler failed: {e}")
+        print(f"[ERROR] 执行定时任务失败: {e}")
         print(traceback.format_exc())
-        return create_response(None, f"Run scheduler failed: {str(e)}", False, 500)
+        return create_response(None, f"执行定时任务失败: {str(e)}", False, 500)
 
 
 @ticket_bp.route('/active', methods=['GET'])
@@ -812,9 +812,9 @@ def get_active_tickets():
                 'total': len(tickets)
             },
             'filters': filters
-        }, "Get active tickets successfully")
+        }, "获取活跃工单成功")
 
     except Exception as e:
-        print(f"[ERROR] Get active tickets failed: {e}")
+        print(f"[ERROR] 获取活跃工单失败: {e}")
         print(traceback.format_exc())
-        return create_response(None, f"Get active tickets failed: {str(e)}", False, 500)
+        return create_response(None, f"获取活跃工单失败: {str(e)}", False, 500)

@@ -43,6 +43,7 @@ const STATUS_TEXT: Record<string, string> = {
   SUSPENDED: '已挂起',
   RESOLVED: '已解决',
   CLOSED: '已关闭',
+  REJECTED: '已拒绝',
 }
 
 const PRIORITY_TEXT: Record<string, string> = {
@@ -129,8 +130,8 @@ export const OverdueTicketAlert: React.FC = () => {
               const key = String(t.id ?? t.title ?? Math.random())
               const statusCode = normalizeCode(t.status)
               const priorityCode = normalizeCode(t.priority)
-              const statusText = STATUS_TEXT[statusCode] || (t.status ? String(t.status) : '')
-              const priorityText = PRIORITY_TEXT[priorityCode] || (t.priority ? String(t.priority) : '')
+              const statusText = statusCode ? (STATUS_TEXT[statusCode] || '未知状态') : ''
+              const priorityText = priorityCode ? (PRIORITY_TEXT[priorityCode] || '未知优先级') : ''
               return (
                 <div key={key} style={styles.item}>
                   <div style={styles.itemTop}>

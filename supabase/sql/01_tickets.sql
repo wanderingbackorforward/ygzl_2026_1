@@ -225,7 +225,7 @@ WHERE is_archived = FALSE
   AND due_at < NOW();
 
 -- =====================================================
--- View: v_tickets_to_archive (Tickets ready for archive)
+-- 视图：v_tickets_to_archive（可归档工单）
 -- =====================================================
 CREATE OR REPLACE VIEW v_tickets_to_archive AS
 SELECT * FROM tickets
@@ -233,5 +233,5 @@ WHERE is_archived = FALSE
   AND status IN ('CLOSED', 'REJECTED')
   AND updated_at < NOW() - INTERVAL '7 days';
 
--- Success message
-SELECT 'Tickets database schema created successfully!' as message;
+-- 成功提示
+SELECT '工单数据库结构创建成功！' as message;

@@ -12,6 +12,8 @@ from email.header import Header
 from typing import List, Dict, Optional
 import logging
 
+from ..config import TICKET_PRIORITY, TICKET_STATUS, TICKET_TYPES
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,7 +28,7 @@ class EmailConfig:
         self.smtp_user = os.environ.get('SMTP_USER', '')
         self.smtp_password = os.environ.get('SMTP_PASSWORD', '')
         self.smtp_from = os.environ.get('SMTP_FROM', self.smtp_user)
-        self.smtp_from_name = os.environ.get('SMTP_FROM_NAME', 'Ticket System')
+        self.smtp_from_name = os.environ.get('SMTP_FROM_NAME', '工单系统')
         self.use_ssl = os.environ.get('SMTP_USE_SSL', 'true').lower() == 'true'
         self.use_tls = os.environ.get('SMTP_USE_TLS', 'false').lower() == 'true'
 
@@ -55,7 +57,7 @@ class EmailService:
             server.login(self.config.smtp_user, self.config.smtp_password)
             return server
         except Exception as e:
-            logger.error(f"[ERROR] Failed to connect to SMTP server: {e}")
+            logger.error(f"[ERROR] 连接 SMTP 服务器失败: {e}")
             raise
 
     def send_email(self, to: str, subject: str, body: str, html_body: Optional[str] = None) -> bool:
@@ -72,7 +74,7 @@ class EmailService:
             bool: True if sent successfully
         """
         if not self.config.is_configured():
-            logger.warning("[WARN] Email service not configured, skipping send")
+            logger.warning("[WARN] 邮件服务未配置，已跳过发送")
             return False
 
         try:
@@ -93,11 +95,11 @@ class EmailService:
             server.sendmail(self.config.smtp_from, [to], msg.as_string())
             server.quit()
 
-            logger.info(f"[OK] Email sent to {to}: {subject}")
+            logger.info(f"[OK] 邮件已发送至 {to}: {subject}")
             return True
 
         except Exception as e:
-            logger.error(f"[ERROR] Failed to send email to {to}: {e}")
+            logger.error(f"[ERROR] 发送邮件失败 {to}: {e}")
             return False
 
     def send_batch_emails(self, recipients: List[str], subject: str, body: str, html_body: Optional[str] = None) -> Dict:
@@ -124,190 +126,211 @@ class TicketEmailNotifier:
     def __init__(self):
         self.email_service = EmailService()
 
+    def _norm(self, value: Optional[str]) -> str:
+        return str(value or '').strip().upper()
+
+    def _to_ticket_type_name(self, value: Optional[str]) -> str:
+        code = self._norm(value)
+        if not code:
+            return ''
+        return TICKET_TYPES.get(code, {}).get('name') or '未知类型'
+
+    def _to_priority_name(self, value: Optional[str]) -> str:
+        code = self._norm(value)
+        if not code:
+            return ''
+        return TICKET_PRIORITY.get(code, {}).get('name') or '未知优先级'
+
+    def _to_status_name(self, value: Optional[str]) -> str:
+        code = self._norm(value)
+        if not code:
+            return ''
+        return TICKET_STATUS.get(code, {}).get('name') or '未知状态'
+
     def _get_email_template(self, template_name: str, context: Dict) -> Dict[str, str]:
         """Get email template by name with context variables"""
         templates = {
             'ticket_created': {
-                'subject': '[Ticket System] New Ticket Created: {ticket_number}',
+                'subject': '[工单系统] 新工单已创建：{ticket_number}',
                 'body': '''
-Dear {assignee_name},
+{assignee_name} 您好，
 
-A new ticket has been created and assigned to you.
+系统已创建新的工单并分配给您。
 
-Ticket Details:
-- Ticket Number: {ticket_number}
-- Title: {title}
-- Type: {ticket_type}
-- Priority: {priority}
-- Creator: {creator_name}
-- Due Date: {due_at}
+工单信息：
+- 工单编号：{ticket_number}
+- 标题：{title}
+- 类型：{ticket_type}
+- 优先级：{priority}
+- 创建人：{creator_name}
+- 到期时间：{due_at}
 
-Description:
+描述：
 {description}
 
-Please handle this ticket as soon as possible.
+请尽快处理该工单。
 
 ---
-Monitoring System - Ticket Notification
+沉降监测系统 - 工单通知
 ''',
                 'html_body': '''
 <html>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
 <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <h2 style="color: #1890ff;">New Ticket Created</h2>
-    <p>Dear {assignee_name},</p>
-    <p>A new ticket has been created and assigned to you.</p>
+    <h2 style="color: #1890ff;">新工单已创建</h2>
+    <p>{assignee_name} 您好，</p>
+    <p>系统已创建新的工单并分配给您。</p>
     <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0;">
-        <h3 style="margin-top: 0;">Ticket Details</h3>
+        <h3 style="margin-top: 0;">工单信息</h3>
         <table style="width: 100%; border-collapse: collapse;">
-            <tr><td style="padding: 5px 0;"><strong>Ticket Number:</strong></td><td>{ticket_number}</td></tr>
-            <tr><td style="padding: 5px 0;"><strong>Title:</strong></td><td>{title}</td></tr>
-            <tr><td style="padding: 5px 0;"><strong>Type:</strong></td><td>{ticket_type}</td></tr>
-            <tr><td style="padding: 5px 0;"><strong>Priority:</strong></td><td style="color: {priority_color};">{priority}</td></tr>
-            <tr><td style="padding: 5px 0;"><strong>Creator:</strong></td><td>{creator_name}</td></tr>
-            <tr><td style="padding: 5px 0;"><strong>Due Date:</strong></td><td>{due_at}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>工单编号：</strong></td><td>{ticket_number}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>标题：</strong></td><td>{title}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>类型：</strong></td><td>{ticket_type}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>优先级：</strong></td><td style="color: {priority_color};">{priority}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>创建人：</strong></td><td>{creator_name}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>到期时间：</strong></td><td>{due_at}</td></tr>
         </table>
     </div>
     <div style="background: #fafafa; padding: 15px; border-left: 3px solid #1890ff; margin: 15px 0;">
-        <strong>Description:</strong>
+        <strong>描述：</strong>
         <p>{description}</p>
     </div>
-    <p>Please handle this ticket as soon as possible.</p>
+    <p>请尽快处理该工单。</p>
     <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-    <p style="color: #999; font-size: 12px;">Monitoring System - Ticket Notification</p>
+    <p style="color: #999; font-size: 12px;">沉降监测系统 - 工单通知</p>
 </div>
 </body>
 </html>
 '''
             },
             'ticket_assigned': {
-                'subject': '[Ticket System] Ticket Assigned to You: {ticket_number}',
+                'subject': '[工单系统] 工单已分配给您：{ticket_number}',
                 'body': '''
-Dear {assignee_name},
+{assignee_name} 您好，
 
-Ticket {ticket_number} has been assigned to you.
+工单 {ticket_number} 已分配给您。
 
-Ticket Details:
-- Title: {title}
-- Type: {ticket_type}
-- Priority: {priority}
-- Due Date: {due_at}
+工单信息：
+- 标题：{title}
+- 类型：{ticket_type}
+- 优先级：{priority}
+- 到期时间：{due_at}
 
-Please take action on this ticket.
+请及时处理该工单。
 
 ---
-Monitoring System - Ticket Notification
+沉降监测系统 - 工单通知
 ''',
                 'html_body': None
             },
             'ticket_status_changed': {
-                'subject': '[Ticket System] Status Changed: {ticket_number}',
+                'subject': '[工单系统] 工单状态已变更：{ticket_number}',
                 'body': '''
-Dear {recipient_name},
+{recipient_name} 您好，
 
-The status of ticket {ticket_number} has been changed.
+工单 {ticket_number} 的状态已变更。
 
-Status Change:
-- From: {old_status}
-- To: {new_status}
-- Changed By: {changed_by}
+状态变更：
+- 从：{old_status}
+- 到：{new_status}
+- 变更人：{changed_by}
 
-Ticket Details:
-- Title: {title}
-- Priority: {priority}
+工单信息：
+- 标题：{title}
+- 优先级：{priority}
 
 ---
-Monitoring System - Ticket Notification
+沉降监测系统 - 工单通知
 ''',
                 'html_body': None
             },
             'ticket_due_soon': {
-                'subject': '[REMINDER] Ticket Due Soon: {ticket_number}',
+                'subject': '[提醒] 工单即将到期：{ticket_number}',
                 'body': '''
-Dear {assignee_name},
+{assignee_name} 您好，
 
-This is a reminder that ticket {ticket_number} is due soon.
+提醒：工单 {ticket_number} 即将到期。
 
-Due Date: {due_at}
-Hours Remaining: {hours_remaining}
+到期时间：{due_at}
+剩余小时：{hours_remaining}
 
-Ticket Details:
-- Title: {title}
-- Priority: {priority}
-- Status: {status}
+工单信息：
+- 标题：{title}
+- 优先级：{priority}
+- 状态：{status}
 
-Please ensure this ticket is completed before the due date.
+请在到期前完成该工单处理。
 
 ---
-Monitoring System - Ticket Notification
+沉降监测系统 - 工单通知
 ''',
                 'html_body': '''
 <html>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
 <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <h2 style="color: #fa8c16;">[REMINDER] Ticket Due Soon</h2>
-    <p>Dear {assignee_name},</p>
-    <p>This is a reminder that ticket <strong>{ticket_number}</strong> is due soon.</p>
+    <h2 style="color: #fa8c16;">提醒：工单即将到期</h2>
+    <p>{assignee_name} 您好，</p>
+    <p>提醒：工单 <strong>{ticket_number}</strong> 即将到期。</p>
     <div style="background: #fff7e6; padding: 15px; border-radius: 5px; border: 1px solid #ffd591; margin: 15px 0;">
-        <p style="margin: 0;"><strong>Due Date:</strong> {due_at}</p>
-        <p style="margin: 5px 0 0 0;"><strong>Hours Remaining:</strong> {hours_remaining}</p>
+        <p style="margin: 0;"><strong>到期时间：</strong> {due_at}</p>
+        <p style="margin: 5px 0 0 0;"><strong>剩余小时：</strong> {hours_remaining}</p>
     </div>
     <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0;">
-        <h3 style="margin-top: 0;">Ticket Details</h3>
-        <p><strong>Title:</strong> {title}</p>
-        <p><strong>Priority:</strong> {priority}</p>
-        <p><strong>Status:</strong> {status}</p>
+        <h3 style="margin-top: 0;">工单信息</h3>
+        <p><strong>标题：</strong> {title}</p>
+        <p><strong>优先级：</strong> {priority}</p>
+        <p><strong>状态：</strong> {status}</p>
     </div>
-    <p>Please ensure this ticket is completed before the due date.</p>
+    <p>请在到期前完成该工单处理。</p>
     <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-    <p style="color: #999; font-size: 12px;">Monitoring System - Ticket Notification</p>
+    <p style="color: #999; font-size: 12px;">沉降监测系统 - 工单通知</p>
 </div>
 </body>
 </html>
 '''
             },
             'ticket_overdue': {
-                'subject': '[URGENT] Ticket Overdue: {ticket_number}',
+                'subject': '[紧急] 工单已超期：{ticket_number}',
                 'body': '''
-URGENT: Ticket Overdue
+紧急：工单已超期
 
-Dear {assignee_name},
+{assignee_name} 您好，
 
-Ticket {ticket_number} is now OVERDUE.
+工单 {ticket_number} 已超期。
 
-Due Date: {due_at}
-Overdue By: {hours_overdue} hours
+到期时间：{due_at}
+超期时长：{hours_overdue} 小时
 
-Ticket Details:
-- Title: {title}
-- Priority: {priority}
-- Status: {status}
+工单信息：
+- 标题：{title}
+- 优先级：{priority}
+- 状态：{status}
 
-Please address this immediately.
+请立即处理该工单。
 
 ---
-Monitoring System - Ticket Notification
+沉降监测系统 - 工单通知
 ''',
                 'html_body': '''
 <html>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
 <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <h2 style="color: #ff4d4f;">[URGENT] Ticket Overdue</h2>
-    <p>Dear {assignee_name},</p>
-    <p>Ticket <strong>{ticket_number}</strong> is now <strong style="color: #ff4d4f;">OVERDUE</strong>.</p>
+    <h2 style="color: #ff4d4f;">紧急：工单已超期</h2>
+    <p>{assignee_name} 您好，</p>
+    <p>工单 <strong>{ticket_number}</strong> 已<strong style="color: #ff4d4f;">超期</strong>。</p>
     <div style="background: #fff1f0; padding: 15px; border-radius: 5px; border: 1px solid #ffa39e; margin: 15px 0;">
-        <p style="margin: 0;"><strong>Due Date:</strong> {due_at}</p>
-        <p style="margin: 5px 0 0 0;"><strong>Overdue By:</strong> {hours_overdue} hours</p>
+        <p style="margin: 0;"><strong>到期时间：</strong> {due_at}</p>
+        <p style="margin: 5px 0 0 0;"><strong>超期时长：</strong> {hours_overdue} 小时</p>
     </div>
     <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0;">
-        <h3 style="margin-top: 0;">Ticket Details</h3>
-        <p><strong>Title:</strong> {title}</p>
-        <p><strong>Priority:</strong> {priority}</p>
-        <p><strong>Status:</strong> {status}</p>
+        <h3 style="margin-top: 0;">工单信息</h3>
+        <p><strong>标题：</strong> {title}</p>
+        <p><strong>优先级：</strong> {priority}</p>
+        <p><strong>状态：</strong> {status}</p>
     </div>
-    <p style="color: #ff4d4f; font-weight: bold;">Please address this immediately.</p>
+    <p style="color: #ff4d4f; font-weight: bold;">请立即处理该工单。</p>
     <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-    <p style="color: #999; font-size: 12px;">Monitoring System - Ticket Notification</p>
+    <p style="color: #999; font-size: 12px;">沉降监测系统 - 工单通知</p>
 </div>
 </body>
 </html>
@@ -342,19 +365,22 @@ Monitoring System - Ticket Notification
     def notify_ticket_created(self, ticket: Dict, assignee_email: Optional[str] = None) -> bool:
         """Send notification for newly created ticket"""
         if not assignee_email:
-            logger.info("[INFO] No assignee email, skipping ticket created notification")
+            logger.info("[INFO] 未配置处理人邮箱，已跳过新工单通知")
             return False
+
+        ticket_type_code = self._norm(ticket.get('ticket_type', ''))
+        priority_code = self._norm(ticket.get('priority', 'MEDIUM'))
 
         context = {
             'ticket_number': ticket.get('ticket_number', ''),
             'title': ticket.get('title', ''),
-            'ticket_type': ticket.get('ticket_type', ''),
-            'priority': ticket.get('priority', 'MEDIUM'),
-            'priority_color': self._get_priority_color(ticket.get('priority', 'MEDIUM')),
-            'creator_name': ticket.get('creator_name', 'System'),
-            'assignee_name': ticket.get('assignee_name', 'Team Member'),
-            'due_at': str(ticket.get('due_at', 'Not set')),
-            'description': ticket.get('description', 'No description provided')
+            'ticket_type': self._to_ticket_type_name(ticket_type_code),
+            'priority': self._to_priority_name(priority_code),
+            'priority_color': self._get_priority_color(priority_code),
+            'creator_name': ticket.get('creator_name', '系统'),
+            'assignee_name': ticket.get('assignee_name', '团队成员'),
+            'due_at': str(ticket.get('due_at', '未设置')),
+            'description': ticket.get('description', '暂无描述')
         }
 
         template = self._get_email_template('ticket_created', context)
@@ -367,13 +393,15 @@ Monitoring System - Ticket Notification
 
     def notify_ticket_assigned(self, ticket: Dict, assignee_email: str) -> bool:
         """Send notification when ticket is assigned"""
+        ticket_type_code = self._norm(ticket.get('ticket_type', ''))
+        priority_code = self._norm(ticket.get('priority', 'MEDIUM'))
         context = {
             'ticket_number': ticket.get('ticket_number', ''),
             'title': ticket.get('title', ''),
-            'ticket_type': ticket.get('ticket_type', ''),
-            'priority': ticket.get('priority', 'MEDIUM'),
-            'assignee_name': ticket.get('assignee_name', 'Team Member'),
-            'due_at': str(ticket.get('due_at', 'Not set'))
+            'ticket_type': self._to_ticket_type_name(ticket_type_code),
+            'priority': self._to_priority_name(priority_code),
+            'assignee_name': ticket.get('assignee_name', '团队成员'),
+            'due_at': str(ticket.get('due_at', '未设置'))
         }
 
         template = self._get_email_template('ticket_assigned', context)
@@ -387,14 +415,15 @@ Monitoring System - Ticket Notification
     def notify_status_changed(self, ticket: Dict, old_status: str, new_status: str,
                              changed_by: str, recipient_email: str) -> bool:
         """Send notification when ticket status changes"""
+        priority_code = self._norm(ticket.get('priority', 'MEDIUM'))
         context = {
             'ticket_number': ticket.get('ticket_number', ''),
             'title': ticket.get('title', ''),
-            'priority': ticket.get('priority', 'MEDIUM'),
-            'old_status': old_status,
-            'new_status': new_status,
+            'priority': self._to_priority_name(priority_code),
+            'old_status': self._to_status_name(old_status),
+            'new_status': self._to_status_name(new_status),
             'changed_by': changed_by,
-            'recipient_name': ticket.get('creator_name', 'Team Member')
+            'recipient_name': ticket.get('creator_name', '团队成员')
         }
 
         template = self._get_email_template('ticket_status_changed', context)
@@ -407,13 +436,14 @@ Monitoring System - Ticket Notification
 
     def notify_ticket_due_soon(self, ticket: Dict, assignee_email: str, hours_remaining: float) -> bool:
         """Send reminder for ticket due soon"""
+        priority_code = self._norm(ticket.get('priority', 'MEDIUM'))
         context = {
             'ticket_number': ticket.get('ticket_number', ''),
             'title': ticket.get('title', ''),
-            'priority': ticket.get('priority', 'MEDIUM'),
-            'status': ticket.get('status', ''),
-            'assignee_name': ticket.get('assignee_name', 'Team Member'),
-            'due_at': str(ticket.get('due_at', 'Not set')),
+            'priority': self._to_priority_name(priority_code),
+            'status': self._to_status_name(ticket.get('status', '')),
+            'assignee_name': ticket.get('assignee_name', '团队成员'),
+            'due_at': str(ticket.get('due_at', '未设置')),
             'hours_remaining': round(hours_remaining, 1)
         }
 
@@ -427,13 +457,14 @@ Monitoring System - Ticket Notification
 
     def notify_ticket_overdue(self, ticket: Dict, assignee_email: str, hours_overdue: float) -> bool:
         """Send urgent notification for overdue ticket"""
+        priority_code = self._norm(ticket.get('priority', 'MEDIUM'))
         context = {
             'ticket_number': ticket.get('ticket_number', ''),
             'title': ticket.get('title', ''),
-            'priority': ticket.get('priority', 'MEDIUM'),
-            'status': ticket.get('status', ''),
-            'assignee_name': ticket.get('assignee_name', 'Team Member'),
-            'due_at': str(ticket.get('due_at', 'Not set')),
+            'priority': self._to_priority_name(priority_code),
+            'status': self._to_status_name(ticket.get('status', '')),
+            'assignee_name': ticket.get('assignee_name', '团队成员'),
+            'due_at': str(ticket.get('due_at', '未设置')),
             'hours_overdue': round(abs(hours_overdue), 1)
         }
 
