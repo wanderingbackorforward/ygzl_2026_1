@@ -405,6 +405,25 @@ def cover_cameras():
         kind = (cam.get('kind') or infer_kind(url)).strip().lower()
         normalized.append({'id': cam_id, 'label': label, 'url': url, 'format': fmt, 'kind': kind})
 
+    static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../static'))
+    def local_exists(url: str):
+        u = (url or '').strip()
+        if u.startswith('/static/'):
+            rel = u[len('/static/'):].lstrip('/\\')
+            return os.path.exists(os.path.join(static_dir, rel))
+        if u.startswith('videos/'):
+            rel = u.lstrip('/\\')
+            return os.path.exists(os.path.join(static_dir, rel))
+        return True
+
+    if normalized:
+        for cam in normalized:
+            if cam.get('kind') == 'demo' and not local_exists(cam.get('url') or ''):
+                cam['url'] = 'https://cwwp2.dot.ca.gov/data/d4/cctv/image/tvd32i80baybridgesastowereast/tvd32i80baybridgesastowereast.jpg' if cam.get('id') == 'entrance' else 'https://cwwp2.dot.ca.gov/data/d2/cctv/image/vollmers/vollmers.jpg'
+                cam['format'] = 'image'
+                cam['kind'] = 'external'
+                cam['label'] = f"{cam.get('label') or cam.get('id')}（外部源）"
+
     return jsonify({'cameras': normalized})
 
 # =========================================================
