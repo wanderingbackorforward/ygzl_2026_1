@@ -19,6 +19,7 @@ export interface CardConfig {
   component: React.ComponentType<CardComponentProps>;
   props?: Record<string, unknown>;
   defaultLayout: CardLayout;
+  defaultLayouts?: Partial<Record<Breakpoint, CardLayout>>;
 }
 
 export interface CardLayout {

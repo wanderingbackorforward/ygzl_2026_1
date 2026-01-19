@@ -1,6 +1,7 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { LayoutProvider } from '../contexts/LayoutContext';
 import { TemperatureProvider, useTemperature } from '../contexts/TemperatureContext';
+import { useLayout } from '../contexts/LayoutContext';
 import { DashboardGrid } from '../components/layout/DashboardGrid';
 import { FullscreenModal } from '../components/layout/FullscreenModal';
 import { TemperatureTrendChart } from '../components/charts/temperature/TemperatureTrendChart';
@@ -99,18 +100,92 @@ const TemperatureSecondaryAnalysisCard: React.FC = () => {
 };
 
 const TEMPERATURE_CARDS: CardConfig[] = [
-  { id: 'secondary-analysis', title: '二级分析', icon: 'fas fa-microscope', component: TemperatureSecondaryAnalysisCard, defaultLayout: { x: 0, y: 0, w: 12, h: 6, minW: 6, minH: 4 } },
-  { id: 'temperature-trend', title: '温度趋势分布', icon: 'fas fa-chart-bar', component: TemperatureTrendChart, defaultLayout: { x: 0, y: 6, w: 6, h: 4, minW: 4, minH: 3 } },
-  { id: 'temperature-distribution', title: '温度汇总', icon: 'fas fa-chart-pie', component: TemperatureDistributionChart, defaultLayout: { x: 6, y: 6, w: 6, h: 4, minW: 4, minH: 3 } },
-  { id: 'sensor-selector', title: '传感器选择', icon: 'fas fa-thermometer-half', component: SensorSelectorCard, defaultLayout: { x: 0, y: 10, w: 3, h: 3, minW: 2, minH: 2 } },
-  { id: 'sensor-details', title: '传感器详情', icon: 'fas fa-info-circle', component: SensorDetailsCard, defaultLayout: { x: 3, y: 10, w: 3, h: 3, minW: 2, minH: 2 } },
-  { id: 'temperature-series', title: '温度时间序列', icon: 'fas fa-chart-line', component: TemperatureSeriesChartCard, defaultLayout: { x: 6, y: 10, w: 6, h: 4, minW: 4, minH: 3 } },
-  { id: 'temperature-range', title: '日温差', icon: 'fas fa-temperature-high', component: TemperatureRangeChartCard, defaultLayout: { x: 0, y: 14, w: 12, h: 4, minW: 6, minH: 3 } },
+  {
+    id: 'secondary-analysis',
+    title: '二级分析',
+    icon: 'fas fa-microscope',
+    component: TemperatureSecondaryAnalysisCard,
+    defaultLayout: { x: 0, y: 0, w: 12, h: 6, minW: 6, minH: 4 },
+    defaultLayouts: {
+      md: { x: 0, y: 0, w: 10, h: 6, minW: 6, minH: 4 },
+    },
+  },
+  {
+    id: 'sensor-selector',
+    title: '传感器选择',
+    icon: 'fas fa-thermometer-half',
+    component: SensorSelectorCard,
+    defaultLayout: { x: 0, y: 6, w: 4, h: 4, minW: 3, minH: 3 },
+    defaultLayouts: {
+      md: { x: 0, y: 6, w: 3, h: 4, minW: 3, minH: 3 },
+    },
+  },
+  {
+    id: 'sensor-details',
+    title: '传感器详情',
+    icon: 'fas fa-info-circle',
+    component: SensorDetailsCard,
+    defaultLayout: { x: 4, y: 6, w: 4, h: 4, minW: 3, minH: 3 },
+    defaultLayouts: {
+      md: { x: 3, y: 6, w: 3, h: 4, minW: 3, minH: 3 },
+    },
+  },
+  {
+    id: 'temperature-series',
+    title: '温度时间序列',
+    icon: 'fas fa-chart-line',
+    component: TemperatureSeriesChartCard,
+    defaultLayout: { x: 8, y: 6, w: 4, h: 4, minW: 4, minH: 3 },
+    defaultLayouts: {
+      md: { x: 6, y: 6, w: 4, h: 4, minW: 4, minH: 3 },
+    },
+  },
+  {
+    id: 'temperature-trend',
+    title: '温度趋势分布',
+    icon: 'fas fa-chart-bar',
+    component: TemperatureTrendChart,
+    defaultLayout: { x: 0, y: 10, w: 4, h: 4, minW: 4, minH: 3 },
+    defaultLayouts: {
+      md: { x: 0, y: 10, w: 4, h: 4, minW: 4, minH: 3 },
+    },
+  },
+  {
+    id: 'temperature-distribution',
+    title: '温度汇总',
+    icon: 'fas fa-chart-pie',
+    component: TemperatureDistributionChart,
+    defaultLayout: { x: 4, y: 10, w: 4, h: 4, minW: 4, minH: 3 },
+    defaultLayouts: {
+      md: { x: 4, y: 10, w: 3, h: 4, minW: 3, minH: 3 },
+    },
+  },
+  {
+    id: 'temperature-range',
+    title: '日温差',
+    icon: 'fas fa-temperature-high',
+    component: TemperatureRangeChartCard,
+    defaultLayout: { x: 8, y: 10, w: 4, h: 4, minW: 4, minH: 3 },
+    defaultLayouts: {
+      md: { x: 7, y: 10, w: 3, h: 4, minW: 3, minH: 3 },
+    },
+  },
 ];
 
 const TemperatureDashboard: React.FC = () => {
   const [fullscreenCard, setFullscreenCard] = useState<string | null>(null);
   const { selectedSensorId, seriesData, seriesLoading, rangeData, rangeLoading } = useTemperature();
+  const { resetLayout } = useLayout();
+
+  useEffect(() => {
+    const key = 'layoutVersion:temperature';
+    const current = '2';
+    const prev = localStorage.getItem(key);
+    if (prev !== current) {
+      resetLayout('temperature');
+      localStorage.setItem(key, current);
+    }
+  }, [resetLayout]);
 
   const handleCardFullscreen = useCallback((cardId: string) => {
     setFullscreenCard(cardId);

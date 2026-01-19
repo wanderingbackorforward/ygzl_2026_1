@@ -62,17 +62,17 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
   const defaultLayout = useMemo((): LayoutItem[] => {
     return cards.map(card => ({
       i: card.id,
-      x: card.defaultLayout.x,
-      y: card.defaultLayout.y,
-      w: card.defaultLayout.w,
-      h: card.defaultLayout.h,
-      minW: card.defaultLayout.minW,
-      maxW: card.defaultLayout.maxW,
-      minH: card.defaultLayout.minH,
-      maxH: card.defaultLayout.maxH,
-      static: card.defaultLayout.static,
+      x: (card.defaultLayouts?.[currentBreakpoint] ?? card.defaultLayout).x,
+      y: (card.defaultLayouts?.[currentBreakpoint] ?? card.defaultLayout).y,
+      w: (card.defaultLayouts?.[currentBreakpoint] ?? card.defaultLayout).w,
+      h: (card.defaultLayouts?.[currentBreakpoint] ?? card.defaultLayout).h,
+      minW: (card.defaultLayouts?.[currentBreakpoint] ?? card.defaultLayout).minW,
+      maxW: (card.defaultLayouts?.[currentBreakpoint] ?? card.defaultLayout).maxW,
+      minH: (card.defaultLayouts?.[currentBreakpoint] ?? card.defaultLayout).minH,
+      maxH: (card.defaultLayouts?.[currentBreakpoint] ?? card.defaultLayout).maxH,
+      static: (card.defaultLayouts?.[currentBreakpoint] ?? card.defaultLayout).static,
     }));
-  }, [cards]);
+  }, [cards, currentBreakpoint]);
 
   // Register default layout on mount
   useEffect(() => {
