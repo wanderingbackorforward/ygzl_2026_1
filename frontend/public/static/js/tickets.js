@@ -494,12 +494,46 @@ function refreshTickets() {
     loadTickets();
 }
 
+function formatDateTimeLocal(date) {
+    const pad = (n) => String(n).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    const mm = pad(date.getMonth() + 1);
+    const dd = pad(date.getDate());
+    const hh = pad(date.getHours());
+    const mi = pad(date.getMinutes());
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+}
+
+function updateDueModeUI() {
+    const dueMode = document.getElementById('dueMode');
+    const dueDelayRow = document.getElementById('dueDelayRow');
+    const dueDateRow = document.getElementById('dueDateRow');
+    if (!dueMode || !dueDelayRow || !dueDateRow) {
+        return;
+    }
+    const mode = dueMode.value;
+    dueDelayRow.style.display = mode === 'delay' ? '' : 'none';
+    dueDateRow.style.display = mode === 'date' ? '' : 'none';
+}
+
 /**
  * 显示创建工单模态框
  */
 function showCreateModal() {
     document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> 创建工单';
     document.getElementById('ticketForm').reset();
+    const dueMode = document.getElementById('dueMode');
+    const dueDelayDays = document.getElementById('dueDelayDays');
+    const dueDateTime = document.getElementById('dueDateTime');
+    if (dueMode) dueMode.value = 'delay';
+    if (dueDelayDays) dueDelayDays.value = '2';
+    if (dueDateTime) {
+        const d = new Date();
+        d.setDate(d.getDate() + 2);
+        d.setSeconds(0, 0);
+        dueDateTime.value = formatDateTimeLocal(d);
+    }
+    updateDueModeUI();
     document.getElementById('ticketModal').style.display = 'flex';
 }
 
@@ -787,6 +821,12 @@ function bindFormEvents() {
         await saveTicket();
     });
 
+    const dueMode = document.getElementById('dueMode');
+    if (dueMode) {
+        dueMode.addEventListener('change', updateDueModeUI);
+        updateDueModeUI();
+    }
+
     // 筛选器事件
     document.getElementById('statusFilter').addEventListener('change', refreshTickets);
     document.getElementById('typeFilter').addEventListener('change', refreshTickets);
@@ -907,6 +947,22 @@ async function saveTicket() {
             creator_id: creatorId || 'current_user',
             creator_name: creatorName || '用户'
         };
+
+        const dueMode = document.getElementById('dueMode');
+        if (dueMode && dueMode.value === 'delay') {
+            const dueDelayDays = document.getElementById('dueDelayDays');
+            if (dueDelayDays && dueDelayDays.value !== '') {
+                const dueInDays = parseFloat(dueDelayDays.value);
+                if (!Number.isNaN(dueInDays)) {
+                    formData.due_in_days = dueInDays;
+                }
+            }
+        } else if (dueMode && dueMode.value === 'date') {
+            const dueDateTime = document.getElementById('dueDateTime');
+            if (dueDateTime && dueDateTime.value) {
+                formData.due_at = dueDateTime.value;
+            }
+        }
 
         // 如果选择了分配人，添加到请求
         if (assigneeId) {

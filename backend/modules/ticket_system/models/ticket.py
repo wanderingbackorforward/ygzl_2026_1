@@ -8,10 +8,7 @@ from typing import Dict, List, Optional, Any
 import json
 
 from modules.db.vendor import get_repo
-from ..config import (
-    TICKET_TYPES, TICKET_STATUS, TICKET_PRIORITY,
-    generate_ticket_number, calculate_sla, get_priority
-)
+from ..config import generate_ticket_number
 
 
 class TicketModel:
@@ -21,6 +18,26 @@ class TicketModel:
         self.table_name = "tickets"
         pass
 
+    def _parse_due_datetime(self, raw: Any) -> Optional[datetime.datetime]:
+        if raw is None:
+            return None
+        if isinstance(raw, datetime.datetime):
+            return raw
+        if isinstance(raw, str):
+            s = raw.strip()
+            if not s:
+                return None
+            try:
+                if s.endswith('Z'):
+                    s = s[:-1] + '+00:00'
+                if 'T' in s:
+                    return datetime.datetime.fromisoformat(s)
+                d = datetime.date.fromisoformat(s)
+                return datetime.datetime.combine(d, datetime.time(23, 59, 59))
+            except Exception:
+                return None
+        return None
+
     def _ensure_table_exists(self):
         return
 
@@ -29,15 +46,20 @@ class TicketModel:
             # 生成工单编号
             ticket_number = generate_ticket_number()
 
-            # 计算SLA截止时间
-            sla_hours = calculate_sla(
-                ticket_data.get('ticket_type'),
-                ticket_data.get('priority', 'MEDIUM')
-            )
-
-            due_at = None
-            if sla_hours:
-                due_at = (datetime.datetime.now() + datetime.timedelta(hours=sla_hours)).isoformat()
+            now = datetime.datetime.now()
+            due_at_dt = self._parse_due_datetime(ticket_data.get('due_at') or ticket_data.get('due_date'))
+            if due_at_dt is None:
+                due_in_days = ticket_data.get('due_in_days')
+                if due_in_days is not None and str(due_in_days).strip() != "":
+                    try:
+                        due_in_days = float(due_in_days)
+                    except Exception:
+                        due_in_days = None
+                if due_in_days is not None:
+                    due_at_dt = now + datetime.timedelta(days=due_in_days)
+            if due_at_dt is None:
+                due_at_dt = now + datetime.timedelta(days=2)
+            due_at = due_at_dt.isoformat()
 
             # 准备插入数据
             insert_data = {

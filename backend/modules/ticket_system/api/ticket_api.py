@@ -154,6 +154,30 @@ def create_ticket():
         if not status_info:
             return create_response(None, "无效的工单状态", False, 400)
 
+        due_at_raw = data.get('due_at') or data.get('due_date')
+        if due_at_raw:
+            s = str(due_at_raw).strip()
+            if s.endswith('Z'):
+                s = s[:-1] + '+00:00'
+            try:
+                if 'T' in s:
+                    datetime.fromisoformat(s)
+                else:
+                    datetime.fromisoformat(s + 'T23:59:59')
+            except Exception:
+                return create_response(None, "无效的到期日期格式", False, 400)
+
+        due_in_days_raw = data.get('due_in_days')
+        if due_in_days_raw is not None and str(due_in_days_raw).strip() != "":
+            try:
+                due_in_days = float(due_in_days_raw)
+            except Exception:
+                return create_response(None, "无效的延后天数", False, 400)
+            if due_in_days < 0:
+                return create_response(None, "延后天数不能为负数", False, 400)
+            if due_in_days > 3650:
+                return create_response(None, "延后天数过大", False, 400)
+
         # 创建工单
         ticket = ticket_model.create_ticket(data)
 
