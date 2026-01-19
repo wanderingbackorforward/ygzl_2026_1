@@ -25,6 +25,16 @@ from werkzeug.utils import secure_filename
 # 只添加一次项目根目录到Python路径
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
+# 加载 .env 环境变量
+try:
+    from dotenv import load_dotenv
+    # api_server.py 位于 backend/modules/api/, .env 位于 python_scripts/
+    _env_path = os.path.join(os.path.dirname(__file__), '../../../.env')
+    if os.path.exists(_env_path):
+        load_dotenv(_env_path)
+except ImportError:
+    pass
+
 # 导入沉降需要的模块
 from modules.database.db_config import db_config
 from modules.db.vendor import get_repo
@@ -48,6 +58,9 @@ from modules.api.vibration_handler import vibration_bp
 
 # 工单系统模块
 from modules.ticket_system.api import ticket_bp, user_bp
+
+# 二级数据分析模块
+from modules.analysis_v2.api import analysis_v2_bp
 
 # =========================================================
 # 应用初始化：创建Flask应用和Blueprint
@@ -180,17 +193,16 @@ SPA_ROUTES = {
     'insar', 'overview', 'three', 'settlement-video', 'tickets'
 }
 
-@app.route('/<path:spa_path>')
-def spa_fallback(spa_path):
-    # 保留后端与静态直出路径
-    if spa_path.startswith('api/') or spa_path.startswith('static/'):
-        return jsonify({'error': '路径不在SPA兜底范围'}), 404
-    # React 构建存在且路径匹配 SPA 路由时返回 index.html
-    first_seg = spa_path.split('/')[0]
-    if os.path.exists(WEB_INDEX_PATH) and (first_seg in SPA_ROUTES or spa_path == ''):
+# 为每个 SPA 路由创建专门的处理函数，避免 catch-all 拦截 API 请求
+def _serve_spa():
+    if os.path.exists(WEB_INDEX_PATH):
         return send_from_directory(WEB_DIST_DIR, 'index.html')
-    # 默认回退到封面
     return app.send_static_file('cover.html')
+
+# 注册 SPA 路由
+for _route in SPA_ROUTES:
+    app.add_url_rule(f'/{_route}', f'spa_{_route}', _serve_spa)
+    app.add_url_rule(f'/{_route}/<path:subpath>', f'spa_{_route}_sub', _serve_spa)
 
 @app.route('/health')
 def health():
@@ -871,6 +883,8 @@ app.register_blueprint(vibration_bp)
 app.register_blueprint(ticket_bp)
 # 注册用户管理API蓝图
 app.register_blueprint(user_bp)
+# 注册二级数据分析API蓝图
+app.register_blueprint(analysis_v2_bp)
 
 # 健康检查路由
 @app.route('/api/health')
