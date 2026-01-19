@@ -59,6 +59,8 @@ const TemperatureSecondaryAnalysisCard: React.FC = () => {
 
     if (!confirmCreate) return;
 
+    const sendEmail = window.confirm('创建工单同时发送邮件通知？\n确定=发送邮件；取消=不发邮件但仍创建工单');
+
     setCreating(true);
     try {
       const response = await fetch(`${API_BASE}/analysis/v2/temperature/create-ticket`, {
@@ -73,6 +75,7 @@ const TemperatureSecondaryAnalysisCard: React.FC = () => {
           anomaly_type: anomaly.anomaly_type,
           current_value: anomaly.current_value,
           threshold: anomaly.threshold,
+          send_email: sendEmail,
         }),
       });
 

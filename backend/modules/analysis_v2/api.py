@@ -8,6 +8,7 @@ from flask import Blueprint, jsonify, request
 from datetime import datetime
 import traceback
 import math
+import os
 
 # 创建蓝图
 analysis_v2_bp = Blueprint('analysis_v2', __name__, url_prefix='/api/analysis/v2')
@@ -36,6 +37,28 @@ TEMPERATURE_ANOMALY_SUBTYPE = {
     'trend_abnormal': '温度趋势异常',
     'temperature_range_abnormal': '日温差异常',
 }
+
+def _get_user_email(user_id: str):
+    if not user_id:
+        return None
+    candidates = [
+        f"USER_EMAIL_{user_id}",
+        f"USER_EMAIL_{str(user_id).lower()}",
+        f"USER_EMAIL_{str(user_id).upper()}",
+    ]
+    for key in candidates:
+        value = os.environ.get(key)
+        if value:
+            return value
+    try:
+        from modules.db.vendor import get_repo
+        repo = get_repo()
+        getter = getattr(repo, 'user_get_email', None)
+        if callable(getter):
+            return getter(user_id)
+    except Exception:
+        return None
+    return None
 
 
 @analysis_v2_bp.route('/settlement', methods=['GET'])
@@ -270,6 +293,7 @@ def create_temperature_ticket():
         anomaly_type = data.get('anomaly_type', '')
         creator_id = data.get('creator_id', 'system')
         creator_name = data.get('creator_name', '系统自动')
+        send_email = data.get('send_email', True) is not False
         current_value = data.get('current_value')
         threshold = data.get('threshold')
         if isinstance(current_value, float) and math.isnan(current_value):
@@ -299,6 +323,8 @@ def create_temperature_ticket():
             'status': 'PENDING',
             'creator_id': creator_id,
             'creator_name': creator_name,
+            'assignee_id': data.get('assignee_id') or os.environ.get('TEMPERATURE_TICKET_ASSIGNEE_ID') or 'monitoring_engineer',
+            'assignee_name': data.get('assignee_name') or os.environ.get('TEMPERATURE_TICKET_ASSIGNEE_NAME') or (data.get('assignee_id') or os.environ.get('TEMPERATURE_TICKET_ASSIGNEE_ID') or 'monitoring_engineer'),
             'monitoring_point_id': point_id,
             'current_value': current_value,
             'threshold_value': threshold,
@@ -317,6 +343,16 @@ def create_temperature_ticket():
 
         # 创建工单
         ticket = ticket_model.create_ticket(ticket_data)
+
+        try:
+            if send_email:
+                assignee_id = ticket.get('assignee_id') or ticket_data.get('assignee_id')
+                assignee_email = _get_user_email(assignee_id)
+                if assignee_email:
+                    from modules.ticket_system.services import ticket_notifier
+                    ticket_notifier.notify_ticket_created(ticket, assignee_email)
+        except Exception as notify_err:
+            print(f"[Analysis V2] Temperature ticket email notify failed: {notify_err}")
 
         return jsonify({
             'success': True,
@@ -391,6 +427,7 @@ def create_ticket_from_anomaly():
         anomaly_type = data.get('anomaly_type', '')
         creator_id = data.get('creator_id', 'system')
         creator_name = data.get('creator_name', '系统自动')
+        send_email = data.get('send_email', True) is not False
         current_value = data.get('current_value')
         threshold = data.get('threshold')
         if isinstance(current_value, float) and math.isnan(current_value):
@@ -420,6 +457,8 @@ def create_ticket_from_anomaly():
             'status': 'PENDING',
             'creator_id': creator_id,
             'creator_name': creator_name,
+            'assignee_id': data.get('assignee_id') or os.environ.get('SETTLEMENT_TICKET_ASSIGNEE_ID') or 'monitoring_engineer',
+            'assignee_name': data.get('assignee_name') or os.environ.get('SETTLEMENT_TICKET_ASSIGNEE_NAME') or (data.get('assignee_id') or os.environ.get('SETTLEMENT_TICKET_ASSIGNEE_ID') or 'monitoring_engineer'),
             'monitoring_point_id': point_id,
             'current_value': current_value,
             'threshold_value': threshold,
@@ -437,6 +476,16 @@ def create_ticket_from_anomaly():
 
         # 创建工单
         ticket = ticket_model.create_ticket(ticket_data)
+
+        try:
+            if send_email:
+                assignee_id = ticket.get('assignee_id') or ticket_data.get('assignee_id')
+                assignee_email = _get_user_email(assignee_id)
+                if assignee_email:
+                    from modules.ticket_system.services import ticket_notifier
+                    ticket_notifier.notify_ticket_created(ticket, assignee_email)
+        except Exception as notify_err:
+            print(f"[Analysis V2] Settlement ticket email notify failed: {notify_err}")
 
         return jsonify({
             'success': True,
