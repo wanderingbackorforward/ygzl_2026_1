@@ -35,6 +35,13 @@ body {
     font-size: 16px;
 }
 
+body.ticket-page {
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
 /* 主容器覆盖整个窗口 */
 .dashboard {
     display: flex;
