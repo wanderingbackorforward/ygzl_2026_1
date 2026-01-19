@@ -239,6 +239,170 @@ export function useSettlementRecommendations(): UseAnalysisResult<Recommendation
   return { data, loading, error, refetch: fetchData, clearCache: handleClearCache };
 }
 
+// ============================================================
+// 温度二级分析 Hooks
+// ============================================================
+
+/**
+ * 获取温度二级分析数据（带缓存）
+ */
+export function useTemperatureAnalysisV2(): UseAnalysisResult<AnalysisResult> {
+  const cacheKey = 'temperature';
+  const [data, setData] = useState<AnalysisResult | null>(() => getFromCache<AnalysisResult>(cacheKey));
+  const [loading, setLoading] = useState(!data);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cached = getFromCache<AnalysisResult>(cacheKey);
+      if (cached) {
+        setData(cached);
+        setLoading(false);
+        return;
+      }
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await apiGet<AnalysisResult>('/analysis/v2/temperature');
+      setData(result);
+      saveToCache(cacheKey, result);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load temperature analysis data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!data) {
+      fetchData();
+    }
+  }, [data, fetchData]);
+
+  const handleClearCache = useCallback(() => {
+    clearCache(cacheKey);
+    setData(null);
+  }, []);
+
+  return {
+    data,
+    loading,
+    error,
+    refetch: fetchData,
+    clearCache: handleClearCache,
+  };
+}
+
+/**
+ * 获取温度异常列表
+ */
+export function useTemperatureAnomalies(options?: {
+  severity?: SeverityLevel;
+  limit?: number;
+}): UseAnalysisResult<AnomalyItem[]> {
+  const cacheKey = `temperature_anomalies_${options?.severity || 'all'}_${options?.limit || 'all'}`;
+  const [data, setData] = useState<AnomalyItem[] | null>(() => getFromCache<AnomalyItem[]>(cacheKey));
+  const [loading, setLoading] = useState(!data);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cached = getFromCache<AnomalyItem[]>(cacheKey);
+      if (cached) {
+        setData(cached);
+        setLoading(false);
+        return;
+      }
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (options?.severity) params.append('severity', options.severity);
+      if (options?.limit) params.append('limit', String(options.limit));
+
+      const queryString = params.toString();
+      const url = `/analysis/v2/temperature/anomalies${queryString ? `?${queryString}` : ''}`;
+
+      const result = await apiGet<{ count: number; anomalies: AnomalyItem[] }>(url);
+      setData(result.anomalies);
+      saveToCache(cacheKey, result.anomalies);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load temperature anomalies');
+    } finally {
+      setLoading(false);
+    }
+  }, [cacheKey, options?.severity, options?.limit]);
+
+  useEffect(() => {
+    if (!data) {
+      fetchData();
+    }
+  }, [data, fetchData]);
+
+  const handleClearCache = useCallback(() => {
+    clearCache(cacheKey);
+    setData(null);
+  }, [cacheKey]);
+
+  return { data, loading, error, refetch: fetchData, clearCache: handleClearCache };
+}
+
+/**
+ * 获取温度处置建议
+ */
+export function useTemperatureRecommendations(): UseAnalysisResult<Recommendation[]> {
+  const cacheKey = 'temperature_recommendations';
+  const [data, setData] = useState<Recommendation[] | null>(() => getFromCache<Recommendation[]>(cacheKey));
+  const [loading, setLoading] = useState(!data);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cached = getFromCache<Recommendation[]>(cacheKey);
+      if (cached) {
+        setData(cached);
+        setLoading(false);
+        return;
+      }
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await apiGet<{ count: number; recommendations: Recommendation[] }>(
+        '/analysis/v2/temperature/recommendations'
+      );
+      setData(result.recommendations);
+      saveToCache(cacheKey, result.recommendations);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load temperature recommendations');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!data) {
+      fetchData();
+    }
+  }, [data, fetchData]);
+
+  const handleClearCache = useCallback(() => {
+    clearCache(cacheKey);
+    setData(null);
+  }, []);
+
+  return { data, loading, error, refetch: fetchData, clearCache: handleClearCache };
+}
+
+// ============================================================
+// 通用 Hooks
+// ============================================================
+
 /**
  * 通用二级分析数据 Hook（支持多种数据类型，带缓存）
  */

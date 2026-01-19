@@ -1,10 +1,11 @@
 /**
  * 二级数据分析 Tab 组件
  * 显示异常列表和处置建议
+ * 支持沉降、温度等多种数据类型
  */
 
 import React, { useState } from 'react';
-import { useSettlementAnalysisV2 } from '../../hooks/useSecondaryData';
+import { useSettlementAnalysisV2, useTemperatureAnalysisV2 } from '../../hooks/useSecondaryData';
 import {
   SEVERITY_COLORS,
   SEVERITY_LABELS,
@@ -12,20 +13,38 @@ import {
   PRIORITY_LABELS,
   ANOMALY_TYPE_LABELS,
 } from '../../types/analysis-v2';
-import type { AnomalyItem, Recommendation, SeverityLevel } from '../../types/analysis-v2';
+import type { AnomalyItem, Recommendation, SeverityLevel, AnalysisResult } from '../../types/analysis-v2';
+
+// Hook 返回类型
+interface UseAnalysisResult {
+  data: AnalysisResult | null;
+  loading: boolean;
+  error: string | null;
+  refetch: (forceRefresh?: boolean) => void;
+}
 
 interface SecondaryDataTabProps {
   onSelectPoint?: (pointId: string) => void;
   onCreateTicket?: (anomaly: AnomalyItem) => void;
+  /** 数据类型，默认为 settlement */
+  dataType?: 'settlement' | 'temperature';
+  /** 标签文本配置 */
+  labels?: {
+    totalLabel?: string;  // 总数标签 (如: 总点数、总传感器)
+    emptyMessage?: string; // 无异常时的消息
+  };
 }
 
 type TabType = 'anomalies' | 'recommendations';
 
-export const SecondaryDataTab: React.FC<SecondaryDataTabProps> = ({
+// 内部通用组件
+const SecondaryDataTabInner: React.FC<SecondaryDataTabProps & { useAnalysis: () => UseAnalysisResult }> = ({
   onSelectPoint,
   onCreateTicket,
+  useAnalysis,
+  labels = {},
 }) => {
-  const { data, loading, error, refetch } = useSettlementAnalysisV2();
+  const { data, loading, error, refetch } = useAnalysis();
   const [activeTab, setActiveTab] = useState<TabType>('anomalies');
   const [severityFilter, setSeverityFilter] = useState<SeverityLevel | 'all'>('all');
 
@@ -75,7 +94,7 @@ export const SecondaryDataTab: React.FC<SecondaryDataTabProps> = ({
       {/* 统计概览 */}
       <div style={styles.statsBar}>
         <div style={styles.statItem}>
-          <span style={styles.statLabel}>总点数</span>
+          <span style={styles.statLabel}>{labels.totalLabel || '总点数'}</span>
           <span style={styles.statValue}>{stats.total_points}</span>
         </div>
         <div style={styles.statItem}>
@@ -129,6 +148,7 @@ export const SecondaryDataTab: React.FC<SecondaryDataTabProps> = ({
             onFilterChange={setSeverityFilter}
             onSelectPoint={onSelectPoint}
             onCreateTicket={onCreateTicket}
+            emptyMessage={labels.emptyMessage}
           />
         ) : (
           <RecommendationList recommendations={recommendations} />
@@ -153,7 +173,8 @@ const AnomalyList: React.FC<{
   onFilterChange: (filter: SeverityLevel | 'all') => void;
   onSelectPoint?: (pointId: string) => void;
   onCreateTicket?: (anomaly: AnomalyItem) => void;
-}> = ({ anomalies, severityFilter, onFilterChange, onSelectPoint, onCreateTicket }) => {
+  emptyMessage?: string;
+}> = ({ anomalies, severityFilter, onFilterChange, onSelectPoint, onCreateTicket, emptyMessage }) => {
   return (
     <>
       {/* 过滤器 */}
@@ -179,7 +200,7 @@ const AnomalyList: React.FC<{
         {anomalies.length === 0 ? (
           <div style={styles.emptyList}>
             <span style={{ color: '#73d13d', marginRight: 8 }}>[OK]</span>
-            {severityFilter === 'all' ? '所有监测点状态正常' : '没有匹配的异常'}
+            {severityFilter === 'all' ? (emptyMessage || '所有监测点状态正常') : '没有匹配的异常'}
           </div>
         ) : (
           anomalies.map((anomaly) => (
@@ -620,6 +641,44 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     fontSize: 10,
   },
+};
+
+// ============================================================
+// 导出的包装组件
+// ============================================================
+
+/**
+ * 沉降二级数据分析 Tab (默认)
+ */
+export const SecondaryDataTab: React.FC<SecondaryDataTabProps> = (props) => {
+  return (
+    <SecondaryDataTabInner
+      {...props}
+      useAnalysis={useSettlementAnalysisV2}
+      labels={{
+        totalLabel: '总点数',
+        emptyMessage: '所有监测点状态正常',
+        ...props.labels,
+      }}
+    />
+  );
+};
+
+/**
+ * 温度二级数据分析 Tab
+ */
+export const TemperatureSecondaryDataTab: React.FC<SecondaryDataTabProps> = (props) => {
+  return (
+    <SecondaryDataTabInner
+      {...props}
+      useAnalysis={useTemperatureAnalysisV2}
+      labels={{
+        totalLabel: '传感器数',
+        emptyMessage: '所有传感器温度正常',
+        ...props.labels,
+      }}
+    />
+  );
 };
 
 export default SecondaryDataTab;
