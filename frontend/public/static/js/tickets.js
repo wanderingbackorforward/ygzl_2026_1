@@ -10,6 +10,8 @@ let currentFilters = {};
 let ticketConfig = {};
 let systemUsers = [];
 let currentTab = 'active';
+let emailOptionModalInitialized = false;
+let emailOptionModalResolver = null;
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -54,7 +56,7 @@ async function loadSystemUsers() {
         const response = await fetch('/api/users');
         if (response.ok) {
             const result = await response.json();
-            systemUsers = result.data || [];
+            systemUsers = (result && result.data && (result.data.users || result.data)) || [];
 
             // 填充用户选择器
             populateUserSelectors();
@@ -541,6 +543,11 @@ async function confirmAssign() {
     const assigneeName = user ? (user.display_name || user.username) : assigneeId;
 
     try {
+        const emailChoice = await askEmailOption('分配工单');
+        if (!emailChoice.proceed) {
+            return;
+        }
+
         const response = await fetch(`/api/tickets/${ticketId}/assign`, {
             method: 'PUT',
             headers: {
@@ -548,7 +555,8 @@ async function confirmAssign() {
             },
             body: JSON.stringify({
                 assignee_id: assigneeId,
-                assignee_name: assigneeName
+                assignee_name: assigneeName,
+                send_email: emailChoice.send_email
             })
         });
 
@@ -792,6 +800,87 @@ function bindFormEvents() {
     });
 }
 
+function ensureEmailOptionModal() {
+    if (emailOptionModalInitialized) return;
+    emailOptionModalInitialized = true;
+
+    const modal = document.createElement('div');
+    modal.id = 'emailOptionModal';
+    modal.style.display = 'none';
+    modal.style.position = 'fixed';
+    modal.style.left = '0';
+    modal.style.top = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.zIndex = '9999';
+    modal.style.background = 'rgba(0,0,0,0.65)';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+
+    modal.innerHTML = `
+        <div style="width: 420px; max-width: calc(100% - 32px); background: #1b2330; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 16px 16px 14px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 10px;">
+                <div style="font-size: 16px; color: #e6f4ff; font-weight: 600;">邮件通知</div>
+                <button id="emailOptionCloseBtn" style="background: transparent; border: 0; color: rgba(255,255,255,0.7); font-size: 18px; cursor: pointer;">×</button>
+            </div>
+            <div id="emailOptionText" style="color: rgba(255,255,255,0.86); line-height: 1.5; margin-bottom: 12px;">本次操作是否发送邮件通知？</div>
+            <label style="display:flex; align-items:center; gap:10px; background: rgba(255,255,255,0.06); padding: 10px 12px; border-radius: 10px; margin-bottom: 14px; cursor: pointer;">
+                <input id="emailOptionCheckbox" type="checkbox" checked style="transform: scale(1.1);">
+                <span style="color: rgba(255,255,255,0.9);">发送邮件通知</span>
+            </label>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button id="emailOptionCancelBtn" style="padding: 8px 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); border-radius: 10px; color: rgba(255,255,255,0.9); cursor: pointer;">取消操作</button>
+                <button id="emailOptionOkBtn" style="padding: 8px 12px; background: #1677ff; border: 1px solid rgba(0,0,0,0.15); border-radius: 10px; color: #fff; cursor: pointer;">继续</button>
+            </div>
+        </div>
+    `;
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            if (emailOptionModalResolver) {
+                const resolver = emailOptionModalResolver;
+                emailOptionModalResolver = null;
+                modal.style.display = 'none';
+                resolver({ proceed: false, send_email: true });
+            }
+        }
+    });
+
+    document.body.appendChild(modal);
+
+    const closeBtn = modal.querySelector('#emailOptionCloseBtn');
+    const cancelBtn = modal.querySelector('#emailOptionCancelBtn');
+    const okBtn = modal.querySelector('#emailOptionOkBtn');
+
+    const close = (result) => {
+        if (!emailOptionModalResolver) return;
+        const resolver = emailOptionModalResolver;
+        emailOptionModalResolver = null;
+        modal.style.display = 'none';
+        resolver(result);
+    };
+
+    closeBtn.addEventListener('click', () => close({ proceed: false, send_email: true }));
+    cancelBtn.addEventListener('click', () => close({ proceed: false, send_email: true }));
+    okBtn.addEventListener('click', () => {
+        const checkbox = modal.querySelector('#emailOptionCheckbox');
+        close({ proceed: true, send_email: !!(checkbox && checkbox.checked) });
+    });
+}
+
+async function askEmailOption(actionText) {
+    ensureEmailOptionModal();
+    const modal = document.getElementById('emailOptionModal');
+    const checkbox = modal.querySelector('#emailOptionCheckbox');
+    const text = modal.querySelector('#emailOptionText');
+    if (checkbox) checkbox.checked = true;
+    if (text) text.textContent = `${actionText}：是否发送邮件通知？`;
+    modal.style.display = 'flex';
+    return await new Promise((resolve) => {
+        emailOptionModalResolver = resolve;
+    });
+}
+
 /**
  * 保存工单
  */
@@ -825,6 +914,12 @@ async function saveTicket() {
             formData.assignee_name = assigneeName;
         }
 
+        const emailChoice = await askEmailOption('创建工单');
+        if (!emailChoice.proceed) {
+            return;
+        }
+        formData.send_email = emailChoice.send_email;
+
         const response = await fetch('/api/tickets', {
             method: 'POST',
             headers: {
@@ -857,6 +952,11 @@ async function saveTicket() {
  */
 async function updateTicketStatus(ticketId, newStatus) {
     try {
+        const emailChoice = await askEmailOption(`更新工单状态为 ${getTicketStatusName(newStatus)}`);
+        if (!emailChoice.proceed) {
+            return;
+        }
+
         const response = await fetch(`/api/tickets/${ticketId}/status`, {
             method: 'PUT',
             headers: {
@@ -865,7 +965,8 @@ async function updateTicketStatus(ticketId, newStatus) {
             body: JSON.stringify({
                 status: newStatus,
                 user_id: 'current_user',
-                user_role: 'admin'
+                user_role: 'admin',
+                send_email: emailChoice.send_email
             })
         });
 

@@ -158,11 +158,12 @@ def create_ticket():
         ticket = ticket_model.create_ticket(data)
 
         try:
-            from ..services import ticket_notifier
-            assignee_id = ticket.get('assignee_id') or data.get('assignee_id')
-            assignee_email = data.get('assignee_email') or _get_user_email(assignee_id)
-            if assignee_email:
-                ticket_notifier.notify_ticket_created(ticket, assignee_email)
+            if data.get('send_email', True) is not False:
+                from ..services import ticket_notifier
+                assignee_id = ticket.get('assignee_id') or data.get('assignee_id')
+                assignee_email = data.get('assignee_email') or _get_user_email(assignee_id)
+                if assignee_email:
+                    ticket_notifier.notify_ticket_created(ticket, assignee_email)
         except Exception as notify_err:
             print(f"⚠️ 工单创建邮件通知失败: {notify_err}")
 
@@ -283,18 +284,19 @@ def update_ticket_status(ticket_id):
         updated_ticket = ticket_model.get_ticket_by_id(ticket_id)
 
         try:
-            if old_status and old_status != new_status and updated_ticket:
-                from ..services import ticket_notifier
-                creator_id = updated_ticket.get('creator_id') or ticket.get('creator_id')
-                creator_email = data.get('creator_email') or _get_user_email(creator_id)
-                if creator_email:
-                    ticket_notifier.notify_status_changed(
-                        updated_ticket,
-                        old_status=str(old_status),
-                        new_status=str(new_status),
-                        changed_by=str(user_id),
-                        recipient_email=creator_email,
-                    )
+            if data.get('send_email', True) is not False:
+                if old_status and old_status != new_status and updated_ticket:
+                    from ..services import ticket_notifier
+                    creator_id = updated_ticket.get('creator_id') or ticket.get('creator_id')
+                    creator_email = data.get('creator_email') or _get_user_email(creator_id)
+                    if creator_email:
+                        ticket_notifier.notify_status_changed(
+                            updated_ticket,
+                            old_status=str(old_status),
+                            new_status=str(new_status),
+                            changed_by=str(user_id),
+                            recipient_email=creator_email,
+                        )
         except Exception as notify_err:
             print(f"⚠️ 工单状态变更邮件通知失败: {notify_err}")
 
@@ -334,10 +336,11 @@ def assign_ticket(ticket_id):
         updated_ticket = ticket_model.get_ticket_by_id(ticket_id)
 
         try:
-            from ..services import ticket_notifier
-            assignee_email = data.get('assignee_email') or _get_user_email(assignee_id)
-            if assignee_email and updated_ticket:
-                ticket_notifier.notify_ticket_assigned(updated_ticket, assignee_email)
+            if data.get('send_email', True) is not False:
+                from ..services import ticket_notifier
+                assignee_email = data.get('assignee_email') or _get_user_email(assignee_id)
+                if assignee_email and updated_ticket:
+                    ticket_notifier.notify_ticket_assigned(updated_ticket, assignee_email)
         except Exception as notify_err:
             print(f"⚠️ 工单分配邮件通知失败: {notify_err}")
 
@@ -584,11 +587,12 @@ def trigger_alert_ticket():
         ticket = ticket_model.create_ticket(ticket_data)
 
         try:
-            from ..services import ticket_notifier
-            assignee_id = ticket.get('assignee_id') or ticket_data.get('assignee_id')
-            assignee_email = ticket_data.get('assignee_email') or _get_user_email(assignee_id)
-            if assignee_email:
-                ticket_notifier.notify_ticket_created(ticket, assignee_email)
+            if data.get('send_email', True) is not False:
+                from ..services import ticket_notifier
+                assignee_id = ticket.get('assignee_id') or ticket_data.get('assignee_id')
+                assignee_email = ticket_data.get('assignee_email') or _get_user_email(assignee_id)
+                if assignee_email:
+                    ticket_notifier.notify_ticket_created(ticket, assignee_email)
         except Exception as notify_err:
             print(f"⚠️ 预警工单创建邮件通知失败: {notify_err}")
 
