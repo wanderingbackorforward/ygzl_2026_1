@@ -1,4 +1,5 @@
 export default function Cover() {
+  const coverSrc = '/static/cover.html?embedded=1&v=20260119_2'
   return (
     <div style={{
       height: 'calc(100vh - 64px)',
@@ -6,7 +7,7 @@ export default function Cover() {
     }}>
       <iframe
         title="cover"
-        src="/static/cover.html?embedded=1"
+        src={coverSrc}
         style={{
           width: '100%',
           height: '100%',

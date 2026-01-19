@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>杨高中路隧道 - 封面</title>
   <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding: 20px; max-width: 1400px; margin: 0 auto; }
     .grid-item { background: rgba(10, 25, 47, 0.8); border: 1px solid rgba(64, 174, 255, 0.5); border-radius: 10px; padding: 20px; box-shadow: 0 0 15px rgba(64, 174, 255, 0.2); transition: all 0.3s ease; }
@@ -39,12 +37,12 @@
     .video-badge { display: inline-flex; align-items: center; margin-left: 10px; padding: 2px 8px; font-size: 12px; border-radius: 999px; border: 1px solid rgba(64, 174, 255, 0.6); color: #40aeff; background: rgba(64, 174, 255, 0.12); }
     .video-overlay { position: absolute; left: 12px; top: 12px; padding: 4px 10px; font-size: 12px; letter-spacing: 0.5px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.22); background: rgba(0, 0, 0, 0.35); color: rgba(255, 255, 255, 0.92); pointer-events: none; }
     .video-status { text-align: center; font-size: 12px; color: #8aabcc; margin-top: 10px; }
-    .video-controls { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
-    .video-btn { background: rgba(64, 174, 255, 0.2); border: 1px solid rgba(64, 174, 255, 0.8); border-radius: 5px; color: #40aeff; padding: 8px 16px; cursor: pointer; transition: all 0.3s ease; font-size: 14px; }
+    .video-controls { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; position: relative; z-index: 10; pointer-events: auto !important; }
+    .video-btn { background: rgba(64, 174, 255, 0.2); border: 1px solid rgba(64, 174, 255, 0.8); border-radius: 5px; color: #40aeff; padding: 8px 16px; cursor: pointer !important; transition: all 0.3s ease; font-size: 14px; position: relative; z-index: 11; pointer-events: auto !important; }
     .video-btn:hover { background: rgba(64, 174, 255, 0.3); transform: translateY(-2px); }
   </style>
 </head>
-<body style="background-color: #101729; color: #e0f7fa; margin: 0; padding: 20px 0; font-family: 'Rajdhani', sans-serif; min-height: 100vh; overflow-y: auto; -webkit-overflow-scrolling: touch;">
+<body style="background-color: #101729; color: #e0f7fa; margin: 0; padding: 20px 0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; min-height: 100vh; overflow-y: auto; -webkit-overflow-scrolling: touch;">
   <div class="container">
     <nav class="compact-nav" style="text-align: center; margin-bottom: 30px; padding: 15px; background: rgba(10, 25, 47, 0.8); border-radius: 10px; border: 1px solid rgba(64, 174, 255, 0.3);">
       <ul style="list-style: none; padding: 0; margin: 0; display: flex; justify-content: center; flex-wrap: wrap; gap: 15px;">
@@ -107,15 +105,15 @@
       <div class="grid-item video-container">
         <h3 class="video-header"><i class="fas fa-video"></i> 现场画面 <span class="video-badge" id="camera-badge">演示视频</span></h3>
         <div class="video-player">
-          <video id="tunnel-video" autoplay loop muted poster="https://via.placeholder.com/800x450.png?text=隧道监控视频">
+          <video id="tunnel-video" autoplay loop muted poster="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='450'><rect width='100%25' height='100%25' fill='%23101729'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%238aabcc' font-size='24'>现场画面加载中</text></svg>">
             <source src="" type="video/mp4">您的浏览器不支持视频播放
           </video>
           <img id="tunnel-image" alt="现场画面">
           <div class="video-overlay" id="video-overlay">演示视频</div>
         </div>
         <div class="video-controls">
-          <button class="video-btn" id="camera-1"><i class="fas fa-camera"></i> 入口摄像头</button>
-          <button class="video-btn" id="camera-2"><i class="fas fa-camera"></i> 中段摄像头</button>
+          <button class="video-btn" id="camera-1" type="button" onclick="window.__coverSwitch && window.__coverSwitch('entrance')"><i class="fas fa-camera"></i> 入口摄像头</button>
+          <button class="video-btn" id="camera-2" type="button" onclick="window.__coverSwitch && window.__coverSwitch('middle')"><i class="fas fa-camera"></i> 中段摄像头</button>
         </div>
         <div class="video-status" id="camera-status"></div>
       </div>
@@ -171,8 +169,8 @@
       if (video) { video.loop = true; video.muted = true; }
 
       const defaultCameras = [
-        { id: 'entrance', label: '入口摄像头', url: 'videos/entrance.mp4', format: 'mp4', kind: 'demo' },
-        { id: 'middle', label: '中段摄像头', url: 'videos/middle.mp4', format: 'mp4', kind: 'demo' }
+        { id: 'entrance', label: '外部源 1', url: 'https://cwwp2.dot.ca.gov/data/d4/cctv/image/tvd32i80baybridgesastowereast/tvd32i80baybridgesastowereast.jpg', format: 'image', kind: 'external' },
+        { id: 'middle', label: '外部源 2', url: 'https://cwwp2.dot.ca.gov/data/d2/cctv/image/vollmers/vollmers.jpg', format: 'image', kind: 'external' }
       ];
 
       let camerasById = Object.fromEntries(defaultCameras.map(c => [c.id, c]));
@@ -264,11 +262,9 @@
         const cam = camerasById[cameraId];
         if (!cam) return;
         setBadge(cam.kind);
-        if (cam.kind === 'demo') {
-          setStatus('当前为演示素材。可通过 /api/cover/cameras 或环境变量配置真实源。');
-        } else {
-          setStatus('当前为外部公开源。稳定性与可用性取决于对方站点。');
-        }
+        const now = new Date();
+        const kindText = cam.kind === 'demo' ? '演示' : '外部源';
+        setStatus(`${now.toLocaleTimeString()} 已选择：${cam.label}（${kindText}）`);
 
         if (cam.format === 'image') {
           showImage(cam.url);
@@ -277,6 +273,7 @@
         }
         updateCameraButtons(cameraId);
       }
+      window.__coverSwitch = switchCamera;
 
       if (video) {
         video.addEventListener('error', () => {
