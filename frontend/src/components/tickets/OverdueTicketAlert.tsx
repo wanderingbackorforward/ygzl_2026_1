@@ -4,7 +4,6 @@ import { apiGet } from '../../lib/api'
 
 type OverdueTicket = {
   id?: number
-  ticket_number?: string
   title?: string
   status?: string
   priority?: string
@@ -36,6 +35,25 @@ function setDismissedForMs(ms: number) {
 function toDateStr(value?: string) {
   if (!value) return ''
   return String(value).split('T')[0]
+}
+
+const STATUS_TEXT: Record<string, string> = {
+  PENDING: '待处理',
+  IN_PROGRESS: '处理中',
+  SUSPENDED: '已挂起',
+  RESOLVED: '已解决',
+  CLOSED: '已关闭',
+}
+
+const PRIORITY_TEXT: Record<string, string> = {
+  CRITICAL: '紧急',
+  HIGH: '高',
+  MEDIUM: '中',
+  LOW: '低',
+}
+
+function normalizeCode(value?: string) {
+  return String(value || '').trim().toUpperCase()
 }
 
 export const OverdueTicketAlert: React.FC = () => {
@@ -108,16 +126,20 @@ export const OverdueTicketAlert: React.FC = () => {
 
           <div style={styles.list}>
             {tickets.map((t) => {
-              const key = String(t.id ?? t.ticket_number ?? t.title ?? Math.random())
+              const key = String(t.id ?? t.title ?? Math.random())
+              const statusCode = normalizeCode(t.status)
+              const priorityCode = normalizeCode(t.priority)
+              const statusText = STATUS_TEXT[statusCode] || (t.status ? String(t.status) : '')
+              const priorityText = PRIORITY_TEXT[priorityCode] || (t.priority ? String(t.priority) : '')
               return (
                 <div key={key} style={styles.item}>
                   <div style={styles.itemTop}>
                     <div style={styles.itemTitle}>
-                      {(t.ticket_number ? `${t.ticket_number} ` : '') + (t.title || '未命名工单')}
+                      {t.title ? `问题：${t.title}` : '问题：未填写'}
                     </div>
                     <div style={styles.badges}>
-                      {t.priority ? <span style={styles.badge}>{t.priority}</span> : null}
-                      {t.status ? <span style={styles.badge}>{t.status}</span> : null}
+                      {priorityText ? <span style={styles.badge}>{priorityText}</span> : null}
+                      {statusText ? <span style={styles.badge}>{statusText}</span> : null}
                     </div>
                   </div>
                   <div style={styles.itemMeta}>
@@ -140,7 +162,7 @@ export const OverdueTicketAlert: React.FC = () => {
             }}
             style={styles.btnSecondary}
           >
-            稍后提醒
+            稍后提醒（30分钟）
           </button>
           <button
             type="button"
