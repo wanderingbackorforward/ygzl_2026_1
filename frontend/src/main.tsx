@@ -2,6 +2,7 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Nav from './shared/Nav'
+import { OverdueTicketAlert } from './components/tickets/OverdueTicketAlert'
 import Settlement from './pages/Settlement'
 import Temperature from './pages/Temperature'
 import Cracks from './pages/Cracks'
@@ -9,7 +10,6 @@ import Vibration from './pages/Vibration'
 import Insar from './pages/Insar'
 import Overview from './pages/Overview'
 import ThreeModel from './pages/ThreeModel'
-import SettlementVideo from './pages/SettlementVideo'
 import Tickets from './pages/Tickets'
 import Cover from './pages/Cover'
 
@@ -22,6 +22,7 @@ function App() {
       }}
     >
       <Nav />
+      <OverdueTicketAlert />
       <Routes>
         <Route path="/" element={<Navigate to="/cover" replace />} />
         <Route path="/cover" element={<Cover />} />
@@ -32,7 +33,6 @@ function App() {
         <Route path="/insar" element={<Insar />} />
         <Route path="/overview" element={<Overview />} />
         <Route path="/three" element={<ThreeModel />} />
-        <Route path="/settlement-video" element={<SettlementVideo />} />
         <Route path="/tickets" element={<Tickets />} />
       </Routes>
     </BrowserRouter>

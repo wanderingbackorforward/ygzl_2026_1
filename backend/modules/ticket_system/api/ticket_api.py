@@ -4,7 +4,7 @@
 """
 
 from flask import Blueprint, request, jsonify
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import traceback
 
@@ -357,6 +357,89 @@ def get_ticket_statistics():
         print(f"❌ 获取统计信息失败: {e}")
         print(traceback.format_exc())
         return create_response(None, f"获取统计信息失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/overdue-unresolved', methods=['GET'])
+def get_overdue_unresolved_tickets():
+    try:
+        days = request.args.get('days', 3, type=int)
+        limit = request.args.get('limit', 20, type=int)
+        max_scan = request.args.get('max_scan', 2000, type=int)
+
+        days = 3 if days is None else int(days)
+        days = 1 if days <= 0 else days
+        limit = 20 if limit is None else int(limit)
+        limit = 1 if limit <= 0 else limit
+        max_scan = 2000 if max_scan is None else int(max_scan)
+        max_scan = 100 if max_scan <= 0 else max_scan
+
+        cutoff = datetime.now() - timedelta(days=days)
+        unresolved_status = {'PENDING', 'IN_PROGRESS', 'SUSPENDED'}
+
+        def parse_dt(value):
+            if not value:
+                return None
+            s = str(value).strip()
+            if not s:
+                return None
+            s = s.replace('Z', '+00:00')
+            try:
+                return datetime.fromisoformat(s)
+            except Exception:
+                try:
+                    return datetime.fromisoformat(s.split('.')[0])
+                except Exception:
+                    return None
+
+        overdue = []
+        offset = 0
+        page_size = 200
+        scanned = 0
+
+        while scanned < max_scan:
+            rows = ticket_model.get_tickets(filters={}, limit=page_size, offset=offset)
+            if not rows:
+                break
+            scanned += len(rows)
+            offset += page_size
+
+            for t in rows:
+                status = (t.get('status') or '').upper()
+                if status not in unresolved_status:
+                    continue
+                created_at = parse_dt(t.get('created_at'))
+                if not created_at:
+                    continue
+                if created_at <= cutoff:
+                    age_days = int((datetime.now() - created_at).total_seconds() // 86400)
+                    overdue.append({
+                        'id': t.get('id'),
+                        'ticket_number': t.get('ticket_number'),
+                        'title': t.get('title'),
+                        'status': t.get('status'),
+                        'priority': t.get('priority'),
+                        'assignee_name': t.get('assignee_name'),
+                        'created_at': t.get('created_at'),
+                        'age_days': age_days,
+                    })
+
+            if len(rows) < page_size:
+                break
+
+        overdue.sort(key=lambda x: (x.get('age_days') is None, -(x.get('age_days') or 0), str(x.get('created_at') or '')))
+        top = overdue[:limit]
+
+        return create_response({
+            'days': days,
+            'count': len(overdue),
+            'tickets': top,
+            'server_time': datetime.now().isoformat(),
+        }, "获取超期未解决工单成功")
+
+    except Exception as e:
+        print(f"❌ 获取超期未解决工单失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"获取超期未解决工单失败: {str(e)}", False, 500)
 
 
 @ticket_bp.route('/config/types', methods=['GET'])

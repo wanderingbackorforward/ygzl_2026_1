@@ -27,7 +27,6 @@ export default function Nav() {
         <Item to="/insar" icon="fas fa-satellite" text="InSAR" />
         <Item to="/overview" icon="fas fa-chart-line" text="数据总览" />
         <Item to="/three" icon="fas fa-cubes" text="3D模型" />
-        <Item to="/settlement-video" icon="fas fa-video" text="沉降视频" />
         <Item to="/tickets" icon="fas fa-ticket-alt" text="工单" />
       </ul>
     </nav>

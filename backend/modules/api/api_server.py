@@ -198,7 +198,7 @@ def react_assets(filename):
 SPA_ROUTES = {
     'cover',
     'settlement', 'temperature', 'cracks', 'vibration',
-    'insar', 'overview', 'three', 'settlement-video', 'tickets'
+    'insar', 'overview', 'three', 'tickets'
 }
 
 # 为每个 SPA 路由创建专门的处理函数，避免 catch-all 拦截 API 请求
