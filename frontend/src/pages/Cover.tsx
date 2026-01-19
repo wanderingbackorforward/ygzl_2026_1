@@ -1,20 +1,19 @@
+import React from 'react';
+import ViewModeSwitch from '../components/shared/ViewModeSwitch';
+import { useViewMode } from '../hooks/useViewMode';
+import CoverLegacy from './CoverLegacy';
+import CoverMapShow from './CoverMapShow';
+
 export default function Cover() {
-  const coverSrc = '/static/cover.html?embedded=1&v=20260119_2'
+  const { mode, setMode } = useViewMode('cover', 'legacy');
   return (
-    <div style={{
-      height: 'calc(100vh - 64px)',
-      overflow: 'hidden'
-    }}>
-      <iframe
-        title="cover"
-        src={coverSrc}
-        style={{
-          width: '100%',
-          height: '100%',
-          border: 'none',
-          overflow: 'auto'
-        }}
-      />
+    <div style={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ flex: '0 0 auto', borderBottom: '1px solid rgba(0, 255, 255, 0.12)' }}>
+        <ViewModeSwitch mode={mode} onChange={setMode} legacyLabel="现有样式" newLabel="地图样式" />
+      </div>
+      <div style={{ flex: '1 1 auto', minHeight: 0 }}>
+        {mode === 'legacy' ? <CoverLegacy /> : <CoverMapShow />}
+      </div>
     </div>
-  )
+  );
 }

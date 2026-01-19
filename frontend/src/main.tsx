@@ -1,6 +1,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import './styles/tailwind.css'
 import Nav from './shared/Nav'
 import { OverdueTicketAlert } from './components/tickets/OverdueTicketAlert'
 import Settlement from './pages/Settlement'
