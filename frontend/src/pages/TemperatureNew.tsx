@@ -174,7 +174,6 @@ const TEMPERATURE_CARDS: CardConfig[] = [
 
 const TemperatureDashboard: React.FC = () => {
   const [fullscreenCard, setFullscreenCard] = useState<string | null>(null);
-  const { selectedSensorId, seriesData, seriesLoading, rangeData, rangeLoading } = useTemperature();
   const { resetLayout } = useLayout();
 
   useEffect(() => {
@@ -197,33 +196,11 @@ const TemperatureDashboard: React.FC = () => {
 
   const fullscreenContent = useMemo(() => {
     if (!fullscreenCard) return null;
-    switch (fullscreenCard) {
-      case 'temperature-trend':
-        return <TemperatureTrendChart cardId="temperature-trend-fullscreen" />;
-      case 'temperature-distribution':
-        return <TemperatureDistributionChart cardId="temperature-distribution-fullscreen" />;
-      case 'temperature-series':
-        return (
-          <TemperatureSeriesChart
-            cardId="temperature-series-fullscreen"
-            sensorId={selectedSensorId}
-            data={seriesData || null}
-            loading={seriesLoading}
-          />
-        );
-      case 'temperature-range':
-        return (
-          <TemperatureRangeChart
-            cardId="temperature-range-fullscreen"
-            sensorId={selectedSensorId}
-            data={rangeData || null}
-            loading={rangeLoading}
-          />
-        );
-      default:
-        return null;
-    }
-  }, [fullscreenCard, selectedSensorId, seriesData, seriesLoading, rangeData, rangeLoading]);
+    const card = TEMPERATURE_CARDS.find(c => c.id === fullscreenCard);
+    if (!card) return null;
+    const CardComponent = card.component;
+    return <CardComponent cardId={`${fullscreenCard}-fullscreen`} {...card.props} />;
+  }, [fullscreenCard]);
 
   const fullscreenTitle = useMemo(() => {
     const card = TEMPERATURE_CARDS.find(c => c.id === fullscreenCard);

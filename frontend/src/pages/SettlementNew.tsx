@@ -146,7 +146,6 @@ const SETTLEMENT_CARDS: CardConfig[] = [
 
 const SettlementDashboard: React.FC = () => {
   const [fullscreenCard, setFullscreenCard] = useState<string | null>(null);
-  const { selectedPointId, pointData, pointLoading } = useSettlement();
 
   const handleCardFullscreen = useCallback((cardId: string) => {
     setFullscreenCard(cardId);
@@ -158,38 +157,11 @@ const SettlementDashboard: React.FC = () => {
 
   const fullscreenContent = useMemo(() => {
     if (!fullscreenCard) return null;
-
-    switch (fullscreenCard) {
-      case 'trend-chart':
-        return <TrendChart cardId="trend-chart-fullscreen" />;
-      case 'distribution':
-        return <DistributionChart cardId="distribution-fullscreen" />;
-      case 'trend-prediction':
-        return <TrendPredictionChart cardId="trend-prediction-fullscreen" pointId={selectedPointId} />;
-      case 'time-series':
-        return (
-          <TimeSeriesChart
-            cardId="time-series-fullscreen"
-            pointId={selectedPointId}
-            data={pointData?.timeSeriesData || null}
-            loading={pointLoading}
-          />
-        );
-      case 'rate-chart':
-        return (
-          <RateChart
-            cardId="rate-chart-fullscreen"
-            pointId={selectedPointId}
-            data={pointData?.timeSeriesData || null}
-            loading={pointLoading}
-          />
-        );
-      case 'secondary-analysis':
-        return <SecondaryAnalysisCard />;
-      default:
-        return null;
-    }
-  }, [fullscreenCard, selectedPointId, pointData, pointLoading]);
+    const card = SETTLEMENT_CARDS.find(c => c.id === fullscreenCard);
+    if (!card) return null;
+    const CardComponent = card.component;
+    return <CardComponent cardId={`${fullscreenCard}-fullscreen`} {...card.props} />;
+  }, [fullscreenCard]);
 
   const fullscreenTitle = useMemo(() => {
     const card = SETTLEMENT_CARDS.find(c => c.id === fullscreenCard);

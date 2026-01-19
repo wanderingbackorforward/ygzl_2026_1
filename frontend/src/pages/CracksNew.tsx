@@ -48,17 +48,10 @@ const CracksDashboard: React.FC = () => {
   const handleCloseFullscreen = useCallback(() => setFullscreenCard(null), []);
   const fullscreenContent = useMemo(() => {
     if (!fullscreenCard) return null;
-    switch (fullscreenCard) {
-      case 'crack-overview': return <CrackOverviewPieChart cardId="crack-overview-fullscreen" />;
-      case 'crack-daily': return <CrackDailyHistogramChart cardId="crack-daily-fullscreen" />;
-      case 'crack-average-trend': return <CrackAverageTrendChart cardId="crack-average-trend-fullscreen" />;
-      case 'crack-main-trend': return <CrackMainTrendChart cardId="crack-main-trend-fullscreen" />;
-      case 'crack-slope': return <CrackSlopeChart cardId="crack-slope-fullscreen" />;
-      case 'crack-rate': return <CrackRateChart cardId="crack-rate-fullscreen" />;
-      case 'crack-correlation': return <CrackCorrelationHeatmap cardId="crack-correlation-fullscreen" />;
-      case 'crack-table': return <CrackDataTableCard cardId="crack-table-fullscreen" />;
-      default: return null;
-    }
+    const card = CRACKS_CARDS.find(c => c.id === fullscreenCard);
+    if (!card) return null;
+    const CardComponent = card.component;
+    return <CardComponent cardId={`${fullscreenCard}-fullscreen`} {...card.props} />;
   }, [fullscreenCard]);
   const fullscreenTitle = useMemo(() => CRACKS_CARDS.find(c => c.id === fullscreenCard)?.title || '', [fullscreenCard]);
   return (
@@ -94,4 +87,3 @@ export default function CracksNew() {
     </LayoutProvider>
   );
 }
-
