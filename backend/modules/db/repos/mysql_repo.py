@@ -194,6 +194,37 @@ class MySQLRepo:
         conn.close()
         return result
 
+    def temperature_get_processed_window(self, days: int = 90):
+        conn = mysql.connector.connect(**db_config)
+        days = int(days) if days is not None else 90
+        days = 1 if days <= 0 else days
+        df = pd.read_sql(
+            """
+            SELECT *
+            FROM processed_temperature_data
+            WHERE measurement_date >= DATE_SUB((SELECT MAX(measurement_date) FROM processed_temperature_data), INTERVAL %s DAY)
+            ORDER BY measurement_date
+            """,
+            conn,
+            params=(days,)
+        )
+        if 'measurement_date' in df.columns:
+            df['measurement_date'] = pd.to_datetime(df['measurement_date']).dt.strftime('%Y-%m-%d')
+        rename = {}
+        if 'avg_temp' in df.columns and 'avg_temperature' not in df.columns:
+            rename['avg_temp'] = 'avg_temperature'
+        if 'min_temp' in df.columns and 'min_temperature' not in df.columns:
+            rename['min_temp'] = 'min_temperature'
+        if 'max_temp' in df.columns and 'max_temperature' not in df.columns:
+            rename['max_temp'] = 'max_temperature'
+        if rename:
+            df = df.rename(columns=rename)
+        if {'max_temperature', 'min_temperature'}.issubset(df.columns) and 'temperature_range' not in df.columns:
+            df['temperature_range'] = df['max_temperature'] - df['min_temperature']
+        df = df.replace({np.nan: None})
+        conn.close()
+        return df.to_dict(orient='records')
+
     def temperature_get_trends(self):
         conn = mysql.connector.connect(**db_config)
         df = pd.read_sql("SELECT trend_type, COUNT(*) as count FROM temperature_analysis GROUP BY trend_type", conn)

@@ -205,6 +205,47 @@ class SupabaseHttpRepo:
             result[sid] = rows
         return result
 
+    def temperature_get_processed_window(self, days: int = 90):
+        days = int(days) if days is not None else 90
+        days = 1 if days <= 0 else days
+
+        latest = requests.get(
+            _url('/rest/v1/processed_temperature_data?select=measurement_date&order=measurement_date.desc&limit=1'),
+            headers=_headers()
+        )
+        latest.raise_for_status()
+        latest_rows = latest.json()
+        if not latest_rows:
+            return []
+
+        latest_date_raw = latest_rows[0].get('measurement_date')
+        latest_date_str = str(latest_date_raw).split('T')[0] if latest_date_raw is not None else None
+        if not latest_date_str:
+            return []
+
+        latest_dt = datetime.datetime.strptime(latest_date_str, '%Y-%m-%d').date()
+        start_dt = latest_dt - datetime.timedelta(days=days)
+        start_str = start_dt.isoformat()
+
+        r = requests.get(
+            _url(f'/rest/v1/processed_temperature_data?select=*&measurement_date=gte.{start_str}&order=measurement_date.asc'),
+            headers=_headers()
+        )
+        r.raise_for_status()
+        rows = r.json()
+        for x in rows:
+            if 'measurement_date' in x and x['measurement_date'] is not None:
+                x['measurement_date'] = str(x['measurement_date']).split('T')[0]
+            if 'avg_temp' in x and 'avg_temperature' not in x:
+                x['avg_temperature'] = x.get('avg_temp')
+            if 'min_temp' in x and 'min_temperature' not in x:
+                x['min_temperature'] = x.get('min_temp')
+            if 'max_temp' in x and 'max_temperature' not in x:
+                x['max_temperature'] = x.get('max_temp')
+            if 'temperature_range' not in x and x.get('max_temperature') is not None and x.get('min_temperature') is not None:
+                x['temperature_range'] = x['max_temperature'] - x['min_temperature']
+        return rows
+
     def temperature_get_trends(self):
         r = requests.get(_url('/rest/v1/temperature_analysis?select=trend_type'), headers=_headers())
         r.raise_for_status()

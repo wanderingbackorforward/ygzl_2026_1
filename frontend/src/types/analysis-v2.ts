@@ -74,6 +74,10 @@ export interface AnalysisSummary {
   max_cumulative_settlement?: number;
   critical_count: number;
   high_count: number;
+  current_avg_temperature?: number;
+  current_max_temperature?: number;
+  current_min_temperature?: number;
+  avg_daily_range?: number;
 }
 
 // 分析结果
