@@ -1064,6 +1064,17 @@ if __name__ == '__main__':
 
     print(f"静态文件目录: {static_dir}")
 
+    try:
+        flag = os.environ.get('TICKET_SCHEDULER_ENABLED', '0').strip().lower()
+        if flag in ('1', 'true', 'yes', 'on'):
+            from modules.ticket_system.services import start_scheduler, stop_scheduler
+            start_scheduler()
+            import atexit
+            atexit.register(stop_scheduler)
+            print("[OK] Ticket scheduler started")
+    except Exception as e:
+        print(f"[WARN] Start ticket scheduler failed: {e}")
+
     # 运行API服务
     # 注意：将 host 设置为 '0.0.0.0' 使其可以从局域网访问
     print("启动Flask应用...")

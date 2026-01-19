@@ -7,6 +7,7 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 import json
 import traceback
+import os
 
 from ..models import ticket_model, comment_model
 from ..config import (
@@ -27,6 +28,32 @@ def create_response(data=None, message="", success=True, code=200):
         "timestamp": datetime.now().isoformat()
     }
     return jsonify(response), code
+
+
+def _get_user_email(user_id: str):
+    if not user_id:
+        return None
+
+    candidates = [
+        f"USER_EMAIL_{user_id}",
+        f"USER_EMAIL_{str(user_id).lower()}",
+        f"USER_EMAIL_{str(user_id).upper()}",
+    ]
+    for key in candidates:
+        value = os.environ.get(key)
+        if value:
+            return value
+
+    try:
+        from modules.db.vendor import get_repo
+        repo = get_repo()
+        getter = getattr(repo, 'user_get_email', None)
+        if callable(getter):
+            return getter(user_id)
+    except Exception:
+        return None
+
+    return None
 
 
 @ticket_bp.route('', methods=['GET'])
@@ -130,6 +157,15 @@ def create_ticket():
         # 创建工单
         ticket = ticket_model.create_ticket(data)
 
+        try:
+            from ..services import ticket_notifier
+            assignee_id = ticket.get('assignee_id') or data.get('assignee_id')
+            assignee_email = data.get('assignee_email') or _get_user_email(assignee_id)
+            if assignee_email:
+                ticket_notifier.notify_ticket_created(ticket, assignee_email)
+        except Exception as notify_err:
+            print(f"⚠️ 工单创建邮件通知失败: {notify_err}")
+
         return create_response(ticket, "工单创建成功", True, 201)
 
     except Exception as e:
@@ -232,6 +268,8 @@ def update_ticket_status(ticket_id):
         if not ticket:
             return create_response(None, "工单不存在", False, 404)
 
+        old_status = ticket.get('status')
+
         # 验证状态流转是否合法
         if not can_transition_status(ticket['status'], new_status, user_role):
             return create_response(None, "不允许的状态流转", False, 400)
@@ -243,6 +281,22 @@ def update_ticket_status(ticket_id):
 
         # 返回更新后的工单信息
         updated_ticket = ticket_model.get_ticket_by_id(ticket_id)
+
+        try:
+            if old_status and old_status != new_status and updated_ticket:
+                from ..services import ticket_notifier
+                creator_id = updated_ticket.get('creator_id') or ticket.get('creator_id')
+                creator_email = data.get('creator_email') or _get_user_email(creator_id)
+                if creator_email:
+                    ticket_notifier.notify_status_changed(
+                        updated_ticket,
+                        old_status=str(old_status),
+                        new_status=str(new_status),
+                        changed_by=str(user_id),
+                        recipient_email=creator_email,
+                    )
+        except Exception as notify_err:
+            print(f"⚠️ 工单状态变更邮件通知失败: {notify_err}")
 
         return create_response(updated_ticket, "工单状态更新成功")
 
@@ -278,6 +332,14 @@ def assign_ticket(ticket_id):
 
         # 返回更新后的工单信息
         updated_ticket = ticket_model.get_ticket_by_id(ticket_id)
+
+        try:
+            from ..services import ticket_notifier
+            assignee_email = data.get('assignee_email') or _get_user_email(assignee_id)
+            if assignee_email and updated_ticket:
+                ticket_notifier.notify_ticket_assigned(updated_ticket, assignee_email)
+        except Exception as notify_err:
+            print(f"⚠️ 工单分配邮件通知失败: {notify_err}")
 
         return create_response(updated_ticket, "工单分配成功")
 
@@ -520,6 +582,15 @@ def trigger_alert_ticket():
 
         # 创建工单
         ticket = ticket_model.create_ticket(ticket_data)
+
+        try:
+            from ..services import ticket_notifier
+            assignee_id = ticket.get('assignee_id') or ticket_data.get('assignee_id')
+            assignee_email = ticket_data.get('assignee_email') or _get_user_email(assignee_id)
+            if assignee_email:
+                ticket_notifier.notify_ticket_created(ticket, assignee_email)
+        except Exception as notify_err:
+            print(f"⚠️ 预警工单创建邮件通知失败: {notify_err}")
 
         return create_response(ticket, "预警工单创建成功", True, 201)
 
