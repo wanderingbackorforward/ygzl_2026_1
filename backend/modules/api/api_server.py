@@ -61,6 +61,7 @@ from modules.ticket_system.api import ticket_bp, user_bp
 
 # 二级数据分析模块
 from modules.analysis_v2.api import analysis_v2_bp
+from modules.module_registry.api import module_bp
 
 # =========================================================
 # 应用初始化：创建Flask应用和Blueprint
@@ -990,6 +991,7 @@ app.register_blueprint(ticket_bp)
 app.register_blueprint(user_bp)
 # 注册二级数据分析API蓝图
 app.register_blueprint(analysis_v2_bp)
+app.register_blueprint(module_bp)
 
 # 健康检查路由
 @app.route('/api/health')

@@ -642,3 +642,24 @@ class SupabaseHttpRepo:
             if email:
                 emails.append(email)
         return emails
+
+    def modules_get_all(self):
+        r = requests.get(_url('/rest/v1/app_modules?select=*&order=sort_order'), headers=_headers())
+        r.raise_for_status()
+        return r.json()
+
+    def modules_update_status(self, module_key, status, updated_by=None, update_reason=None):
+        payload = {'status': status}
+        if updated_by is not None:
+            payload['updated_by'] = updated_by
+        if update_reason is not None:
+            payload['update_reason'] = update_reason
+        headers = _headers()
+        headers['Content-Type'] = 'application/json'
+        headers['Prefer'] = 'return=representation'
+        r = requests.patch(_url(f'/rest/v1/app_modules?module_key=eq.{module_key}'), headers=headers, json=payload)
+        r.raise_for_status()
+        rows = r.json()
+        if isinstance(rows, list) and rows:
+            return rows[0]
+        return None

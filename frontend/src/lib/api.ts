@@ -55,3 +55,23 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   }
   return resp as T
 }
+
+export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+  const resp = await res.json()
+  if (resp && typeof resp === 'object') {
+    if ('status' in resp && resp.status !== 'success' && 'message' in resp) {
+      throw new Error(resp.message || 'API error')
+    }
+    if ('success' in resp && resp.success === false && 'message' in resp) {
+      throw new Error(resp.message || 'API error')
+    }
+    if ('data' in resp) return resp.data as T
+  }
+  return resp as T
+}
