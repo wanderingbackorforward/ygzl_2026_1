@@ -15,7 +15,12 @@ import Cover from './pages/Cover'
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <Nav />
       <Routes>
         <Route path="/" element={<Navigate to="/cover" replace />} />
