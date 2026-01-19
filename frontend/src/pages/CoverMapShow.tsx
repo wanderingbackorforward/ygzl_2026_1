@@ -346,7 +346,10 @@ export default function CoverMapShow() {
         </div>
       </aside>
 
-      <aside className="absolute top-28 right-8 w-[420px] z-20 pointer-events-none">
+      <aside
+        className="absolute top-28 right-8 z-20 pointer-events-none"
+        style={{ width: 420, height: 'calc(100% - 7rem)' }}
+      >
         <div
           ref={tiltContainerRef}
           className="tilt-wrapper w-full pointer-events-auto cursor-pointer group"
@@ -480,7 +483,10 @@ export default function CoverMapShow() {
         </div>
       </aside>
 
-      <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2 w-[800px] z-20 pointer-events-auto">
+      <div
+        className="absolute bottom-12 left-1/2 transform -translate-x-1/2 z-20 pointer-events-auto"
+        style={{ width: 800 }}
+      >
         <div className="glass-panel px-10 py-6 rounded-full flex items-center gap-8 relative overflow-hidden group">
           <div className="flex flex-col items-end w-24 flex-shrink-0">
             <span className="text-sm font-bold text-white">罗山路</span>
@@ -522,4 +528,3 @@ export default function CoverMapShow() {
     </div>
   )
 }
-
