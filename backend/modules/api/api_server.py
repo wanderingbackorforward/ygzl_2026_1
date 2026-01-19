@@ -189,6 +189,7 @@ def react_assets(filename):
 
 # 前端 SPA 路由兜底：当构建存在时，将非 /api 与非 /static 的路径交给 React
 SPA_ROUTES = {
+    'cover',
     'settlement', 'temperature', 'cracks', 'vibration',
     'insar', 'overview', 'three', 'settlement-video', 'tickets'
 }
@@ -355,6 +356,56 @@ def api_source_diagnostics():
     result['domains']['temperature'] = {'supabase_ok': ok(lambda: repo.temperature_get_points())}
     result['domains']['tickets'] = {'supabase_ok': ok(lambda: __import__('modules.ticket_system.models').ticket_system.models.ticket_model.get_tickets({}, 1, 0))}
     return jsonify(result)
+
+@app.route('/api/cover/cameras')
+def cover_cameras():
+    print("[API] GET /api/cover/cameras")
+    def infer_format(url: str):
+        u = (url or '').lower()
+        if u.endswith(('.jpg', '.jpeg', '.png', '.webp', '.gif')):
+            return 'image'
+        if u.endswith('.m3u8'):
+            return 'm3u8'
+        return 'mp4'
+
+    def infer_kind(url: str):
+        u = (url or '')
+        if u.startswith('/static/videos/') or u.startswith('videos/'):
+            return 'demo'
+        return 'external'
+
+    cameras = []
+    raw = (os.environ.get('COVER_CAMERAS_JSON') or '').strip()
+    if raw:
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                cameras = parsed
+        except Exception:
+            cameras = []
+
+    if not cameras:
+        entrance_url = (os.environ.get('COVER_CAMERA_ENTRANCE_URL') or '/static/videos/entrance.mp4').strip()
+        middle_url = (os.environ.get('COVER_CAMERA_MIDDLE_URL') or '/static/videos/middle.mp4').strip()
+        cameras = [
+            {'id': 'entrance', 'label': '入口摄像头', 'url': entrance_url},
+            {'id': 'middle', 'label': '中段摄像头', 'url': middle_url},
+        ]
+
+    normalized = []
+    for cam in cameras:
+        if not isinstance(cam, dict):
+            continue
+        cam_id = (cam.get('id') or cam.get('key') or '').strip()
+        label = (cam.get('label') or cam.get('name') or cam_id or '').strip()
+        url = (cam.get('url') or cam.get('src') or '').strip()
+        if not cam_id or not url:
+            continue
+        fmt = (cam.get('format') or cam.get('type') or infer_format(url)).strip().lower()
+        kind = (cam.get('kind') or infer_kind(url)).strip().lower()
+        normalized.append({'id': cam_id, 'label': label, 'url': url, 'format': fmt, 'kind': kind})
+
+    return jsonify({'cameras': normalized})
 
 # =========================================================
 # 文件上传和处理API (保持不变)

@@ -35,6 +35,10 @@
     .video-header { color: #40aeff; margin-top: 0; padding-bottom: 10px; border-bottom: 1px solid rgba(64, 174, 255, 0.3); text-align: center; }
     .video-player { width: 100%; aspect-ratio: 16/9; background-color: rgba(16, 23, 41, 0.8); margin: 15px 0; border-radius: 8px; overflow: hidden; position: relative; }
     .video-player video { width: 100%; height: 100%; object-fit: contain; }
+    .video-player img { width: 100%; height: 100%; object-fit: contain; display: none; }
+    .video-badge { display: inline-flex; align-items: center; margin-left: 10px; padding: 2px 8px; font-size: 12px; border-radius: 999px; border: 1px solid rgba(64, 174, 255, 0.6); color: #40aeff; background: rgba(64, 174, 255, 0.12); }
+    .video-overlay { position: absolute; left: 12px; top: 12px; padding: 4px 10px; font-size: 12px; letter-spacing: 0.5px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.22); background: rgba(0, 0, 0, 0.35); color: rgba(255, 255, 255, 0.92); pointer-events: none; }
+    .video-status { text-align: center; font-size: 12px; color: #8aabcc; margin-top: 10px; }
     .video-controls { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
     .video-btn { background: rgba(64, 174, 255, 0.2); border: 1px solid rgba(64, 174, 255, 0.8); border-radius: 5px; color: #40aeff; padding: 8px 16px; cursor: pointer; transition: all 0.3s ease; font-size: 14px; }
     .video-btn:hover { background: rgba(64, 174, 255, 0.3); transform: translateY(-2px); }
@@ -101,16 +105,19 @@
         <div class="last-update" id="vibration-last-update">上次数据更新于: 今天 09:45</div>
       </div>
       <div class="grid-item video-container">
-        <h3 class="video-header"><i class="fas fa-video"></i> 隧道实时监控</h3>
+        <h3 class="video-header"><i class="fas fa-video"></i> 现场画面 <span class="video-badge" id="camera-badge">演示视频</span></h3>
         <div class="video-player">
           <video id="tunnel-video" autoplay loop muted poster="https://via.placeholder.com/800x450.png?text=隧道监控视频">
             <source src="" type="video/mp4">您的浏览器不支持视频播放
           </video>
+          <img id="tunnel-image" alt="现场画面">
+          <div class="video-overlay" id="video-overlay">演示视频</div>
         </div>
         <div class="video-controls">
           <button class="video-btn" id="camera-1"><i class="fas fa-camera"></i> 入口摄像头</button>
           <button class="video-btn" id="camera-2"><i class="fas fa-camera"></i> 中段摄像头</button>
         </div>
+        <div class="video-status" id="camera-status"></div>
       </div>
       <div class="grid-item">
         <div class="item-header"><h3><i class="fas fa-clipboard-list"></i> 工单管理系统</h3></div>
@@ -154,28 +161,139 @@
     </footer>
   </div>
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', async function() {
       const video = document.getElementById('tunnel-video');
+      const image = document.getElementById('tunnel-image');
+      const statusEl = document.getElementById('camera-status');
+      const badgeEl = document.getElementById('camera-badge');
+      const overlayEl = document.getElementById('video-overlay');
+
       if (video) { video.loop = true; video.muted = true; }
+
+      const defaultCameras = [
+        { id: 'entrance', label: '入口摄像头', url: 'videos/entrance.mp4', format: 'mp4', kind: 'demo' },
+        { id: 'middle', label: '中段摄像头', url: 'videos/middle.mp4', format: 'mp4', kind: 'demo' }
+      ];
+
+      let camerasById = Object.fromEntries(defaultCameras.map(c => [c.id, c]));
+      let imageRefreshTimer = null;
+
+      function setStatus(text) {
+        if (!statusEl) return;
+        statusEl.textContent = text || '';
+      }
+
+      function setBadge(kind) {
+        const k = String(kind || '').toLowerCase();
+        const text = k === 'external' ? '外部源' : (k === 'demo' ? '演示视频' : (k || '未知来源'));
+        if (badgeEl) badgeEl.textContent = text;
+        if (overlayEl) overlayEl.textContent = text;
+      }
+
+      function applyButtonLabels() {
+        const entrance = camerasById['entrance'];
+        const middle = camerasById['middle'];
+        const b1 = document.getElementById('camera-1');
+        const b2 = document.getElementById('camera-2');
+        if (b1 && entrance) b1.innerHTML = `<i class="fas fa-camera"></i> ${entrance.label}${entrance.kind === 'demo' ? '（演示）' : ''}`;
+        if (b2 && middle) b2.innerHTML = `<i class="fas fa-camera"></i> ${middle.label}${middle.kind === 'demo' ? '（演示）' : ''}`;
+      }
+
+      async function loadRemoteCameras() {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 1500);
+        try {
+          const resp = await fetch('/api/cover/cameras', { signal: controller.signal, cache: 'no-store' });
+          if (!resp.ok) return;
+          const data = await resp.json();
+          if (!data || !Array.isArray(data.cameras) || data.cameras.length === 0) return;
+          const normalized = {};
+          data.cameras.forEach(c => {
+            if (!c || !c.id || !c.url) return;
+            const url = String(c.url);
+            const urlLower = url.toLowerCase();
+            const format = String(c.format || '').toLowerCase() || (urlLower.endsWith('.m3u8') ? 'm3u8' : (urlLower.match(/\.(jpg|jpeg|png|webp|gif)(\?|$)/) ? 'image' : 'mp4'));
+            normalized[String(c.id)] = {
+              id: String(c.id),
+              label: String(c.label || c.id),
+              url,
+              format,
+              kind: String(c.kind || '').toLowerCase() || 'external'
+            };
+          });
+          if (Object.keys(normalized).length) camerasById = { ...camerasById, ...normalized };
+        } catch (e) {
+          return;
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+
+      function showImage(url) {
+        if (!image || !video) return;
+        video.style.display = 'none';
+        image.style.display = 'block';
+        const base = url || '';
+        const sep = base.includes('?') ? '&' : '?';
+        image.src = `${base}${sep}t=${Date.now()}`;
+        if (imageRefreshTimer) clearInterval(imageRefreshTimer);
+        imageRefreshTimer = setInterval(() => {
+          const sep2 = base.includes('?') ? '&' : '?';
+          image.src = `${base}${sep2}t=${Date.now()}`;
+        }, 5000);
+      }
+
+      function showVideo(url) {
+        if (!image || !video) return;
+        if (imageRefreshTimer) { clearInterval(imageRefreshTimer); imageRefreshTimer = null; }
+        image.style.display = 'none';
+        video.style.display = 'block';
+        video.src = url || '';
+        video.load();
+        video.addEventListener('loadeddata', function() { video.play().catch(() => {}); }, { once: true });
+      }
+
+      function updateCameraButtons(activeCamera) {
+        const buttons = document.querySelectorAll('.video-btn');
+        buttons.forEach(btn => { btn.style.background = 'rgba(64, 174, 255, 0.2)'; btn.style.color = '#40aeff'; });
+        const activeBtn = document.getElementById(`camera-${activeCamera === 'entrance' ? '1' : '2'}`);
+        if (activeBtn) { activeBtn.style.background = 'rgba(64, 174, 255, 0.5)'; activeBtn.style.color = '#ffffff'; }
+      }
+
+      function switchCamera(cameraId) {
+        const cam = camerasById[cameraId];
+        if (!cam) return;
+        setBadge(cam.kind);
+        if (cam.kind === 'demo') {
+          setStatus('当前为演示素材。可通过 /api/cover/cameras 或环境变量配置真实源。');
+        } else {
+          setStatus('当前为外部公开源。稳定性与可用性取决于对方站点。');
+        }
+
+        if (cam.format === 'image') {
+          showImage(cam.url);
+        } else {
+          showVideo(cam.url);
+        }
+        updateCameraButtons(cameraId);
+      }
+
+      if (video) {
+        video.addEventListener('error', () => {
+          setStatus('画面加载失败：未找到演示素材或真实源不可用。');
+        });
+      }
+
+      await loadRemoteCameras();
+      applyButtonLabels();
+
       const camera1Btn = document.getElementById('camera-1');
       const camera2Btn = document.getElementById('camera-2');
       if (camera1Btn) camera1Btn.addEventListener('click', () => switchCamera('entrance'));
       if (camera2Btn) camera2Btn.addEventListener('click', () => switchCamera('middle'));
+
       switchCamera('entrance');
     });
-    function switchCamera(cameraType) {
-      const video = document.getElementById('tunnel-video'); if (!video) return;
-      const videoSources = { 'entrance': 'videos/entrance.mp4', 'middle': 'videos/middle.mp4' };
-      video.src = videoSources[cameraType]; video.load();
-      video.addEventListener('loadeddata', function() { video.play().catch(()=>{}); }, { once: true });
-      updateCameraButtons(cameraType);
-    }
-    function updateCameraButtons(activeCamera) {
-      const buttons = document.querySelectorAll('.video-btn');
-      buttons.forEach(btn => { btn.style.background = 'rgba(64, 174, 255, 0.2)'; btn.style.color = '#40aeff'; });
-      const activeBtn = document.getElementById(`camera-${activeCamera === 'entrance' ? '1' : '2'}`);
-      if (activeBtn) { activeBtn.style.background = 'rgba(64, 174, 255, 0.5)'; activeBtn.style.color = '#ffffff'; }
-    }
   </script>
   <script>
     (function(){

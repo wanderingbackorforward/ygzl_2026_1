@@ -64,9 +64,16 @@
 - GET /api/point/{point_id}：单点时间序列与分析
 - GET /api/summary：监测点汇总分析
 - GET /api/trends：趋势分类统计
+- GET /api/cover/cameras：封面页画面源（演示/外部源）
 - POST /api/upload：上传沉降/裂缝 Excel（xlsx/xls）
 - POST /api/temperature/upload：上传温度 MDB/ACCDB
 - GET /api/temperature/points、/api/temperature/summary 等
+
+## 封面页画面源配置
+- 默认封面页会标记为“演示视频”，并尝试从 `/api/cover/cameras` 读取真实/外部源配置
+- 可用环境变量：`COVER_CAMERA_ENTRANCE_URL`、`COVER_CAMERA_MIDDLE_URL` 或 `COVER_CAMERAS_JSON`
+- 示例（使用公开交通摄像头静态图，5 秒刷新一次）：
+  - `COVER_CAMERAS_JSON=[{"id":"entrance","label":"外部源 1","url":"https://cwwp2.dot.ca.gov/data/d4/cctv/image/tvd32i80baybridgesastowereast/tvd32i80baybridgesastowereast.jpg","format":"image","kind":"external"},{"id":"middle","label":"外部源 2","url":"https://cwwp2.dot.ca.gov/data/d2/cctv/image/vollmers/vollmers.jpg","format":"image","kind":"external"}]`
 
 ## 大资源与仓库体积
 - 已将历史中的超大文件从版本历史移除，显著降低仓库体积
