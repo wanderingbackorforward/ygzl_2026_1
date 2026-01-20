@@ -2,8 +2,8 @@ import os
 import sys
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(current_dir)
-backend_dir = os.path.join(project_root, "backend")
+project_root = os.path.abspath(os.path.join(current_dir, ".."))
+backend_dir = os.path.abspath(os.path.join(project_root, "..", "backend"))
 if backend_dir not in sys.path:
     sys.path.append(backend_dir)
 
@@ -26,3 +26,4 @@ except Exception:
     @app.errorhandler(404)
     def _not_found(_e):
         return jsonify({"status": "error", "message": f"Not found: {request.path}"}), 404
+
