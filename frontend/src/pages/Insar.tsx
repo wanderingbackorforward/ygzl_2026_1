@@ -294,6 +294,25 @@ function InsarNativeMap({ dataset, indicator, valueField, thresholds, useBbox }:
   const unit = indicator === 'velocity' || indicator === 'threshold' ? 'mm/年' : 'mm'
   const legendLeft = indicator === 'threshold' ? null : valueToColor(-maxAbs, maxAbs)
   const legendRight = indicator === 'threshold' ? null : valueToColor(maxAbs, maxAbs)
+  const thresholdLegendItems = useMemo(() => {
+    const strong = Math.abs(thresholds.strong || 0)
+    const mild = Math.abs(thresholds.mild || 0)
+    const between = (strong + mild) / 2
+    const colorStrongNeg = classifyVelocity(-Math.max(strong, 0.0001), thresholds).color
+    const colorMildNeg = classifyVelocity(-Math.max(between, 0.0001), thresholds).color
+    const colorStable = classifyVelocity(0, thresholds).color
+    const colorMildPos = classifyVelocity(Math.max(between, 0.0001), thresholds).color
+    const colorStrongPos = classifyVelocity(Math.max(strong, 0.0001), thresholds).color
+    const colorUnknown = classifyVelocity(null, thresholds).color
+    return [
+      { label: `红：显著沉降（≤ -${strong}）`, color: colorStrongNeg },
+      { label: `橙：轻微沉降（-${strong} ~ -${mild}）`, color: colorMildNeg },
+      { label: `绿：稳定（-${mild} ~ ${mild}）`, color: colorStable },
+      { label: `蓝：轻微抬升（${mild} ~ ${strong}）`, color: colorMildPos },
+      { label: `紫：显著抬升（≥ ${strong}）`, color: colorStrongPos },
+      { label: '灰：未知/无数据', color: colorUnknown },
+    ]
+  }, [thresholds])
 
   const seriesOption = useMemo((): EChartsOption => {
     const s = series?.series || []
@@ -316,23 +335,34 @@ function InsarNativeMap({ dataset, indicator, valueField, thresholds, useBbox }:
   return (
     <div style={{ position: 'relative', width: '100%', height: '70vh' }}>
       <div ref={mapContainerRef} style={{ position: 'absolute', inset: 0, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(64,174,255,.3)' }} />
-      <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 500, padding: 10, borderRadius: 8, background: 'rgba(10,25,47,.78)', border: '1px solid rgba(64,174,255,.25)', color: '#aaddff', width: 220 }}>
+      <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 500, padding: 10, borderRadius: 8, background: 'rgba(10,25,47,.78)', border: '1px solid rgba(64,174,255,.25)', color: '#aaddff', width: 280, maxWidth: 'calc(100% - 24px)' }}>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>原生图层</div>
         <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>点数：{featureCount}{meta?.total_feature_count ? ` / ${meta.total_feature_count}` : ''}{meta?.cached ? '（缓存）' : ''}</div>
           <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>字段：{resolvedValueField}{unit ? `（${unit}）` : ''}</div>
+        <div style={{ fontSize: 12, fontWeight: 700, marginTop: 4, marginBottom: 6 }}>图例（颜色点含义）</div>
         {indicator !== 'threshold' ? (
           <>
             <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 8 }}>色标范围：±{maxAbs}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 14, height: 14, borderRadius: 3, background: legendLeft || '#7c8a9a' }} />
-              <span style={{ fontSize: 12 }}>沉降（负）</span>
-              <span style={{ flex: 1 }} />
-              <span style={{ width: 14, height: 14, borderRadius: 3, background: legendRight || '#7c8a9a' }} />
-              <span style={{ fontSize: 12 }}>抬升（正）</span>
+            <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>左红=沉降（负），中白=0，右蓝=抬升（正）</div>
+            <div style={{ height: 10, borderRadius: 6, border: '1px solid rgba(64,174,255,.25)', background: `linear-gradient(90deg, ${legendLeft || '#7c8a9a'} 0%, #ffffff 50%, ${legendRight || '#7c8a9a'} 100%)` }} />
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 6, fontSize: 12, opacity: 0.9 }}>
+              <span>-{maxAbs}</span>
+              <span style={{ flex: 1, textAlign: 'center' }}>0</span>
+              <span>{maxAbs}</span>
             </div>
           </>
         ) : (
-          <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 8 }}>阈值分级（负=沉降）</div>
+          <>
+            <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 8 }}>阈值分级（单位：mm/年，负=沉降）</div>
+            <div style={{ display: 'grid', gap: 6 }}>
+              {thresholdLegendItems.map((x) => (
+                <div key={`${x.label}-${x.color}`} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 14, height: 14, borderRadius: 3, background: x.color, border: '1px solid rgba(255,255,255,.15)' }} />
+                  <span style={{ fontSize: 12, opacity: 0.95 }}>{x.label}</span>
+                </div>
+              ))}
+            </div>
+          </>
         )}
         <button
           type="button"
