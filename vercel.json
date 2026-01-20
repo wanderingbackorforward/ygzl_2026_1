@@ -1,6 +1,8 @@
 {
   "version": 2,
-  "outputDirectory": "dist",
+  "installCommand": "npm ci --prefix frontend",
+  "buildCommand": "npm run build --prefix frontend",
+  "outputDirectory": "frontend/dist",
   "functions": {
     "api/index.py": {
       "includeFiles": "static/data/insar/**"
