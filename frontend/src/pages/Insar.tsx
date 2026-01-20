@@ -10,12 +10,34 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n))
 }
 
+function percentile(sorted: number[], p: number) {
+  if (!sorted.length) return 0
+  const idx = (sorted.length - 1) * clamp(p, 0, 1)
+  const lo = Math.floor(idx)
+  const hi = Math.ceil(idx)
+  if (lo === hi) return sorted[lo]
+  const t = idx - lo
+  return sorted[lo] * (1 - t) + sorted[hi] * t
+}
+
+function lerp(a: number, b: number, t: number) {
+  return a + (b - a) * t
+}
+
+function rgbToHex(r: number, g: number, b: number) {
+  const toHex = (n: number) => clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0')
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`
+}
+
 function valueToColor(value: number | null, maxAbs: number) {
-  if (value === null || Number.isNaN(value)) return '#7c8a9a'
+  if (value === null || Number.isNaN(value) || !Number.isFinite(maxAbs) || maxAbs <= 0) return '#7c8a9a'
   const v = clamp(value, -maxAbs, maxAbs)
-  const t = (v + maxAbs) / (2 * maxAbs)
-  const hue = (1 - t) * 220
-  return `hsl(${hue}, 90%, 55%)`
+  const n = v / maxAbs
+  const t = Math.abs(n)
+  if (n >= 0) {
+    return rgbToHex(lerp(255, 255, t), lerp(255, 90, t), lerp(255, 90, t))
+  }
+  return rgbToHex(lerp(255, 60, t), lerp(255, 150, t), lerp(255, 255, t))
 }
 
 function InsarNativeMap({ dataset }: { dataset: string }) {
@@ -31,7 +53,7 @@ function InsarNativeMap({ dataset }: { dataset: string }) {
 
   const maxAbs = useMemo(() => {
     if (!data?.features?.length) return 20
-    const vals = data.features
+    const absVals = data.features
       .map((f: any) => {
         const p = f?.properties || {}
         const v = p.value
@@ -39,8 +61,11 @@ function InsarNativeMap({ dataset }: { dataset: string }) {
         return Number.isFinite(n) ? Math.abs(n) : null
       })
       .filter((v: any) => typeof v === 'number') as number[]
-    if (!vals.length) return 20
-    return Math.max(5, Math.min(200, Math.round(Math.max(...vals))))
+    if (!absVals.length) return 20
+    absVals.sort((a, b) => a - b)
+    const p95 = percentile(absVals, 0.95)
+    const cap = Math.max(p95, absVals[absVals.length - 1] || 0)
+    return Math.max(5, Math.min(200, Math.round(cap || 20)))
   }, [data])
 
   useEffect(() => {
@@ -154,6 +179,7 @@ function InsarNativeMap({ dataset }: { dataset: string }) {
   }, [data, maxAbs])
 
   const featureCount = meta?.feature_count ?? (data?.features?.length || 0)
+  const valueField = meta?.value_field || (data?.features?.[0]?.properties?.value_field as string | undefined) || 'value'
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '70vh' }}>
@@ -161,7 +187,8 @@ function InsarNativeMap({ dataset }: { dataset: string }) {
       <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 500, padding: 10, borderRadius: 8, background: 'rgba(10,25,47,.78)', border: '1px solid rgba(64,174,255,.25)', color: '#aaddff', width: 180 }}>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>原生图层</div>
         <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>点数：{featureCount}{meta?.cached ? '（缓存）' : ''}</div>
-        <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 8 }}>value 范围：±{maxAbs}</div>
+        <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>字段：{valueField}</div>
+        <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 8 }}>色标范围：±{maxAbs}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: 14, height: 14, borderRadius: 3, background: valueToColor(-maxAbs, maxAbs) }} />
           <span style={{ fontSize: 12 }}>负向</span>

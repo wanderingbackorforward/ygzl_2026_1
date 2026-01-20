@@ -27,7 +27,11 @@ def insar_points():
     raw_dir, processed_dir = _paths()
     os.makedirs(processed_dir, exist_ok=True)
 
-    out_path = os.path.join(processed_dir, "points.geojson" if dataset == "yanggaozhong" else f"{dataset}.geojson")
+    base_name = "points.geojson" if dataset == "yanggaozhong" else f"{dataset}.geojson"
+    if field:
+        safe_field = "".join(ch for ch in field if ch.isalnum() or ch in ("_", "-", "."))
+        base_name = f"{dataset}.{safe_field}.geojson"
+    out_path = os.path.join(processed_dir, base_name)
 
     try:
         cached = False
@@ -40,7 +44,13 @@ def insar_points():
                 {
                     "status": "success",
                     "data": geo,
-                    "meta": {"dataset": dataset, "cached": cached, "feature_count": feature_count, "args": dict(request.args)},
+                    "meta": {
+                        "dataset": dataset,
+                        "cached": cached,
+                        "feature_count": feature_count,
+                        "args": dict(request.args),
+                        "cache_file": base_name,
+                    },
                 }
             )
 
@@ -60,7 +70,13 @@ def insar_points():
             {
                 "status": "success",
                 "data": result.geojson,
-                "meta": {"dataset": dataset, "cached": cached, "feature_count": feature_count, "value_field": field or result.value_field},
+                "meta": {
+                    "dataset": dataset,
+                    "cached": cached,
+                    "feature_count": feature_count,
+                    "value_field": field or result.value_field,
+                    "cache_file": base_name,
+                },
             }
         )
     except Exception as e:

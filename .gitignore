@@ -38,6 +38,9 @@ Thumbs.db
 /static/TemplateData/
 /static/glb/
 /static/
+!/static/data/
+!/static/data/insar/
+!/static/data/insar/**
 
 # 数据与中间文件
 /data/*.csv
