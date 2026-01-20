@@ -127,6 +127,7 @@ export default function CoverMapShow() {
   const [flipped, setFlipped] = useState(false)
   const [displacementBarWidth, setDisplacementBarWidth] = useState(20)
   const [pmBarWidth, setPmBarWidth] = useState(45)
+  const [mobileInfoOpen, setMobileInfoOpen] = useState(false)
 
   const activeZone = useMemo<ProjectZone>(() => {
     if (sliderValue > 70) return projectData[2]
@@ -251,40 +252,13 @@ export default function CoverMapShow() {
     handleTiltMouseLeave()
   }
 
-  return (
-    <div className="mapShowRoot selection:bg-cyan-500 selection:text-white">
-      <div className="scanlines" />
-      <div className="absolute inset-0 pointer-events-none z-10 bg-[radial-gradient(circle_at_center,transparent_20%,rgba(0,0,0,0.8)_100%)]" />
-
-      <div ref={mapContainerRef} className="absolute inset-0 z-0" />
-
-      <header className="absolute top-0 left-0 w-full z-20 p-6 flex justify-between items-start bg-gradient-to-b from-black/95 to-transparent pointer-events-none">
-        <div className="flex items-center gap-5 pointer-events-auto group">
-          <div className="h-12 w-1.5 bg-cyan-400 shadow-[0_0_20px_#22d3ee]" />
-          <div>
-            <h1 className="text-3xl font-black tracking-wider text-white font-tech text-glow">上海杨高中路改建工程</h1>
-            <div className="flex items-center gap-3 mt-1">
-              <span className="px-2 py-0.5 bg-blue-900/60 border border-blue-400/30 rounded text-[11px] text-blue-300">智慧隧道</span>
-              <p className="text-sm text-gray-400 tracking-wider">罗山路立交 - 金海路段 · 数字化指挥中心</p>
-            </div>
-          </div>
-        </div>
-        <div className="flex flex-col items-end gap-1 font-tech pointer-events-auto">
-          <div className="flex items-center gap-4 bg-black/60 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md">
-            <div className="flex items-center gap-2">
-              <span className="status-dot status-active" />
-              <span className="text-xs text-gray-300">系统运行中</span>
-            </div>
-            <div className="h-4 w-[1px] bg-white/20" />
-            <div className="text-lg font-bold text-white tabular-nums">
-              {currentTime.toLocaleTimeString('zh-CN', { hour12: false })}
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <aside className="absolute top-28 left-8 w-80 z-20 flex flex-col gap-5 pointer-events-none">
-        <div className="glass-panel p-6 rounded-lg pointer-events-auto border-l-4 border-l-cyan-400">
+  const renderInfoPanels = (compact: boolean) => {
+    const statusPanelPadding = compact ? 'p-4' : 'p-6'
+    const metricsPanelPadding = compact ? 'p-4' : 'p-5'
+    const titleGap = compact ? 'gap-2' : 'gap-5'
+    return (
+      <>
+        <div className={`glass-panel ${statusPanelPadding} rounded-lg pointer-events-auto border-l-4 border-l-cyan-400`}>
           <h3 className="text-cyan-400 text-xs font-bold mb-4 flex items-center justify-between uppercase tracking-widest">
             <span><i className="fas fa-network-wired mr-2" />数字孪生状态</span>
           </h3>
@@ -312,9 +286,10 @@ export default function CoverMapShow() {
           </div>
         </div>
 
-        <div className="glass-panel p-5 rounded-lg pointer-events-auto">
-          <h3 className="text-orange-400 text-xs font-bold mb-4 flex items-center uppercase tracking-widest">
-            <i className="fas fa-hard-hat mr-2" /> 实时监测参数
+        <div className={`glass-panel ${metricsPanelPadding} rounded-lg pointer-events-auto`}>
+          <h3 className={`text-orange-400 text-xs font-bold mb-4 flex items-center uppercase tracking-widest ${titleGap}`}>
+            <i className="fas fa-hard-hat" />
+            <span>实时监测参数</span>
           </h3>
           <div className="space-y-4">
             <div>
@@ -344,11 +319,78 @@ export default function CoverMapShow() {
             </div>
           </div>
         </div>
+      </>
+    )
+  }
+
+  return (
+    <div className="mapShowRoot selection:bg-cyan-500 selection:text-white">
+      <div className="scanlines" />
+      <div className="absolute inset-0 pointer-events-none z-10 bg-[radial-gradient(circle_at_center,transparent_20%,rgba(0,0,0,0.8)_100%)]" />
+
+      <div ref={mapContainerRef} className="absolute inset-0 z-0" />
+
+      <header className="absolute top-0 left-0 w-full z-20 p-3 md:p-6 flex flex-col md:flex-row md:justify-between items-start gap-3 md:gap-0 bg-gradient-to-b from-black/95 to-transparent pointer-events-none">
+        <div className="flex items-center gap-3 md:gap-5 pointer-events-auto group">
+          <div className="h-8 md:h-12 w-1.5 bg-cyan-400 shadow-[0_0_20px_#22d3ee]" />
+          <div>
+            <h1 className="text-xl md:text-3xl font-black tracking-wider text-white font-tech text-glow">上海杨高中路改建工程</h1>
+            <div className="flex items-center gap-3 mt-1">
+              <span className="px-2 py-0.5 bg-blue-900/60 border border-blue-400/30 rounded text-[11px] text-blue-300">智慧隧道</span>
+              <p className="hidden md:block text-sm text-gray-400 tracking-wider">罗山路立交 - 金海路段 · 数字化指挥中心</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col md:items-end items-start gap-1 font-tech pointer-events-auto w-full md:w-auto">
+          <div className="flex items-center gap-3 md:gap-4 bg-black/60 px-3 md:px-4 py-2 rounded-full border border-white/10 backdrop-blur-md w-full md:w-auto justify-between md:justify-start">
+            <div className="flex items-center gap-2">
+              <span className="status-dot status-active" />
+              <span className="text-xs text-gray-300">系统运行中</span>
+            </div>
+            <button
+              type="button"
+              className="md:hidden px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs text-gray-200"
+              onClick={() => setMobileInfoOpen(true)}
+            >
+              指标
+            </button>
+            <div className="hidden md:block h-4 w-[1px] bg-white/20" />
+            <div className="text-lg font-bold text-white tabular-nums">
+              {currentTime.toLocaleTimeString('zh-CN', { hour12: false })}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <aside className="hidden md:flex absolute top-28 left-8 w-80 z-20 flex-col gap-5 pointer-events-none">
+        {renderInfoPanels(false)}
       </aside>
 
+      {mobileInfoOpen && (
+        <div className="absolute inset-0 z-30 md:hidden">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileInfoOpen(false)} />
+          <div className="absolute left-0 right-0 bottom-0 p-4">
+            <div className="glass-panel rounded-2xl overflow-hidden max-h-[75vh] flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/20">
+                <div className="text-xs text-gray-200 font-tech tracking-widest">监控概览</div>
+                <button
+                  type="button"
+                  className="px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs text-gray-200"
+                  onClick={() => setMobileInfoOpen(false)}
+                >
+                  关闭
+                </button>
+              </div>
+              <div className="p-4 space-y-4 overflow-y-auto custom-scroll pointer-events-auto">
+                {renderInfoPanels(true)}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <aside
-        className="absolute top-28 right-8 z-20 pointer-events-none"
-        style={{ width: 420, height: 'calc(100% - 7rem)' }}
+        className="absolute z-20 pointer-events-none left-1/2 bottom-24 -translate-x-1/2 w-[calc(100vw-2rem)] h-[52vh] md:left-auto md:bottom-auto md:translate-x-0 md:top-28 md:right-8 md:w-[420px] md:h-[calc(100%-7rem)]"
       >
         <div
           ref={tiltContainerRef}
@@ -484,12 +526,11 @@ export default function CoverMapShow() {
       </aside>
 
       <div
-        className="absolute bottom-12 left-1/2 transform -translate-x-1/2 z-20 pointer-events-auto"
-        style={{ width: 800 }}
+        className="absolute bottom-4 md:bottom-12 left-1/2 -translate-x-1/2 z-20 pointer-events-auto w-[calc(100vw-2rem)] max-w-[800px]"
       >
-        <div className="glass-panel px-10 py-6 rounded-full flex items-center gap-8 relative overflow-hidden group">
-          <div className="flex flex-col items-end w-24 flex-shrink-0">
-            <span className="text-sm font-bold text-white">罗山路</span>
+        <div className="glass-panel px-4 md:px-10 py-4 md:py-6 rounded-full flex items-center gap-4 md:gap-8 relative overflow-hidden group">
+          <div className="flex flex-col items-end w-16 md:w-24 flex-shrink-0">
+            <span className="text-xs md:text-sm font-bold text-white">罗山路</span>
             <span className="text-[10px] text-gray-500">起点 (西)</span>
           </div>
 
@@ -519,8 +560,8 @@ export default function CoverMapShow() {
             </div>
           </div>
 
-          <div className="flex flex-col items-start w-24 flex-shrink-0">
-            <span className="text-sm font-bold text-white">金海路</span>
+          <div className="flex flex-col items-start w-16 md:w-24 flex-shrink-0">
+            <span className="text-xs md:text-sm font-bold text-white">金海路</span>
             <span className="text-[10px] text-gray-500">终点 (东)</span>
           </div>
         </div>
