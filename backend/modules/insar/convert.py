@@ -198,9 +198,12 @@ def write_geojson(geojson_obj: Dict[str, Any], out_path: str) -> None:
 def main() -> int:
     import argparse
 
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
-    default_raw = os.path.join(project_root, "static", "data", "insar", "raw")
-    default_out = os.path.join(project_root, "static", "data", "insar", "processed", "points.geojson")
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
+    default_base = os.path.join(project_root, "static", "data", "insar")
+    if not os.path.isdir(default_base):
+        default_base = os.path.join(project_root, "frontend", "public", "static", "data", "insar")
+    default_raw = os.path.join(default_base, "raw")
+    default_out = os.path.join(default_base, "processed", "points.geojson")
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default="yanggaozhong")

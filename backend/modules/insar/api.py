@@ -11,7 +11,17 @@ insar_bp = Blueprint("insar", __name__, url_prefix="/api/insar")
 
 
 def _project_root() -> str:
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
+    here = os.path.abspath(os.path.dirname(__file__))
+    candidates = [
+        os.path.abspath(os.path.join(here, "../../../..")),
+        os.path.abspath(os.path.join(here, "../../..")),
+    ]
+    for c in candidates:
+        if os.path.isdir(os.path.join(c, "backend")) and os.path.isdir(os.path.join(c, "frontend")):
+            return c
+        if os.path.isdir(os.path.join(c, "static")) and os.path.isdir(os.path.join(c, "backend")):
+            return c
+    return candidates[0]
 
 
 def _is_serverless() -> bool:
@@ -55,10 +65,53 @@ def _discover_static_root() -> str:
     return candidates[0] if candidates else os.path.abspath(os.getcwd())
 
 
-def _paths() -> tuple[str, str, str]:
+def _discover_insar_base_dir() -> str:
+    env_dir = (os.getenv("INSAR_DATA_DIR") or "").strip()
+    if env_dir:
+        env_dir_abs = os.path.abspath(env_dir)
+        if os.path.isdir(env_dir_abs):
+            return env_dir_abs
+
+    roots: list[str] = []
+    try:
+        roots.append(_project_root())
+    except Exception:
+        pass
+
+    roots.append(os.path.abspath(os.getcwd()))
+    for r in list(roots):
+        roots.append(os.path.abspath(os.path.join(r, "..")))
+
+    seen: set[str] = set()
+    candidates: list[str] = []
+    for r in roots:
+        if not r:
+            continue
+        a = os.path.abspath(r)
+        if a in seen:
+            continue
+        seen.add(a)
+        candidates.append(a)
+
+    rel_bases = [
+        os.path.join("static", "data", "insar"),
+        os.path.join("frontend", "public", "static", "data", "insar"),
+        os.path.join("frontend", "dist", "static", "data", "insar"),
+    ]
+    for root in candidates:
+        for rel in rel_bases:
+            base = os.path.join(root, rel)
+            if os.path.isdir(os.path.join(base, "raw")) or os.path.isdir(os.path.join(base, "processed")):
+                return base
+
     root = _discover_static_root()
-    raw_dir = os.path.join(root, "static", "data", "insar", "raw")
-    processed_dir = os.path.join(root, "static", "data", "insar", "processed")
+    return os.path.join(root, "static", "data", "insar")
+
+
+def _paths() -> tuple[str, str, str]:
+    base_dir = _discover_insar_base_dir()
+    raw_dir = os.path.join(base_dir, "raw")
+    processed_dir = os.path.join(base_dir, "processed")
     cache_dir = os.getenv("INSAR_CACHE_DIR") or (os.path.join("/tmp", "insar", "processed") if _is_serverless() else processed_dir)
     return raw_dir, processed_dir, cache_dir
 
@@ -246,8 +299,14 @@ def insar_points():
             {
                 "status": "error",
                 "message": str(e),
-                "hint": f"请把 Shapefile 放到 {abs_hint_dir} 下（至少 .shp + .dbf）",
-                "meta": {"dataset": dataset_hint, "raw_dir": raw_dir, "processed_dir": packaged_processed_dir, "cache_dir": cache_processed_dir},
+                "hint": f"请把 Shapefile 放到 {abs_hint_dir} 下（至少 .shp + .dbf）。也可设置 INSAR_DATA_DIR 指向包含 raw/processed 的 insar 数据目录。",
+                "meta": {
+                    "dataset": dataset_hint,
+                    "insar_data_dir": os.path.abspath(os.path.join(raw_dir, "..")),
+                    "raw_dir": raw_dir,
+                    "processed_dir": packaged_processed_dir,
+                    "cache_dir": cache_processed_dir,
+                },
             }
         ), 400
 
@@ -326,7 +385,14 @@ def insar_fields():
             return jsonify({"status": "error", "message": str(e)}), 400
         dataset_hint = (request.args.get("dataset") or "").strip() or "dataset"
         abs_hint_dir = os.path.abspath(os.path.join(raw_dir, dataset_hint))
-        return jsonify({"status": "error", "message": str(e), "hint": f"请把 Shapefile 放到 {abs_hint_dir} 下"}), 400
+        return jsonify(
+            {
+                "status": "error",
+                "message": str(e),
+                "hint": f"请把 Shapefile 放到 {abs_hint_dir} 下。也可设置 INSAR_DATA_DIR 指向包含 raw/processed 的 insar 数据目录。",
+                "meta": {"dataset": dataset_hint, "insar_data_dir": os.path.abspath(os.path.join(raw_dir, "..")), "raw_dir": raw_dir},
+            }
+        ), 400
 
 
 @insar_bp.route("/series", methods=["GET"])
