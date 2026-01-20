@@ -12,6 +12,12 @@ type InsarMeta = { dataset?: string, cached?: boolean, feature_count?: number, t
 type Indicator = 'velocity' | 'keyDate' | 'threshold'
 type FieldsInfo = { dataset: string, fields: string[], d_fields: string[], velocity_fields: string[], recommended_value_field: string }
 type SeriesData = { dataset: string, id: string, series: { date: string, value: number | null }[], properties?: Record<string, any> }
+type RiskLevel = 'normal' | 'warning' | 'danger'
+type RiskPoint = { id: string, lat: number, lng: number, velocity: number, risk: RiskLevel }
+type RiskSummary = { total: number, danger: number, warning: number, normal: number, unknown: number, top: RiskPoint[] }
+type ExpertMeasure = { key: string, title: string, detail: string }
+type AdviceEntry = { text: string, updatedAt: number }
+type AdviceStore = { globalByDataset: Record<string, AdviceEntry>, pointByDataset: Record<string, Record<string, AdviceEntry>> }
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n))
@@ -50,10 +56,87 @@ function valueToColor(value: number | null, maxAbs: number) {
   return rgbToHex(lerp(255, 60, t), lerp(255, 150, t), lerp(255, 255, t))
 }
 
-function InsarNativeMap({ dataset, indicator, valueField, thresholds, useBbox }: { dataset: string, indicator: Indicator, valueField: string, thresholds: Thresholds, useBbox: boolean }) {
+function riskFromVelocity(v: number | null, thresholds: Thresholds): RiskLevel {
+  if (v === null || !Number.isFinite(v)) return 'normal'
+  if (v <= -thresholds.strong) return 'danger'
+  if (v <= -thresholds.mild) return 'warning'
+  return 'normal'
+}
+
+function getFeatureId(feature: any, props: any) {
+  const id = feature?.id ?? props?.id
+  return id === undefined || id === null ? '' : String(id)
+}
+
+function getLatLngFromFeature(feature: any) {
+  const coords = feature?.geometry?.coordinates
+  if (!Array.isArray(coords) || coords.length < 2) return null
+  const lng = typeof coords[0] === 'number' ? coords[0] : Number(coords[0])
+  const lat = typeof coords[1] === 'number' ? coords[1] : Number(coords[1])
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  return { lat, lng }
+}
+
+function getVelocityFromProps(p: any, velocityFieldName?: string) {
+  const byField = velocityFieldName ? toNumberOrNull(p?.[velocityFieldName]) : null
+  return byField ?? toNumberOrNull(p?.velocity ?? p?.vel ?? p?.rate ?? p?.value)
+}
+
+function riskLabel(level: RiskLevel) {
+  if (level === 'danger') return { label: '危险', color: '#ff3e5f' }
+  if (level === 'warning') return { label: '预警', color: '#ff9e0d' }
+  return { label: '正常', color: '#00e676' }
+}
+
+function expertMeasuresForRisk(level: RiskLevel): ExpertMeasure[] {
+  if (level === 'danger') {
+    return [
+      { key: 'stop-dewatering', title: '停止或大幅降低降水强度', detail: '优先排查“降水-沉降”耦合影响；必要时改为分区、间歇、限流降水。' },
+      { key: 'stop-excavation', title: '暂停高风险区关键工序', detail: '对掘进/开挖/卸载等强扰动作先停后评估，避免形变进一步加速。' },
+      { key: 'grouting', title: '注浆加固与补强', detail: '对软弱、空洞、渗漏等敏感区开展加固，优先消减变形源。' },
+      { key: 'monitoring', title: '加密监测与复核', detail: '提高监测频率，复核异常点及周边点一致性，必要时增加地面/结构监测。' },
+      { key: 'emergency', title: '启动应急评审与上报', detail: '组织设计/监测/施工联席会，形成处置单并纳入工单闭环。' },
+    ]
+  }
+  if (level === 'warning') {
+    return [
+      { key: 'adjust-dewatering', title: '优化降水工艺与参数', detail: '控制水位降深与降速，分区分级实施，避免突变。' },
+      { key: 'process-adjust', title: '调整施工参数与步距', detail: '减少扰动、缩短暴露时间，必要时加强支护与同步注浆。' },
+      { key: 'targeted-inspection', title: '重点巡检与风险点复核', detail: '对关键结构、接缝、既有线等敏感目标加强巡检与复测。' },
+      { key: 'prepare', title: '准备应急材料与窗口', detail: '预先准备注浆材料、封堵与加固工装，确保可快速介入。' },
+    ]
+  }
+  return [
+    { key: 'routine', title: '保持常规监测与巡检', detail: '持续观察趋势，避免阈值设置过于宽松导致漏报。' },
+    { key: 'threshold-review', title: '复核阈值与工况', detail: '阈值应与工程阶段、土体条件、邻近建构筑物敏感性匹配。' },
+  ]
+}
+
+function loadAdviceStore(): AdviceStore {
+  try {
+    const raw = localStorage.getItem('insar_advice_v1')
+    if (!raw) return { globalByDataset: {}, pointByDataset: {} }
+    const obj = JSON.parse(raw)
+    const globalByDataset = obj?.globalByDataset && typeof obj.globalByDataset === 'object' ? obj.globalByDataset : {}
+    const pointByDataset = obj?.pointByDataset && typeof obj.pointByDataset === 'object' ? obj.pointByDataset : {}
+    return { globalByDataset, pointByDataset }
+  } catch {
+    return { globalByDataset: {}, pointByDataset: {} }
+  }
+}
+
+function InsarNativeMap(
+  { dataset, indicator, valueField, velocityFieldName, thresholds, useBbox, onSummaryChange, focusId, onSelectedChange }:
+  { dataset: string, indicator: Indicator, valueField: string, velocityFieldName: string, thresholds: Thresholds, useBbox: boolean, onSummaryChange?: (summary: RiskSummary) => void, focusId?: string | null, onSelectedChange?: (selected: { id: string, props: Record<string, any>, lat: number, lng: number } | null) => void }
+) {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const layerRef = useRef<L.GeoJSON | null>(null)
+  const layerByIdRef = useRef<Map<string, any>>(new Map())
+  const alertLayerRef = useRef<L.LayerGroup | null>(null)
+  const pulseTimerRef = useRef<number | null>(null)
+  const pulseMarkersRef = useRef<{ marker: L.CircleMarker, base: number, amp: number }[]>([])
+  const pulsePhaseRef = useRef(0)
   const lastBoundsRef = useRef<L.LatLngBounds | null>(null)
   const useBboxRef = useRef(useBbox)
   const moveendTimerRef = useRef<number | null>(null)
@@ -63,7 +146,7 @@ function InsarNativeMap({ dataset, indicator, valueField, thresholds, useBbox }:
   const [meta, setMeta] = useState<InsarMeta | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [selected, setSelected] = useState<{ id: string, props: Record<string, any> } | null>(null)
+  const [selected, setSelected] = useState<{ id: string, props: Record<string, any>, lat: number, lng: number } | null>(null)
   const [series, setSeries] = useState<SeriesData | null>(null)
   const [seriesLoading, setSeriesLoading] = useState(false)
   const [seriesError, setSeriesError] = useState<string | null>(null)
@@ -89,6 +172,47 @@ function InsarNativeMap({ dataset, indicator, valueField, thresholds, useBbox }:
     const cap = Math.max(p95, absVals[absVals.length - 1] || 0)
     return Math.max(5, Math.min(200, Math.round(cap || 20)))
   }, [data])
+
+  const riskSummary = useMemo((): RiskSummary => {
+    const features = data?.features
+    if (!Array.isArray(features) || !features.length) return { total: 0, danger: 0, warning: 0, normal: 0, unknown: 0, top: [] }
+    let danger = 0
+    let warning = 0
+    let normal = 0
+    let unknown = 0
+    const candidates: RiskPoint[] = []
+
+    for (const f of features) {
+      const p: any = f?.properties || {}
+      const id = getFeatureId(f, p)
+      const velocity = getVelocityFromProps(p, velocityFieldName)
+      if (velocity === null) {
+        unknown += 1
+        normal += 1
+        continue
+      }
+      const risk = riskFromVelocity(velocity, thresholds)
+      if (risk === 'danger') danger += 1
+      else if (risk === 'warning') warning += 1
+      else normal += 1
+      if (risk !== 'normal') {
+        const ll = getLatLngFromFeature(f)
+        if (ll) candidates.push({ id, lat: ll.lat, lng: ll.lng, velocity, risk })
+      }
+    }
+
+    candidates.sort((a, b) => a.velocity - b.velocity)
+    const top = candidates.slice(0, 30)
+    return { total: features.length, danger, warning, normal, unknown, top }
+  }, [data, thresholds])
+
+  useEffect(() => {
+    onSummaryChange?.(riskSummary)
+  }, [onSummaryChange, riskSummary])
+
+  useEffect(() => {
+    onSelectedChange?.(selected)
+  }, [onSelectedChange, selected])
 
   useEffect(() => {
     let mounted = true
@@ -163,6 +287,8 @@ function InsarNativeMap({ dataset, indicator, valueField, thresholds, useBbox }:
     }).addTo(map)
 
     mapRef.current = map
+    const alertLayer = L.layerGroup().addTo(map)
+    alertLayerRef.current = alertLayer
     const handleResize = () => map.invalidateSize()
     window.addEventListener('resize', handleResize)
     const handleMoveEnd = () => {
@@ -186,6 +312,10 @@ function InsarNativeMap({ dataset, indicator, valueField, thresholds, useBbox }:
       window.removeEventListener('resize', handleResize)
       map.off('moveend', handleMoveEnd)
       if (moveendTimerRef.current) window.clearTimeout(moveendTimerRef.current)
+      if (pulseTimerRef.current) window.clearInterval(pulseTimerRef.current)
+      pulseTimerRef.current = null
+      pulseMarkersRef.current = []
+      alertLayerRef.current = null
       map.remove()
       mapRef.current = null
       layerRef.current = null
@@ -235,6 +365,7 @@ function InsarNativeMap({ dataset, indicator, valueField, thresholds, useBbox }:
       layerRef.current.remove()
       layerRef.current = null
     }
+    layerByIdRef.current = new Map()
 
     if (!data) return
 
@@ -261,14 +392,17 @@ function InsarNativeMap({ dataset, indicator, valueField, thresholds, useBbox }:
         const id = (feature as any)?.id ?? p.id ?? ''
         const velocity = toNumberOrNull(p.velocity ?? p.vel ?? p.rate)
         const cls = classifyVelocity(velocity, thresholds)
+        const idKey = id === undefined || id === null ? '' : String(id)
+        if (idKey) layerByIdRef.current.set(idKey, l)
         const lines = [
           id !== '' ? `<div><b>ID</b>: ${String(id)}</div>` : '',
           v !== undefined ? `<div><b>${indicator === 'keyDate' ? '位移' : (indicator === 'velocity' ? '速度' : '速度')}</b>: ${String(v)}</div>` : '',
           indicator === 'threshold' ? `<div><b>分级</b>: <span style="color:${cls.color}">${cls.label}</span></div>` : '',
         ].filter(Boolean).join('')
         l.bindPopup(`<div style="min-width:180px">${lines || '<div>无属性</div>'}</div>`)
-        l.on('click', () => {
-          setSelected({ id: String(id), props: p })
+        l.on('click', (e: any) => {
+          const ll = e?.latlng || (typeof (l as any).getLatLng === 'function' ? (l as any).getLatLng() : null)
+          setSelected({ id: String(id), props: p, lat: Number(ll?.lat) || 0, lng: Number(ll?.lng) || 0 })
         })
       },
     })
@@ -288,6 +422,68 @@ function InsarNativeMap({ dataset, indicator, valueField, thresholds, useBbox }:
     } catch {
     }
   }, [data, maxAbs, indicator, thresholds])
+
+  useEffect(() => {
+    const id = focusId ? String(focusId) : ''
+    if (!id) return
+    const map = mapRef.current
+    const l = layerByIdRef.current.get(id)
+    if (!map || !l) return
+    const latlng = typeof l.getLatLng === 'function' ? l.getLatLng() : null
+    if (latlng) {
+      const nextZoom = Math.max(map.getZoom() || 0, 16)
+      map.setView(latlng, nextZoom, { animate: true })
+    }
+    if (typeof l.openPopup === 'function') l.openPopup()
+    const p: any = l?.feature?.properties || {}
+    const ll = typeof l.getLatLng === 'function' ? l.getLatLng() : null
+    setSelected({ id, props: p, lat: Number(ll?.lat) || 0, lng: Number(ll?.lng) || 0 })
+  }, [focusId, data])
+
+  useEffect(() => {
+    const map = mapRef.current
+    const alertLayer = alertLayerRef.current
+    if (!map || !alertLayer) return
+
+    if (pulseTimerRef.current) window.clearInterval(pulseTimerRef.current)
+    pulseTimerRef.current = null
+    pulseMarkersRef.current = []
+    pulsePhaseRef.current = 0
+    alertLayer.clearLayers()
+
+    const top = riskSummary.top.slice(0, 20)
+    if (!top.length) return
+
+    const markers: { marker: L.CircleMarker, base: number, amp: number }[] = []
+    for (const p of top) {
+      const color = p.risk === 'danger' ? '#ff3e5f' : '#ff9e0d'
+      const base = p.risk === 'danger' ? 10 : 8
+      const amp = p.risk === 'danger' ? 10 : 8
+      const m = L.circleMarker([p.lat, p.lng], {
+        radius: base,
+        color,
+        weight: 2,
+        opacity: 0.9,
+        fillOpacity: 0,
+        interactive: false,
+      })
+      m.addTo(alertLayer)
+      markers.push({ marker: m, base, amp })
+    }
+    pulseMarkersRef.current = markers
+
+    pulseTimerRef.current = window.setInterval(() => {
+      const list = pulseMarkersRef.current
+      if (!list.length) return
+      pulsePhaseRef.current = (pulsePhaseRef.current + 0.045) % 1
+      const t = pulsePhaseRef.current
+      const k = 1 - t
+      for (const x of list) {
+        x.marker.setRadius(x.base + x.amp * t)
+        x.marker.setStyle({ opacity: 0.75 * k, fillOpacity: 0 })
+      }
+    }, 60)
+  }, [riskSummary.top])
 
   const featureCount = meta?.feature_count ?? (data?.features?.length || 0)
   const resolvedValueField = meta?.value_field || valueField || (data?.features?.[0]?.properties?.value_field as string | undefined) || 'value'
@@ -395,6 +591,39 @@ function InsarNativeMap({ dataset, indicator, valueField, thresholds, useBbox }:
             <div style={{ fontWeight: 800, flex: 1 }}>点位详情</div>
             <button type="button" onClick={() => setSelected(null)} style={{ border: '1px solid rgba(64,174,255,.35)', background: 'rgba(255,255,255,.05)', color: '#aaddff', borderRadius: 8, padding: '6px 10px', cursor: 'pointer' }}>关闭</button>
           </div>
+          {(() => {
+            const lat = toNumberOrNull(selected.props?.lat ?? selected.props?.latitude) ?? selected.lat
+            const lng = toNumberOrNull(selected.props?.lon ?? selected.props?.lng ?? selected.props?.longitude) ?? selected.lng
+            const coordText = Number.isFinite(lat) && Number.isFinite(lng) ? `${lat.toFixed(7)}, ${lng.toFixed(7)}` : '—'
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <div style={{ fontSize: 12, opacity: 0.95, flex: 1 }}>WGS-84：<span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace' }}>{coordText}</span></div>
+                <button
+                  type="button"
+                  disabled={coordText === '—'}
+                  onClick={async () => {
+                    if (coordText === '—') return
+                    try {
+                      await navigator.clipboard.writeText(coordText)
+                    } catch {
+                    }
+                  }}
+                  style={{
+                    border: '1px solid rgba(64,174,255,.35)',
+                    background: coordText === '—' ? 'rgba(255,255,255,.03)' : 'rgba(64,174,255,.12)',
+                    color: '#aaddff',
+                    borderRadius: 8,
+                    padding: '6px 10px',
+                    cursor: coordText === '—' ? 'not-allowed' : 'pointer',
+                    fontSize: 12,
+                    opacity: coordText === '—' ? 0.6 : 1,
+                  }}
+                >
+                  复制
+                </button>
+              </div>
+            )
+          })()}
           <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>ID：{selected.id}</div>
           <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>速度：{String(selected.props?.velocity ?? selected.props?.vel ?? selected.props?.rate ?? '—')} mm/年</div>
           <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 10 }}>分级：<span style={{ color: classifyVelocity(toNumberOrNull(selected.props?.velocity ?? selected.props?.vel ?? selected.props?.rate), thresholds).color }}>{classifyVelocity(toNumberOrNull(selected.props?.velocity ?? selected.props?.vel ?? selected.props?.rate), thresholds).label}</span></div>
@@ -418,6 +647,10 @@ export default function Insar() {
   const [fieldsError, setFieldsError] = useState<string | null>(null)
   const [keyDateField, setKeyDateField] = useState<string>('')
   const [useBbox, setUseBbox] = useState(false)
+  const [riskSummary, setRiskSummary] = useState<RiskSummary>({ total: 0, danger: 0, warning: 0, normal: 0, unknown: 0, top: [] })
+  const [focusId, setFocusId] = useState<string | null>(null)
+  const [selectedPoint, setSelectedPoint] = useState<{ id: string, props: Record<string, any>, lat: number, lng: number } | null>(null)
+  const [adviceStore, setAdviceStore] = useState<AdviceStore>(() => loadAdviceStore())
   const [thresholds, setThresholds] = useState<Thresholds>(() => {
     try {
       const raw = localStorage.getItem('insar_thresholds_v1')
@@ -429,6 +662,13 @@ export default function Insar() {
     }
     return { strong: 10, mild: 2 }
   })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('insar_advice_v1', JSON.stringify(adviceStore))
+    } catch {
+    }
+  }, [adviceStore])
 
   useEffect(() => {
     let mounted = true
@@ -495,9 +735,257 @@ export default function Insar() {
     return keyDateField || velocityField
   }, [indicator, keyDateField, velocityField])
 
+  const contextLevel = useMemo((): RiskLevel => {
+    if (selectedPoint) {
+      const v = getVelocityFromProps(selectedPoint.props, velocityField)
+      return riskFromVelocity(v, thresholds)
+    }
+    if (riskSummary.danger > 0) return 'danger'
+    if (riskSummary.warning > 0) return 'warning'
+    return 'normal'
+  }, [selectedPoint, velocityField, thresholds, riskSummary.danger, riskSummary.warning])
+
+  const globalAdvice = adviceStore.globalByDataset?.[dataset]?.text ?? ''
+  const pointAdvice = selectedPoint?.id ? (adviceStore.pointByDataset?.[dataset]?.[selectedPoint.id]?.text ?? '') : ''
+
+  const setGlobalAdvice = (text: string) => {
+    setAdviceStore((prev) => ({
+      globalByDataset: { ...(prev.globalByDataset || {}), [dataset]: { text, updatedAt: Date.now() } },
+      pointByDataset: prev.pointByDataset || {},
+    }))
+  }
+
+  const setPointAdvice = (text: string) => {
+    if (!selectedPoint?.id) return
+    const ds = dataset
+    const pid = selectedPoint.id
+    setAdviceStore((prev) => ({
+      globalByDataset: prev.globalByDataset || {},
+      pointByDataset: {
+        ...(prev.pointByDataset || {}),
+        [ds]: {
+          ...((prev.pointByDataset || {})[ds] || {}),
+          [pid]: { text, updatedAt: Date.now() }
+        }
+      }
+    }))
+  }
+
+  const appendAdvice = (base: string, line: string) => {
+    const t = (base || '').trim()
+    const add = (line || '').trim()
+    if (!add) return t
+    if (!t) return add
+    return `${t}\n${add}`
+  }
+
+  const appendMeasureToAdvice = (m: ExpertMeasure) => {
+    const line = `- ${m.title}：${m.detail}`
+    if (selectedPoint?.id) setPointAdvice(appendAdvice(pointAdvice, line))
+    else setGlobalAdvice(appendAdvice(globalAdvice, line))
+  }
+
+  const applyTemplate = (target: 'auto' | 'global' | 'point' = 'auto') => {
+    const measures = expertMeasuresForRisk(contextLevel)
+    const text = measures.map((m) => `- ${m.title}：${m.detail}`).join('\n')
+    if (target === 'global') {
+      setGlobalAdvice(text)
+      return
+    }
+    if (target === 'point') {
+      setPointAdvice(text)
+      return
+    }
+    if (selectedPoint?.id) setPointAdvice(text)
+    else setGlobalAdvice(text)
+  }
+
+  const exportAdvice = async () => {
+    const payload = {
+      dataset,
+      exportedAt: new Date().toISOString(),
+      thresholds,
+      summary: { danger: riskSummary.danger, warning: riskSummary.warning, normal: riskSummary.normal, total: riskSummary.total },
+      selectedPoint: selectedPoint ? { id: selectedPoint.id, lat: selectedPoint.lat, lng: selectedPoint.lng } : null,
+      globalAdvice: (adviceStore.globalByDataset?.[dataset] || null),
+      pointAdvice: (adviceStore.pointByDataset?.[dataset] || {})
+    }
+    const text = JSON.stringify(payload, null, 2)
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+    }
+  }
+
   return (
     <div style={{ padding: 16, color: '#aaddff' }}>
       <h2 style={{ marginBottom: 10 }}><i className="fas fa-satellite" /> InSAR监测系统</h2>
+
+      <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(10,25,47,.55)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ fontWeight: 900, letterSpacing: 0.2 }}>施工危险预警</div>
+          <div style={{ fontSize: 12, opacity: 0.9 }}>总点数：{riskSummary.total}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto', flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => { setMode('native'); setIndicator('threshold') }} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(64,174,255,.12)', color: '#aaddff', cursor: 'pointer' }}>
+              一键切到阈值分级
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 0.95 }}>
+              <span>阈值：</span>
+              <span style={{ color: '#ff3e5f' }}>危险 ≤ -{thresholds.strong}</span>
+              <span style={{ opacity: 0.7 }}>/</span>
+              <span style={{ color: '#ff9e0d' }}>预警 ≤ -{thresholds.mild}</span>
+              <span style={{ opacity: 0.85 }}>（mm/年，负数=沉降）</span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+          <div style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(255,62,95,.10)', border: '1px solid rgba(255,62,95,.25)' }}>
+            <div style={{ fontSize: 12, opacity: 0.9 }}>危险</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#ff3e5f' }}>{riskSummary.danger}</div>
+          </div>
+          <div style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(255,158,13,.10)', border: '1px solid rgba(255,158,13,.25)' }}>
+            <div style={{ fontSize: 12, opacity: 0.9 }}>预警</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#ff9e0d' }}>{riskSummary.warning}</div>
+          </div>
+          <div style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(0,230,118,.10)', border: '1px solid rgba(0,230,118,.22)' }}>
+            <div style={{ fontSize: 12, opacity: 0.9 }}>正常</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#00e676' }}>{riskSummary.normal}</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, opacity: 0.85 }}>推荐预设</span>
+            <button type="button" onClick={() => setThresholds({ strong: 6, mild: 1.5 })} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer' }}>保守</button>
+            <button type="button" onClick={() => setThresholds({ strong: 10, mild: 2 })} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer' }}>标准</button>
+            <button type="button" onClick={() => setThresholds({ strong: 15, mild: 3 })} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer' }}>宽松</button>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 10, fontSize: 12, opacity: 0.95, lineHeight: 1.7 }}>
+          {riskSummary.danger > 0 ? (
+            <div style={{ color: '#ff8b8b' }}>提示：当前存在危险点。建议优先定位红色点位，查看时序并立即制定干预措施。</div>
+          ) : riskSummary.warning > 0 ? (
+            <div style={{ color: '#ffb86b' }}>提示：当前存在预警点。建议重点关注橙色点位，评估趋势并提前准备处置。</div>
+          ) : (
+            <div style={{ color: '#8ef5c7' }}>提示：当前未识别出危险/预警点，可保持常规监测与巡检。</div>
+          )}
+          <div style={{ opacity: 0.9 }}>操作：点击地图点位 → 左侧查看点位详情（含坐标与时序）→ 下方查看处置清单并填写施工建议。</div>
+        </div>
+
+        {riskSummary.top.length ? (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontWeight: 800, marginBottom: 6 }}>高风险点（Top {Math.min(10, riskSummary.top.length)}）</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 160, overflow: 'auto', paddingRight: 4 }}>
+              {riskSummary.top.slice(0, 10).map((p) => {
+                const color = p.risk === 'danger' ? '#ff3e5f' : '#ff9e0d'
+                const label = p.risk === 'danger' ? '危险' : '预警'
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      setMode('native')
+                      setIndicator('threshold')
+                      setFocusId(null)
+                      window.setTimeout(() => setFocusId(p.id), 0)
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: 10,
+                      border: `1px solid ${p.risk === 'danger' ? 'rgba(255,62,95,.28)' : 'rgba(255,158,13,.28)'}`,
+                      background: 'rgba(255,255,255,.04)',
+                      color: '#aaddff',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <span style={{ minWidth: 44, fontWeight: 900, color }}>{label}</span>
+                    <span style={{ flex: 1, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.id || '未命名'}</span>
+                    <span style={{ fontSize: 12, opacity: 0.95, color }}>{p.velocity.toFixed(2)} mm/年</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {(() => {
+        const badge = riskLabel(contextLevel)
+        const measures = expertMeasuresForRisk(contextLevel)
+        const title = selectedPoint?.id ? `当前点位：${selectedPoint.id}` : '当前数据集总体'
+        return (
+          <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(10,25,47,.55)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+              <div style={{ fontWeight: 900 }}>智能处置清单</div>
+              <div style={{ fontSize: 12, opacity: 0.9 }}>{title}</div>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, fontWeight: 900, color: badge.color, border: `1px solid ${badge.color}55`, padding: '4px 10px', borderRadius: 999, background: `${badge.color}14` }}>{badge.label}</span>
+                <button type="button" onClick={applyTemplate} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>套用模板</button>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {measures.map((m) => (
+                <div key={m.key} style={{ padding: 10, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                    <div style={{ fontWeight: 900, flex: 1 }}>{m.title}</div>
+                    <button type="button" onClick={() => appendMeasureToAdvice(m)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(64,174,255,.10)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>加入建议</button>
+                  </div>
+                  <div style={{ fontSize: 12, opacity: 0.92, lineHeight: 1.7 }}>{m.detail}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
+      <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(10,25,47,.55)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+          <div style={{ fontWeight: 900 }}>施工建议</div>
+          <div style={{ fontSize: 12, opacity: 0.9 }}>输入内容会自动保存到本机浏览器</div>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" onClick={exportAdvice} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(64,174,255,.12)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>导出（复制JSON）</button>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 280, padding: 10, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <div style={{ fontWeight: 900 }}>全局建议（{dataset}）</div>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button type="button" onClick={() => applyTemplate('global')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>按等级生成</button>
+                <button type="button" onClick={() => setGlobalAdvice('')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>清空</button>
+              </div>
+            </div>
+            <textarea
+              value={globalAdvice}
+              onChange={(e) => setGlobalAdvice(e.target.value)}
+              placeholder="例如：本周降水工况、关键工序限制、监测频率要求、上报与复核流程等。"
+              style={{ width: '100%', height: 140, resize: 'vertical', padding: 10, borderRadius: 10, border: '1px solid rgba(64,174,255,.22)', background: 'rgba(10,25,47,.35)', color: '#aaddff', outline: 'none', fontSize: 12, lineHeight: 1.6 }}
+            />
+          </div>
+
+          <div style={{ flex: 1, minWidth: 280, padding: 10, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)', opacity: selectedPoint?.id ? 1 : 0.65 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <div style={{ fontWeight: 900 }}>点位建议{selectedPoint?.id ? `（${selectedPoint.id}）` : ''}</div>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button type="button" disabled={!selectedPoint?.id} onClick={() => applyTemplate('point')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: selectedPoint?.id ? 'pointer' : 'not-allowed', fontSize: 12 }}>按等级生成</button>
+                <button type="button" disabled={!selectedPoint?.id} onClick={() => setPointAdvice('')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: selectedPoint?.id ? 'pointer' : 'not-allowed', fontSize: 12 }}>清空</button>
+              </div>
+            </div>
+            <textarea
+              value={pointAdvice}
+              onChange={(e) => setPointAdvice(e.target.value)}
+              disabled={!selectedPoint?.id}
+              placeholder={selectedPoint?.id ? '例如：该点位周边工序调整、加固/注浆方案、降水限制、复测安排等。' : '请先在地图中点击一个点位'}
+              style={{ width: '100%', height: 140, resize: 'vertical', padding: 10, borderRadius: 10, border: '1px solid rgba(64,174,255,.22)', background: 'rgba(10,25,47,.35)', color: '#aaddff', outline: 'none', fontSize: 12, lineHeight: 1.6 }}
+            />
+          </div>
+        </div>
+      </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
         <div style={{ display: 'flex', border: '1px solid rgba(64,174,255,.35)', borderRadius: 10, overflow: 'hidden' }}>
@@ -582,7 +1070,7 @@ export default function Insar() {
           {indicator === 'keyDate' && fieldsInfo && (!fieldsInfo.d_fields || fieldsInfo.d_fields.length === 0) ? (
             <div style={{ fontSize: 12, color: '#ffb86b', whiteSpace: 'pre-wrap', marginBottom: 8 }}>当前数据集未发现 D_YYYYMMDD 字段，无法显示关键日期位移。</div>
           ) : null}
-          <InsarNativeMap dataset={dataset} indicator={indicator} valueField={valueField} thresholds={thresholds} useBbox={useBbox} />
+          <InsarNativeMap dataset={dataset} indicator={indicator} valueField={valueField} velocityFieldName={velocityField} thresholds={thresholds} useBbox={useBbox} onSummaryChange={setRiskSummary} focusId={focusId} onSelectedChange={setSelectedPoint} />
         </>
       ) : (
         <div style={{
