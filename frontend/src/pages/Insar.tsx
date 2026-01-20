@@ -639,6 +639,14 @@ function InsarNativeMap(
 
 export default function Insar() {
   const [mode, setMode] = useState<'native' | 'iframe'>('native')
+  const [tab, setTab] = useState<'map' | 'ops'>(() => {
+    try {
+      const raw = localStorage.getItem('insar_tab_v1')
+      if (raw === 'map' || raw === 'ops') return raw
+    } catch {
+    }
+    return 'map'
+  })
   const [dataset, setDataset] = useState('yanggaozhong')
   const [datasets, setDatasets] = useState<string[]>(['yanggaozhong'])
   const [indicator, setIndicator] = useState<Indicator>('velocity')
@@ -669,6 +677,18 @@ export default function Insar() {
     } catch {
     }
   }, [adviceStore])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('insar_tab_v1', tab)
+    } catch {
+    }
+  }, [tab])
+
+  useEffect(() => {
+    if (tab === 'ops' && mode !== 'native') setMode('native')
+    if (tab === 'map') window.setTimeout(() => window.dispatchEvent(new Event('resize')), 0)
+  }, [tab, mode])
 
   useEffect(() => {
     let mounted = true
@@ -821,178 +841,20 @@ export default function Insar() {
     <div style={{ padding: 16, color: '#aaddff' }}>
       <h2 style={{ marginBottom: 10 }}><i className="fas fa-satellite" /> InSAR监测系统</h2>
 
-      <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(10,25,47,.55)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ fontWeight: 900, letterSpacing: 0.2 }}>施工危险预警</div>
-          <div style={{ fontSize: 12, opacity: 0.9 }}>总点数：{riskSummary.total}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto', flexWrap: 'wrap' }}>
-            <button type="button" onClick={() => { setMode('native'); setIndicator('threshold') }} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(64,174,255,.12)', color: '#aaddff', cursor: 'pointer' }}>
-              一键切到阈值分级
-            </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 0.95 }}>
-              <span>阈值：</span>
-              <span style={{ color: '#ff3e5f' }}>危险 ≤ -{thresholds.strong}</span>
-              <span style={{ opacity: 0.7 }}>/</span>
-              <span style={{ color: '#ff9e0d' }}>预警 ≤ -{thresholds.mild}</span>
-              <span style={{ opacity: 0.85 }}>（mm/年，负数=沉降）</span>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
-          <div style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(255,62,95,.10)', border: '1px solid rgba(255,62,95,.25)' }}>
-            <div style={{ fontSize: 12, opacity: 0.9 }}>危险</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: '#ff3e5f' }}>{riskSummary.danger}</div>
-          </div>
-          <div style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(255,158,13,.10)', border: '1px solid rgba(255,158,13,.25)' }}>
-            <div style={{ fontSize: 12, opacity: 0.9 }}>预警</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: '#ff9e0d' }}>{riskSummary.warning}</div>
-          </div>
-          <div style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(0,230,118,.10)', border: '1px solid rgba(0,230,118,.22)' }}>
-            <div style={{ fontSize: 12, opacity: 0.9 }}>正常</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: '#00e676' }}>{riskSummary.normal}</div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12, opacity: 0.85 }}>推荐预设</span>
-            <button type="button" onClick={() => setThresholds({ strong: 6, mild: 1.5 })} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer' }}>保守</button>
-            <button type="button" onClick={() => setThresholds({ strong: 10, mild: 2 })} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer' }}>标准</button>
-            <button type="button" onClick={() => setThresholds({ strong: 15, mild: 3 })} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer' }}>宽松</button>
-          </div>
-        </div>
-
-        <div style={{ marginTop: 10, fontSize: 12, opacity: 0.95, lineHeight: 1.7 }}>
-          {riskSummary.danger > 0 ? (
-            <div style={{ color: '#ff8b8b' }}>提示：当前存在危险点。建议优先定位红色点位，查看时序并立即制定干预措施。</div>
-          ) : riskSummary.warning > 0 ? (
-            <div style={{ color: '#ffb86b' }}>提示：当前存在预警点。建议重点关注橙色点位，评估趋势并提前准备处置。</div>
-          ) : (
-            <div style={{ color: '#8ef5c7' }}>提示：当前未识别出危险/预警点，可保持常规监测与巡检。</div>
-          )}
-          <div style={{ opacity: 0.9 }}>操作：点击地图点位 → 左侧查看点位详情（含坐标与时序）→ 下方查看处置清单并填写施工建议。</div>
-        </div>
-
-        {riskSummary.top.length ? (
-          <div style={{ marginTop: 10 }}>
-            <div style={{ fontWeight: 800, marginBottom: 6 }}>高风险点（Top {Math.min(10, riskSummary.top.length)}）</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 160, overflow: 'auto', paddingRight: 4 }}>
-              {riskSummary.top.slice(0, 10).map((p) => {
-                const color = p.risk === 'danger' ? '#ff3e5f' : '#ff9e0d'
-                const label = p.risk === 'danger' ? '危险' : '预警'
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => {
-                      setMode('native')
-                      setIndicator('threshold')
-                      setFocusId(null)
-                      window.setTimeout(() => setFocusId(p.id), 0)
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      width: '100%',
-                      padding: '8px 10px',
-                      borderRadius: 10,
-                      border: `1px solid ${p.risk === 'danger' ? 'rgba(255,62,95,.28)' : 'rgba(255,158,13,.28)'}`,
-                      background: 'rgba(255,255,255,.04)',
-                      color: '#aaddff',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <span style={{ minWidth: 44, fontWeight: 900, color }}>{label}</span>
-                    <span style={{ flex: 1, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.id || '未命名'}</span>
-                    <span style={{ fontSize: 12, opacity: 0.95, color }}>{p.velocity.toFixed(2)} mm/年</span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      {(() => {
-        const badge = riskLabel(contextLevel)
-        const measures = expertMeasuresForRisk(contextLevel)
-        const title = selectedPoint?.id ? `当前点位：${selectedPoint.id}` : '当前数据集总体'
-        return (
-          <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(10,25,47,.55)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
-              <div style={{ fontWeight: 900 }}>智能处置清单</div>
-              <div style={{ fontSize: 12, opacity: 0.9 }}>{title}</div>
-              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12, fontWeight: 900, color: badge.color, border: `1px solid ${badge.color}55`, padding: '4px 10px', borderRadius: 999, background: `${badge.color}14` }}>{badge.label}</span>
-                <button type="button" onClick={applyTemplate} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>套用模板</button>
-              </div>
-            </div>
-            <div style={{ display: 'grid', gap: 8 }}>
-              {measures.map((m) => (
-                <div key={m.key} style={{ padding: 10, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                    <div style={{ fontWeight: 900, flex: 1 }}>{m.title}</div>
-                    <button type="button" onClick={() => appendMeasureToAdvice(m)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(64,174,255,.10)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>加入建议</button>
-                  </div>
-                  <div style={{ fontSize: 12, opacity: 0.92, lineHeight: 1.7 }}>{m.detail}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      })()}
-
-      <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(10,25,47,.55)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-          <div style={{ fontWeight: 900 }}>施工建议</div>
-          <div style={{ fontSize: 12, opacity: 0.9 }}>输入内容会自动保存到本机浏览器</div>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <button type="button" onClick={exportAdvice} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(64,174,255,.12)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>导出（复制JSON）</button>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 280, padding: 10, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <div style={{ fontWeight: 900 }}>全局建议（{dataset}）</div>
-              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button type="button" onClick={() => applyTemplate('global')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>按等级生成</button>
-                <button type="button" onClick={() => setGlobalAdvice('')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>清空</button>
-              </div>
-            </div>
-            <textarea
-              value={globalAdvice}
-              onChange={(e) => setGlobalAdvice(e.target.value)}
-              placeholder="例如：本周降水工况、关键工序限制、监测频率要求、上报与复核流程等。"
-              style={{ width: '100%', height: 140, resize: 'vertical', padding: 10, borderRadius: 10, border: '1px solid rgba(64,174,255,.22)', background: 'rgba(10,25,47,.35)', color: '#aaddff', outline: 'none', fontSize: 12, lineHeight: 1.6 }}
-            />
-          </div>
-
-          <div style={{ flex: 1, minWidth: 280, padding: 10, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)', opacity: selectedPoint?.id ? 1 : 0.65 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <div style={{ fontWeight: 900 }}>点位建议{selectedPoint?.id ? `（${selectedPoint.id}）` : ''}</div>
-              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button type="button" disabled={!selectedPoint?.id} onClick={() => applyTemplate('point')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: selectedPoint?.id ? 'pointer' : 'not-allowed', fontSize: 12 }}>按等级生成</button>
-                <button type="button" disabled={!selectedPoint?.id} onClick={() => setPointAdvice('')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: selectedPoint?.id ? 'pointer' : 'not-allowed', fontSize: 12 }}>清空</button>
-              </div>
-            </div>
-            <textarea
-              value={pointAdvice}
-              onChange={(e) => setPointAdvice(e.target.value)}
-              disabled={!selectedPoint?.id}
-              placeholder={selectedPoint?.id ? '例如：该点位周边工序调整、加固/注浆方案、降水限制、复测安排等。' : '请先在地图中点击一个点位'}
-              style={{ width: '100%', height: 140, resize: 'vertical', padding: 10, borderRadius: 10, border: '1px solid rgba(64,174,255,.22)', background: 'rgba(10,25,47,.35)', color: '#aaddff', outline: 'none', fontSize: 12, lineHeight: 1.6 }}
-            />
-          </div>
-        </div>
-      </div>
-
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
         <div style={{ display: 'flex', border: '1px solid rgba(64,174,255,.35)', borderRadius: 10, overflow: 'hidden' }}>
-          <button type="button" onClick={() => setMode('native')} style={{ padding: '8px 12px', border: 'none', background: mode === 'native' ? 'rgba(64,174,255,.25)' : 'transparent', color: '#aaddff', cursor: 'pointer' }}>
+          <button type="button" onClick={() => setTab('map')} style={{ padding: '8px 12px', border: 'none', background: tab === 'map' ? 'rgba(64,174,255,.25)' : 'transparent', color: '#aaddff', cursor: 'pointer' }}>
+            地图
+          </button>
+          <button type="button" onClick={() => { setTab('ops'); setMode('native') }} style={{ padding: '8px 12px', border: 'none', background: tab === 'ops' ? 'rgba(64,174,255,.25)' : 'transparent', color: '#aaddff', cursor: 'pointer' }}>
+            预警/建议
+          </button>
+        </div>
+        <div style={{ display: 'flex', border: '1px solid rgba(64,174,255,.35)', borderRadius: 10, overflow: 'hidden' }}>
+          <button type="button" onClick={() => { setMode('native') }} style={{ padding: '8px 12px', border: 'none', background: mode === 'native' ? 'rgba(64,174,255,.25)' : 'transparent', color: '#aaddff', cursor: 'pointer' }}>
             原生模式
           </button>
-          <button type="button" onClick={() => setMode('iframe')} style={{ padding: '8px 12px', border: 'none', background: mode === 'iframe' ? 'rgba(64,174,255,.25)' : 'transparent', color: '#aaddff', cursor: 'pointer' }}>
+          <button type="button" onClick={() => { setMode('iframe'); setTab('map') }} style={{ padding: '8px 12px', border: 'none', background: mode === 'iframe' ? 'rgba(64,174,255,.25)' : 'transparent', color: '#aaddff', cursor: 'pointer' }}>
             外链模式（备用）
           </button>
         </div>
@@ -1063,6 +925,177 @@ export default function Insar() {
         </a>
       </div>
 
+      {tab === 'ops' ? (
+        <>
+          <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(10,25,47,.55)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ fontWeight: 900, letterSpacing: 0.2 }}>施工危险预警</div>
+              <div style={{ fontSize: 12, opacity: 0.9 }}>总点数：{riskSummary.total}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto', flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => { setTab('map'); setMode('native'); setIndicator('threshold') }} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(64,174,255,.12)', color: '#aaddff', cursor: 'pointer' }}>
+                  一键切到阈值分级
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 0.95 }}>
+                  <span>阈值：</span>
+                  <span style={{ color: '#ff3e5f' }}>危险 ≤ -{thresholds.strong}</span>
+                  <span style={{ opacity: 0.7 }}>/</span>
+                  <span style={{ color: '#ff9e0d' }}>预警 ≤ -{thresholds.mild}</span>
+                  <span style={{ opacity: 0.85 }}>（mm/年，负数=沉降）</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+              <div style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(255,62,95,.10)', border: '1px solid rgba(255,62,95,.25)' }}>
+                <div style={{ fontSize: 12, opacity: 0.9 }}>危险</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: '#ff3e5f' }}>{riskSummary.danger}</div>
+              </div>
+              <div style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(255,158,13,.10)', border: '1px solid rgba(255,158,13,.25)' }}>
+                <div style={{ fontSize: 12, opacity: 0.9 }}>预警</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: '#ff9e0d' }}>{riskSummary.warning}</div>
+              </div>
+              <div style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(0,230,118,.10)', border: '1px solid rgba(0,230,118,.22)' }}>
+                <div style={{ fontSize: 12, opacity: 0.9 }}>正常</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: '#00e676' }}>{riskSummary.normal}</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, opacity: 0.85 }}>推荐预设</span>
+                <button type="button" onClick={() => setThresholds({ strong: 6, mild: 1.5 })} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer' }}>保守</button>
+                <button type="button" onClick={() => setThresholds({ strong: 10, mild: 2 })} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer' }}>标准</button>
+                <button type="button" onClick={() => setThresholds({ strong: 15, mild: 3 })} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer' }}>宽松</button>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 10, fontSize: 12, opacity: 0.95, lineHeight: 1.7 }}>
+              {riskSummary.danger > 0 ? (
+                <div style={{ color: '#ff8b8b' }}>提示：当前存在危险点。建议优先定位红色点位，查看时序并立即制定干预措施。</div>
+              ) : riskSummary.warning > 0 ? (
+                <div style={{ color: '#ffb86b' }}>提示：当前存在预警点。建议重点关注橙色点位，评估趋势并提前准备处置。</div>
+              ) : (
+                <div style={{ color: '#8ef5c7' }}>提示：当前未识别出危险/预警点，可保持常规监测与巡检。</div>
+              )}
+              <div style={{ opacity: 0.9 }}>操作：点击高风险点 → 切到地图定位 → 左侧看坐标与时序 → 下方按清单填写施工建议。</div>
+            </div>
+
+            {riskSummary.top.length ? (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontWeight: 800, marginBottom: 6 }}>高风险点（Top {Math.min(10, riskSummary.top.length)}）</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 160, overflow: 'auto', paddingRight: 4 }}>
+                  {riskSummary.top.slice(0, 10).map((p) => {
+                    const color = p.risk === 'danger' ? '#ff3e5f' : '#ff9e0d'
+                    const label = p.risk === 'danger' ? '危险' : '预警'
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setTab('map')
+                          setMode('native')
+                          setIndicator('threshold')
+                          setFocusId(null)
+                          window.setTimeout(() => setFocusId(p.id), 0)
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          width: '100%',
+                          padding: '8px 10px',
+                          borderRadius: 10,
+                          border: `1px solid ${p.risk === 'danger' ? 'rgba(255,62,95,.28)' : 'rgba(255,158,13,.28)'}`,
+                          background: 'rgba(255,255,255,.04)',
+                          color: '#aaddff',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                        }}
+                      >
+                        <span style={{ minWidth: 44, fontWeight: 900, color }}>{label}</span>
+                        <span style={{ flex: 1, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.id || '未命名'}</span>
+                        <span style={{ fontSize: 12, opacity: 0.95, color }}>{p.velocity.toFixed(2)} mm/年</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          {(() => {
+            const badge = riskLabel(contextLevel)
+            const measures = expertMeasuresForRisk(contextLevel)
+            const title = selectedPoint?.id ? `当前点位：${selectedPoint.id}` : '当前数据集总体'
+            return (
+              <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(10,25,47,.55)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+                  <div style={{ fontWeight: 900 }}>智能处置清单</div>
+                  <div style={{ fontSize: 12, opacity: 0.9 }}>{title}</div>
+                  <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 12, fontWeight: 900, color: badge.color, border: `1px solid ${badge.color}55`, padding: '4px 10px', borderRadius: 999, background: `${badge.color}14` }}>{badge.label}</span>
+                    <button type="button" onClick={applyTemplate} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>套用模板</button>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {measures.map((m) => (
+                    <div key={m.key} style={{ padding: 10, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                        <div style={{ fontWeight: 900, flex: 1 }}>{m.title}</div>
+                        <button type="button" onClick={() => appendMeasureToAdvice(m)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(64,174,255,.10)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>加入建议</button>
+                      </div>
+                      <div style={{ fontSize: 12, opacity: 0.92, lineHeight: 1.7 }}>{m.detail}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
+
+          <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(10,25,47,.55)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+              <div style={{ fontWeight: 900 }}>施工建议</div>
+              <div style={{ fontSize: 12, opacity: 0.9 }}>输入内容会自动保存到本机浏览器</div>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <button type="button" onClick={exportAdvice} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(64,174,255,.12)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>导出（复制JSON）</button>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 280, padding: 10, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <div style={{ fontWeight: 900 }}>全局建议（{dataset}）</div>
+                  <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button type="button" onClick={() => applyTemplate('global')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>按等级生成</button>
+                    <button type="button" onClick={() => setGlobalAdvice('')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>清空</button>
+                  </div>
+                </div>
+                <textarea
+                  value={globalAdvice}
+                  onChange={(e) => setGlobalAdvice(e.target.value)}
+                  placeholder="例如：本周降水工况、关键工序限制、监测频率要求、上报与复核流程等。"
+                  style={{ width: '100%', height: 140, resize: 'vertical', padding: 10, borderRadius: 10, border: '1px solid rgba(64,174,255,.22)', background: 'rgba(10,25,47,.35)', color: '#aaddff', outline: 'none', fontSize: 12, lineHeight: 1.6 }}
+                />
+              </div>
+
+              <div style={{ flex: 1, minWidth: 280, padding: 10, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)', opacity: selectedPoint?.id ? 1 : 0.65 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <div style={{ fontWeight: 900 }}>点位建议{selectedPoint?.id ? `（${selectedPoint.id}）` : ''}</div>
+                  <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button type="button" disabled={!selectedPoint?.id} onClick={() => applyTemplate('point')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: selectedPoint?.id ? 'pointer' : 'not-allowed', fontSize: 12 }}>按等级生成</button>
+                    <button type="button" disabled={!selectedPoint?.id} onClick={() => setPointAdvice('')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: selectedPoint?.id ? 'pointer' : 'not-allowed', fontSize: 12 }}>清空</button>
+                  </div>
+                </div>
+                <textarea
+                  value={pointAdvice}
+                  onChange={(e) => setPointAdvice(e.target.value)}
+                  disabled={!selectedPoint?.id}
+                  placeholder={selectedPoint?.id ? '例如：该点位周边工序调整、加固/注浆方案、降水限制、复测安排等。' : '请先在地图中点击一个点位'}
+                  style={{ width: '100%', height: 140, resize: 'vertical', padding: 10, borderRadius: 10, border: '1px solid rgba(64,174,255,.22)', background: 'rgba(10,25,47,.35)', color: '#aaddff', outline: 'none', fontSize: 12, lineHeight: 1.6 }}
+                />
+              </div>
+            </div>
+          </div>
+        </>
+      ) : null}
+
       {mode === 'native' ? (
         <>
           {fieldsLoading ? <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 8 }}>加载字段信息…</div> : null}
@@ -1070,10 +1103,12 @@ export default function Insar() {
           {indicator === 'keyDate' && fieldsInfo && (!fieldsInfo.d_fields || fieldsInfo.d_fields.length === 0) ? (
             <div style={{ fontSize: 12, color: '#ffb86b', whiteSpace: 'pre-wrap', marginBottom: 8 }}>当前数据集未发现 D_YYYYMMDD 字段，无法显示关键日期位移。</div>
           ) : null}
-          <InsarNativeMap dataset={dataset} indicator={indicator} valueField={valueField} velocityFieldName={velocityField} thresholds={thresholds} useBbox={useBbox} onSummaryChange={setRiskSummary} focusId={focusId} onSelectedChange={setSelectedPoint} />
+          <div style={tab === 'map' ? undefined : { height: 1, overflow: 'hidden', opacity: 0.001, pointerEvents: 'none' }}>
+            <InsarNativeMap dataset={dataset} indicator={indicator} valueField={valueField} velocityFieldName={velocityField} thresholds={thresholds} useBbox={useBbox} onSummaryChange={setRiskSummary} focusId={focusId} onSelectedChange={setSelectedPoint} />
+          </div>
         </>
       ) : (
-        <div style={{
+        tab === 'map' ? <div style={{
           position: 'relative',
           width: '100%',
           height: '70vh',
@@ -1089,7 +1124,7 @@ export default function Insar() {
             allowFullScreen
             style={{ width: '100%', height: '100%', border: 'none' }}
           />
-        </div>
+        </div> : null
       )}
     </div>
   )
