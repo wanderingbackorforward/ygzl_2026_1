@@ -33,6 +33,7 @@ def _get_repo():
     return SupabaseHttpRepo()
 
 
+@module_bp.route('', methods=['GET'])
 @module_bp.route('/', methods=['GET'])
 def modules_list():
     try:

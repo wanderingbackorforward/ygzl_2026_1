@@ -23,7 +23,7 @@ export function ModulesProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     setError(null)
     try {
-      const rows = await apiGet<AppModule[]>('/modules')
+      const rows = await apiGet<AppModule[]>('/modules/')
       const normalized = (rows || [])
         .filter(Boolean)
         .filter(m => m.is_visible !== false)
@@ -83,4 +83,3 @@ export function useModules(): ModulesContextValue {
   if (!ctx) throw new Error('useModules must be used within a ModulesProvider')
   return ctx
 }
-
