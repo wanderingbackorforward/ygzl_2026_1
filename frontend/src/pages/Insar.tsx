@@ -29,6 +29,11 @@ function rgbToHex(r: number, g: number, b: number) {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`
 }
 
+function safeDatasetName(s: string) {
+  const cleaned = (s || '').trim().replace(/[^a-zA-Z0-9._-]/g, '')
+  return cleaned || 'yanggaozhong'
+}
+
 function valueToColor(value: number | null, maxAbs: number) {
   if (value === null || Number.isNaN(value) || !Number.isFinite(maxAbs) || maxAbs <= 0) return '#7c8a9a'
   const v = clamp(value, -maxAbs, maxAbs)
@@ -72,34 +77,59 @@ function InsarNativeMap({ dataset }: { dataset: string }) {
     let mounted = true
     setLoading(true)
     setError(null)
-    const url = `${API_BASE}/insar/points${dataset ? `?dataset=${encodeURIComponent(dataset)}` : ''}`
-    fetch(url)
-      .then(async (res) => {
-        const body = await res.json().catch(() => null as any)
-        if (!res.ok || (body && typeof body === 'object' && body.status && body.status !== 'success')) {
-          const msg = body?.message || `请求失败：${res.status}`
+    const safeDataset = safeDatasetName(dataset)
+    const staticBase = '/static/data/insar/processed'
+    const primaryStatic = safeDataset === 'yanggaozhong' ? 'points.geojson' : `${safeDataset}.geojson`
+    const staticCandidates = [
+      `${staticBase}/${primaryStatic}`,
+      safeDataset === 'yanggaozhong' ? `${staticBase}/yanggaozhong.geojson` : '',
+    ].filter(Boolean)
+
+    const apiUrl = `${API_BASE}/insar/points${safeDataset ? `?dataset=${encodeURIComponent(safeDataset)}` : ''}`
+
+    const fetchJson = async (url: string) => {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`请求失败：${res.status}`)
+      return res.json()
+    }
+
+    ;(async () => {
+      try {
+        for (const u of staticCandidates) {
+          try {
+            const geo = await fetchJson(u)
+            if (geo && typeof geo === 'object' && (geo as any).type === 'FeatureCollection') {
+              const fc = geo as FeatureCollection
+              if (!mounted) return
+              setMeta({ dataset: safeDataset, cached: true, feature_count: fc.features?.length || 0 })
+              setData(fc)
+              return
+            }
+          } catch {
+          }
+        }
+
+        const body = await fetchJson(apiUrl).catch(() => null as any)
+        if (body && typeof body === 'object' && body.status && body.status !== 'success') {
+          const msg = body?.message || '加载失败'
           const hint = body?.hint || ''
           throw new Error(`${msg}${hint ? `\n${hint}` : ''}`)
         }
-        return body
-      })
-      .then((body) => {
         if (!mounted) return
         const nextMeta: InsarMeta | null = body?.meta && typeof body.meta === 'object' ? body.meta : null
         const nextData: FeatureCollection | null = body?.data && typeof body.data === 'object' ? body.data : (body as any)
         setMeta(nextMeta)
         setData(nextData)
-      })
-      .catch((e: any) => {
+      } catch (e: any) {
         if (!mounted) return
         setError(e?.message || '加载失败')
         setData(null)
         setMeta(null)
-      })
-      .finally(() => {
+      } finally {
         if (!mounted) return
         setLoading(false)
-      })
+      }
+    })()
     return () => { mounted = false }
   }, [dataset])
 
@@ -250,7 +280,7 @@ export default function Insar() {
               onChange={(e) => setDataset(e.target.value)}
               style={{ width: 160, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }}
             />
-            <span style={{ fontSize: 12, opacity: 0.8 }}>对应目录：static/data/insar/raw/{dataset}/</span>
+            <span style={{ fontSize: 12, opacity: 0.8 }}>对应文件：/static/data/insar/processed/{dataset === 'yanggaozhong' ? 'points.geojson' : `${safeDatasetName(dataset)}.geojson`}</span>
           </div>
         ) : null}
 
