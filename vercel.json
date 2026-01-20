@@ -3,10 +3,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/index.py": {
-      "includeFiles": [
-        "static/data/insar/**",
-        "backend/static/data/insar/**"
-      ]
+      "includeFiles": "static/data/insar/**"
     }
   },
   "rewrites": [
