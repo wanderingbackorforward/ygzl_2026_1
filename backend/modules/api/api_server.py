@@ -61,7 +61,6 @@ from modules.ticket_system.api import ticket_bp, user_bp
 
 # 二级数据分析模块
 from modules.analysis_v2.api import analysis_v2_bp
-from modules.module_registry.api import module_bp
 from modules.insar.api import insar_bp
 
 # =========================================================
@@ -992,7 +991,74 @@ app.register_blueprint(ticket_bp)
 app.register_blueprint(user_bp)
 # 注册二级数据分析API蓝图
 app.register_blueprint(analysis_v2_bp)
-app.register_blueprint(module_bp)
+@app.route('/api/modules', methods=['GET'])
+@app.route('/api/modules/', methods=['GET'])
+def modules_list():
+    try:
+        getter = getattr(repo, 'modules_get_all', None)
+        if callable(getter):
+            rows = getter()
+            if isinstance(rows, list) and rows:
+                return jsonify({"success": True, "message": "ok", "data": rows, "timestamp": datetime.now().isoformat()}), 200
+
+        default_modules = [
+            {"module_key": "cover", "route_path": "/cover", "display_name": "封面", "icon_class": "fas fa-home", "sort_order": 10, "status": "developed", "pending_badge_text": "待开发模块", "pending_popup_title": "模块待开发", "pending_popup_body": "该模块正在开发中", "is_visible": True},
+            {"module_key": "settlement", "route_path": "/settlement", "display_name": "沉降", "icon_class": "fas fa-chart-area", "sort_order": 20, "status": "developed", "pending_badge_text": "待开发模块", "pending_popup_title": "模块待开发", "pending_popup_body": "该模块正在开发中", "is_visible": True},
+            {"module_key": "temperature", "route_path": "/temperature", "display_name": "温度", "icon_class": "fas fa-thermometer-half", "sort_order": 30, "status": "developed", "pending_badge_text": "待开发模块", "pending_popup_title": "模块待开发", "pending_popup_body": "该模块正在开发中", "is_visible": True},
+            {"module_key": "cracks", "route_path": "/cracks", "display_name": "裂缝", "icon_class": "fas fa-bug", "sort_order": 40, "status": "developed", "pending_badge_text": "待开发模块", "pending_popup_title": "模块待开发", "pending_popup_body": "该模块正在开发中", "is_visible": True},
+            {"module_key": "vibration", "route_path": "/vibration", "display_name": "振动", "icon_class": "fas fa-wave-square", "sort_order": 50, "status": "developed", "pending_badge_text": "待开发模块", "pending_popup_title": "模块待开发", "pending_popup_body": "该模块正在开发中", "is_visible": True},
+            {"module_key": "insar", "route_path": "/insar", "display_name": "InSAR", "icon_class": "fas fa-satellite", "sort_order": 60, "status": "developed", "pending_badge_text": "待开发模块", "pending_popup_title": "模块待开发", "pending_popup_body": "该模块正在开发中", "is_visible": True},
+            {"module_key": "overview", "route_path": "/overview", "display_name": "数据总览", "icon_class": "fas fa-chart-line", "sort_order": 70, "status": "developed", "pending_badge_text": "待开发模块", "pending_popup_title": "模块待开发", "pending_popup_body": "该模块正在开发中", "is_visible": True},
+            {"module_key": "three", "route_path": "/three", "display_name": "3D模型", "icon_class": "fas fa-cubes", "sort_order": 80, "status": "developed", "pending_badge_text": "待开发模块", "pending_popup_title": "模块待开发", "pending_popup_body": "该模块正在开发中", "is_visible": True},
+            {"module_key": "tickets", "route_path": "/tickets", "display_name": "工单", "icon_class": "fas fa-ticket-alt", "sort_order": 90, "status": "developed", "pending_badge_text": "待开发模块", "pending_popup_title": "模块待开发", "pending_popup_body": "该模块正在开发中", "is_visible": True},
+        ]
+        return jsonify({"success": True, "message": "fallback", "data": default_modules, "timestamp": datetime.now().isoformat()}), 200
+    except Exception as e:
+        return jsonify({"success": True, "message": str(e), "data": [], "timestamp": datetime.now().isoformat()}), 200
+
+
+@app.route('/api/modules', methods=['PATCH'])
+@app.route('/api/modules/', methods=['PATCH'])
+def modules_update():
+    body = request.get_json(silent=True) or {}
+    module_key = (body.get('module_key') or '').strip()
+    status = body.get('status')
+    if not module_key:
+        return jsonify({"success": False, "message": "missing module_key", "data": None, "timestamp": datetime.now().isoformat()}), 400
+    if status not in ('developed', 'pending'):
+        return jsonify({"success": False, "message": "invalid status", "data": None, "timestamp": datetime.now().isoformat()}), 400
+
+    updater = getattr(repo, 'modules_update_status', None)
+    if not callable(updater):
+        return jsonify({"success": False, "message": "not supported", "data": None, "timestamp": datetime.now().isoformat()}), 501
+
+    updated_by = body.get('updated_by')
+    reason = body.get('reason') if 'reason' in body else body.get('update_reason')
+    try:
+        row = updater(module_key, status, updated_by=updated_by, update_reason=reason)
+        return jsonify({"success": True, "message": "ok", "data": row, "timestamp": datetime.now().isoformat()}), 200
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e), "data": None, "timestamp": datetime.now().isoformat()}), 500
+
+
+@app.route('/api/modules/<module_key>', methods=['PATCH'])
+def modules_update_by_key(module_key):
+    body = request.get_json(silent=True) or {}
+    status = body.get('status')
+    if status not in ('developed', 'pending'):
+        return jsonify({"success": False, "message": "invalid status", "data": None, "timestamp": datetime.now().isoformat()}), 400
+
+    updater = getattr(repo, 'modules_update_status', None)
+    if not callable(updater):
+        return jsonify({"success": False, "message": "not supported", "data": None, "timestamp": datetime.now().isoformat()}), 501
+
+    updated_by = body.get('updated_by')
+    reason = body.get('reason') if 'reason' in body else body.get('update_reason')
+    try:
+        row = updater(module_key, status, updated_by=updated_by, update_reason=reason)
+        return jsonify({"success": True, "message": "ok", "data": row, "timestamp": datetime.now().isoformat()}), 200
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e), "data": None, "timestamp": datetime.now().isoformat()}), 500
 app.register_blueprint(insar_bp)
 
 # 健康检查路由

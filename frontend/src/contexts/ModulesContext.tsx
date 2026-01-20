@@ -50,7 +50,8 @@ export function ModulesProvider({ children }: { children: ReactNode }) {
   }, [modules])
 
   const setStatus = useCallback(async (moduleKey: string, status: ModuleStatus, updatedBy?: string, reason?: string) => {
-    const updated = await apiPatch<AppModule | null>(`/modules/${encodeURIComponent(moduleKey)}`, {
+    const updated = await apiPatch<AppModule | null>(`/modules/`, {
+      module_key: moduleKey,
       status,
       updated_by: updatedBy,
       reason

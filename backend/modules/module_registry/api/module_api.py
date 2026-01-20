@@ -67,3 +67,28 @@ def modules_update(module_key: str):
         return create_response(row, "ok", True, 200)
     except Exception as e:
         return create_response(None, str(e), False, 500)
+
+
+@module_bp.route('', methods=['PATCH'])
+@module_bp.route('/', methods=['PATCH'])
+def modules_update_by_body():
+    body = request.get_json(silent=True) or {}
+    module_key = (body.get('module_key') or '').strip()
+    status = body.get('status')
+    if not module_key:
+        return create_response(None, "missing module_key", False, 400)
+    if status not in ('developed', 'pending'):
+        return create_response(None, "invalid status", False, 400)
+
+    updated_by = body.get('updated_by')
+    reason = body.get('reason') if 'reason' in body else body.get('update_reason')
+
+    try:
+        repo = _get_repo()
+        updater = getattr(repo, 'modules_update_status', None)
+        if not callable(updater):
+            return create_response(None, "not supported", False, 501)
+        row = updater(module_key, status, updated_by=updated_by, update_reason=reason)
+        return create_response(row, "ok", True, 200)
+    except Exception as e:
+        return create_response(None, str(e), False, 500)
