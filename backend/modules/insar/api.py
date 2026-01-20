@@ -12,11 +12,16 @@ def _project_root() -> str:
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 
 
-def _paths() -> tuple[str, str]:
+def _is_serverless() -> bool:
+    return (os.getenv("VERCEL") == "1") or bool(os.getenv("AWS_LAMBDA_FUNCTION_NAME")) or bool(os.getenv("NOW_REGION"))
+
+
+def _paths() -> tuple[str, str, str]:
     root = _project_root()
     raw_dir = os.path.join(root, "static", "data", "insar", "raw")
     processed_dir = os.path.join(root, "static", "data", "insar", "processed")
-    return raw_dir, processed_dir
+    cache_dir = os.getenv("INSAR_CACHE_DIR") or (os.path.join("/tmp", "insar", "processed") if _is_serverless() else processed_dir)
+    return raw_dir, processed_dir, cache_dir
 
 
 @insar_bp.route("/points", methods=["GET"])
@@ -24,35 +29,40 @@ def insar_points():
     dataset = (request.args.get("dataset") or "yanggaozhong").strip()
     field = (request.args.get("field") or "").strip()
     refresh = (request.args.get("refresh") or "").strip() in ("1", "true", "yes")
-    raw_dir, processed_dir = _paths()
-    os.makedirs(processed_dir, exist_ok=True)
+    raw_dir, packaged_processed_dir, cache_processed_dir = _paths()
 
     base_name = "points.geojson" if dataset == "yanggaozhong" else f"{dataset}.geojson"
     if field:
         safe_field = "".join(ch for ch in field if ch.isalnum() or ch in ("_", "-", "."))
         base_name = f"{dataset}.{safe_field}.geojson"
-    out_path = os.path.join(processed_dir, base_name)
+    out_path = os.path.join(cache_processed_dir, base_name)
 
     try:
         cached = False
-        if os.path.exists(out_path) and not refresh and not field:
-            with open(out_path, "r", encoding="utf-8") as f:
-                geo = json.load(f)
-            cached = True
-            feature_count = len(geo.get("features") or [])
-            return jsonify(
-                {
-                    "status": "success",
-                    "data": geo,
-                    "meta": {
-                        "dataset": dataset,
-                        "cached": cached,
-                        "feature_count": feature_count,
-                        "args": dict(request.args),
-                        "cache_file": base_name,
-                    },
-                }
-            )
+        if not refresh:
+            candidate_cache_files = [out_path]
+            packaged_out_path = os.path.join(packaged_processed_dir, base_name)
+            if packaged_out_path != out_path:
+                candidate_cache_files.append(packaged_out_path)
+            for cache_file in candidate_cache_files:
+                if os.path.exists(cache_file):
+                    with open(cache_file, "r", encoding="utf-8") as f:
+                        geo = json.load(f)
+                    cached = True
+                    feature_count = len(geo.get("features") or [])
+                    return jsonify(
+                        {
+                            "status": "success",
+                            "data": geo,
+                            "meta": {
+                                "dataset": dataset,
+                                "cached": cached,
+                                "feature_count": feature_count,
+                                "args": dict(request.args),
+                                "cache_file": os.path.basename(cache_file),
+                            },
+                        }
+                    )
 
         result = convert_shapefile_dir_to_geojson(raw_dir=raw_dir, dataset=dataset)
         if field:
@@ -64,7 +74,11 @@ def insar_points():
                 if v is not None:
                     props["value"] = v
                     props["value_field"] = field
-        write_geojson(result.geojson, out_path)
+        try:
+            os.makedirs(cache_processed_dir, exist_ok=True)
+            write_geojson(result.geojson, out_path)
+        except Exception:
+            pass
         feature_count = len(result.geojson.get("features") or [])
         return jsonify(
             {
@@ -86,6 +100,6 @@ def insar_points():
                 "status": "error",
                 "message": str(e),
                 "hint": f"请把 Shapefile 放到 {abs_hint_dir} 下（至少 .shp + .dbf）",
-                "meta": {"dataset": dataset, "raw_dir": raw_dir, "processed_dir": processed_dir},
+                "meta": {"dataset": dataset, "raw_dir": raw_dir, "processed_dir": packaged_processed_dir, "cache_dir": cache_processed_dir},
             }
         ), 400
