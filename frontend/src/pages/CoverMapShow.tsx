@@ -127,7 +127,8 @@ export default function CoverMapShow() {
   const [flipped, setFlipped] = useState(false)
   const [displacementBarWidth, setDisplacementBarWidth] = useState(20)
   const [pmBarWidth, setPmBarWidth] = useState(45)
-  const [mobileInfoOpen, setMobileInfoOpen] = useState(false)
+  const [mobilePanel, setMobilePanel] = useState<null | 'zone' | 'metrics'>(null)
+  const [mobileZoneTab, setMobileZoneTab] = useState<'overview' | 'matrix'>('overview')
 
   const activeZone = useMemo<ProjectZone>(() => {
     if (sliderValue > 70) return projectData[2]
@@ -350,7 +351,14 @@ export default function CoverMapShow() {
             <button
               type="button"
               className="md:hidden px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs text-gray-200"
-              onClick={() => setMobileInfoOpen(true)}
+              onClick={() => setMobilePanel((v) => (v === 'zone' ? null : 'zone'))}
+            >
+              标段
+            </button>
+            <button
+              type="button"
+              className="md:hidden px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs text-gray-200"
+              onClick={() => setMobilePanel((v) => (v === 'metrics' ? null : 'metrics'))}
             >
               指标
             </button>
@@ -366,23 +374,160 @@ export default function CoverMapShow() {
         {renderInfoPanels(false)}
       </aside>
 
-      {mobileInfoOpen && (
+      {mobilePanel && (
         <div className="absolute inset-0 z-30 md:hidden">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileInfoOpen(false)} />
-          <div className="absolute left-0 right-0 bottom-0 p-4">
-            <div className="glass-panel rounded-2xl overflow-hidden max-h-[75vh] flex flex-col">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/20">
-                <div className="text-xs text-gray-200 font-tech tracking-widest">监控概览</div>
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMobilePanel(null)} />
+          <div className="absolute left-0 right-0 bottom-0 p-3">
+            <div className="glass-panel rounded-2xl overflow-hidden max-h-[72vh] flex flex-col pointer-events-auto">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 bg-black/20">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className={`px-3 py-1 rounded-full border text-xs ${mobilePanel === 'zone' ? 'border-cyan-400/50 bg-cyan-500/10 text-cyan-200' : 'border-white/10 bg-white/5 text-gray-200'}`}
+                    onClick={() => setMobilePanel('zone')}
+                  >
+                    标段
+                  </button>
+                  <button
+                    type="button"
+                    className={`px-3 py-1 rounded-full border text-xs ${mobilePanel === 'metrics' ? 'border-cyan-400/50 bg-cyan-500/10 text-cyan-200' : 'border-white/10 bg-white/5 text-gray-200'}`}
+                    onClick={() => setMobilePanel('metrics')}
+                  >
+                    指标
+                  </button>
+                </div>
                 <button
                   type="button"
                   className="px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs text-gray-200"
-                  onClick={() => setMobileInfoOpen(false)}
+                  onClick={() => setMobilePanel(null)}
                 >
                   关闭
                 </button>
               </div>
-              <div className="p-4 space-y-4 overflow-y-auto custom-scroll pointer-events-auto">
-                {renderInfoPanels(true)}
+
+              <div className="p-3 overflow-y-auto custom-scroll">
+                {mobilePanel === 'metrics' && (
+                  <div className="space-y-4">
+                    {renderInfoPanels(true)}
+                  </div>
+                )}
+
+                {mobilePanel === 'zone' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-gray-200 font-tech tracking-widest">标段卡片</div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          className={`px-3 py-1 rounded-full border text-xs ${mobileZoneTab === 'overview' ? 'border-cyan-400/50 bg-cyan-500/10 text-cyan-200' : 'border-white/10 bg-white/5 text-gray-200'}`}
+                          onClick={() => setMobileZoneTab('overview')}
+                        >
+                          概况
+                        </button>
+                        <button
+                          type="button"
+                          className={`px-3 py-1 rounded-full border text-xs ${mobileZoneTab === 'matrix' ? 'border-cyan-400/50 bg-cyan-500/10 text-cyan-200' : 'border-white/10 bg-white/5 text-gray-200'}`}
+                          onClick={() => setMobileZoneTab('matrix')}
+                        >
+                          设备风险
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="glass-panel rounded-xl overflow-hidden">
+                      <div className="h-20 w-full bg-[url('https://images.unsplash.com/photo-1496568816309-51d7c20e3b21?q=80&w=2031&auto=format&fit=crop')] bg-cover bg-center relative">
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#020617] to-transparent" />
+                        <div className="absolute bottom-3 left-4">
+                          <h2 className="text-lg font-black text-white tracking-wide">{activeZone.title}</h2>
+                          <p className="text-[11px] text-cyan-300 font-bold mt-0.5">{activeZone.subTitle}</p>
+                        </div>
+                      </div>
+
+                      {mobileZoneTab === 'overview' && (
+                        <div className="p-4 space-y-4">
+                          <div className="bg-blue-900/20 p-3 rounded border border-blue-500/20">
+                            <p className="text-[10px] text-blue-300 font-bold mb-1 uppercase">工程概况 SCOPE</p>
+                            <p className="text-xs text-gray-300 leading-relaxed text-justify">{activeZone.scope}</p>
+                          </div>
+
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-[10px] text-gray-500 font-bold uppercase">智慧建造亮点 HIGHLIGHTS</span>
+                              <i className="fas fa-cube text-cyan-500 text-xs" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              {activeZone.features.map((f) => (
+                                <div key={f.name} className="feature-tag">
+                                  <span className="text-gray-300 text-[10px]">{f.name}</span>
+                                  <i className={`fas ${f.icon} text-cyan-400 text-xs`} />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="flex justify-between text-xs text-gray-400 mb-1">
+                              <span>PC构件预制拼装率</span>
+                              <span className="text-white font-tech">{activeZone.pcRate}</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
+                              <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full" style={{ width: activeZone.pcRate }} />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {mobileZoneTab === 'matrix' && (
+                        <div className="p-4 space-y-4">
+                          <div>
+                            <div className="flex items-center gap-2 mb-3 text-xs text-orange-400 font-bold">
+                              <i className="fas fa-exclamation-triangle" />
+                              <span>一级风险源管控</span>
+                            </div>
+                            <table className="tech-table">
+                              <thead>
+                                <tr>
+                                  <th>风险名称</th>
+                                  <th>位置</th>
+                                  <th>管控措施</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {activeZone.risks.map((r) => (
+                                  <tr key={`${r.name}-${r.loc}`}>
+                                    <td>{r.name}</td>
+                                    <td>{r.loc}</td>
+                                    <td className="text-emerald-400">{r.action}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          <div>
+                            <div className="flex items-center gap-2 mb-3 text-xs text-cyan-400 font-bold">
+                              <i className="fas fa-microchip" />
+                              <span>感知设备配置</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              {activeZone.devices.map((d) => (
+                                <div key={d.name} className="bg-white/5 p-2 rounded flex items-center gap-3 border border-white/5">
+                                  <div className="w-8 h-8 rounded bg-cyan-500/20 flex items-center justify-center text-cyan-300">
+                                    <i className={`fas ${d.icon}`} />
+                                  </div>
+                                  <div>
+                                    <div className="text-[10px] text-gray-400">{d.name}</div>
+                                    <div className="text-xs font-bold text-white">{d.count}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -390,7 +535,7 @@ export default function CoverMapShow() {
       )}
 
       <aside
-        className="absolute z-20 pointer-events-none left-1/2 bottom-24 -translate-x-1/2 w-[calc(100vw-2rem)] h-[52vh] md:left-auto md:bottom-auto md:translate-x-0 md:top-28 md:right-8 md:w-[420px] md:h-[calc(100%-7rem)]"
+        className="hidden md:block absolute z-20 pointer-events-none top-28 right-8 w-[420px] h-[calc(100%-7rem)]"
       >
         <div
           ref={tiltContainerRef}
