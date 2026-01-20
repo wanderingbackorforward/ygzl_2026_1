@@ -13,6 +13,9 @@ class ConvertResult:
     value_field: Optional[str]
 
 
+_SAFE_DATASET_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
+
+
 def _find_single_file(dir_path: str, ext: str) -> Optional[str]:
     if not os.path.isdir(dir_path):
         return None
@@ -138,6 +141,12 @@ def convert_shapefile_dir_to_geojson(raw_dir: str, dataset: str) -> ConvertResul
         import shapefile  # type: ignore
     except Exception as e:
         raise RuntimeError("缺少依赖：请在后端环境安装 pyshp（pip install pyshp）") from e
+
+    dataset = (dataset or "").strip()
+    if not dataset:
+        dataset = "yanggaozhong"
+    if ".." in dataset or not _SAFE_DATASET_RE.fullmatch(dataset):
+        raise ValueError("非法 dataset：仅允许字母/数字/._-，且禁止包含 ..")
 
     dataset_dir = os.path.join(raw_dir, dataset)
     shp_path = _find_single_file(dataset_dir, ".shp") or os.path.join(dataset_dir, f"{dataset}.shp")
