@@ -16,8 +16,45 @@ def _is_serverless() -> bool:
     return (os.getenv("VERCEL") == "1") or bool(os.getenv("AWS_LAMBDA_FUNCTION_NAME")) or bool(os.getenv("NOW_REGION"))
 
 
+def _discover_static_root() -> str:
+    env_root = (os.getenv("INSAR_PROJECT_ROOT") or os.getenv("PROJECT_ROOT") or "").strip()
+    if env_root:
+        env_root_abs = os.path.abspath(env_root)
+        if os.path.isdir(os.path.join(env_root_abs, "static")):
+            return env_root_abs
+
+    roots: list[str] = []
+    try:
+        roots.append(_project_root())
+    except Exception:
+        pass
+
+    roots.append(os.path.abspath(os.getcwd()))
+    for r in list(roots):
+        roots.append(os.path.abspath(os.path.join(r, "..")))
+
+    seen: set[str] = set()
+    candidates: list[str] = []
+    for r in roots:
+        if not r:
+            continue
+        a = os.path.abspath(r)
+        if a in seen:
+            continue
+        seen.add(a)
+        candidates.append(a)
+
+    for root in candidates:
+        if os.path.isdir(os.path.join(root, "static", "data", "insar")):
+            return root
+    for root in candidates:
+        if os.path.isdir(os.path.join(root, "static")):
+            return root
+    return candidates[0] if candidates else os.path.abspath(os.getcwd())
+
+
 def _paths() -> tuple[str, str, str]:
-    root = _project_root()
+    root = _discover_static_root()
     raw_dir = os.path.join(root, "static", "data", "insar", "raw")
     processed_dir = os.path.join(root, "static", "data", "insar", "processed")
     cache_dir = os.getenv("INSAR_CACHE_DIR") or (os.path.join("/tmp", "insar", "processed") if _is_serverless() else processed_dir)
