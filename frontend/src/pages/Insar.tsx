@@ -15,6 +15,8 @@ type SeriesData = { dataset: string, id: string, series: { date: string, value: 
 type RiskLevel = 'normal' | 'warning' | 'danger'
 type RiskPoint = { id: string, lat: number, lng: number, velocity: number, risk: RiskLevel }
 type RiskSummary = { total: number, danger: number, warning: number, normal: number, unknown: number, top: RiskPoint[] }
+type ZoneLevel = 'danger' | 'warning'
+type ZoneSummary = { id: string, level: ZoneLevel, point_count: number, min_velocity: number | null, p95_velocity: number | null, bbox?: number[] | null, centroid?: number[] | null }
 type ExpertMeasure = { key: string, title: string, detail: string }
 type AdviceEntry = { text: string, updatedAt: number }
 type AdviceStore = { globalByDataset: Record<string, AdviceEntry>, pointByDataset: Record<string, Record<string, AdviceEntry>> }
@@ -126,13 +128,30 @@ function loadAdviceStore(): AdviceStore {
 }
 
 function InsarNativeMap(
-  { dataset, indicator, valueField, velocityFieldName, thresholds, useBbox, onSummaryChange, focusId, onSelectedChange }:
-  { dataset: string, indicator: Indicator, valueField: string, velocityFieldName: string, thresholds: Thresholds, useBbox: boolean, onSummaryChange?: (summary: RiskSummary) => void, focusId?: string | null, onSelectedChange?: (selected: { id: string, props: Record<string, any>, lat: number, lng: number } | null) => void }
+  { dataset, indicator, valueField, velocityFieldName, thresholds, useBbox, showZones, zoneEpsM, zoneMinPts, onSummaryChange, onZonesChange, focusId, focusZoneId, onSelectedChange }:
+  {
+    dataset: string,
+    indicator: Indicator,
+    valueField: string,
+    velocityFieldName: string,
+    thresholds: Thresholds,
+    useBbox: boolean,
+    showZones: boolean,
+    zoneEpsM: number,
+    zoneMinPts: number,
+    onSummaryChange?: (summary: RiskSummary) => void,
+    onZonesChange?: (payload: { meta: Record<string, any> | null, top: ZoneSummary[] }) => void,
+    focusId?: string | null,
+    focusZoneId?: string | null,
+    onSelectedChange?: (selected: { id: string, props: Record<string, any>, lat: number, lng: number } | null) => void
+  }
 ) {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const layerRef = useRef<L.GeoJSON | null>(null)
   const layerByIdRef = useRef<Map<string, any>>(new Map())
+  const zonesLayerRef = useRef<L.GeoJSON | null>(null)
+  const zonesLayerByIdRef = useRef<Map<string, any>>(new Map())
   const alertLayerRef = useRef<L.LayerGroup | null>(null)
   const pulseTimerRef = useRef<number | null>(null)
   const pulseMarkersRef = useRef<{ marker: L.CircleMarker, base: number, amp: number }[]>([])
@@ -151,10 +170,25 @@ function InsarNativeMap(
   const [seriesLoading, setSeriesLoading] = useState(false)
   const [seriesError, setSeriesError] = useState<string | null>(null)
   const [bboxToken, setBboxToken] = useState(0)
+  const [zonesData, setZonesData] = useState<FeatureCollection | null>(null)
+  const [zonesMeta, setZonesMeta] = useState<Record<string, any> | null>(null)
+  const [zonesLoading, setZonesLoading] = useState(false)
+  const [zonesError, setZonesError] = useState<string | null>(null)
+  const [selectedZone, setSelectedZone] = useState<ZoneSummary | null>(null)
 
   useEffect(() => {
     useBboxRef.current = useBbox
   }, [useBbox])
+
+  useEffect(() => {
+    if (!showZones) {
+      setZonesData(null)
+      setZonesMeta(null)
+      setZonesError(null)
+      setSelectedZone(null)
+      onZonesChange?.({ meta: null, top: [] })
+    }
+  }, [showZones, onZonesChange])
 
   const maxAbs = useMemo(() => {
     if (!data?.features?.length) return 20
@@ -273,6 +307,75 @@ function InsarNativeMap(
   }, [dataset, valueField, useBbox, bboxToken])
 
   useEffect(() => {
+    if (!showZones) return
+    let mounted = true
+    const controller = new AbortController()
+    setZonesLoading(true)
+    setZonesError(null)
+    const safeDataset = safeDatasetName(dataset)
+    const map = mapRef.current
+    const bbox = useBbox && map ? map.getBounds() : null
+    const bboxParam = bbox ? `&bbox=${encodeURIComponent(`${bbox.getWest()},${bbox.getSouth()},${bbox.getEast()},${bbox.getNorth()}`)}` : ''
+    const apiUrl = `${API_BASE}/insar/zones?dataset=${encodeURIComponent(safeDataset)}&field=${encodeURIComponent(velocityFieldName || '')}&mild=${encodeURIComponent(String(thresholds.mild))}&strong=${encodeURIComponent(String(thresholds.strong))}&eps_m=${encodeURIComponent(String(zoneEpsM))}&min_pts=${encodeURIComponent(String(zoneMinPts))}${bboxParam}`
+
+    ;(async () => {
+      try {
+        const res = await fetch(apiUrl, { signal: controller.signal })
+        const body = await res.json().catch(() => null as any)
+        if (!res.ok) throw new Error(body?.message || `请求失败：${res.status}`)
+        if (body && typeof body === 'object' && body.status && body.status !== 'success') {
+          const msg = body?.message || '加载失败'
+          const hint = body?.hint || ''
+          throw new Error(`${msg}${hint ? `\n${hint}` : ''}`)
+        }
+        if (!mounted) return
+        const nextMeta = body?.meta && typeof body.meta === 'object' ? body.meta : null
+        const nextData: FeatureCollection | null = body?.data && typeof body.data === 'object' ? body.data : null
+        setZonesMeta(nextMeta)
+        setZonesData(nextData)
+
+        const features = Array.isArray(nextData?.features) ? nextData!.features : []
+        const top: ZoneSummary[] = features
+          .map((f: any) => {
+            const p = f?.properties || {}
+            const id = String(p.zone_id ?? f?.id ?? '')
+            const level = (p.level === 'danger' ? 'danger' : 'warning') as ZoneLevel
+            const point_count = typeof p.point_count === 'number' ? p.point_count : Number(p.point_count) || 0
+            const min_velocity = typeof p.min_velocity === 'number' ? p.min_velocity : (typeof p.min_velocity === 'string' ? Number(p.min_velocity) : null)
+            const p95_velocity = typeof p.p95_velocity === 'number' ? p.p95_velocity : (typeof p.p95_velocity === 'string' ? Number(p.p95_velocity) : null)
+            const bbox = Array.isArray(p.bbox) ? p.bbox : null
+            const centroid = Array.isArray(p.centroid) ? p.centroid : null
+            return { id, level, point_count, min_velocity: Number.isFinite(min_velocity as any) ? (min_velocity as any) : null, p95_velocity: Number.isFinite(p95_velocity as any) ? (p95_velocity as any) : null, bbox, centroid }
+          })
+          .filter((z) => z.id)
+
+        top.sort((a, b) => {
+          const av = a.min_velocity ?? 0
+          const bv = b.min_velocity ?? 0
+          if (av !== bv) return av - bv
+          return (b.point_count || 0) - (a.point_count || 0)
+        })
+        onZonesChange?.({ meta: nextMeta, top: top.slice(0, 30) })
+      } catch (e: any) {
+        if (!mounted) return
+        if (e?.name === 'AbortError') return
+        setZonesError(e?.message || '加载失败')
+        setZonesData(null)
+        setZonesMeta(null)
+        onZonesChange?.({ meta: null, top: [] })
+      } finally {
+        if (!mounted) return
+        setZonesLoading(false)
+      }
+    })()
+
+    return () => {
+      mounted = false
+      controller.abort()
+    }
+  }, [showZones, dataset, velocityFieldName, thresholds.mild, thresholds.strong, zoneEpsM, zoneMinPts, useBbox, bboxToken, onZonesChange])
+
+  useEffect(() => {
     if (!mapContainerRef.current) return
     if (mapRef.current) return
 
@@ -285,6 +388,13 @@ function InsarNativeMap(
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19,
     }).addTo(map)
+
+    map.createPane('insarZones')
+    map.createPane('insarPoints')
+    const zonesPane = map.getPane('insarZones')
+    const pointsPane = map.getPane('insarPoints')
+    if (zonesPane) zonesPane.style.zIndex = '380'
+    if (pointsPane) pointsPane.style.zIndex = '420'
 
     mapRef.current = map
     const alertLayer = L.layerGroup().addTo(map)
@@ -319,6 +429,7 @@ function InsarNativeMap(
       map.remove()
       mapRef.current = null
       layerRef.current = null
+      zonesLayerRef.current = null
     }
   }, [])
 
@@ -384,6 +495,7 @@ function InsarNativeMap(
           fillColor: color,
           fillOpacity: 0.75,
           weight: 1,
+          pane: 'insarPoints',
         })
       },
       onEachFeature: (feature, l) => {
@@ -424,6 +536,65 @@ function InsarNativeMap(
   }, [data, maxAbs, indicator, thresholds])
 
   useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    if (zonesLayerRef.current) {
+      zonesLayerRef.current.remove()
+      zonesLayerRef.current = null
+    }
+    zonesLayerByIdRef.current = new Map()
+
+    if (!showZones || !zonesData) return
+
+    const selectedZoneId = selectedZone?.id ? String(selectedZone.id) : ''
+    const layer = L.geoJSON(zonesData as any, {
+      pane: 'insarZones',
+      style: (feature: any) => {
+        const p: any = feature?.properties || {}
+        const level: ZoneLevel = p?.level === 'danger' ? 'danger' : 'warning'
+        const baseColor = level === 'danger' ? '#ff3e5f' : '#ff9e0d'
+        const zid = String(p.zone_id ?? feature?.id ?? '')
+        const active = selectedZoneId && zid === selectedZoneId
+        return { color: baseColor, weight: active ? 3 : 2, opacity: 0.95, fillColor: baseColor, fillOpacity: active ? 0.20 : 0.12 }
+      },
+      onEachFeature: (feature: any, l: any) => {
+        const p: any = feature?.properties || {}
+        const zid = String(p.zone_id ?? feature?.id ?? '')
+        if (zid) zonesLayerByIdRef.current.set(zid, l)
+        const level: ZoneLevel = p?.level === 'danger' ? 'danger' : 'warning'
+        const lines = [
+          zid ? `<div><b>Zone</b>: ${zid}</div>` : '',
+          `<div><b>等级</b>: ${level === 'danger' ? '危险' : '预警'}</div>`,
+          p.point_count !== undefined ? `<div><b>点数</b>: ${String(p.point_count)}</div>` : '',
+          p.min_velocity !== undefined ? `<div><b>min速度</b>: ${String(p.min_velocity)}</div>` : '',
+          p.p95_velocity !== undefined ? `<div><b>p95速度</b>: ${String(p.p95_velocity)}</div>` : '',
+        ].filter(Boolean).join('')
+        l.bindPopup(`<div style="min-width:180px">${lines || '<div>无属性</div>'}</div>`)
+        l.on('click', () => {
+          const point_count = typeof p.point_count === 'number' ? p.point_count : Number(p.point_count) || 0
+          const min_velocity = typeof p.min_velocity === 'number' ? p.min_velocity : (typeof p.min_velocity === 'string' ? Number(p.min_velocity) : null)
+          const p95_velocity = typeof p.p95_velocity === 'number' ? p.p95_velocity : (typeof p.p95_velocity === 'string' ? Number(p.p95_velocity) : null)
+          const bbox = Array.isArray(p.bbox) ? p.bbox : null
+          const centroid = Array.isArray(p.centroid) ? p.centroid : null
+          setSelectedZone({
+            id: zid,
+            level,
+            point_count,
+            min_velocity: Number.isFinite(min_velocity as any) ? (min_velocity as any) : null,
+            p95_velocity: Number.isFinite(p95_velocity as any) ? (p95_velocity as any) : null,
+            bbox,
+            centroid
+          })
+        })
+      },
+    })
+
+    layer.addTo(map)
+    zonesLayerRef.current = layer
+  }, [showZones, zonesData, selectedZone?.id])
+
+  useEffect(() => {
     const id = focusId ? String(focusId) : ''
     if (!id) return
     const map = mapRef.current
@@ -439,6 +610,28 @@ function InsarNativeMap(
     const ll = typeof l.getLatLng === 'function' ? l.getLatLng() : null
     setSelected({ id, props: p, lat: Number(ll?.lat) || 0, lng: Number(ll?.lng) || 0 })
   }, [focusId, data])
+
+  useEffect(() => {
+    const id = focusZoneId ? String(focusZoneId) : ''
+    if (!id) return
+    const map = mapRef.current
+    const l = zonesLayerByIdRef.current.get(id)
+    if (!map || !l) return
+    try {
+      const b = typeof l.getBounds === 'function' ? l.getBounds() : null
+      if (b && b.isValid()) map.fitBounds(b.pad(0.2), { animate: true })
+    } catch {
+    }
+    if (typeof l.openPopup === 'function') l.openPopup()
+    const p: any = l?.feature?.properties || {}
+    const level: ZoneLevel = p?.level === 'danger' ? 'danger' : 'warning'
+    const point_count = typeof p.point_count === 'number' ? p.point_count : Number(p.point_count) || 0
+    const min_velocity = typeof p.min_velocity === 'number' ? p.min_velocity : (typeof p.min_velocity === 'string' ? Number(p.min_velocity) : null)
+    const p95_velocity = typeof p.p95_velocity === 'number' ? p.p95_velocity : (typeof p.p95_velocity === 'string' ? Number(p.p95_velocity) : null)
+    const bbox = Array.isArray(p.bbox) ? p.bbox : null
+    const centroid = Array.isArray(p.centroid) ? p.centroid : null
+    setSelectedZone({ id, level, point_count, min_velocity: Number.isFinite(min_velocity as any) ? (min_velocity as any) : null, p95_velocity: Number.isFinite(p95_velocity as any) ? (p95_velocity as any) : null, bbox, centroid })
+  }, [focusZoneId, zonesData])
 
   useEffect(() => {
     const map = mapRef.current
@@ -633,6 +826,48 @@ function InsarNativeMap(
           {seriesError ? <div style={{ marginTop: 8, fontSize: 12, color: '#ff8b8b', whiteSpace: 'pre-wrap' }}>{seriesError}</div> : null}
         </div>
       ) : null}
+
+      {selectedZone ? (
+        <div style={{ position: 'absolute', bottom: 12, left: 12, zIndex: 540, width: 360, maxWidth: 'calc(100% - 24px)', maxHeight: '40%', overflow: 'auto', padding: 12, borderRadius: 10, background: 'rgba(10,25,47,.86)', border: '1px solid rgba(64,174,255,.25)', color: '#aaddff' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <div style={{ fontWeight: 800, flex: 1 }}>危险区详情</div>
+            <button type="button" onClick={() => setSelectedZone(null)} style={{ border: '1px solid rgba(64,174,255,.35)', background: 'rgba(255,255,255,.05)', color: '#aaddff', borderRadius: 8, padding: '6px 10px', cursor: 'pointer' }}>关闭</button>
+          </div>
+          <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>ID：{selectedZone.id}</div>
+          <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>等级：<span style={{ color: selectedZone.level === 'danger' ? '#ff3e5f' : '#ff9e0d', fontWeight: 900 }}>{selectedZone.level === 'danger' ? '危险' : '预警'}</span></div>
+          <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>点数：{selectedZone.point_count}</div>
+          <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>min速度：{selectedZone.min_velocity === null ? '—' : String(selectedZone.min_velocity)} mm/年</div>
+          <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>p95速度：{selectedZone.p95_velocity === null ? '—' : String(selectedZone.p95_velocity)} mm/年</div>
+          <button
+            type="button"
+            onClick={() => {
+              const map = mapRef.current
+              const l = zonesLayerByIdRef.current.get(String(selectedZone.id))
+              if (!map || !l) return
+              try {
+                const b = typeof l.getBounds === 'function' ? l.getBounds() : null
+                if (b && b.isValid()) map.fitBounds(b.pad(0.2), { animate: true })
+              } catch {
+              }
+            }}
+            style={{
+              marginTop: 6,
+              width: '100%',
+              padding: '7px 10px',
+              borderRadius: 8,
+              border: '1px solid rgba(64,174,255,.35)',
+              background: 'rgba(64,174,255,.12)',
+              color: '#aaddff',
+              cursor: 'pointer',
+            }}
+          >
+            定位到该区
+          </button>
+        </div>
+      ) : null}
+
+      {showZones && zonesLoading ? <div style={{ position: 'absolute', bottom: 12, right: 12, zIndex: 560, fontSize: 12, opacity: 0.85, padding: '6px 10px', borderRadius: 8, background: 'rgba(10,25,47,.78)', border: '1px solid rgba(64,174,255,.25)', color: '#aaddff' }}>危险区计算中…</div> : null}
+      {showZones && zonesError ? <div style={{ position: 'absolute', bottom: 12, right: 12, zIndex: 560, fontSize: 12, padding: '6px 10px', borderRadius: 8, background: 'rgba(10,25,47,.78)', border: '1px solid rgba(255,139,139,.35)', color: '#ff8b8b', whiteSpace: 'pre-wrap', maxWidth: 360 }}>{zonesError}</div> : null}
     </div>
   )
 }
@@ -670,6 +905,33 @@ export default function Insar() {
     }
     return { strong: 10, mild: 2 }
   })
+  const [showZones, setShowZones] = useState(() => {
+    try {
+      return localStorage.getItem('insar_show_zones_v1') === '1'
+    } catch {
+      return false
+    }
+  })
+  const [zoneEpsM, setZoneEpsM] = useState(() => {
+    try {
+      const raw = localStorage.getItem('insar_zone_eps_m_v1')
+      const n = raw ? Number(raw) : 50
+      return Number.isFinite(n) && n > 0 ? n : 50
+    } catch {
+      return 50
+    }
+  })
+  const [zoneMinPts, setZoneMinPts] = useState(() => {
+    try {
+      const raw = localStorage.getItem('insar_zone_min_pts_v1')
+      const n = raw ? Number(raw) : 6
+      return Number.isFinite(n) && n > 0 ? Math.round(n) : 6
+    } catch {
+      return 6
+    }
+  })
+  const [zonesPanel, setZonesPanel] = useState<{ meta: Record<string, any> | null, top: ZoneSummary[] }>({ meta: null, top: [] })
+  const [focusZoneId, setFocusZoneId] = useState<string | null>(null)
 
   useEffect(() => {
     try {
@@ -742,6 +1004,15 @@ export default function Insar() {
     } catch {
     }
   }, [thresholds])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('insar_show_zones_v1', showZones ? '1' : '0')
+      localStorage.setItem('insar_zone_eps_m_v1', String(zoneEpsM))
+      localStorage.setItem('insar_zone_min_pts_v1', String(zoneMinPts))
+    } catch {
+    }
+  }, [showZones, zoneEpsM, zoneMinPts])
 
   const velocityField = useMemo(() => {
     if (!fieldsInfo) return 'velocity'
@@ -909,6 +1180,20 @@ export default function Insar() {
               <input type="checkbox" checked={useBbox} onChange={(e) => setUseBbox(e.target.checked)} />
               视窗裁剪（范围）
             </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 0.9, cursor: 'pointer' }}>
+              <input type="checkbox" checked={showZones} onChange={(e) => setShowZones(e.target.checked)} />
+              危险区
+            </label>
+            {showZones ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, opacity: 0.85 }}>eps</span>
+                <input value={zoneEpsM} onChange={(e) => setZoneEpsM(Number(e.target.value) || 0)} style={{ width: 70, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }} />
+                <span style={{ fontSize: 12, opacity: 0.85 }}>m</span>
+                <span style={{ fontSize: 12, opacity: 0.85 }}>minPts</span>
+                <input value={zoneMinPts} onChange={(e) => setZoneMinPts(Math.max(1, Math.round(Number(e.target.value) || 0)))} style={{ width: 70, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }} />
+              </div>
+            ) : null}
           </>
         ) : null}
 
@@ -1018,6 +1303,62 @@ export default function Insar() {
                 </div>
               </div>
             ) : null}
+
+            {showZones && zonesPanel?.top?.length ? (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+                  <div style={{ fontWeight: 800 }}>高风险区（Top {Math.min(10, zonesPanel.top.length)}）</div>
+                  <div style={{ fontSize: 12, opacity: 0.85 }}>
+                    {(() => {
+                      const z = (zonesPanel.meta as any)?.zones || {}
+                      const dz = typeof z.danger_zone_count === 'number' ? z.danger_zone_count : null
+                      const wz = typeof z.warning_zone_count === 'number' ? z.warning_zone_count : null
+                      const all = typeof z.zone_count === 'number' ? z.zone_count : null
+                      const parts = [all !== null ? `总${all}` : null, dz !== null ? `危险${dz}` : null, wz !== null ? `预警${wz}` : null].filter(Boolean)
+                      return parts.join(' / ') || '—'
+                    })()}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflow: 'auto', paddingRight: 4 }}>
+                  {zonesPanel.top.slice(0, 10).map((z) => {
+                    const color = z.level === 'danger' ? '#ff3e5f' : '#ff9e0d'
+                    const label = z.level === 'danger' ? '危险区' : '预警区'
+                    return (
+                      <button
+                        key={z.id}
+                        type="button"
+                        onClick={() => {
+                          setTab('map')
+                          setMode('native')
+                          setIndicator('threshold')
+                          if (!showZones) setShowZones(true)
+                          setFocusId(null)
+                          setFocusZoneId(null)
+                          window.setTimeout(() => setFocusZoneId(z.id), 0)
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          width: '100%',
+                          padding: '8px 10px',
+                          borderRadius: 10,
+                          border: `1px solid ${z.level === 'danger' ? 'rgba(255,62,95,.28)' : 'rgba(255,158,13,.28)'}`,
+                          background: 'rgba(255,255,255,.04)',
+                          color: '#aaddff',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                        }}
+                      >
+                        <span style={{ minWidth: 56, fontWeight: 900, color }}>{label}</span>
+                        <span style={{ flex: 1, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.id}</span>
+                        <span style={{ fontSize: 12, opacity: 0.95, color }}>{z.min_velocity === null ? '—' : `${z.min_velocity.toFixed(2)} mm/年`}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {(() => {
@@ -1104,7 +1445,7 @@ export default function Insar() {
             <div style={{ fontSize: 12, color: '#ffb86b', whiteSpace: 'pre-wrap', marginBottom: 8 }}>当前数据集未发现 D_YYYYMMDD 字段，无法显示关键日期位移。</div>
           ) : null}
           <div style={tab === 'map' ? undefined : { height: 1, overflow: 'hidden', opacity: 0.001, pointerEvents: 'none' }}>
-            <InsarNativeMap dataset={dataset} indicator={indicator} valueField={valueField} velocityFieldName={velocityField} thresholds={thresholds} useBbox={useBbox} onSummaryChange={setRiskSummary} focusId={focusId} onSelectedChange={setSelectedPoint} />
+            <InsarNativeMap dataset={dataset} indicator={indicator} valueField={valueField} velocityFieldName={velocityField} thresholds={thresholds} useBbox={useBbox} showZones={showZones} zoneEpsM={zoneEpsM} zoneMinPts={zoneMinPts} onSummaryChange={setRiskSummary} onZonesChange={setZonesPanel} focusId={focusId} focusZoneId={focusZoneId} onSelectedChange={setSelectedPoint} />
           </div>
         </>
       ) : (

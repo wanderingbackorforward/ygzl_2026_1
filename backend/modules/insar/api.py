@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import re
@@ -6,6 +7,7 @@ from typing import Any, Dict, Optional, Tuple
 from flask import Blueprint, jsonify, request
 
 from modules.insar.convert import convert_shapefile_dir_to_geojson, write_geojson
+from modules.insar.zones import ZoneParams, build_zones
 
 insar_bp = Blueprint("insar", __name__, url_prefix="/api/insar")
 
@@ -243,6 +245,7 @@ def insar_points():
         geo: Optional[Dict[str, Any]] = None
         cache_file: Optional[str] = None
         cached = False
+        zones_meta: Optional[Dict[str, Any]] = None
         if not refresh:
             packaged_out_path = os.path.join(packaged_processed_dir, base_name)
             loaded = _load_cached_geojson([out_path, packaged_out_path] if packaged_out_path != out_path else [out_path])
@@ -307,6 +310,151 @@ def insar_points():
                     "processed_dir": packaged_processed_dir,
                     "cache_dir": cache_processed_dir,
                 },
+            }
+        ), 400
+
+
+@insar_bp.route("/zones", methods=["GET"])
+def insar_zones():
+    raw_dir, packaged_processed_dir, cache_processed_dir = _paths()
+    try:
+        dataset = _sanitize_dataset(request.args.get("dataset") or "yanggaozhong")
+        field = _sanitize_field(request.args.get("field") or "")
+        refresh = (request.args.get("refresh") or "").strip() in ("1", "true", "yes")
+        bbox = _parse_bbox(request.args.get("bbox") or "")
+        method = (request.args.get("method") or "").strip() or "cluster_hull"
+        if method != "cluster_hull":
+            raise ValueError("非法 method：当前仅支持 cluster_hull")
+
+        mild_raw = request.args.get("mild")
+        strong_raw = request.args.get("strong")
+        eps_m_raw = request.args.get("eps_m")
+        min_pts_raw = request.args.get("min_pts")
+
+        mild = float(mild_raw) if mild_raw is not None and str(mild_raw).strip() != "" else 2.0
+        strong = float(strong_raw) if strong_raw is not None and str(strong_raw).strip() != "" else 10.0
+        eps_m = float(eps_m_raw) if eps_m_raw is not None and str(eps_m_raw).strip() != "" else 50.0
+        min_pts = int(min_pts_raw) if min_pts_raw is not None and str(min_pts_raw).strip() != "" else 6
+
+        key_obj = {
+            "dataset": dataset,
+            "field": field,
+            "method": method,
+            "mild": abs(float(mild)),
+            "strong": abs(float(strong)),
+            "eps_m": float(eps_m),
+            "min_pts": int(min_pts),
+            "bbox": list(bbox) if bbox else None,
+        }
+        key_str = json.dumps(key_obj, ensure_ascii=False, sort_keys=True)
+        key_hash = hashlib.sha1(key_str.encode("utf-8")).hexdigest()[:12]
+        base_name = f"zones.{dataset}.{key_hash}.geojson"
+        out_path = os.path.join(cache_processed_dir, base_name)
+
+        geo: Optional[Dict[str, Any]] = None
+        cache_file: Optional[str] = None
+        cached = False
+        if not refresh:
+            packaged_out_path = os.path.join(packaged_processed_dir, base_name)
+            loaded = _load_cached_geojson([out_path, packaged_out_path] if packaged_out_path != out_path else [out_path])
+            if loaded:
+                geo, cache_file = loaded
+                cached = True
+
+        if geo is None:
+            points_base_name = "points.geojson" if dataset == "yanggaozhong" else f"{dataset}.geojson"
+            if field:
+                points_base_name = f"{dataset}.{field}.geojson"
+            points_out_path = os.path.join(cache_processed_dir, points_base_name)
+            points_packaged_out_path = os.path.join(packaged_processed_dir, points_base_name)
+            loaded_points = _load_cached_geojson(
+                [points_out_path, points_packaged_out_path] if points_packaged_out_path != points_out_path else [points_out_path]
+            )
+            points_geo: Optional[Dict[str, Any]] = loaded_points[0] if loaded_points else None
+            if points_geo is None:
+                result = convert_shapefile_dir_to_geojson(raw_dir=raw_dir, dataset=dataset)
+                points_geo = result.geojson
+                if field:
+                    for feat in points_geo.get("features") or []:
+                        props = feat.get("properties") or {}
+                        if "value" in props:
+                            props.pop("value", None)
+                        v = props.get(field)
+                        if v is not None:
+                            props["value"] = v
+                            props["value_field"] = field
+                    try:
+                        os.makedirs(cache_processed_dir, exist_ok=True)
+                        write_geojson(points_geo, points_out_path)
+                    except Exception:
+                        pass
+
+            points_geo = _filter_featurecollection_bbox(points_geo, bbox) if bbox else points_geo
+            zones_geo, zones_meta = build_zones(
+                points_geo,
+                ZoneParams(
+                    dataset=dataset,
+                    velocity_field=field,
+                    mild=float(mild),
+                    strong=float(strong),
+                    method=method,
+                    eps_m=float(eps_m),
+                    min_pts=int(min_pts),
+                ),
+            )
+            geo = zones_geo
+            try:
+                os.makedirs(cache_processed_dir, exist_ok=True)
+                write_geojson(geo, out_path)
+                cache_file = out_path
+            except Exception:
+                pass
+
+        feats = (geo or {}).get("features") or []
+        if zones_meta is None:
+            danger_zone_count = 0
+            warning_zone_count = 0
+            for f in feats:
+                props = (f or {}).get("properties") or {}
+                lv = (props.get("level") or "").strip()
+                if lv == "danger":
+                    danger_zone_count += 1
+                elif lv == "warning":
+                    warning_zone_count += 1
+            zones_meta = {
+                "zone_count": len(feats),
+                "danger_zone_count": danger_zone_count,
+                "warning_zone_count": warning_zone_count,
+            }
+
+        return jsonify(
+            {
+                "status": "success",
+                "data": geo,
+                "meta": {
+                    "dataset": dataset,
+                    "zones": zones_meta,
+                    "method": method,
+                    "thresholds": {"mild": abs(float(mild)), "strong": abs(float(strong))},
+                    "eps_m": float(eps_m),
+                    "min_pts": int(min_pts),
+                    "cached": cached,
+                    "cache_file": os.path.basename(cache_file) if cache_file else base_name,
+                    "args": dict(request.args),
+                },
+            }
+        )
+    except Exception as e:
+        if isinstance(e, ValueError):
+            return jsonify({"status": "error", "message": str(e)}), 400
+        dataset_hint = (request.args.get("dataset") or "").strip() or "dataset"
+        abs_hint_dir = os.path.abspath(os.path.join(raw_dir, dataset_hint))
+        return jsonify(
+            {
+                "status": "error",
+                "message": str(e),
+                "hint": f"请把 Shapefile 放到 {abs_hint_dir} 下（至少 .shp + .dbf）。也可设置 INSAR_DATA_DIR 指向包含 raw/processed 的 insar 数据目录。",
+                "meta": {"dataset": dataset_hint, "insar_data_dir": os.path.abspath(os.path.join(raw_dir, "..")), "raw_dir": raw_dir},
             }
         ), 400
 
