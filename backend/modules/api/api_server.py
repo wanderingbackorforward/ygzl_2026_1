@@ -62,6 +62,7 @@ from modules.ticket_system.api import ticket_bp, user_bp
 # 二级数据分析模块
 from modules.analysis_v2.api import analysis_v2_bp
 from modules.insar.api import insar_bp
+from modules.tunnel.api import tunnel_bp
 
 # =========================================================
 # 应用初始化：创建Flask应用和Blueprint
@@ -199,7 +200,7 @@ def react_assets(filename):
 SPA_ROUTES = {
     'cover',
     'settlement', 'temperature', 'cracks', 'vibration',
-    'insar', 'overview', 'three', 'tickets'
+    'insar', 'overview', 'three', 'tickets', 'tunnel'
 }
 
 # 为每个 SPA 路由创建专门的处理函数，避免 catch-all 拦截 API 请求
@@ -996,11 +997,6 @@ app.register_blueprint(analysis_v2_bp)
 def modules_list():
     try:
         getter = getattr(repo, 'modules_get_all', None)
-        if callable(getter):
-            rows = getter()
-            if isinstance(rows, list) and rows:
-                return jsonify({"success": True, "message": "ok", "data": rows, "timestamp": datetime.now().isoformat()}), 200
-
         default_modules = [
             {"module_key": "cover", "route_path": "/cover", "display_name": "封面", "icon_class": "fas fa-home", "sort_order": 10, "status": "developed", "pending_badge_text": "待开发模块", "pending_popup_title": "模块待开发", "pending_popup_body": "该模块正在开发中", "is_visible": True},
             {"module_key": "settlement", "route_path": "/settlement", "display_name": "沉降", "icon_class": "fas fa-chart-area", "sort_order": 20, "status": "developed", "pending_badge_text": "待开发模块", "pending_popup_title": "模块待开发", "pending_popup_body": "该模块正在开发中", "is_visible": True},
@@ -1011,7 +1007,18 @@ def modules_list():
             {"module_key": "overview", "route_path": "/overview", "display_name": "数据总览", "icon_class": "fas fa-chart-line", "sort_order": 70, "status": "developed", "pending_badge_text": "待开发模块", "pending_popup_title": "模块待开发", "pending_popup_body": "该模块正在开发中", "is_visible": True},
             {"module_key": "three", "route_path": "/three", "display_name": "3D模型", "icon_class": "fas fa-cubes", "sort_order": 80, "status": "developed", "pending_badge_text": "待开发模块", "pending_popup_title": "模块待开发", "pending_popup_body": "该模块正在开发中", "is_visible": True},
             {"module_key": "tickets", "route_path": "/tickets", "display_name": "工单", "icon_class": "fas fa-ticket-alt", "sort_order": 90, "status": "developed", "pending_badge_text": "待开发模块", "pending_popup_title": "模块待开发", "pending_popup_body": "该模块正在开发中", "is_visible": True},
+            {"module_key": "tunnel", "route_path": "/tunnel", "display_name": "隧道", "icon_class": "fas fa-subway", "sort_order": 95, "status": "developed", "pending_badge_text": "待开发模块", "pending_popup_title": "模块待开发", "pending_popup_body": "该模块正在开发中", "is_visible": True},
         ]
+        if callable(getter):
+            rows = getter()
+            if isinstance(rows, list) and rows:
+                by_key = {m.get("module_key"): m for m in rows if isinstance(m, dict) and m.get("module_key")}
+                for dm in default_modules:
+                    k = dm.get("module_key")
+                    if k and k not in by_key:
+                        rows.append(dm)
+                rows.sort(key=lambda x: int(x.get("sort_order") or 0))
+                return jsonify({"success": True, "message": "ok", "data": rows, "timestamp": datetime.now().isoformat()}), 200
         return jsonify({"success": True, "message": "fallback", "data": default_modules, "timestamp": datetime.now().isoformat()}), 200
     except Exception as e:
         return jsonify({"success": True, "message": str(e), "data": [], "timestamp": datetime.now().isoformat()}), 200
@@ -1060,6 +1067,7 @@ def modules_update_by_key(module_key):
     except Exception as e:
         return jsonify({"success": False, "message": str(e), "data": None, "timestamp": datetime.now().isoformat()}), 500
 app.register_blueprint(insar_bp)
+app.register_blueprint(tunnel_bp)
 
 # 健康检查路由
 @app.route('/api/health')

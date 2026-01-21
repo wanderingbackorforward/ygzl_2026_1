@@ -16,6 +16,7 @@ import ThreeModel from './pages/ThreeModel'
 import Tickets from './pages/Tickets'
 import Cover from './pages/Cover'
 import ModuleAdmin from './pages/ModuleAdmin'
+import Tunnel from './pages/Tunnel'
 
 function App() {
   return (
@@ -39,6 +40,7 @@ function App() {
           <Route path="/overview" element={<ModuleGate moduleKey="overview"><Overview /></ModuleGate>} />
           <Route path="/three" element={<ModuleGate moduleKey="three"><ThreeModel /></ModuleGate>} />
           <Route path="/tickets" element={<ModuleGate moduleKey="tickets"><Tickets /></ModuleGate>} />
+          <Route path="/tunnel" element={<ModuleGate moduleKey="tunnel"><Tunnel /></ModuleGate>} />
           <Route path="/modules" element={<ModuleAdmin />} />
         </Routes>
       </BrowserRouter>

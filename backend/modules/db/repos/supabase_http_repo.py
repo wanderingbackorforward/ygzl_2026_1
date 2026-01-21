@@ -663,3 +663,101 @@ class SupabaseHttpRepo:
         if isinstance(rows, list) and rows:
             return rows[0]
         return None
+
+    def tunnel_projects_list(self):
+        r = requests.get(_url("/rest/v1/tunnel_projects?select=*&order=created_at.desc"), headers=_headers())
+        r.raise_for_status()
+        return r.json()
+
+    def tunnel_project_create(self, payload):
+        h = _headers()
+        h["Prefer"] = "return=representation"
+        r = requests.post(_url("/rest/v1/tunnel_projects"), headers=h, json=payload)
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if isinstance(rows, list) and rows else {}
+
+    def tunnel_alignments_list(self, project_id=None):
+        q = "/rest/v1/tunnel_alignments?select=*&order=created_at.desc"
+        if project_id:
+            q = f"/rest/v1/tunnel_alignments?select=*&project_id=eq.{project_id}&order=created_at.desc"
+        r = requests.get(_url(q), headers=_headers())
+        r.raise_for_status()
+        return r.json()
+
+    def tunnel_alignment_create(self, payload):
+        h = _headers()
+        h["Prefer"] = "return=representation"
+        r = requests.post(_url("/rest/v1/tunnel_alignments"), headers=h, json=payload)
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if isinstance(rows, list) and rows else {}
+
+    def tunnel_alignment_get(self, alignment_id):
+        r = requests.get(_url(f"/rest/v1/tunnel_alignments?select=*&alignment_id=eq.{alignment_id}&limit=1"), headers=_headers())
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if isinstance(rows, list) and rows else None
+
+    def tunnel_point_mappings_list(self, project_id, alignment_id=None):
+        q = f"/rest/v1/tunnel_point_mappings?select=*&project_id=eq.{project_id}&order=updated_at.desc"
+        if alignment_id:
+            q = f"/rest/v1/tunnel_point_mappings?select=*&project_id=eq.{project_id}&alignment_id=eq.{alignment_id}&order=updated_at.desc"
+        r = requests.get(_url(q), headers=_headers())
+        r.raise_for_status()
+        return r.json()
+
+    def tunnel_point_mapping_upsert(self, payload):
+        h = _headers()
+        h["Prefer"] = "return=representation,resolution=merge-duplicates"
+        r = requests.post(
+            _url("/rest/v1/tunnel_point_mappings?on_conflict=project_id,point_id"),
+            headers=h,
+            json=payload,
+        )
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if isinstance(rows, list) and rows else {}
+
+    def tbm_telemetry_list(self, project_id, machine_id=None, start=None, end=None, limit=5000):
+        q = f"/rest/v1/tbm_telemetry?select=*&project_id=eq.{project_id}&order=ts.asc&limit={limit}"
+        if machine_id:
+            q = f"/rest/v1/tbm_telemetry?select=*&project_id=eq.{project_id}&machine_id=eq.{machine_id}&order=ts.asc&limit={limit}"
+        if start:
+            q += f"&ts=gte.{start}"
+        if end:
+            q += f"&ts=lte.{end}"
+        r = requests.get(_url(q), headers=_headers())
+        r.raise_for_status()
+        return r.json()
+
+    def tbm_telemetry_list_by_chainage(self, project_id, machine_id=None, start_chainage=None, end_chainage=None, limit=5000):
+        q = f"/rest/v1/tbm_telemetry?select=*&project_id=eq.{project_id}&chainage_m=not.is.null&order=chainage_m.asc&limit={limit}"
+        if machine_id:
+            q = f"/rest/v1/tbm_telemetry?select=*&project_id=eq.{project_id}&machine_id=eq.{machine_id}&chainage_m=not.is.null&order=chainage_m.asc&limit={limit}"
+        if start_chainage is not None:
+            q += f"&chainage_m=gte.{start_chainage}"
+        if end_chainage is not None:
+            q += f"&chainage_m=lte.{end_chainage}"
+        r = requests.get(_url(q), headers=_headers())
+        r.raise_for_status()
+        return r.json()
+
+    def tbm_telemetry_upsert(self, payload):
+        h = _headers()
+        h["Prefer"] = "return=representation,resolution=merge-duplicates"
+        r = requests.post(
+            _url("/rest/v1/tbm_telemetry?on_conflict=project_id,machine_id,ts"),
+            headers=h,
+            json=payload,
+        )
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if isinstance(rows, list) and rows else {}
+
+    def tbm_progress(self, project_id, machine_id):
+        q = f"/rest/v1/tbm_telemetry?select=record_id,project_id,machine_id,ts,chainage_m,ring_no,status&project_id=eq.{project_id}&machine_id=eq.{machine_id}&order=ts.desc&limit=1"
+        r = requests.get(_url(q), headers=_headers())
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if isinstance(rows, list) and rows else None
