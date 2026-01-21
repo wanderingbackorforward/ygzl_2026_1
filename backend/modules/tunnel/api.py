@@ -745,6 +745,7 @@ def _compute_risk_bins(project_id, alignment_id, bin_m, start_chainage=None, end
 def tunnel_risk_bins():
     project_id = (request.args.get("project_id") or "").strip()
     alignment_id = (request.args.get("alignment_id") or "").strip()
+    machine_id = (request.args.get("machine_id") or "").strip()
     bin_m = _as_float(request.args.get("bin_m", 20.0))
     start_chainage = _as_float(request.args.get("start_chainage"))
     end_chainage = _as_float(request.args.get("end_chainage"))
