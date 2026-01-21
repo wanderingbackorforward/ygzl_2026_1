@@ -600,6 +600,21 @@ def _subtype_from_metrics(max_abs_current_value, max_abs_change_rate):
     return "监测点数据异常"
 
 
+def _normalize_severity(x):
+    s = (x or "").strip().lower()
+    if s in ("critical", "high", "medium", "low", "normal"):
+        return s
+    zh_map = {
+        "严重": "critical",
+        "极高风险": "critical",
+        "高风险": "high",
+        "中风险": "medium",
+        "低风险": "low",
+        "正常": "normal",
+    }
+    return zh_map.get((x or "").strip(), "")
+
+
 def _compute_risk_bins(project_id, alignment_id, bin_m, start_chainage=None, end_chainage=None):
     r = _repo()
     mappings = r.tunnel_point_mappings_list(project_id=project_id, alignment_id=alignment_id or None) or []
@@ -628,13 +643,23 @@ def _compute_risk_bins(project_id, alignment_id, bin_m, start_chainage=None, end
         if pid is None or c is None:
             continue
         s = by_point.get(pid) or {}
+        total_change = _as_float(s.get("total_change"))
+        avg_daily_rate = _as_float(s.get("avg_daily_rate") or s.get("avg_daily_rate_mm") or s.get("avg_daily_rate_mm_d"))
+        current_value = _as_float(s.get("current_value") or s.get("value") or s.get("current"))
+        change_rate = _as_float(s.get("change_rate") or s.get("daily_change_rate") or s.get("rate"))
+        if current_value is None and total_change is not None:
+            current_value = total_change
+        if change_rate is None and avg_daily_rate is not None:
+            change_rate = avg_daily_rate
+        severity = _normalize_severity(s.get("risk_level") or s.get("alert_level"))
         point_rows.append(
             {
                 "point_id": pid,
                 "chainage_m": c,
-                "current_value": _as_float(s.get("current_value") or s.get("value") or s.get("current")),
-                "change_rate": _as_float(s.get("change_rate") or s.get("daily_change_rate") or s.get("rate")),
-                "alert_level": s.get("alert_level"),
+                "current_value": current_value,
+                "change_rate": change_rate,
+                "severity": severity,
+                "settlement_risk_score": _as_float(s.get("risk_score")),
                 "trend_type": s.get("trend_type"),
             }
         )
@@ -650,8 +675,9 @@ def _compute_risk_bins(project_id, alignment_id, bin_m, start_chainage=None, end
                 "point_count": 0,
                 "max_abs_current_value": None,
                 "max_abs_change_rate": None,
-                "worst_alert_level": None,
+                "worst_severity": None,
                 "worst_point_id": None,
+                "max_settlement_risk_score": None,
                 "risk_score": 0,
                 "risk_priority": "LOW",
                 "reasons": [],
@@ -683,11 +709,16 @@ def _compute_risk_bins(project_id, alignment_id, bin_m, start_chainage=None, end
             cur_max = b["max_abs_change_rate"]
             if cur_max is None or ar > cur_max:
                 b["max_abs_change_rate"] = ar
-        lvl = (p.get("alert_level") or "").strip().lower()
-        if lvl:
-            prev = (b.get("worst_alert_level") or "").strip().lower()
-            if alert_rank.get(lvl, -1) > alert_rank.get(prev, -1):
-                b["worst_alert_level"] = lvl
+        sev = _normalize_severity(p.get("severity"))
+        if sev:
+            prev = _normalize_severity(b.get("worst_severity"))
+            if alert_rank.get(sev, -1) > alert_rank.get(prev, -1):
+                b["worst_severity"] = sev
+        srs = _as_float(p.get("settlement_risk_score"))
+        if srs is not None:
+            cur_max = b.get("max_settlement_risk_score")
+            if cur_max is None or srs > cur_max:
+                b["max_settlement_risk_score"] = srs
 
     for b in bins:
         if b["chainage_end"] < start_chainage or b["chainage_start"] > end_chainage:
@@ -713,19 +744,23 @@ def _compute_risk_bins(project_id, alignment_id, bin_m, start_chainage=None, end
             elif r0 >= 1:
                 score += 18
                 reasons.append("沉降速率>=1mm/d")
-        lvl = (b.get("worst_alert_level") or "").strip().lower()
-        if lvl:
-            if lvl == "critical":
+        sev = _normalize_severity(b.get("worst_severity"))
+        if sev:
+            if sev == "critical":
                 score += 25
                 reasons.append("告警级别=critical")
-            elif lvl == "high":
+            elif sev == "high":
                 score += 15
                 reasons.append("告警级别=high")
-            elif lvl == "medium":
+            elif sev == "medium":
                 score += 8
                 reasons.append("告警级别=medium")
-        b["risk_score"] = int(min(100, score))
-        b["risk_priority"] = _priority_from_score(b["risk_score"])
+        srs = b.get("max_settlement_risk_score")
+        if srs is not None and srs >= 50:
+            reasons.append("预测风险评分较高")
+        final_score = min(100, max(score, int(srs) if srs is not None else 0))
+        b["risk_score"] = int(final_score)
+        b["risk_priority"] = _priority_from_score(final_score)
         b["reasons"] = reasons
 
     filtered = [b for b in bins if not (b["chainage_end"] < start_chainage or b["chainage_start"] > end_chainage)]
