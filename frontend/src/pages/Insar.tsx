@@ -16,7 +16,8 @@ type RiskLevel = 'normal' | 'warning' | 'danger'
 type RiskPoint = { id: string, lat: number, lng: number, velocity: number, risk: RiskLevel }
 type RiskSummary = { total: number, danger: number, warning: number, normal: number, unknown: number, top: RiskPoint[] }
 type ZoneLevel = 'danger' | 'warning'
-type ZoneSummary = { id: string, level: ZoneLevel, point_count: number, min_velocity: number | null, p95_velocity: number | null, bbox?: number[] | null, centroid?: number[] | null }
+type ZoneDirection = 'subsidence' | 'uplift'
+type ZoneSummary = { id: string, level: ZoneLevel, direction: ZoneDirection, point_count: number, min_velocity: number | null, p95_velocity: number | null, bbox?: number[] | null, centroid?: number[] | null }
 type ExpertMeasure = { key: string, title: string, detail: string }
 type AdviceEntry = { text: string, updatedAt: number }
 type AdviceStore = { globalByDataset: Record<string, AdviceEntry>, pointByDataset: Record<string, Record<string, AdviceEntry>> }
@@ -340,12 +341,13 @@ function InsarNativeMap(
             const p = f?.properties || {}
             const id = String(p.zone_id ?? f?.id ?? '')
             const level = (p.level === 'danger' ? 'danger' : 'warning') as ZoneLevel
+            const direction = (p.direction === 'uplift' ? 'uplift' : 'subsidence') as ZoneDirection
             const point_count = typeof p.point_count === 'number' ? p.point_count : Number(p.point_count) || 0
             const min_velocity = typeof p.min_velocity === 'number' ? p.min_velocity : (typeof p.min_velocity === 'string' ? Number(p.min_velocity) : null)
             const p95_velocity = typeof p.p95_velocity === 'number' ? p.p95_velocity : (typeof p.p95_velocity === 'string' ? Number(p.p95_velocity) : null)
             const bbox = Array.isArray(p.bbox) ? p.bbox : null
             const centroid = Array.isArray(p.centroid) ? p.centroid : null
-            return { id, level, point_count, min_velocity: Number.isFinite(min_velocity as any) ? (min_velocity as any) : null, p95_velocity: Number.isFinite(p95_velocity as any) ? (p95_velocity as any) : null, bbox, centroid }
+            return { id, level, direction, point_count, min_velocity: Number.isFinite(min_velocity as any) ? (min_velocity as any) : null, p95_velocity: Number.isFinite(p95_velocity as any) ? (p95_velocity as any) : null, bbox, centroid }
           })
           .filter((z) => z.id)
 
@@ -553,7 +555,11 @@ function InsarNativeMap(
       style: (feature: any) => {
         const p: any = feature?.properties || {}
         const level: ZoneLevel = p?.level === 'danger' ? 'danger' : 'warning'
-        const baseColor = level === 'danger' ? '#ff3e5f' : '#ff9e0d'
+        const direction: ZoneDirection = p?.direction === 'uplift' ? 'uplift' : 'subsidence'
+        const baseColor =
+          direction === 'uplift'
+            ? (level === 'danger' ? '#a855f7' : '#3b82f6')
+            : (level === 'danger' ? '#ff3e5f' : '#ff9e0d')
         const zid = String(p.zone_id ?? feature?.id ?? '')
         const active = selectedZoneId && zid === selectedZoneId
         return { color: baseColor, weight: active ? 3 : 2, opacity: 0.95, fillColor: baseColor, fillOpacity: active ? 0.20 : 0.12 }
@@ -563,9 +569,11 @@ function InsarNativeMap(
         const zid = String(p.zone_id ?? feature?.id ?? '')
         if (zid) zonesLayerByIdRef.current.set(zid, l)
         const level: ZoneLevel = p?.level === 'danger' ? 'danger' : 'warning'
+        const direction: ZoneDirection = p?.direction === 'uplift' ? 'uplift' : 'subsidence'
         const lines = [
           zid ? `<div><b>Zone</b>: ${zid}</div>` : '',
-          `<div><b>等级</b>: ${level === 'danger' ? '危险' : '预警'}</div>`,
+          `<div><b>方向</b>: ${direction === 'uplift' ? '抬升' : '沉降'}</div>`,
+          `<div><b>等级</b>: ${level === 'danger' ? '显著' : '轻微'}</div>`,
           p.point_count !== undefined ? `<div><b>点数</b>: ${String(p.point_count)}</div>` : '',
           p.min_velocity !== undefined ? `<div><b>min速度</b>: ${String(p.min_velocity)}</div>` : '',
           p.p95_velocity !== undefined ? `<div><b>p95速度</b>: ${String(p.p95_velocity)}</div>` : '',
@@ -580,6 +588,7 @@ function InsarNativeMap(
           setSelectedZone({
             id: zid,
             level,
+            direction,
             point_count,
             min_velocity: Number.isFinite(min_velocity as any) ? (min_velocity as any) : null,
             p95_velocity: Number.isFinite(p95_velocity as any) ? (p95_velocity as any) : null,
@@ -625,12 +634,13 @@ function InsarNativeMap(
     if (typeof l.openPopup === 'function') l.openPopup()
     const p: any = l?.feature?.properties || {}
     const level: ZoneLevel = p?.level === 'danger' ? 'danger' : 'warning'
+    const direction: ZoneDirection = p?.direction === 'uplift' ? 'uplift' : 'subsidence'
     const point_count = typeof p.point_count === 'number' ? p.point_count : Number(p.point_count) || 0
     const min_velocity = typeof p.min_velocity === 'number' ? p.min_velocity : (typeof p.min_velocity === 'string' ? Number(p.min_velocity) : null)
     const p95_velocity = typeof p.p95_velocity === 'number' ? p.p95_velocity : (typeof p.p95_velocity === 'string' ? Number(p.p95_velocity) : null)
     const bbox = Array.isArray(p.bbox) ? p.bbox : null
     const centroid = Array.isArray(p.centroid) ? p.centroid : null
-    setSelectedZone({ id, level, point_count, min_velocity: Number.isFinite(min_velocity as any) ? (min_velocity as any) : null, p95_velocity: Number.isFinite(p95_velocity as any) ? (p95_velocity as any) : null, bbox, centroid })
+    setSelectedZone({ id, level, direction, point_count, min_velocity: Number.isFinite(min_velocity as any) ? (min_velocity as any) : null, p95_velocity: Number.isFinite(p95_velocity as any) ? (p95_velocity as any) : null, bbox, centroid })
   }, [focusZoneId, zonesData])
 
   useEffect(() => {
@@ -834,7 +844,8 @@ function InsarNativeMap(
             <button type="button" onClick={() => setSelectedZone(null)} style={{ border: '1px solid rgba(64,174,255,.35)', background: 'rgba(255,255,255,.05)', color: '#aaddff', borderRadius: 8, padding: '6px 10px', cursor: 'pointer' }}>关闭</button>
           </div>
           <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>ID：{selectedZone.id}</div>
-          <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>等级：<span style={{ color: selectedZone.level === 'danger' ? '#ff3e5f' : '#ff9e0d', fontWeight: 900 }}>{selectedZone.level === 'danger' ? '危险' : '预警'}</span></div>
+          <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>方向：<span style={{ color: selectedZone.direction === 'uplift' ? '#a855f7' : '#ff3e5f', fontWeight: 900 }}>{selectedZone.direction === 'uplift' ? '抬升' : '沉降'}</span></div>
+          <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>等级：<span style={{ color: selectedZone.direction === 'uplift' ? (selectedZone.level === 'danger' ? '#a855f7' : '#3b82f6') : (selectedZone.level === 'danger' ? '#ff3e5f' : '#ff9e0d'), fontWeight: 900 }}>{selectedZone.level === 'danger' ? '显著' : '轻微'}</span></div>
           <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>点数：{selectedZone.point_count}</div>
           <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>min速度：{selectedZone.min_velocity === null ? '—' : String(selectedZone.min_velocity)} mm/年</div>
           <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>p95速度：{selectedZone.p95_velocity === null ? '—' : String(selectedZone.p95_velocity)} mm/年</div>
@@ -1321,8 +1332,13 @@ export default function Insar() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflow: 'auto', paddingRight: 4 }}>
                   {zonesPanel.top.slice(0, 10).map((z) => {
-                    const color = z.level === 'danger' ? '#ff3e5f' : '#ff9e0d'
-                    const label = z.level === 'danger' ? '危险区' : '预警区'
+                    const color =
+                      z.direction === 'uplift'
+                        ? (z.level === 'danger' ? '#a855f7' : '#3b82f6')
+                        : (z.level === 'danger' ? '#ff3e5f' : '#ff9e0d')
+                    const dirLabel = z.direction === 'uplift' ? '抬升' : '沉降'
+                    const lvlLabel = z.level === 'danger' ? '显著' : '轻微'
+                    const label = `${dirLabel}${lvlLabel}区`
                     return (
                       <button
                         key={z.id}

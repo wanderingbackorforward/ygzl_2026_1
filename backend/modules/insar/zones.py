@@ -251,10 +251,10 @@ def _centroid_of_lonlat(coords: Iterable[Tuple[float, float]]) -> Optional[Tuple
     return sum(xs) / len(xs), sum(ys) / len(ys)
 
 
-def _zone_id(dataset: str, level: str, method: str, point_ids: List[str], extra: str) -> str:
-    base = "|".join([dataset, level, method, extra, ",".join(point_ids[:200])])
+def _zone_id(dataset: str, level: str, direction: str, method: str, point_ids: List[str], extra: str) -> str:
+    base = "|".join([dataset, level, direction, method, extra, ",".join(point_ids[:200])])
     h = hashlib.sha1(base.encode("utf-8")).hexdigest()[:10]
-    return f"{level}-{h}"
+    return f"{level}-{direction}-{h}"
 
 
 @dataclass
@@ -290,9 +290,13 @@ def build_zones(points_geo: Dict[str, Any], params: ZoneParams) -> Tuple[Dict[st
             "zone_count": 0,
             "danger_zone_count": 0,
             "warning_zone_count": 0,
+            "subsidence_zone_count": 0,
+            "uplift_zone_count": 0,
             "input_points": 0,
             "danger_points": 0,
             "warning_points": 0,
+            "danger_uplift_points": 0,
+            "warning_uplift_points": 0,
         }
 
     lon0 = sum(p["lon"] for p in pts) / len(pts)
@@ -304,10 +308,12 @@ def build_zones(points_geo: Dict[str, Any], params: ZoneParams) -> Tuple[Dict[st
 
     strong = abs(float(params.strong))
     mild = abs(float(params.mild))
-    danger_pts = [p for p in pts if p["v"] is not None and p["v"] <= -strong]
-    warning_pts = [p for p in pts if p["v"] is not None and (-strong < p["v"] <= -mild)]
+    danger_subsidence_pts = [p for p in pts if p["v"] is not None and p["v"] <= -strong]
+    warning_subsidence_pts = [p for p in pts if p["v"] is not None and (-strong < p["v"] <= -mild)]
+    danger_uplift_pts = [p for p in pts if p["v"] is not None and p["v"] >= strong]
+    warning_uplift_pts = [p for p in pts if p["v"] is not None and (mild <= p["v"] < strong)]
 
-    def build_level(level: str, level_pts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def build_level(level: str, direction: str, level_pts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         if not level_pts:
             return []
         xs = [float(p["x"]) for p in level_pts]
@@ -334,7 +340,7 @@ def build_zones(points_geo: Dict[str, Any], params: ZoneParams) -> Tuple[Dict[st
             ring_lonlat = [_unproject_local_meters(x, y, lon0, lat0) for x, y in ring_xy]
             bb = _bbox_of_lonlat(ring_lonlat)
             cc = _centroid_of_lonlat(ring_lonlat)
-            zid = _zone_id(params.dataset, level, params.method, sorted(member_ids), f"{cidx}|{params.eps_m}|{params.min_pts}|{mild}|{strong}")
+            zid = _zone_id(params.dataset, level, direction, params.method, sorted(member_ids), f"{cidx}|{params.eps_m}|{params.min_pts}|{mild}|{strong}")
             out_feats.append(
                 {
                     "type": "Feature",
@@ -344,6 +350,7 @@ def build_zones(points_geo: Dict[str, Any], params: ZoneParams) -> Tuple[Dict[st
                         "zone_id": zid,
                         "dataset": params.dataset,
                         "level": level,
+                        "direction": direction,
                         "method": params.method,
                         "thresholds": {"mild": mild, "strong": strong},
                         "point_count": len(members),
@@ -356,7 +363,12 @@ def build_zones(points_geo: Dict[str, Any], params: ZoneParams) -> Tuple[Dict[st
             )
         return out_feats
 
-    zone_features = build_level("danger", danger_pts) + build_level("warning", warning_pts)
+    zone_features = (
+        build_level("danger", "subsidence", danger_subsidence_pts)
+        + build_level("warning", "subsidence", warning_subsidence_pts)
+        + build_level("danger", "uplift", danger_uplift_pts)
+        + build_level("warning", "uplift", warning_uplift_pts)
+    )
 
     meta = {
         "dataset": params.dataset,
@@ -367,9 +379,12 @@ def build_zones(points_geo: Dict[str, Any], params: ZoneParams) -> Tuple[Dict[st
         "zone_count": len(zone_features),
         "danger_zone_count": sum(1 for f in zone_features if (f.get("properties") or {}).get("level") == "danger"),
         "warning_zone_count": sum(1 for f in zone_features if (f.get("properties") or {}).get("level") == "warning"),
+        "subsidence_zone_count": sum(1 for f in zone_features if (f.get("properties") or {}).get("direction") == "subsidence"),
+        "uplift_zone_count": sum(1 for f in zone_features if (f.get("properties") or {}).get("direction") == "uplift"),
         "input_points": len(pts),
-        "danger_points": len(danger_pts),
-        "warning_points": len(warning_pts),
+        "danger_points": len(danger_subsidence_pts),
+        "warning_points": len(warning_subsidence_pts),
+        "danger_uplift_points": len(danger_uplift_pts),
+        "warning_uplift_points": len(warning_uplift_pts),
     }
     return {"type": "FeatureCollection", "features": zone_features}, meta
-
