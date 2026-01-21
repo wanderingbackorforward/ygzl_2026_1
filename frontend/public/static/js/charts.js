@@ -646,6 +646,18 @@ function loadSummaryData() {
 }
 
 // 填充点位选择器
+function isProblemAlertLevel(alertLevel) {
+    if (alertLevel === null || alertLevel === undefined) return false;
+    const s = String(alertLevel).trim();
+    if (!s) return false;
+    const lower = s.toLowerCase();
+    if (lower === 'normal' || lower === 'ok') return false;
+    if (s.includes('正常')) return false;
+    if (lower.includes('warning') || lower.includes('danger') || lower.includes('critical') || lower.includes('high')) return true;
+    if (s.includes('警告') || s.includes('注意') || s.includes('需关注') || s.includes('异常')) return true;
+    return false;
+}
+
 function populatePointSelector(data) {
     const selector = document.getElementById('point-selector');
 
@@ -669,6 +681,9 @@ function populatePointSelector(data) {
         const option = document.createElement('option');
         option.value = item.point_id;
         option.textContent = item.point_id;
+        if (isProblemAlertLevel(item.alert_level)) {
+            option.classList.add('option--problem');
+        }
         selector.appendChild(option);
     });
 }

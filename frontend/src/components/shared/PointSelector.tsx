@@ -6,6 +6,7 @@ interface PointSelectorProps extends CardComponentProps {
   selectedPoint: string | null;
   onSelectPoint: (pointId: string) => void;
   loading?: boolean;
+  problemPointIds?: string[];
 }
 
 export const PointSelector: React.FC<PointSelectorProps> = ({
@@ -13,6 +14,7 @@ export const PointSelector: React.FC<PointSelectorProps> = ({
   selectedPoint,
   onSelectPoint,
   loading = false,
+  problemPointIds,
 }) => {
   if (loading) {
     return (
@@ -23,6 +25,7 @@ export const PointSelector: React.FC<PointSelectorProps> = ({
   }
 
   const items = Array.from(new Set(points.filter(id => id && id !== 'null' && id !== 'undefined')));
+  const problemSet = new Set(problemPointIds || []);
   return (
     <div className="point-selector">
       <div className="point-selector__header">
@@ -36,7 +39,7 @@ export const PointSelector: React.FC<PointSelectorProps> = ({
         ) : items.map((pointId, index) => (
           <button
             key={pointId || `sensor-${index}`}
-            className={`point-selector__item ${selectedPoint === pointId ? 'point-selector__item--active' : ''}`}
+            className={`point-selector__item ${selectedPoint === pointId ? 'point-selector__item--active' : ''} ${problemSet.has(pointId) ? 'point-selector__item--problem' : ''}`}
             onClick={() => onSelectPoint(pointId)}
           >
             <i className="fas fa-map-marker-alt" />
@@ -134,6 +137,36 @@ export const PointSelector: React.FC<PointSelectorProps> = ({
 
         .point-selector__item--active i {
           color: var(--primary-color);
+        }
+
+        .point-selector__item--problem {
+          border-color: rgba(255, 62, 95, 0.45);
+          color: rgba(255, 210, 218, 0.95);
+        }
+
+        .point-selector__item--problem i {
+          color: rgba(255, 62, 95, 0.75);
+        }
+
+        .point-selector__item--problem:hover {
+          background: rgba(255, 62, 95, 0.12);
+          border-color: rgba(255, 62, 95, 0.7);
+          color: var(--text-color);
+        }
+
+        .point-selector__item--problem:hover i {
+          color: rgba(255, 62, 95, 0.95);
+        }
+
+        .point-selector__item--problem.point-selector__item--active {
+          background: rgba(255, 62, 95, 0.18);
+          border-color: rgba(255, 62, 95, 0.95);
+          box-shadow: 0 0 10px rgba(255, 62, 95, 0.22);
+          color: var(--text-color);
+        }
+
+        .point-selector__item--problem.point-selector__item--active i {
+          color: rgba(255, 62, 95, 0.95);
         }
       `}</style>
     </div>

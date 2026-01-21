@@ -19,7 +19,7 @@ import '../styles/cards.css';
 import '../styles/grid.css';
 
 const SensorSelectorCard: React.FC = () => {
-  const { sensors, sensorsLoading, selectedSensorId, selectSensor } = useTemperature();
+  const { sensors, sensorsLoading, selectedSensorId, selectSensor, problemSensorIds } = useTemperature();
   return (
     <PointSelector
       cardId="sensor-selector"
@@ -27,6 +27,7 @@ const SensorSelectorCard: React.FC = () => {
       selectedPoint={selectedSensorId}
       onSelectPoint={(id) => selectSensor(id)}
       loading={sensorsLoading}
+      problemPointIds={problemSensorIds}
     />
   );
 };

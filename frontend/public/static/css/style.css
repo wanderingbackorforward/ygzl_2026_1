@@ -692,6 +692,11 @@ body.ticket-page {
     padding: 5px;
 }
 
+.point-selector option.option--problem {
+    color: #ff3e5f;
+    font-weight: 600;
+}
+
 .apply-button {
     background-color: rgba(0, 229, 255, 0.3);
     border: 1px solid rgba(0, 229, 255, 0.7);

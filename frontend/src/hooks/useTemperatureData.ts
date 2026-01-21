@@ -2,6 +2,18 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiGet } from '../lib/api';
 import type { TemperatureSummary, TemperatureDataPoint, TemperatureDetailData } from '../types/api';
 
+function isProblemAlertLevel(value: unknown): boolean {
+  if (typeof value !== 'string') return false;
+  const s = value.trim();
+  if (!s) return false;
+  const lower = s.toLowerCase();
+  if (lower === 'normal' || lower === 'ok') return false;
+  if (s.includes('正常')) return false;
+  if (lower.includes('warning') || lower.includes('danger') || lower.includes('critical') || lower.includes('high')) return true;
+  if (s.includes('警告') || s.includes('注意') || s.includes('需关注') || s.includes('异常') || s.includes('Abnormal')) return true;
+  return false;
+}
+
 export function useTemperatureSummary(): {
   data: TemperatureSummary | null;
   loading: boolean;
@@ -50,8 +62,9 @@ export function useTemperatureSummary(): {
   return { data, loading, error, refetch: fetchData };
 }
 
-export function useTemperatureSensors(): { sensors: string[]; loading: boolean } {
+export function useTemperatureSensors(): { sensors: string[]; problemSensorIds: string[]; loading: boolean } {
   const [sensors, setSensors] = useState<string[]>([]);
+  const [problemSensorIds, setProblemSensorIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -59,15 +72,21 @@ export function useTemperatureSensors(): { sensors: string[]; loading: boolean }
       try {
         const summaryResult = await apiGet<any>('/temperature/summary');
         if (Array.isArray(summaryResult)) {
-          const cleaned = Array.from(
-            new Set(
-              summaryResult
-                .map((row: any) => row?.sensor_id ?? row?.SID ?? row?.point_id ?? '')
-                .map((id: any) => (id != null ? String(id) : ''))
-                .filter((id: string) => id && id !== 'null' && id !== 'undefined')
-            )
-          );
+          const ids: string[] = [];
+          const problemIds: string[] = [];
+          for (const row of summaryResult) {
+            const rawId = row?.sensor_id ?? row?.SID ?? row?.point_id ?? '';
+            const id = rawId != null ? String(rawId) : '';
+            if (!id || id === 'null' || id === 'undefined') continue;
+            ids.push(id);
+
+            const alert = row?.alert_level ?? row?.alert_status ?? row?.alert ?? row?.status ?? '';
+            if (isProblemAlertLevel(alert)) problemIds.push(id);
+          }
+          const cleaned = Array.from(new Set(ids));
+          const cleanedProblems = Array.from(new Set(problemIds));
           setSensors(cleaned);
+          setProblemSensorIds(cleanedProblems);
           return;
         }
 
@@ -83,8 +102,10 @@ export function useTemperatureSensors(): { sensors: string[]; loading: boolean }
           )
         );
         setSensors(cleaned);
+        setProblemSensorIds([]);
       } catch (e) {
         setSensors([]);
+        setProblemSensorIds([]);
       } finally {
         setLoading(false);
       }
@@ -92,7 +113,7 @@ export function useTemperatureSensors(): { sensors: string[]; loading: boolean }
     fetchSensors();
   }, []);
 
-  return { sensors, loading };
+  return { sensors, problemSensorIds, loading };
 }
 
 export function useTemperatureDetail(sensorId: string | null): {

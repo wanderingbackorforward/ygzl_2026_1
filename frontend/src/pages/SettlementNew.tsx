@@ -20,8 +20,24 @@ import '../styles/variables.css';
 import '../styles/cards.css';
 import '../styles/grid.css';
 
+function isProblemAlertLevel(value: unknown): boolean {
+  if (typeof value !== 'string') return false;
+  const s = value.trim();
+  if (!s) return false;
+  const lower = s.toLowerCase();
+  if (lower === 'normal' || lower === 'ok') return false;
+  if (s.includes('正常')) return false;
+  if (lower.includes('warning') || lower.includes('danger') || lower.includes('critical') || lower.includes('high')) return true;
+  if (s.includes('警告') || s.includes('注意') || s.includes('需关注') || s.includes('异常')) return true;
+  return false;
+}
+
 const PointSelectorCard: React.FC = () => {
-  const { points, pointsLoading, selectedPointId, selectPoint } = useSettlement();
+  const { points, pointsLoading, selectedPointId, selectPoint, summaryData } = useSettlement();
+  const problemPointIds = useMemo(() => {
+    if (!summaryData) return [];
+    return Array.from(new Set(summaryData.filter(item => isProblemAlertLevel(item.alert_level)).map(item => item.point_id)));
+  }, [summaryData]);
   return (
     <PointSelector
       cardId="point-selector"
@@ -29,6 +45,7 @@ const PointSelectorCard: React.FC = () => {
       selectedPoint={selectedPointId}
       onSelectPoint={selectPoint}
       loading={pointsLoading}
+      problemPointIds={problemPointIds}
     />
   );
 };

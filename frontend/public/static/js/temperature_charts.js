@@ -450,6 +450,18 @@ function initDistributionChart() {
 }
 
 // 设置传感器选择器
+function isProblemAlertLevel(alertLevel) {
+    if (alertLevel === null || alertLevel === undefined) return false;
+    const s = String(alertLevel).trim();
+    if (!s) return false;
+    const lower = s.toLowerCase();
+    if (lower === 'normal' || lower === 'ok') return false;
+    if (s.includes('正常')) return false;
+    if (lower.includes('warning') || lower.includes('danger') || lower.includes('critical') || lower.includes('high')) return true;
+    if (s.includes('警告') || s.includes('注意') || s.includes('需关注') || s.includes('异常') || s.includes('abnormal')) return true;
+    return false;
+}
+
 function setupSensorSelector() {
     const selectorElement = document.getElementById('sensor-selector');
     if (!selectorElement) return;
@@ -466,6 +478,8 @@ function setupSensorSelector() {
             const option = document.createElement('option');
             option.value = sensor.sensor_id;
             option.textContent = `${sensor.sensor_id} - ${sensor.sensor_name || '未命名'}`;
+            const alert = sensor.alert_level || sensor.alert_status || sensor.status || '';
+            if (isProblemAlertLevel(alert)) option.classList.add('option--problem');
             selectorElement.appendChild(option);
         }
     });
