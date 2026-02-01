@@ -179,6 +179,7 @@ function InsarNativeMap(
   const [baseLayers, setBaseLayers] = useState<BaseLayerItem[]>([])
   const [baseLayerName, setBaseLayerName] = useState('影像(Esri)')
   const [opticalCount, setOpticalCount] = useState(0)
+  const [baseLayerError, setBaseLayerError] = useState<string | null>(null)
   const [zonesData, setZonesData] = useState<FeatureCollection | null>(null)
   const [zonesMeta, setZonesMeta] = useState<Record<string, any> | null>(null)
   const [zonesLoading, setZonesLoading] = useState(false)
@@ -498,10 +499,26 @@ function InsarNativeMap(
     if (!map) return
     const next = baseLayers.find((x) => x.name === baseLayerName)?.layer || null
     if (!next) return
+    setBaseLayerError(null)
     const prev = baseLayerRef.current
-    if (prev && map.hasLayer(prev)) map.removeLayer(prev)
-    next.addTo(map)
-    baseLayerRef.current = next
+    try {
+      if (prev === next) return
+      next.addTo(map)
+      if (prev && map.hasLayer(prev)) map.removeLayer(prev)
+      baseLayerRef.current = next
+    } catch (e: any) {
+      try {
+        if (next && map.hasLayer(next)) map.removeLayer(next)
+      } catch {
+      }
+      if (prev && !map.hasLayer(prev)) {
+        try {
+          prev.addTo(map)
+        } catch {
+        }
+      }
+      setBaseLayerError(e?.message || '切换底图失败')
+    }
   }, [baseLayerName, baseLayers])
 
   useEffect(() => {
@@ -817,6 +834,7 @@ function InsarNativeMap(
             ))}
           </select>
           <div style={{ marginTop: 6, opacity: 0.8 }}>光学配置：{opticalCount} 层（来自 /static/data/optical/layers.json）</div>
+          {baseLayerError ? <div style={{ marginTop: 6, color: '#ff8b8b', opacity: 0.95, whiteSpace: 'pre-wrap' }}>{baseLayerError}</div> : null}
         </div>
         <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>点数：{featureCount}{meta?.total_feature_count ? ` / ${meta.total_feature_count}` : ''}{meta?.cached ? '（缓存）' : ''}</div>
           <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>字段：{resolvedValueField}{unit ? `（${unit}）` : ''}</div>
