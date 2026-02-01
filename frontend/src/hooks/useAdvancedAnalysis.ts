@@ -114,8 +114,8 @@ export function useProfileData(date?: string) {
     setError(null);
     try {
       const url = date
-        ? `${API_BASE}/api/advanced/profile/data?date=${date}`
-        : `${API_BASE}/api/advanced/profile/data`;
+        ? `${API_BASE}/advanced/profile/data?date=${date}`
+        : `${API_BASE}/advanced/profile/data`;
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch profile data');
       const json = await res.json();
@@ -140,7 +140,7 @@ export function useAvailableDates() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/advanced/profile/dates`)
+    fetch(`${API_BASE}/advanced/profile/dates`)
       .then(res => res.json())
       .then(json => setDates(json.dates || []))
       .catch(() => setDates([]))
@@ -156,7 +156,7 @@ export function useGeologicalLayers() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/advanced/profile/layers`)
+    fetch(`${API_BASE}/advanced/profile/layers`)
       .then(res => res.json())
       .then(json => setLayers(json))
       .catch(() => setLayers([]))
@@ -172,7 +172,7 @@ export function useJointMapping() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/advanced/joint/mapping`)
+    fetch(`${API_BASE}/advanced/joint/mapping`)
       .then(res => res.json())
       .then(json => setMapping(json))
       .catch(() => setMapping([]))
@@ -196,7 +196,7 @@ export function useJointData(settlementPoint: string | null) {
 
     setLoading(true);
     setError(null);
-    fetch(`${API_BASE}/api/advanced/joint/data/${settlementPoint}`)
+    fetch(`${API_BASE}/advanced/joint/data/${settlementPoint}`)
       .then(res => res.json())
       .then(json => setData(json))
       .catch(e => setError(e.message))
@@ -214,7 +214,7 @@ export function useJointAlerts() {
   const fetchAlerts = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/advanced/joint/alerts`);
+      const res = await fetch(`${API_BASE}/advanced/joint/alerts`);
       const json = await res.json();
       setAlerts(json.alerts || []);
     } catch {
@@ -244,7 +244,7 @@ export function useConstructionEvents(filters?: { start?: string; end?: string; 
       if (filters?.end) params.set('end', filters.end);
       if (filters?.type) params.set('type', filters.type);
 
-      const url = `${API_BASE}/api/advanced/events?${params.toString()}`;
+      const url = `${API_BASE}/advanced/events?${params.toString()}`;
       const res = await fetch(url);
       const json = await res.json();
       setEvents(json.events || []);
@@ -267,7 +267,7 @@ export function useEventTypes() {
   const [types, setTypes] = useState<EventType[]>([]);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/advanced/events/types`)
+    fetch(`${API_BASE}/advanced/events/types`)
       .then(res => res.json())
       .then(json => setTypes(json))
       .catch(() => setTypes([]));
@@ -291,8 +291,8 @@ export function useEventImpact(eventId: number | null, windowHours?: number) {
     setLoading(true);
     setError(null);
     const url = windowHours
-      ? `${API_BASE}/api/advanced/events/${eventId}/impact?window=${windowHours}`
-      : `${API_BASE}/api/advanced/events/${eventId}/impact`;
+      ? `${API_BASE}/advanced/events/${eventId}/impact?window=${windowHours}`
+      : `${API_BASE}/advanced/events/${eventId}/impact`;
 
     fetch(url)
       .then(res => res.json())
@@ -306,7 +306,7 @@ export function useEventImpact(eventId: number | null, windowHours?: number) {
 
 // Event CRUD operations
 export async function createEvent(data: Partial<ConstructionEvent>): Promise<ConstructionEvent> {
-  const res = await fetch(`${API_BASE}/api/advanced/events`, {
+  const res = await fetch(`${API_BASE}/advanced/events`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -316,7 +316,7 @@ export async function createEvent(data: Partial<ConstructionEvent>): Promise<Con
 }
 
 export async function updateEvent(eventId: number, data: Partial<ConstructionEvent>): Promise<ConstructionEvent> {
-  const res = await fetch(`${API_BASE}/api/advanced/events/${eventId}`, {
+  const res = await fetch(`${API_BASE}/advanced/events/${eventId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -326,7 +326,7 @@ export async function updateEvent(eventId: number, data: Partial<ConstructionEve
 }
 
 export async function deleteEvent(eventId: number): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/advanced/events/${eventId}`, {
+  const res = await fetch(`${API_BASE}/advanced/events/${eventId}`, {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error('Failed to delete event');
