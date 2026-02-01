@@ -390,7 +390,7 @@ function InsarNativeMap(
       preferCanvas: true,
     }).setView([31.245, 121.575], 14)
 
-    const { cleanup: cleanupBaseLayers } = installRasterBaseLayers(map, { defaultBaseLayerName: '影像(Esri)' })
+    const { cleanup: cleanupBaseLayers } = installRasterBaseLayers(map, { defaultBaseLayerName: '影像(Esri)', position: 'bottomleft' })
 
     map.createPane('insarZones')
     map.createPane('insarPoints')
