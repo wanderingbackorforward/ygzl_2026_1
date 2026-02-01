@@ -37,6 +37,23 @@ def _safe_request(url, headers):
         return []
 
 
+# Default settlement-crack mapping (demo data)
+DEFAULT_MAPPING = [
+    {'settlement_point': 'S3', 'crack_point': 'F1-1', 'distance_m': 5.2, 'correlation_strength': 'strong'},
+    {'settlement_point': 'S3', 'crack_point': 'F1-2', 'distance_m': 6.8, 'correlation_strength': 'medium'},
+    {'settlement_point': 'S5', 'crack_point': 'F2-1', 'distance_m': 3.5, 'correlation_strength': 'strong'},
+    {'settlement_point': 'S5', 'crack_point': 'F2-2', 'distance_m': 4.1, 'correlation_strength': 'strong'},
+    {'settlement_point': 'S8', 'crack_point': 'F3-1', 'distance_m': 7.2, 'correlation_strength': 'medium'},
+    {'settlement_point': 'S10', 'crack_point': 'F4-1', 'distance_m': 4.8, 'correlation_strength': 'strong'},
+    {'settlement_point': 'S10', 'crack_point': 'F4-2', 'distance_m': 5.5, 'correlation_strength': 'medium'},
+    {'settlement_point': 'S12', 'crack_point': 'F5-1', 'distance_m': 6.0, 'correlation_strength': 'weak'},
+    {'settlement_point': 'S15', 'crack_point': 'F6-1', 'distance_m': 3.2, 'correlation_strength': 'strong'},
+    {'settlement_point': 'S18', 'crack_point': 'F7-1', 'distance_m': 8.1, 'correlation_strength': 'medium'},
+    {'settlement_point': 'S20', 'crack_point': 'F8-1', 'distance_m': 4.5, 'correlation_strength': 'strong'},
+    {'settlement_point': 'S22', 'crack_point': 'F9-1', 'distance_m': 5.8, 'correlation_strength': 'medium'},
+]
+
+
 class JointAnalysisService:
     """Service for settlement + crack joint analysis"""
 
@@ -46,17 +63,25 @@ class JointAnalysisService:
 
     def get_mapping(self) -> List[Dict]:
         """Get settlement-crack point mapping"""
-        return _safe_request(
+        data = _safe_request(
             _url('/rest/v1/settlement_crack_mapping?select=*&order=settlement_point'),
             _headers()
         )
+        # Return demo data if table is empty
+        if not data:
+            return DEFAULT_MAPPING
+        return data
 
     def get_related_cracks(self, settlement_point: str) -> List[Dict]:
         """Get crack points related to a settlement point"""
-        return _safe_request(
+        data = _safe_request(
             _url(f'/rest/v1/settlement_crack_mapping?select=*&settlement_point=eq.{settlement_point}'),
             _headers()
         )
+        # Fall back to demo data
+        if not data:
+            return [m for m in DEFAULT_MAPPING if m['settlement_point'] == settlement_point]
+        return data
 
     def get_related_settlement(self, crack_point: str) -> List[Dict]:
         """Get settlement points related to a crack point"""
