@@ -9,7 +9,7 @@ assistant_bp = Blueprint("assistant", __name__, url_prefix="/api/assistant")
 
 
 def _deepseek_settings() -> Tuple[str, str, str, float]:
-    api_key = (os.getenv("DEEPSEEK_API_KEY") or "").strip()
+    api_key = (os.getenv("DEEPSEEK_API_KEY") or os.getenv("DEEPSEEK_KEY") or os.getenv("DEEPSEEK_TOKEN") or "").strip()
     api_base = (os.getenv("DEEPSEEK_API_BASE") or "https://api.deepseek.com").strip().rstrip("/")
     model = (os.getenv("DEEPSEEK_MODEL") or "deepseek-chat").strip()
     try:
@@ -44,7 +44,15 @@ def assistant_chat():
 
     api_key, api_base, model, timeout_s = _deepseek_settings()
     if not api_key:
-        return jsonify({"status": "error", "message": "DEEPSEEK_API_KEY is not set"}), 500
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": "DeepSeek 未配置：请在 Vercel 环境变量中设置 DEEPSEEK_API_KEY（或 DEEPSEEK_KEY / DEEPSEEK_TOKEN）后重新部署。",
+                }
+            ),
+            400,
+        )
 
     system_prompt = (
         "你是本系统的悬浮小助手。只做一问一答。\n"

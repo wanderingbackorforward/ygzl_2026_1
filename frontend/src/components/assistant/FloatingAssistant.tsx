@@ -61,9 +61,14 @@ export default function FloatingAssistant() {
 
   async function handleAsk() {
     const q = question.trim()
-    if (!q || loading) return
+    if (loading) return
+    if (!q) {
+      setError('请输入问题')
+      return
+    }
     setLoading(true)
     setError('')
+    setAnswerMarkdown('')
     try {
       const data = await apiPost<AssistantResponse>('/assistant/chat', { question: q, pagePath })
       setAnswerMarkdown(data.answerMarkdown || '')
@@ -227,7 +232,7 @@ export default function FloatingAssistant() {
               onClick={handleAsk}
               disabled={loading || !question.trim()}
             >
-              {loading ? '…' : '发送'}
+              {loading ? '发送中…' : '发送'}
             </button>
           </div>
         </div>
