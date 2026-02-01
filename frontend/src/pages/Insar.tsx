@@ -6,7 +6,7 @@ import type { EChartsOption } from 'echarts'
 import EChartsWrapper from '../components/charts/EChartsWrapper'
 import { classifyVelocity, formatKeyDateField, toNumberOrNull, type Thresholds } from '../lib/insar'
 import { kmlToBestLineStringFeature } from '../lib/kml'
-import { installRasterBaseLayers } from '../lib/mapLayers'
+import { createBuiltInBaseLayers, createRasterLayer, loadOpticalRasterLayers } from '../lib/mapLayers'
 
 type FeatureCollection = { type: 'FeatureCollection', features: any[] }
 type InsarMeta = { dataset?: string, cached?: boolean, feature_count?: number, total_feature_count?: number, value_field?: string, args?: Record<string, any> }
@@ -23,6 +23,7 @@ type ZoneSummary = { id: string, level: ZoneLevel, direction: ZoneDirection, poi
 type ExpertMeasure = { key: string, title: string, detail: string }
 type AdviceEntry = { text: string, updatedAt: number }
 type AdviceStore = { globalByDataset: Record<string, AdviceEntry>, pointByDataset: Record<string, Record<string, AdviceEntry>> }
+type BaseLayerItem = { name: string, layer: L.Layer }
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n))
@@ -157,6 +158,7 @@ function InsarNativeMap(
   const zonesLayerByIdRef = useRef<Map<string, any>>(new Map())
   const alertLayerRef = useRef<L.LayerGroup | null>(null)
   const tunnelLayerRef = useRef<L.GeoJSON | null>(null)
+  const baseLayerRef = useRef<L.Layer | null>(null)
   const pulseTimerRef = useRef<number | null>(null)
   const pulseMarkersRef = useRef<{ marker: L.CircleMarker, base: number, amp: number }[]>([])
   const pulsePhaseRef = useRef(0)
@@ -174,6 +176,9 @@ function InsarNativeMap(
   const [seriesLoading, setSeriesLoading] = useState(false)
   const [seriesError, setSeriesError] = useState<string | null>(null)
   const [bboxToken, setBboxToken] = useState(0)
+  const [baseLayers, setBaseLayers] = useState<BaseLayerItem[]>([])
+  const [baseLayerName, setBaseLayerName] = useState('影像(Esri)')
+  const [opticalCount, setOpticalCount] = useState(0)
   const [zonesData, setZonesData] = useState<FeatureCollection | null>(null)
   const [zonesMeta, setZonesMeta] = useState<Record<string, any> | null>(null)
   const [zonesLoading, setZonesLoading] = useState(false)
@@ -390,7 +395,30 @@ function InsarNativeMap(
       preferCanvas: true,
     }).setView([31.245, 121.575], 14)
 
-    const { cleanup: cleanupBaseLayers } = installRasterBaseLayers(map, { defaultBaseLayerName: '影像(Esri)', position: 'bottomleft' })
+    const builtIn = createBuiltInBaseLayers()
+    const builtInItems = Object.entries(builtIn).map(([name, layer]) => ({ name, layer }))
+    setBaseLayers(builtInItems)
+    const initialLayer = builtIn[baseLayerName] || builtIn['影像(Esri)'] || Object.values(builtIn)[0] || null
+    if (initialLayer) {
+      initialLayer.addTo(map)
+      baseLayerRef.current = initialLayer
+    }
+
+    const baseAbort = new AbortController()
+    ;(async () => {
+      const defs = await loadOpticalRasterLayers(baseAbort.signal)
+      if (baseAbort.signal.aborted) return
+      const items: BaseLayerItem[] = []
+      for (const def of defs) {
+        const layer = createRasterLayer(def)
+        if (!layer) continue
+        items.push({ name: def.name, layer })
+      }
+      setOpticalCount(items.length)
+      if (items.length) setBaseLayers((prev) => [...prev, ...items])
+      const preferred = defs.find((x) => x.default)
+      if (preferred) setBaseLayerName(preferred.name)
+    })()
 
     map.createPane('insarZones')
     map.createPane('insarPoints')
@@ -445,7 +473,7 @@ function InsarNativeMap(
     }
     map.on('moveend', handleMoveEnd)
     return () => {
-      cleanupBaseLayers()
+      baseAbort.abort()
       window.removeEventListener('resize', handleResize)
       map.off('moveend', handleMoveEnd)
       if (moveendTimerRef.current) window.clearTimeout(moveendTimerRef.current)
@@ -457,12 +485,24 @@ function InsarNativeMap(
         tunnelLayerRef.current.remove()
         tunnelLayerRef.current = null
       }
+      baseLayerRef.current = null
       map.remove()
       mapRef.current = null
       layerRef.current = null
       zonesLayerRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const next = baseLayers.find((x) => x.name === baseLayerName)?.layer || null
+    if (!next) return
+    const prev = baseLayerRef.current
+    if (prev && map.hasLayer(prev)) map.removeLayer(prev)
+    next.addTo(map)
+    baseLayerRef.current = next
+  }, [baseLayerName, baseLayers])
 
   useEffect(() => {
     if (!selected?.id) return
@@ -765,6 +805,19 @@ function InsarNativeMap(
       <div ref={mapContainerRef} style={{ position: 'absolute', inset: 0, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(64,174,255,.3)' }} />
       <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 500, padding: 10, borderRadius: 8, background: 'rgba(10,25,47,.78)', border: '1px solid rgba(64,174,255,.25)', color: '#aaddff', width: 280, maxWidth: 'calc(100% - 24px)' }}>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>原生图层</div>
+        <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 10 }}>
+          <div style={{ marginBottom: 6 }}>底图/影像</div>
+          <select
+            value={baseLayerName}
+            onChange={(e) => setBaseLayerName(e.target.value)}
+            style={{ width: '100%', background: 'rgba(0,0,0,.25)', color: '#aaddff', border: '1px solid rgba(64,174,255,.35)', borderRadius: 6, padding: '4px 6px' }}
+          >
+            {baseLayers.map((x) => (
+              <option key={x.name} value={x.name}>{x.name}</option>
+            ))}
+          </select>
+          <div style={{ marginTop: 6, opacity: 0.8 }}>光学配置：{opticalCount} 层（来自 /static/data/optical/layers.json）</div>
+        </div>
         <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>点数：{featureCount}{meta?.total_feature_count ? ` / ${meta.total_feature_count}` : ''}{meta?.cached ? '（缓存）' : ''}</div>
           <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>字段：{resolvedValueField}{unit ? `（${unit}）` : ''}</div>
         <div style={{ fontSize: 12, fontWeight: 700, marginTop: 4, marginBottom: 6 }}>图例（颜色点含义）</div>
