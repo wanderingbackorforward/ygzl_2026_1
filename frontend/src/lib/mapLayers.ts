@@ -77,7 +77,7 @@ export async function loadOpticalRasterLayers(signal?: AbortSignal): Promise<Ras
   }
 }
 
-function toLeafletLayer(def: RasterLayerDef): L.Layer | null {
+export function createRasterLayer(def: RasterLayerDef): L.Layer | null {
   if (def.kind === 'wms') {
     if (!def.wmsLayers) return null
     const layer = L.tileLayer.wms(def.url, {
@@ -143,7 +143,7 @@ export function installRasterBaseLayers(map: L.Map, options: InstallRasterLayers
       const defs = await loadOpticalRasterLayers(abortController.signal)
       if (abortController.signal.aborted) return
       for (const def of defs) {
-        const layer = toLeafletLayer(def)
+        const layer = createRasterLayer(def)
         if (!layer) continue
         if (control) control.addBaseLayer(layer, def.name)
         if (def.default) {
