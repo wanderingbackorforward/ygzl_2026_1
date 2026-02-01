@@ -82,7 +82,7 @@ export const TimeSlider: React.FC<TimeSliderProps> = ({
   }, [sliderValue, dates, onDateChange]);
 
   if (dates.length === 0) {
-    return <div style={styles.container}>Loading dates...</div>;
+    return <div style={styles.container}>正在加载日期...</div>;
   }
 
   return (
@@ -92,7 +92,7 @@ export const TimeSlider: React.FC<TimeSliderProps> = ({
           style={styles.button}
           onClick={handleStepBack}
           disabled={sliderValue === 0}
-          title="Previous"
+          title="上一个"
         >
           {'<<'}
         </button>
@@ -101,7 +101,7 @@ export const TimeSlider: React.FC<TimeSliderProps> = ({
           <button
             style={{ ...styles.button, ...styles.playButton }}
             onClick={onPlayToggle}
-            title={isPlaying ? 'Pause' : 'Play'}
+            title={isPlaying ? '暂停' : '播放'}
           >
             {isPlaying ? '||' : '>'}
           </button>
@@ -111,7 +111,7 @@ export const TimeSlider: React.FC<TimeSliderProps> = ({
           style={styles.button}
           onClick={handleStepForward}
           disabled={sliderValue === dates.length - 1}
-          title="Next"
+          title="下一个"
         >
           {'>>'}
         </button>
@@ -129,7 +129,7 @@ export const TimeSlider: React.FC<TimeSliderProps> = ({
       </div>
 
       <div style={styles.dateDisplay}>
-        <span style={styles.dateLabel}>Date:</span>
+        <span style={styles.dateLabel}>日期：</span>
         <span style={styles.dateValue}>{dates[sliderValue] || '-'}</span>
         <span style={styles.dateIndex}>
           ({sliderValue + 1} / {dates.length})

@@ -68,7 +68,7 @@ export const ProfileChart: React.FC<ProfileChartProps> = ({
     const option: echarts.EChartsOption = {
       backgroundColor: '#1a1a2e',
       title: {
-        text: `Tunnel Settlement Profile${date ? ` - ${date}` : ''}`,
+        text: `隧道沉降剖面${date ? ` - ${date}` : ''}`,
         left: 'center',
         top: 10,
         textStyle: {
@@ -87,9 +87,9 @@ export const ProfileChart: React.FC<ProfileChartProps> = ({
           return `
             <div style="padding: 8px;">
               <div style="font-weight: bold; margin-bottom: 4px;">${point.point_id}</div>
-              <div>Chainage: ${point.chainage_m.toFixed(1)} m</div>
-              <div>Settlement: ${(point.cumulative_change ?? point.value ?? 0).toFixed(2)} mm</div>
-              ${point.daily_change !== null ? `<div>Daily Rate: ${point.daily_change.toFixed(3)} mm/day</div>` : ''}
+              <div>里程：${point.chainage_m.toFixed(1)} m</div>
+              <div>沉降：${(point.cumulative_change ?? point.value ?? 0).toFixed(2)} mm</div>
+              ${point.daily_change !== null ? `<div>日变化率：${point.daily_change.toFixed(3)} mm/天</div>` : ''}
             </div>
           `;
         },
@@ -102,7 +102,7 @@ export const ProfileChart: React.FC<ProfileChartProps> = ({
       },
       xAxis: {
         type: 'value',
-        name: 'Chainage (m)',
+        name: '里程（m）',
         nameLocation: 'middle',
         nameGap: 35,
         min: 0,
@@ -113,7 +113,7 @@ export const ProfileChart: React.FC<ProfileChartProps> = ({
       },
       yAxis: {
         type: 'value',
-        name: 'Settlement (mm)',
+        name: '沉降（mm）',
         nameLocation: 'middle',
         nameGap: 45,
         min: minY,
@@ -130,7 +130,7 @@ export const ProfileChart: React.FC<ProfileChartProps> = ({
         orient: 'horizontal',
         left: 'center',
         bottom: 10,
-        text: ['Heave', 'Settle'],
+        text: ['抬升', '沉降'],
         textStyle: { color: '#aaa' },
         inRange: {
           color: ['#ff4444', '#ff8800', '#ffcc00', '#88cc00', '#44cc44'],
@@ -164,7 +164,7 @@ export const ProfileChart: React.FC<ProfileChartProps> = ({
         // Tunnel outline
         {
           type: 'line',
-          name: 'Tunnel',
+          name: '隧道',
           data: [],
           markArea: {
             silent: true,
@@ -181,7 +181,7 @@ export const ProfileChart: React.FC<ProfileChartProps> = ({
         // Zero line
         {
           type: 'line',
-          name: 'Zero',
+          name: '零线',
           data: [[0, 0], [tunnelLength, 0]],
           lineStyle: {
             color: '#ffffff',
@@ -193,7 +193,7 @@ export const ProfileChart: React.FC<ProfileChartProps> = ({
         // Settlement profile
         {
           type: 'line',
-          name: 'Settlement',
+          name: '沉降',
           data: xData.map((x, i) => [x, yData[i]]),
           smooth: true,
           lineStyle: {
@@ -212,7 +212,7 @@ export const ProfileChart: React.FC<ProfileChartProps> = ({
         // Point markers
         {
           type: 'scatter',
-          name: 'Points',
+          name: '点位',
           data: xData.map((x, i) => ({
             value: [x, yData[i]],
             itemStyle: {

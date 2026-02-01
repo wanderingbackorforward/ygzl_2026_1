@@ -35,23 +35,21 @@ export const JointDashboard: React.FC<JointDashboardProps> = ({ onSelectSettleme
 
   return (
     <div style={styles.container}>
-      {/* Header with alerts */}
       <div style={styles.header}>
-        <h3 style={styles.title}>Settlement + Crack Joint Analysis</h3>
+        <h3 style={styles.title}>沉降 + 裂缝联合分析</h3>
         {alerts.length > 0 && (
           <div style={styles.alertBadge}>
-            {alerts.length} Joint Alert{alerts.length > 1 ? 's' : ''}
+            {alerts.length} 条联合预警
           </div>
         )}
       </div>
 
       <div style={styles.content}>
-        {/* Left panel: Point selector */}
         <div style={styles.leftPanel}>
-          <div style={styles.panelHeader}>Settlement Points</div>
+          <div style={styles.panelHeader}>沉降点位</div>
           <div style={styles.pointList}>
             {mappingLoading ? (
-              <div style={styles.loading}>Loading...</div>
+              <div style={styles.loading}>加载中...</div>
             ) : (
               settlementPoints.map(p => {
                 const hasAlert = alerts.some(a => a.settlement_point === p.point_id);
@@ -66,7 +64,7 @@ export const JointDashboard: React.FC<JointDashboardProps> = ({ onSelectSettleme
                     onClick={() => handlePointSelect(p.point_id)}
                   >
                     <span style={styles.pointId}>{p.point_id}</span>
-                    <span style={styles.crackCount}>{p.crack_count} cracks</span>
+                    <span style={styles.crackCount}>{p.crack_count} 条裂缝</span>
                     {hasAlert && <span style={styles.alertDot} />}
                   </div>
                 );
@@ -75,7 +73,6 @@ export const JointDashboard: React.FC<JointDashboardProps> = ({ onSelectSettleme
           </div>
         </div>
 
-        {/* Middle panel: Charts */}
         <div style={styles.middlePanel}>
           {selectedPoint && jointData ? (
             <>
@@ -83,19 +80,18 @@ export const JointDashboard: React.FC<JointDashboardProps> = ({ onSelectSettleme
             </>
           ) : (
             <div style={styles.placeholder}>
-              Select a settlement point to view joint analysis
+              请选择沉降点位查看联合分析
             </div>
           )}
         </div>
 
-        {/* Right panel: Alerts */}
         <div style={styles.rightPanel}>
-          <div style={styles.panelHeader}>Joint Alerts</div>
+          <div style={styles.panelHeader}>联合预警</div>
           <div style={styles.alertList}>
             {alertsLoading ? (
-              <div style={styles.loading}>Loading...</div>
+              <div style={styles.loading}>加载中...</div>
             ) : alerts.length === 0 ? (
-              <div style={styles.noAlerts}>No active alerts</div>
+              <div style={styles.noAlerts}>暂无预警</div>
             ) : (
               alerts.map((alert, idx) => (
                 <AlertCard
@@ -153,7 +149,7 @@ const JointChart: React.FC<{ data: any }> = ({ data }) => {
     const option: echarts.EChartsOption = {
       backgroundColor: 'transparent',
       title: {
-        text: `${data.settlement_point} - Joint Analysis`,
+        text: `${data.settlement_point} - 联合分析`,
         left: 'center',
         textStyle: { color: '#fff', fontSize: 14 },
       },
@@ -187,7 +183,7 @@ const JointChart: React.FC<{ data: any }> = ({ data }) => {
       yAxis: [
         {
           type: 'value',
-          name: 'Settlement (mm)',
+          name: '沉降（mm）',
           position: 'left',
           axisLine: { lineStyle: { color: '#4a9eff' } },
           axisLabel: { color: '#4a9eff' },
@@ -195,7 +191,7 @@ const JointChart: React.FC<{ data: any }> = ({ data }) => {
         },
         {
           type: 'value',
-          name: 'Crack Width (mm)',
+          name: '裂缝宽度（mm）',
           position: 'right',
           axisLine: { lineStyle: { color: '#ff9800' } },
           axisLabel: { color: '#ff9800' },
@@ -204,7 +200,7 @@ const JointChart: React.FC<{ data: any }> = ({ data }) => {
       ],
       series: [
         {
-          name: 'Settlement',
+          name: '沉降',
           type: 'line',
           yAxisIndex: 0,
           data: settlementValues,
@@ -250,6 +246,12 @@ const AlertCard: React.FC<{ alert: JointAlert; onClick: () => void }> = ({ alert
     medium: '#ffcc00',
     low: '#88cc00',
   };
+  const severityLabels: Record<string, string> = {
+    critical: '紧急',
+    high: '高',
+    medium: '中',
+    low: '低',
+  };
 
   return (
     <div style={styles.alertCard} onClick={onClick}>
@@ -260,7 +262,7 @@ const AlertCard: React.FC<{ alert: JointAlert; onClick: () => void }> = ({ alert
             backgroundColor: severityColors[alert.severity] || '#888',
           }}
         >
-          {alert.severity.toUpperCase()}
+          {severityLabels[alert.severity] || alert.severity}
         </span>
         <span style={styles.alertPoints}>
           {alert.settlement_point} + {alert.crack_point}

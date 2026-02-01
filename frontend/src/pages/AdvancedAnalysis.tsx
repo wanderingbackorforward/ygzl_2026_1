@@ -5,41 +5,58 @@ import { useProfileData, useAvailableDates } from '../hooks/useAdvancedAnalysis'
 import '../styles/variables.css';
 
 type TabType = 'profile' | 'joint' | 'events';
+type JointMetric = 'settlement' | 'crack' | 'correlation';
 
 const AdvancedAnalysis: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('profile');
+  const [jointMetric, setJointMetric] = useState<JointMetric>('settlement');
 
   return (
     <div style={styles.container}>
-      {/* Header */}
       <div style={styles.header}>
-        <h1 style={styles.title}>Advanced Analysis</h1>
-        <div style={styles.tabs}>
-          <TabButton
-            active={activeTab === 'profile'}
-            onClick={() => setActiveTab('profile')}
-            icon="chart-line"
-          >
-            Tunnel Profile
-          </TabButton>
-          <TabButton
-            active={activeTab === 'joint'}
-            onClick={() => setActiveTab('joint')}
-            icon="link"
-          >
-            Settlement + Crack
-          </TabButton>
-          <TabButton
-            active={activeTab === 'events'}
-            onClick={() => setActiveTab('events')}
-            icon="calendar-alt"
-          >
-            Construction Events
-          </TabButton>
+        <div style={styles.headerTop}>
+          <h1 style={styles.title}>高级分析</h1>
+          <div style={styles.tabs}>
+            <TabButton
+              active={activeTab === 'profile'}
+              onClick={() => setActiveTab('profile')}
+              icon="chart-line"
+            >
+              纵断面
+            </TabButton>
+            <TabButton
+              active={activeTab === 'joint'}
+              onClick={() => setActiveTab('joint')}
+              icon="link"
+            >
+              沉降 + 裂缝
+            </TabButton>
+            <TabButton
+              active={activeTab === 'events'}
+              onClick={() => setActiveTab('events')}
+              icon="calendar-alt"
+            >
+              施工事件
+            </TabButton>
+          </div>
         </div>
+        {activeTab === 'joint' && (
+          <div style={styles.headerSub}>
+            <span style={styles.subLabel}>指标（预留）</span>
+            <select
+              value={jointMetric}
+              onChange={e => setJointMetric(e.target.value as JointMetric)}
+              style={styles.subSelect}
+            >
+              <option value="settlement">沉降</option>
+              <option value="crack">裂缝宽度</option>
+              <option value="correlation">相关性/联动</option>
+            </select>
+            <span style={styles.subHint}>后续可在此扩展“沉降/裂缝/联动”等筛选</span>
+          </div>
+        )}
       </div>
 
-      {/* Content */}
       <div style={styles.content}>
         {activeTab === 'profile' && <ProfileTab />}
         {activeTab === 'joint' && <JointTab />}
@@ -86,10 +103,9 @@ const ProfileTab: React.FC = () => {
   return (
     <div style={styles.tabContent}>
       <div style={styles.profileContainer}>
-        {/* Main Chart */}
         <div style={styles.chartSection}>
           {dataLoading ? (
-            <div style={styles.loading}>Loading profile data...</div>
+            <div style={styles.loading}>正在加载纵断面数据...</div>
           ) : data ? (
             <ProfileChart
               profile={data.profile}
@@ -97,14 +113,13 @@ const ProfileTab: React.FC = () => {
               date={data.date}
             />
           ) : (
-            <div style={styles.empty}>No profile data available</div>
+            <div style={styles.empty}>暂无纵断面数据</div>
           )}
         </div>
 
-        {/* Time Slider */}
         <div style={styles.sliderSection}>
           {datesLoading ? (
-            <div style={styles.loading}>Loading dates...</div>
+            <div style={styles.loading}>正在加载日期...</div>
           ) : (
             <TimeSlider
               dates={dates}
@@ -117,21 +132,20 @@ const ProfileTab: React.FC = () => {
           )}
         </div>
 
-        {/* Statistics */}
         {data && (
           <div style={styles.statsSection}>
             <StatCard
-              label="Total Points"
+              label="点位总数"
               value={data.profile.length.toString()}
               icon="map-marker-alt"
             />
             <StatCard
-              label="Date"
+              label="日期"
               value={data.date || '-'}
               icon="calendar"
             />
             <StatCard
-              label="Max Settlement"
+              label="最大沉降"
               value={
                 data.profile.length > 0
                   ? `${Math.min(...data.profile.map(p => p.cumulative_change ?? 0)).toFixed(2)} mm`
@@ -141,7 +155,7 @@ const ProfileTab: React.FC = () => {
               highlight
             />
             <StatCard
-              label="Geological Layers"
+              label="地层数"
               value={data.layers.length.toString()}
               icon="layer-group"
             />
@@ -199,11 +213,46 @@ const styles: Record<string, React.CSSProperties> = {
   },
   header: {
     display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'column',
+    gap: '10px',
     padding: '16px 24px',
     borderBottom: '1px solid rgba(74, 158, 255, 0.2)',
     backgroundColor: 'rgba(20, 20, 40, 0.8)',
+  },
+  headerTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerSub: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '10px 12px',
+    backgroundColor: 'rgba(30, 30, 50, 0.6)',
+    borderRadius: '8px',
+    border: '1px solid rgba(74, 158, 255, 0.18)',
+  },
+  subLabel: {
+    fontSize: '12px',
+    color: '#888',
+    whiteSpace: 'nowrap',
+  },
+  subSelect: {
+    padding: '6px 10px',
+    backgroundColor: 'rgba(20, 20, 40, 0.8)',
+    border: '1px solid rgba(74, 158, 255, 0.3)',
+    borderRadius: '6px',
+    color: '#fff',
+    fontSize: '12px',
+    outline: 'none',
+  },
+  subHint: {
+    fontSize: '12px',
+    color: '#666',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   title: {
     margin: 0,

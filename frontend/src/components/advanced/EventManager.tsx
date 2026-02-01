@@ -30,38 +30,36 @@ export const EventManager: React.FC<EventManagerProps> = ({ onEventSelect }) => 
       setShowAddForm(false);
       refetch();
     } catch (e) {
-      console.error('Failed to create event:', e);
+      console.error('创建事件失败：', e);
     }
   };
 
   const handleDeleteEvent = async (eventId: number) => {
-    if (!confirm('Are you sure you want to delete this event?')) return;
+    if (!confirm('确定要删除该事件吗？')) return;
     try {
       await deleteEvent(eventId);
       setSelectedEventId(null);
       refetch();
     } catch (e) {
-      console.error('Failed to delete event:', e);
+      console.error('删除事件失败：', e);
     }
   };
 
   return (
     <div style={styles.container}>
-      {/* Header */}
       <div style={styles.header}>
-        <h3 style={styles.title}>Construction Events</h3>
+        <h3 style={styles.title}>施工事件</h3>
         <button style={styles.addButton} onClick={() => setShowAddForm(true)}>
-          + Add Event
+          + 添加事件
         </button>
       </div>
 
       <div style={styles.content}>
-        {/* Event List */}
         <div style={styles.eventList}>
           {loading ? (
-            <div style={styles.loading}>Loading events...</div>
+            <div style={styles.loading}>正在加载事件...</div>
           ) : events.length === 0 ? (
-            <div style={styles.empty}>No events recorded</div>
+            <div style={styles.empty}>暂无事件记录</div>
           ) : (
             events.map(event => (
               <EventCard
@@ -79,21 +77,20 @@ export const EventManager: React.FC<EventManagerProps> = ({ onEventSelect }) => 
         <div style={styles.impactPanel}>
           {selectedEventId ? (
             impactLoading ? (
-              <div style={styles.loading}>Analyzing impact...</div>
+              <div style={styles.loading}>正在分析影响...</div>
             ) : impact ? (
               <ImpactDisplay analysis={impact} />
             ) : (
-              <div style={styles.empty}>No impact data</div>
+              <div style={styles.empty}>暂无影响数据</div>
             )
           ) : (
             <div style={styles.placeholder}>
-              Select an event to view impact analysis
+              请选择事件查看影响分析
             </div>
           )}
         </div>
       </div>
 
-      {/* Add Event Modal */}
       {showAddForm && (
         <AddEventModal
           eventTypes={eventTypes}
@@ -120,6 +117,14 @@ const EventCard: React.FC<{
     loading: '#da77f2',
     other: '#868e96',
   };
+  const typeLabels: Record<string, string> = {
+    pile: '打桩',
+    excavation: '开挖',
+    grouting: '注浆',
+    dewatering: '降水',
+    loading: '加载',
+    other: '其他',
+  };
 
   return (
     <div
@@ -137,7 +142,7 @@ const EventCard: React.FC<{
             backgroundColor: typeColors[event.event_type] || '#888',
           }}
         >
-          {event.event_type.toUpperCase()}
+          {typeLabels[event.event_type] || event.event_type}
         </span>
         <span style={styles.eventDate}>{event.event_date}</span>
       </div>
@@ -152,7 +157,7 @@ const EventCard: React.FC<{
           onDelete();
         }}
       >
-        Delete
+        删除
       </button>
     </div>
   );
@@ -168,36 +173,40 @@ const ImpactDisplay: React.FC<{ analysis: any }> = ({ analysis }) => {
     low: '#88cc00',
     none: '#666',
   };
+  const impactLevelLabels: Record<string, string> = {
+    high: '高',
+    medium: '中',
+    low: '低',
+    none: '无',
+  };
 
   return (
     <div style={styles.impactContainer}>
       <div style={styles.impactHeader}>
-        <h4 style={styles.impactTitle}>Impact Analysis: {event?.title}</h4>
-        <div style={styles.impactWindow}>Window: {analysis.window_hours}h</div>
+        <h4 style={styles.impactTitle}>影响分析：{event?.title}</h4>
+        <div style={styles.impactWindow}>时间窗：{analysis.window_hours} 小时</div>
       </div>
 
-      {/* Summary */}
       <div style={styles.summaryGrid}>
         <div style={styles.summaryItem}>
           <div style={styles.summaryValue}>{summary.total_analyzed}</div>
-          <div style={styles.summaryLabel}>Points Analyzed</div>
+          <div style={styles.summaryLabel}>分析点位</div>
         </div>
         <div style={{ ...styles.summaryItem, ...styles.summaryHigh }}>
           <div style={styles.summaryValue}>{summary.high_impact}</div>
-          <div style={styles.summaryLabel}>High Impact</div>
+          <div style={styles.summaryLabel}>高影响</div>
         </div>
         <div style={{ ...styles.summaryItem, ...styles.summaryMedium }}>
           <div style={styles.summaryValue}>{summary.medium_impact}</div>
-          <div style={styles.summaryLabel}>Medium Impact</div>
+          <div style={styles.summaryLabel}>中影响</div>
         </div>
         <div style={styles.summaryItem}>
           <div style={styles.summaryValue}>{summary.max_rate_change.toFixed(3)}</div>
-          <div style={styles.summaryLabel}>Max Rate Change</div>
+          <div style={styles.summaryLabel}>最大变化率</div>
         </div>
       </div>
 
-      {/* Affected Points */}
-      <div style={styles.pointsHeader}>Affected Points</div>
+      <div style={styles.pointsHeader}>受影响点位</div>
       <div style={styles.affectedPointsList}>
         {affected_points.slice(0, 10).map((p: any, idx: number) => (
           <div key={idx} style={styles.affectedPoint}>
@@ -208,11 +217,11 @@ const ImpactDisplay: React.FC<{ analysis: any }> = ({ analysis }) => {
                 backgroundColor: impactLevelColors[p.impact_level],
               }}
             >
-              {p.impact_level}
+              {impactLevelLabels[p.impact_level] || p.impact_level}
             </span>
             <span style={styles.rateChange}>
               {p.rate_change > 0 ? '+' : ''}
-              {p.rate_change.toFixed(3)} mm/day
+              {p.rate_change.toFixed(3)} mm/天
             </span>
           </div>
         ))}
@@ -223,7 +232,7 @@ const ImpactDisplay: React.FC<{ analysis: any }> = ({ analysis }) => {
 
 // Add Event Modal
 const AddEventModal: React.FC<{
-  eventTypes: Array<{ value: string; label: string }>;
+  eventTypes: Array<{ value: string; label: string; label_cn?: string }>;
   onSubmit: (data: Partial<ConstructionEvent>) => void;
   onClose: () => void;
 }> = ({ eventTypes, onSubmit, onClose }) => {
@@ -238,7 +247,7 @@ const AddEventModal: React.FC<{
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim()) {
-      alert('Title is required');
+      alert('标题为必填项');
       return;
     }
     onSubmit(formData);
@@ -248,14 +257,14 @@ const AddEventModal: React.FC<{
     <div style={styles.modalOverlay}>
       <div style={styles.modal}>
         <div style={styles.modalHeader}>
-          <h3 style={styles.modalTitle}>Add Construction Event</h3>
+          <h3 style={styles.modalTitle}>添加施工事件</h3>
           <button style={styles.closeButton} onClick={onClose}>
             x
           </button>
         </div>
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.formGroup}>
-            <label style={styles.label}>Event Date/Time</label>
+            <label style={styles.label}>事件时间</label>
             <input
               type="datetime-local"
               value={formData.event_date}
@@ -264,7 +273,7 @@ const AddEventModal: React.FC<{
             />
           </div>
           <div style={styles.formGroup}>
-            <label style={styles.label}>Event Type</label>
+            <label style={styles.label}>事件类型</label>
             <select
               value={formData.event_type}
               onChange={e => setFormData({ ...formData, event_type: e.target.value })}
@@ -272,48 +281,48 @@ const AddEventModal: React.FC<{
             >
               {eventTypes.map(t => (
                 <option key={t.value} value={t.value}>
-                  {t.label}
+                  {t.label_cn || t.label}
                 </option>
               ))}
             </select>
           </div>
           <div style={styles.formGroup}>
-            <label style={styles.label}>Title</label>
+            <label style={styles.label}>标题</label>
             <input
               type="text"
               value={formData.title}
               onChange={e => setFormData({ ...formData, title: e.target.value })}
-              placeholder="e.g., Pile driving at section 5"
+              placeholder="例如：第 5 施工段打桩"
               style={styles.input}
             />
           </div>
           <div style={styles.formGroup}>
-            <label style={styles.label}>Description</label>
+            <label style={styles.label}>描述</label>
             <textarea
               value={formData.description}
               onChange={e => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Additional details..."
+              placeholder="补充说明..."
               style={{ ...styles.input, minHeight: '80px', resize: 'vertical' }}
             />
           </div>
           <div style={styles.formGroup}>
-            <label style={styles.label}>Intensity</label>
+            <label style={styles.label}>强度</label>
             <select
               value={formData.intensity}
               onChange={e => setFormData({ ...formData, intensity: e.target.value })}
               style={styles.input}
             >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
+              <option value="low">低</option>
+              <option value="medium">中</option>
+              <option value="high">高</option>
             </select>
           </div>
           <div style={styles.formActions}>
             <button type="button" style={styles.cancelButton} onClick={onClose}>
-              Cancel
+              取消
             </button>
             <button type="submit" style={styles.submitButton}>
-              Add Event
+              添加事件
             </button>
           </div>
         </form>
