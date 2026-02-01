@@ -106,14 +106,22 @@ const ProfileTab: React.FC = () => {
         <div style={styles.chartSection}>
           {dataLoading ? (
             <div style={styles.loading}>正在加载纵断面数据...</div>
-          ) : data ? (
+          ) : data && data.profile && data.profile.length > 0 ? (
             <ProfileChart
               profile={data.profile}
               layers={data.layers}
               date={data.date}
             />
           ) : (
-            <div style={styles.empty}>暂无纵断面数据</div>
+            <div style={styles.emptyContainer}>
+              <div style={styles.emptyIcon}>
+                <i className="fas fa-chart-line" />
+              </div>
+              <div style={styles.emptyTitle}>暂无纵断面数据</div>
+              <div style={styles.emptyHint}>
+                请确保 processed_settlement_data 表中有沉降数据
+              </div>
+            </div>
           )}
         </div>
 
@@ -368,6 +376,26 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     height: '100%',
     color: '#666',
+  },
+  emptyContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    gap: '12px',
+  },
+  emptyIcon: {
+    fontSize: '48px',
+    color: 'rgba(74, 158, 255, 0.3)',
+  },
+  emptyTitle: {
+    fontSize: '18px',
+    color: '#888',
+  },
+  emptyHint: {
+    fontSize: '12px',
+    color: '#555',
   },
 };
 

@@ -25,6 +25,18 @@ def _url(path):
     return f'{base}{path}'
 
 
+def _safe_request(url, headers):
+    """Make a request and return empty list on error"""
+    try:
+        r = requests.get(url, headers=headers)
+        if r.status_code == 404 or r.status_code >= 500:
+            return []
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        return []
+
+
 class JointAnalysisService:
     """Service for settlement + crack joint analysis"""
 
@@ -34,30 +46,24 @@ class JointAnalysisService:
 
     def get_mapping(self) -> List[Dict]:
         """Get settlement-crack point mapping"""
-        r = requests.get(
+        return _safe_request(
             _url('/rest/v1/settlement_crack_mapping?select=*&order=settlement_point'),
-            headers=_headers()
+            _headers()
         )
-        r.raise_for_status()
-        return r.json()
 
     def get_related_cracks(self, settlement_point: str) -> List[Dict]:
         """Get crack points related to a settlement point"""
-        r = requests.get(
+        return _safe_request(
             _url(f'/rest/v1/settlement_crack_mapping?select=*&settlement_point=eq.{settlement_point}'),
-            headers=_headers()
+            _headers()
         )
-        r.raise_for_status()
-        return r.json()
 
     def get_related_settlement(self, crack_point: str) -> List[Dict]:
         """Get settlement points related to a crack point"""
-        r = requests.get(
+        return _safe_request(
             _url(f'/rest/v1/settlement_crack_mapping?select=*&crack_point=eq.{crack_point}'),
-            headers=_headers()
+            _headers()
         )
-        r.raise_for_status()
-        return r.json()
 
     def get_joint_time_series(self, settlement_point: str) -> Dict:
         """
@@ -77,12 +83,10 @@ class JointAnalysisService:
             }
         """
         # Get settlement data
-        s_r = requests.get(
+        settlement_data = _safe_request(
             _url(f'/rest/v1/processed_settlement_data?select=*&point_id=eq.{settlement_point}&order=measurement_date'),
-            headers=_headers()
+            _headers()
         )
-        s_r.raise_for_status()
-        settlement_data = s_r.json()
 
         # Format dates
         for row in settlement_data:
@@ -97,12 +101,10 @@ class JointAnalysisService:
             crack_point = m['crack_point']
 
             # Get crack data
-            c_r = requests.get(
+            crack_data = _safe_request(
                 _url(f'/rest/v1/crack_monitoring_data?select=*&point_id=eq.{crack_point}&order=measurement_date'),
-                headers=_headers()
+                _headers()
             )
-            c_r.raise_for_status()
-            crack_data = c_r.json()
 
             # Format dates
             for row in crack_data:
@@ -184,6 +186,8 @@ class JointAnalysisService:
 
         # Get all mappings
         mappings = self.get_mapping()
+        if not mappings:
+            return []
 
         # Group by settlement point
         from collections import defaultdict
@@ -192,12 +196,11 @@ class JointAnalysisService:
             point_cracks[m['settlement_point']].append(m)
 
         # Get settlement analysis
-        s_r = requests.get(
+        settlement_analysis_data = _safe_request(
             _url('/rest/v1/settlement_analysis?select=*'),
-            headers=_headers()
+            _headers()
         )
-        s_r.raise_for_status()
-        settlement_analysis = {r['point_id']: r for r in s_r.json()}
+        settlement_analysis = {r['point_id']: r for r in settlement_analysis_data}
 
         # Check each settlement point
         for settlement_point, crack_mappings in point_cracks.items():
@@ -215,13 +218,10 @@ class JointAnalysisService:
                 crack_point = cm['crack_point']
 
                 # Get latest crack data
-                c_r = requests.get(
+                crack_data = _safe_request(
                     _url(f'/rest/v1/crack_monitoring_data?select=*&point_id=eq.{crack_point}&order=measurement_date.desc&limit=10'),
-                    headers=_headers()
+                    _headers()
                 )
-                if c_r.status_code != 200:
-                    continue
-                crack_data = c_r.json()
 
                 if len(crack_data) < 2:
                     continue

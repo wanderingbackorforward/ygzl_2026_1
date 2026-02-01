@@ -83,13 +83,15 @@ export const ProfileChart: React.FC<ProfileChartProps> = ({
         textStyle: { color: '#fff' },
         formatter: (params: any) => {
           const data = params[0];
+          if (!data || data.dataIndex === undefined) return '';
           const point = profile[data.dataIndex];
+          if (!point) return '';
           return `
             <div style="padding: 8px;">
               <div style="font-weight: bold; margin-bottom: 4px;">${point.point_id}</div>
-              <div>里程：${point.chainage_m.toFixed(1)} m</div>
+              <div>里程：${point.chainage_m?.toFixed(1) ?? '-'} m</div>
               <div>沉降：${(point.cumulative_change ?? point.value ?? 0).toFixed(2)} mm</div>
-              ${point.daily_change !== null ? `<div>日变化率：${point.daily_change.toFixed(3)} mm/天</div>` : ''}
+              ${point.daily_change !== null && point.daily_change !== undefined ? `<div>日变化率：${point.daily_change.toFixed(3)} mm/天</div>` : ''}
             </div>
           `;
         },

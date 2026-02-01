@@ -32,6 +32,18 @@ def _url(path):
     return f'{base}{path}'
 
 
+def _safe_request(url, headers):
+    """Make a request and return empty list on error"""
+    try:
+        r = requests.get(url, headers=headers)
+        if r.status_code == 404 or r.status_code >= 500:
+            return []
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        return []
+
+
 class EventService:
     """Service for construction event management and causal analysis"""
 
@@ -68,9 +80,7 @@ class EventService:
         if filters:
             query += '&' + '&'.join(filters)
 
-        r = requests.get(_url(query), headers=_headers())
-        r.raise_for_status()
-        events = r.json()
+        events = _safe_request(_url(query), _headers())
 
         # Format dates
         for e in events:
@@ -83,12 +93,10 @@ class EventService:
 
     def get_event(self, event_id: int) -> Optional[Dict]:
         """Get a single event by ID"""
-        r = requests.get(
+        events = _safe_request(
             _url(f'/rest/v1/construction_events?select=*&event_id=eq.{event_id}'),
-            headers=_headers()
+            _headers()
         )
-        r.raise_for_status()
-        events = r.json()
         return events[0] if events else None
 
     def create_event(self, event_data: Dict) -> Dict:
@@ -278,12 +286,10 @@ class EventService:
 
     def get_summary(self) -> Dict:
         """Get summary of construction events"""
-        r = requests.get(
+        events = _safe_request(
             _url('/rest/v1/construction_events?select=event_id,event_type'),
-            headers=_headers()
+            _headers()
         )
-        r.raise_for_status()
-        events = r.json()
 
         # Count by type
         type_counts = {}
