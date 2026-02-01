@@ -5,6 +5,7 @@ import { API_BASE } from '../lib/api'
 import type { EChartsOption } from 'echarts'
 import EChartsWrapper from '../components/charts/EChartsWrapper'
 import { classifyVelocity, formatKeyDateField, toNumberOrNull, type Thresholds } from '../lib/insar'
+import { kmlToBestLineStringFeature } from '../lib/kml'
 
 type FeatureCollection = { type: 'FeatureCollection', features: any[] }
 type InsarMeta = { dataset?: string, cached?: boolean, feature_count?: number, total_feature_count?: number, value_field?: string, args?: Record<string, any> }
@@ -154,6 +155,7 @@ function InsarNativeMap(
   const zonesLayerRef = useRef<L.GeoJSON | null>(null)
   const zonesLayerByIdRef = useRef<Map<string, any>>(new Map())
   const alertLayerRef = useRef<L.LayerGroup | null>(null)
+  const tunnelLayerRef = useRef<L.GeoJSON | null>(null)
   const pulseTimerRef = useRef<number | null>(null)
   const pulseMarkersRef = useRef<{ marker: L.CircleMarker, base: number, amp: number }[]>([])
   const pulsePhaseRef = useRef(0)
@@ -393,14 +395,37 @@ function InsarNativeMap(
 
     map.createPane('insarZones')
     map.createPane('insarPoints')
+    map.createPane('tunnelAlignment')
     const zonesPane = map.getPane('insarZones')
     const pointsPane = map.getPane('insarPoints')
+    const tunnelPane = map.getPane('tunnelAlignment')
     if (zonesPane) zonesPane.style.zIndex = '380'
     if (pointsPane) pointsPane.style.zIndex = '420'
+    if (tunnelPane) tunnelPane.style.zIndex = '410'
 
     mapRef.current = map
     const alertLayer = L.layerGroup().addTo(map)
     alertLayerRef.current = alertLayer
+    ;(async () => {
+      try {
+        const res = await fetch('/static/data/tunnel/YGL_KML.kml')
+        if (!res.ok) return
+        const text = await res.text()
+        const feat = kmlToBestLineStringFeature(text)
+        if (!feat) return
+        if (tunnelLayerRef.current) {
+          tunnelLayerRef.current.remove()
+          tunnelLayerRef.current = null
+        }
+        const layer = L.geoJSON(feat as any, {
+          pane: 'tunnelAlignment',
+          style: { color: '#f97316', weight: 4, opacity: 0.95 },
+        })
+        layer.addTo(map)
+        tunnelLayerRef.current = layer
+      } catch {
+      }
+    })()
     const handleResize = () => map.invalidateSize()
     window.addEventListener('resize', handleResize)
     const handleMoveEnd = () => {
@@ -428,6 +453,10 @@ function InsarNativeMap(
       pulseTimerRef.current = null
       pulseMarkersRef.current = []
       alertLayerRef.current = null
+      if (tunnelLayerRef.current) {
+        tunnelLayerRef.current.remove()
+        tunnelLayerRef.current = null
+      }
       map.remove()
       mapRef.current = null
       layerRef.current = null
