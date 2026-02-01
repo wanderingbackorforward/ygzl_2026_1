@@ -63,6 +63,7 @@ from modules.ticket_system.api import ticket_bp, user_bp
 from modules.analysis_v2.api import analysis_v2_bp
 from modules.insar.api import insar_bp
 from modules.tunnel.api import tunnel_bp
+from modules.advanced_analysis.api import advanced_bp
 
 # =========================================================
 # 应用初始化：创建Flask应用和Blueprint
@@ -1008,6 +1009,7 @@ def modules_list():
             {"module_key": "three", "route_path": "/three", "display_name": "3D模型", "icon_class": "fas fa-cubes", "sort_order": 80, "status": "developed", "pending_badge_text": "待开发模块", "pending_popup_title": "模块待开发", "pending_popup_body": "该模块正在开发中", "is_visible": True},
             {"module_key": "tickets", "route_path": "/tickets", "display_name": "工单", "icon_class": "fas fa-ticket-alt", "sort_order": 90, "status": "developed", "pending_badge_text": "待开发模块", "pending_popup_title": "模块待开发", "pending_popup_body": "该模块正在开发中", "is_visible": True},
             {"module_key": "tunnel", "route_path": "/tunnel", "display_name": "隧道", "icon_class": "fas fa-subway", "sort_order": 95, "status": "developed", "pending_badge_text": "待开发模块", "pending_popup_title": "模块待开发", "pending_popup_body": "该模块正在开发中", "is_visible": True},
+            {"module_key": "advanced", "route_path": "/advanced", "display_name": "高级分析", "icon_class": "fas fa-microscope", "sort_order": 100, "status": "developed", "pending_badge_text": "新功能", "pending_popup_title": "高级分析", "pending_popup_body": "隧道剖面、沉降裂缝联合分析、施工事件影响", "is_visible": True},
         ]
         if callable(getter):
             rows = getter()
@@ -1068,6 +1070,7 @@ def modules_update_by_key(module_key):
         return jsonify({"success": False, "message": str(e), "data": None, "timestamp": datetime.now().isoformat()}), 500
 app.register_blueprint(insar_bp)
 app.register_blueprint(tunnel_bp)
+app.register_blueprint(advanced_bp)
 
 # 健康检查路由
 @app.route('/api/health')
