@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import './styles/tailwind.css'
 import Nav from './shared/Nav'
 import { OverdueTicketAlert } from './components/tickets/OverdueTicketAlert'
+import FloatingAssistant from './components/assistant/FloatingAssistant'
 import { ModulesProvider } from './contexts/ModulesContext'
 import ModuleGate from './components/modules/ModuleGate'
 import Settlement from './pages/Settlement'
@@ -30,6 +31,7 @@ function App() {
       >
         <Nav />
         <OverdueTicketAlert />
+        <FloatingAssistant />
         <Routes>
           <Route path="/" element={<Navigate to="/cover" replace />} />
           <Route path="/cover" element={<Cover />} />

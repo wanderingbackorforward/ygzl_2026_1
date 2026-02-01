@@ -64,6 +64,7 @@ from modules.analysis_v2.api import analysis_v2_bp
 from modules.insar.api import insar_bp
 from modules.tunnel.api import tunnel_bp
 from modules.advanced_analysis.api import advanced_bp
+from modules.assistant.api import assistant_bp
 
 # =========================================================
 # 应用初始化：创建Flask应用和Blueprint
@@ -993,6 +994,7 @@ app.register_blueprint(ticket_bp)
 app.register_blueprint(user_bp)
 # 注册二级数据分析API蓝图
 app.register_blueprint(analysis_v2_bp)
+app.register_blueprint(assistant_bp)
 @app.route('/api/modules', methods=['GET'])
 @app.route('/api/modules/', methods=['GET'])
 def modules_list():

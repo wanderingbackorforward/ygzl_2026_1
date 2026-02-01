@@ -65,6 +65,7 @@
 - GET /api/summary：监测点汇总分析
 - GET /api/trends：趋势分类统计
 - GET /api/cover/cameras：封面页画面源（演示/外部源）
+- POST /api/assistant/chat：悬浮小助手（一问一答，返回 Markdown）
 - POST /api/upload：上传沉降/裂缝 Excel（xlsx/xls）
 - POST /api/temperature/upload：上传温度 MDB/ACCDB
 - GET /api/temperature/points、/api/temperature/summary 等
@@ -88,7 +89,7 @@
 ### Vercel 部署（Serverless）
 - Root Directory：`python_scripts`
 - 输出目录：`frontend/dist`（Vite 构建产物）
-- 环境变量：`VERCEL=1`、`DB_VENDOR=supabase_http`、`SUPABASE_URL`、`SUPABASE_ANON_KEY`
+- 环境变量：`VERCEL=1`、`DB_VENDOR=supabase_http`、`SUPABASE_URL`、`SUPABASE_ANON_KEY`、`DEEPSEEK_API_KEY`（可选：`DEEPSEEK_MODEL`、`DEEPSEEK_API_BASE`）
 - 安装依赖：默认读取根目录 `requirements.txt`（已提供最小依赖）
 - API 入口：`api/index.py`（WSGI 桥接），`vercel.json` 将 `/api/:path*` 重写到该入口
 
