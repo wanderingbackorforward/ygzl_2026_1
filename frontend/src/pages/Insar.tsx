@@ -6,6 +6,7 @@ import type { EChartsOption } from 'echarts'
 import EChartsWrapper from '../components/charts/EChartsWrapper'
 import { classifyVelocity, formatKeyDateField, toNumberOrNull, type Thresholds } from '../lib/insar'
 import { kmlToBestLineStringFeature } from '../lib/kml'
+import { installRasterBaseLayers } from '../lib/mapLayers'
 
 type FeatureCollection = { type: 'FeatureCollection', features: any[] }
 type InsarMeta = { dataset?: string, cached?: boolean, feature_count?: number, total_feature_count?: number, value_field?: string, args?: Record<string, any> }
@@ -389,9 +390,7 @@ function InsarNativeMap(
       preferCanvas: true,
     }).setView([31.245, 121.575], 14)
 
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19,
-    }).addTo(map)
+    const { cleanup: cleanupBaseLayers } = installRasterBaseLayers(map, { defaultBaseLayerName: '影像(Esri)' })
 
     map.createPane('insarZones')
     map.createPane('insarPoints')
@@ -446,6 +445,7 @@ function InsarNativeMap(
     }
     map.on('moveend', handleMoveEnd)
     return () => {
+      cleanupBaseLayers()
       window.removeEventListener('resize', handleResize)
       map.off('moveend', handleMoveEnd)
       if (moveendTimerRef.current) window.clearTimeout(moveendTimerRef.current)

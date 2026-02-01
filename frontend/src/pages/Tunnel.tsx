@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css'
 import { apiGet, apiPost } from '../lib/api'
 import { EChartsWrapper } from '../components/charts/EChartsWrapper'
 import { kmlToBestLineStringFeature, type GeoJSONLineStringFeature } from '../lib/kml'
+import { installRasterBaseLayers } from '../lib/mapLayers'
 
 type TunnelProject = {
   project_id: string
@@ -256,14 +257,13 @@ export default function Tunnel() {
       preferCanvas: true,
     }).setView([31.245, 121.575], 14)
 
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19,
-    }).addTo(map)
+    const { cleanup: cleanupBaseLayers } = installRasterBaseLayers(map, { defaultBaseLayerName: '影像(Esri)' })
 
     mapRef.current = map
     const handleResize = () => map.invalidateSize()
     window.addEventListener('resize', handleResize)
     return () => {
+      cleanupBaseLayers()
       window.removeEventListener('resize', handleResize)
       if (alignmentLayerRef.current) alignmentLayerRef.current.remove()
       if (kmlLayerRef.current) kmlLayerRef.current.remove()

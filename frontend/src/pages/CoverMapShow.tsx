@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import './CoverMapShow.css'
+import { installRasterBaseLayers } from '../lib/mapLayers'
 
 type ProjectFeature = { name: string, icon: string }
 type ProjectRisk = { name: string, loc: string, action: string }
@@ -159,9 +160,7 @@ export default function CoverMapShow() {
       doubleClickZoom: false,
     }).setView([31.245, 121.575], 14)
 
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 18,
-    }).addTo(map)
+    const { cleanup: cleanupBaseLayers } = installRasterBaseLayers(map, { defaultBaseLayerName: '影像(Esri)', showControl: false })
 
     L.polyline(pathCoords, { color: '#00f0ff', weight: 6, opacity: 0.6 }).addTo(map)
     const routeLine = L.polyline(pathCoords, { color: '#fff', weight: 2, dashArray: '5, 10', opacity: 0.8 }).addTo(map)
@@ -192,6 +191,7 @@ export default function CoverMapShow() {
     window.addEventListener('resize', handleResize)
 
     return () => {
+      cleanupBaseLayers()
       window.removeEventListener('resize', handleResize)
       map.remove()
       mapRef.current = null
