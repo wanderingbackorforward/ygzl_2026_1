@@ -4,3 +4,7 @@ build
 .trae
 .log
 .figma
+api
+backend
+frontend/api
+docs
