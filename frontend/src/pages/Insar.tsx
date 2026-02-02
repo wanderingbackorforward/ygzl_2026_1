@@ -158,7 +158,7 @@ function loadAdviceStore(): AdviceStore {
 }
 
 function InsarNativeMap(
-  { dataset, indicator, valueField, velocityFieldName, thresholds, useBbox, showZones, zoneEpsM, zoneMinPts, onSummaryChange, onStatsChange, onZonesChange, focusId, focusZoneId, onSelectedChange }:
+  { dataset, indicator, valueField, velocityFieldName, thresholds, useBbox, showZones, zoneEpsM, zoneMinPts, chainageBinSize, chainageMaxDistance, onSummaryChange, onStatsChange, onZonesChange, focusId, focusZoneId, onSelectedChange }:
   {
     dataset: string,
     indicator: Indicator,
@@ -169,6 +169,8 @@ function InsarNativeMap(
     showZones: boolean,
     zoneEpsM: number,
     zoneMinPts: number,
+    chainageBinSize: number,
+    chainageMaxDistance: number,
     onSummaryChange?: (summary: RiskSummary) => void,
     onStatsChange?: (stats: RiskStats) => void,
     onZonesChange?: (payload: { meta: Record<string, any> | null, top: ZoneSummary[] }) => void,
@@ -329,8 +331,8 @@ function InsarNativeMap(
       }
       const totalLength = cumLengths[cumLengths.length - 1] || 0
       if (totalLength <= 0) return null
-      const binSize = 50
-      const maxDistance = 200
+      const binSize = Math.max(10, Math.round(chainageBinSize || 50))
+      const maxDistance = Math.max(10, Math.round(chainageMaxDistance || 200))
       const binCount = Math.max(1, Math.ceil(totalLength / binSize))
       const labels = new Array(binCount).fill(0).map((_, i) => `${i * binSize}-${(i + 1) * binSize}m`)
       const danger = new Array(binCount).fill(0)
@@ -404,7 +406,7 @@ function InsarNativeMap(
       velocityTotal: velocities.length,
       chainage,
     }
-  }, [data, thresholds, velocityFieldName, tunnelLineCoords])
+  }, [data, thresholds, velocityFieldName, tunnelLineCoords, chainageBinSize, chainageMaxDistance])
 
   useEffect(() => {
     onSummaryChange?.(riskSummary)
@@ -1249,6 +1251,24 @@ export default function Insar() {
       return 6
     }
   })
+  const [chainageBinSize, setChainageBinSize] = useState(() => {
+    try {
+      const raw = localStorage.getItem('insar_chainage_bin_v1')
+      const n = raw ? Number(raw) : 50
+      return Number.isFinite(n) && n > 0 ? Math.round(n) : 50
+    } catch {
+      return 50
+    }
+  })
+  const [chainageMaxDistance, setChainageMaxDistance] = useState(() => {
+    try {
+      const raw = localStorage.getItem('insar_chainage_max_dist_v1')
+      const n = raw ? Number(raw) : 200
+      return Number.isFinite(n) && n > 0 ? Math.round(n) : 200
+    } catch {
+      return 200
+    }
+  })
   const [zonesPanel, setZonesPanel] = useState<{ meta: Record<string, any> | null, top: ZoneSummary[] }>({ meta: null, top: [] })
   const [focusZoneId, setFocusZoneId] = useState<string | null>(null)
 
@@ -1329,9 +1349,11 @@ export default function Insar() {
       localStorage.setItem('insar_show_zones_v1', showZones ? '1' : '0')
       localStorage.setItem('insar_zone_eps_m_v1', String(zoneEpsM))
       localStorage.setItem('insar_zone_min_pts_v1', String(zoneMinPts))
+      localStorage.setItem('insar_chainage_bin_v1', String(chainageBinSize))
+      localStorage.setItem('insar_chainage_max_dist_v1', String(chainageMaxDistance))
     } catch {
     }
-  }, [showZones, zoneEpsM, zoneMinPts])
+  }, [showZones, zoneEpsM, zoneMinPts, chainageBinSize, chainageMaxDistance])
 
   const velocityField = useMemo(() => {
     if (!fieldsInfo) return 'velocity'
@@ -1649,6 +1671,22 @@ export default function Insar() {
                 <div style={{ fontSize: 12, opacity: 0.85 }}>基于当前数据集自动统计</div>
                 <div style={{ marginLeft: 'auto', fontSize: 12, opacity: 0.85 }}>有效速度点数：{riskStats?.velocityTotal || 0}</div>
               </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
+                <div style={{ fontSize: 12, opacity: 0.85 }}>里程分箱</div>
+                <input
+                  value={chainageBinSize}
+                  onChange={(e) => setChainageBinSize(Math.max(10, Math.round(Number(e.target.value) || 0)))}
+                  style={{ width: 80, padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }}
+                />
+                <div style={{ fontSize: 12, opacity: 0.85 }}>m</div>
+                <div style={{ fontSize: 12, opacity: 0.85 }}>距离缓冲</div>
+                <input
+                  value={chainageMaxDistance}
+                  onChange={(e) => setChainageMaxDistance(Math.max(10, Math.round(Number(e.target.value) || 0)))}
+                  style={{ width: 80, padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }}
+                />
+                <div style={{ fontSize: 12, opacity: 0.85 }}>m</div>
+              </div>
               <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
                 <div style={{ height: 220, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)' }}>
                   <EChartsWrapper option={riskDistributionOption} />
@@ -1664,7 +1702,7 @@ export default function Insar() {
                 </div>
               </div>
               <div style={{ marginTop: 8, fontSize: 12, opacity: 0.85, lineHeight: 1.6 }}>
-                说明：沉降/抬升结构以阈值轻微档作为稳定区间边界，速度分布按对称区间统计。里程分布采用 50m 分箱、200m 缓冲范围。
+                说明：沉降/抬升结构以阈值轻微档作为稳定区间边界，速度分布按对称区间统计。里程分布采用 {chainageBinSize}m 分箱、{chainageMaxDistance}m 缓冲范围。
               </div>
             </div>
 
@@ -1888,7 +1926,7 @@ export default function Insar() {
             <div style={{ fontSize: 12, color: '#ffb86b', whiteSpace: 'pre-wrap', marginBottom: 8 }}>当前数据集未发现 D_YYYYMMDD 字段，无法显示关键日期位移。</div>
           ) : null}
           <div style={tab === 'map' ? undefined : { height: 1, overflow: 'hidden', opacity: 0.001, pointerEvents: 'none' }}>
-            <InsarNativeMap dataset={dataset} indicator={indicator} valueField={valueField} velocityFieldName={velocityField} thresholds={thresholds} useBbox={useBbox} showZones={showZones} zoneEpsM={zoneEpsM} zoneMinPts={zoneMinPts} onSummaryChange={setRiskSummary} onStatsChange={setRiskStats} onZonesChange={setZonesPanel} focusId={focusId} focusZoneId={focusZoneId} onSelectedChange={setSelectedPoint} />
+            <InsarNativeMap dataset={dataset} indicator={indicator} valueField={valueField} velocityFieldName={velocityField} thresholds={thresholds} useBbox={useBbox} showZones={showZones} zoneEpsM={zoneEpsM} zoneMinPts={zoneMinPts} chainageBinSize={chainageBinSize} chainageMaxDistance={chainageMaxDistance} onSummaryChange={setRiskSummary} onStatsChange={setRiskStats} onZonesChange={setZonesPanel} focusId={focusId} focusZoneId={focusZoneId} onSelectedChange={setSelectedPoint} />
           </div>
         </>
       ) : (
