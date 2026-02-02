@@ -1,9 +1,9 @@
 [
   {
     "id": "local_optical_example",
-    "name": "光学影像(示例-本地瓦片)",
+    "name": "光学影像(配置示例-Esri)",
     "kind": "xyz",
-    "url": "/static/tiles/optical/example/{z}/{x}/{y}.jpg",
+    "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
     "maxZoom": 19,
     "opacity": 1
   }
