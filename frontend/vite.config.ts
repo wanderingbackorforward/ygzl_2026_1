@@ -17,6 +17,16 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist'
+    chunkSizeWarningLimit: 1200,
+    outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+          if (id.includes('echarts')) return 'vendor-echarts'
+          if (id.includes('leaflet')) return 'vendor-leaflet'
+        }
+      }
+    }
   }
 })

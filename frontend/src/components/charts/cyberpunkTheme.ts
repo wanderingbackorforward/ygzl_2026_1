@@ -1,5 +1,3 @@
-import * as echarts from 'echarts';
-
 export const NEON_COLORS = {
   primary: '#00e5ff',
   secondary: '#0088ff',
@@ -235,7 +233,11 @@ export const cyberpunkTheme = {
 
 let themeRegistered = false;
 
-export function registerCyberpunkTheme(): void {
+type EChartsThemeRegistry = {
+  registerTheme: (themeName: string, theme: unknown) => void;
+};
+
+export function registerCyberpunkTheme(echarts: EChartsThemeRegistry): void {
   if (!themeRegistered) {
     echarts.registerTheme('cyberpunk', cyberpunkTheme);
     themeRegistered = true;
