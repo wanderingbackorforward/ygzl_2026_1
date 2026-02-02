@@ -17,6 +17,10 @@ type SeriesData = { dataset: string, id: string, series: { date: string, value: 
 type RiskLevel = 'normal' | 'warning' | 'danger'
 type RiskPoint = { id: string, lat: number, lng: number, velocity: number, risk: RiskLevel }
 type RiskSummary = { total: number, danger: number, warning: number, normal: number, unknown: number, top: RiskPoint[] }
+type VelocityHistogram = { edges: number[], counts: number[], maxAbs: number, total: number }
+type VelocitySplit = { negative: number, positive: number, nearZero: number }
+type ChainageStats = { labels: string[], danger: number[], warning: number[], normal: number[], binSize: number, maxDistance: number, length: number, total: number }
+type RiskStats = { velocityHist: VelocityHistogram | null, velocitySplit: VelocitySplit, velocityTotal: number, chainage: ChainageStats | null }
 type ZoneLevel = 'danger' | 'warning'
 type ZoneDirection = 'subsidence' | 'uplift'
 type ZoneSummary = { id: string, level: ZoneLevel, direction: ZoneDirection, point_count: number, min_velocity: number | null, p95_velocity: number | null, bbox?: number[] | null, centroid?: number[] | null }
@@ -83,6 +87,28 @@ function getLatLngFromFeature(feature: any) {
   return { lat, lng }
 }
 
+function extractLineCoords(feature: any) {
+  const geom = feature?.geometry
+  if (!geom) return null
+  if (geom.type === 'LineString' && Array.isArray(geom.coordinates)) {
+    return geom.coordinates as number[][]
+  }
+  if (geom.type === 'MultiLineString' && Array.isArray(geom.coordinates)) {
+    const lines = geom.coordinates as number[][][]
+    if (!lines.length) return null
+    let best: number[][] = lines[0]
+    let bestLen = best.length
+    for (const line of lines) {
+      if (Array.isArray(line) && line.length > bestLen) {
+        best = line
+        bestLen = line.length
+      }
+    }
+    return best
+  }
+  return null
+}
+
 function getVelocityFromProps(p: any, velocityFieldName?: string) {
   const byField = velocityFieldName ? toNumberOrNull(p?.[velocityFieldName]) : null
   return byField ?? toNumberOrNull(p?.velocity ?? p?.vel ?? p?.rate ?? p?.value)
@@ -132,7 +158,7 @@ function loadAdviceStore(): AdviceStore {
 }
 
 function InsarNativeMap(
-  { dataset, indicator, valueField, velocityFieldName, thresholds, useBbox, showZones, zoneEpsM, zoneMinPts, onSummaryChange, onZonesChange, focusId, focusZoneId, onSelectedChange }:
+  { dataset, indicator, valueField, velocityFieldName, thresholds, useBbox, showZones, zoneEpsM, zoneMinPts, onSummaryChange, onStatsChange, onZonesChange, focusId, focusZoneId, onSelectedChange }:
   {
     dataset: string,
     indicator: Indicator,
@@ -144,6 +170,7 @@ function InsarNativeMap(
     zoneEpsM: number,
     zoneMinPts: number,
     onSummaryChange?: (summary: RiskSummary) => void,
+    onStatsChange?: (stats: RiskStats) => void,
     onZonesChange?: (payload: { meta: Record<string, any> | null, top: ZoneSummary[] }) => void,
     focusId?: string | null,
     focusZoneId?: string | null,
@@ -188,6 +215,7 @@ function InsarNativeMap(
   const [zonesLoading, setZonesLoading] = useState(false)
   const [zonesError, setZonesError] = useState<string | null>(null)
   const [selectedZone, setSelectedZone] = useState<ZoneSummary | null>(null)
+  const [tunnelLineCoords, setTunnelLineCoords] = useState<number[][] | null>(null)
 
   useEffect(() => {
     useBboxRef.current = useBbox
@@ -253,9 +281,138 @@ function InsarNativeMap(
     return { total: features.length, danger, warning, normal, unknown, top }
   }, [data, thresholds])
 
+  const riskStats = useMemo((): RiskStats => {
+    const features = data?.features
+    if (!Array.isArray(features) || !features.length) {
+      return { velocityHist: null, velocitySplit: { negative: 0, positive: 0, nearZero: 0 }, velocityTotal: 0, chainage: null }
+    }
+    const velocities: number[] = []
+    let negative = 0
+    let positive = 0
+    let nearZero = 0
+    const mild = Math.abs(thresholds.mild || 0)
+    for (const f of features) {
+      const p: any = f?.properties || {}
+      const v = getVelocityFromProps(p, velocityFieldName)
+      if (v === null || !Number.isFinite(v)) continue
+      velocities.push(v)
+      if (v <= -mild) negative += 1
+      else if (v >= mild) positive += 1
+      else nearZero += 1
+    }
+    const chainage = (() => {
+      if (!tunnelLineCoords || tunnelLineCoords.length < 2) return null
+      const latSum = tunnelLineCoords.reduce((sum, c) => sum + (Number(c?.[1]) || 0), 0)
+      const lat0 = tunnelLineCoords.length ? latSum / tunnelLineCoords.length : 0
+      const rad = Math.PI / 180
+      const cosLat = Math.cos(lat0 * rad)
+      const project = (lng: number, lat: number) => {
+        const x = 6378137 * (lng * rad) * cosLat
+        const y = 6378137 * (lat * rad)
+        return { x, y }
+      }
+      const lineMeters = tunnelLineCoords
+        .map((c) => ({ lng: Number(c?.[0]), lat: Number(c?.[1]) }))
+        .filter((c) => Number.isFinite(c.lng) && Number.isFinite(c.lat))
+        .map((c) => project(c.lng, c.lat))
+      if (lineMeters.length < 2) return null
+      const segLengths: number[] = []
+      const cumLengths: number[] = [0]
+      for (let i = 0; i < lineMeters.length - 1; i += 1) {
+        const a = lineMeters[i]
+        const b = lineMeters[i + 1]
+        const dx = b.x - a.x
+        const dy = b.y - a.y
+        const len = Math.hypot(dx, dy)
+        segLengths.push(len)
+        cumLengths.push(cumLengths[cumLengths.length - 1] + len)
+      }
+      const totalLength = cumLengths[cumLengths.length - 1] || 0
+      if (totalLength <= 0) return null
+      const binSize = 50
+      const maxDistance = 200
+      const binCount = Math.max(1, Math.ceil(totalLength / binSize))
+      const labels = new Array(binCount).fill(0).map((_, i) => `${i * binSize}-${(i + 1) * binSize}m`)
+      const danger = new Array(binCount).fill(0)
+      const warning = new Array(binCount).fill(0)
+      const normal = new Array(binCount).fill(0)
+      let total = 0
+      for (const f of features) {
+        const ll = getLatLngFromFeature(f)
+        if (!ll) continue
+        const p = f?.properties || {}
+        const v = getVelocityFromProps(p, velocityFieldName)
+        if (v === null || !Number.isFinite(v)) continue
+        const pt = project(ll.lng, ll.lat)
+        let bestDist = Number.POSITIVE_INFINITY
+        let bestChainage = 0
+        for (let i = 0; i < lineMeters.length - 1; i += 1) {
+          const a = lineMeters[i]
+          const b = lineMeters[i + 1]
+          const abx = b.x - a.x
+          const aby = b.y - a.y
+          const apx = pt.x - a.x
+          const apy = pt.y - a.y
+          const abLen2 = abx * abx + aby * aby
+          if (abLen2 <= 0) continue
+          let t = (apx * abx + apy * aby) / abLen2
+          if (t < 0) t = 0
+          if (t > 1) t = 1
+          const projx = a.x + abx * t
+          const projy = a.y + aby * t
+          const dist = Math.hypot(pt.x - projx, pt.y - projy)
+          if (dist < bestDist) {
+            bestDist = dist
+            bestChainage = cumLengths[i] + segLengths[i] * t
+          }
+        }
+        if (!Number.isFinite(bestDist) || bestDist > maxDistance) continue
+        const idx = Math.min(binCount - 1, Math.max(0, Math.floor(bestChainage / binSize)))
+        const risk = riskFromVelocity(v, thresholds)
+        if (risk === 'danger') danger[idx] += 1
+        else if (risk === 'warning') warning[idx] += 1
+        else normal[idx] += 1
+        total += 1
+      }
+      return { labels, danger, warning, normal, binSize, maxDistance, length: totalLength, total }
+    })()
+
+    if (!velocities.length) {
+      return { velocityHist: null, velocitySplit: { negative, positive, nearZero }, velocityTotal: 0, chainage }
+    }
+    const absVals = velocities.map((v) => Math.abs(v)).filter((v) => Number.isFinite(v))
+    absVals.sort((a, b) => a - b)
+    const p95 = percentile(absVals, 0.95)
+    const cap = Math.max(p95, absVals[absVals.length - 1] || 0)
+    const maxAbs = Math.max(5, Math.min(200, Math.round(cap || 20)))
+    const bins = 12
+    const start = -maxAbs
+    const end = maxAbs
+    const size = (end - start) / bins
+    const counts = new Array(bins).fill(0)
+    for (const v of velocities) {
+      const clamped = clamp(v, start, end)
+      let idx = Math.floor((clamped - start) / size)
+      if (idx < 0) idx = 0
+      if (idx >= bins) idx = bins - 1
+      counts[idx] += 1
+    }
+    const edges = counts.map((_, i) => start + size * (i + 0.5))
+    return {
+      velocityHist: { edges, counts, maxAbs, total: velocities.length },
+      velocitySplit: { negative, positive, nearZero },
+      velocityTotal: velocities.length,
+      chainage,
+    }
+  }, [data, thresholds, velocityFieldName, tunnelLineCoords])
+
   useEffect(() => {
     onSummaryChange?.(riskSummary)
   }, [onSummaryChange, riskSummary])
+
+  useEffect(() => {
+    onStatsChange?.(riskStats)
+  }, [onStatsChange, riskStats])
 
   useEffect(() => {
     onSelectedChange?.(selected)
@@ -445,6 +602,8 @@ function InsarNativeMap(
         const text = await res.text()
         const feat = kmlToBestLineStringFeature(text)
         if (!feat) return
+        const coords = extractLineCoords(feat)
+        setTunnelLineCoords(coords || null)
         if (tunnelLayerRef.current) {
           tunnelLayerRef.current.remove()
           tunnelLayerRef.current = null
@@ -494,6 +653,7 @@ function InsarNativeMap(
         tunnelLayerRef.current.remove()
         tunnelLayerRef.current = null
       }
+      setTunnelLineCoords(null)
       baseLayerRef.current = null
       map.remove()
       mapRef.current = null
@@ -1049,6 +1209,7 @@ export default function Insar() {
   const [keyDateField, setKeyDateField] = useState<string>('')
   const [useBbox, setUseBbox] = useState(false)
   const [riskSummary, setRiskSummary] = useState<RiskSummary>({ total: 0, danger: 0, warning: 0, normal: 0, unknown: 0, top: [] })
+  const [riskStats, setRiskStats] = useState<RiskStats | null>(null)
   const [focusId, setFocusId] = useState<string | null>(null)
   const [selectedPoint, setSelectedPoint] = useState<{ id: string, props: Record<string, any>, lat: number, lng: number } | null>(null)
   const [adviceStore, setAdviceStore] = useState<AdviceStore>(() => loadAdviceStore())
@@ -1196,6 +1357,100 @@ export default function Insar() {
 
   const globalAdvice = adviceStore.globalByDataset?.[dataset]?.text ?? ''
   const pointAdvice = selectedPoint?.id ? (adviceStore.pointByDataset?.[dataset]?.[selectedPoint.id]?.text ?? '') : ''
+
+  const riskDistributionOption = useMemo((): EChartsOption => {
+    return {
+      title: { text: '风险分布', left: 'center', textStyle: { fontSize: 12 } },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      grid: { left: '10%', right: '8%', top: '18%', bottom: '12%', containLabel: true },
+      xAxis: { type: 'category', data: ['危险', '预警', '正常'], axisLabel: { fontSize: 10 } },
+      yAxis: { type: 'value', axisLabel: { fontSize: 10 } },
+      series: [
+        {
+          type: 'bar',
+          data: [
+            { value: riskSummary.danger, itemStyle: { color: '#ff3e5f' } },
+            { value: riskSummary.warning, itemStyle: { color: '#ff9e0d' } },
+            { value: riskSummary.normal, itemStyle: { color: '#00e676' } },
+          ],
+          barWidth: '45%',
+        }
+      ],
+      animationDuration: 600,
+    }
+  }, [riskSummary.danger, riskSummary.warning, riskSummary.normal])
+
+  const velocitySplitOption = useMemo((): EChartsOption => {
+    const split = riskStats?.velocitySplit
+    const total = (split?.negative || 0) + (split?.positive || 0) + (split?.nearZero || 0)
+    if (!split || total === 0) {
+      return { title: { text: '暂无速度结构', left: 'center', top: 'center', textStyle: { color: '#888', fontSize: 12 } } }
+    }
+    return {
+      title: { text: '沉降/抬升结构', left: 'center', textStyle: { fontSize: 12 } },
+      tooltip: { trigger: 'item' },
+      legend: { bottom: 0, textStyle: { fontSize: 10 } },
+      series: [
+        {
+          type: 'pie',
+          radius: ['35%', '65%'],
+          center: ['50%', '52%'],
+          label: { fontSize: 10 },
+          data: [
+            { name: '沉降', value: split.negative, itemStyle: { color: '#ff3e5f' } },
+            { name: '稳定', value: split.nearZero, itemStyle: { color: '#00e676' } },
+            { name: '抬升', value: split.positive, itemStyle: { color: '#3b82f6' } },
+          ],
+        }
+      ],
+      animationDuration: 600,
+    }
+  }, [riskStats?.velocitySplit])
+
+  const velocityHistOption = useMemo((): EChartsOption => {
+    const hist = riskStats?.velocityHist
+    if (!hist) {
+      return { title: { text: '暂无速度分布', left: 'center', top: 'center', textStyle: { color: '#888', fontSize: 12 } } }
+    }
+    const labels = hist.edges.map((v) => v.toFixed(1))
+    return {
+      title: { text: `速度分布 (±${hist.maxAbs})`, left: 'center', textStyle: { fontSize: 12 } },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      grid: { left: '10%', right: '8%', top: '18%', bottom: '16%', containLabel: true },
+      xAxis: { type: 'category', data: labels, axisLabel: { fontSize: 9, rotate: 30 } },
+      yAxis: { type: 'value', axisLabel: { fontSize: 10 } },
+      series: [
+        {
+          type: 'bar',
+          data: hist.counts,
+          barWidth: '65%',
+          itemStyle: { color: '#40aeff' },
+        }
+      ],
+      animationDuration: 600,
+    }
+  }, [riskStats?.velocityHist])
+
+  const chainageOption = useMemo((): EChartsOption => {
+    const chainage = riskStats?.chainage
+    if (!chainage || !chainage.labels.length) {
+      return { title: { text: '暂无里程风险分布', left: 'center', top: 'center', textStyle: { color: '#888', fontSize: 12 } } }
+    }
+    return {
+      title: { text: '沿隧道里程风险分布', left: 'center', textStyle: { fontSize: 12 } },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      grid: { left: '10%', right: '8%', top: '18%', bottom: '18%', containLabel: true },
+      xAxis: { type: 'category', data: chainage.labels, axisLabel: { fontSize: 9, rotate: 30 } },
+      yAxis: { type: 'value', axisLabel: { fontSize: 10 } },
+      dataZoom: [{ type: 'inside' }, { type: 'slider', height: 14, bottom: 0 }],
+      series: [
+        { name: '危险', type: 'bar', stack: 'risk', data: chainage.danger, itemStyle: { color: '#ff3e5f' } },
+        { name: '预警', type: 'bar', stack: 'risk', data: chainage.warning, itemStyle: { color: '#ff9e0d' } },
+        { name: '正常', type: 'bar', stack: 'risk', data: chainage.normal, itemStyle: { color: '#00e676' } },
+      ],
+      animationDuration: 600,
+    }
+  }, [riskStats?.chainage])
 
   const setGlobalAdvice = (text: string) => {
     setAdviceStore((prev) => ({
@@ -1368,9 +1623,9 @@ export default function Insar() {
         </a>
       </div>
 
-      {tab === 'ops' ? (
-        <>
-          <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(10,25,47,.55)' }}>
+        {tab === 'ops' ? (
+          <>
+            <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(10,25,47,.55)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <div style={{ fontWeight: 900, letterSpacing: 0.2 }}>施工危险预警</div>
               <div style={{ fontSize: 12, opacity: 0.9 }}>总点数：{riskSummary.total}</div>
@@ -1385,6 +1640,31 @@ export default function Insar() {
                   <span style={{ color: '#ff9e0d' }}>预警 ≤ -{thresholds.mild}</span>
                   <span style={{ opacity: 0.85 }}>（mm/年，负数=沉降）</span>
                 </div>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(10,25,47,.55)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+                <div style={{ fontWeight: 900 }}>风险分布与结构</div>
+                <div style={{ fontSize: 12, opacity: 0.85 }}>基于当前数据集自动统计</div>
+                <div style={{ marginLeft: 'auto', fontSize: 12, opacity: 0.85 }}>有效速度点数：{riskStats?.velocityTotal || 0}</div>
+              </div>
+              <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+                <div style={{ height: 220, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)' }}>
+                  <EChartsWrapper option={riskDistributionOption} />
+                </div>
+                <div style={{ height: 220, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)' }}>
+                  <EChartsWrapper option={velocitySplitOption} />
+                </div>
+                <div style={{ height: 220, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)' }}>
+                  <EChartsWrapper option={velocityHistOption} />
+                </div>
+                <div style={{ height: 240, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)' }}>
+                  <EChartsWrapper option={chainageOption} />
+                </div>
+              </div>
+              <div style={{ marginTop: 8, fontSize: 12, opacity: 0.85, lineHeight: 1.6 }}>
+                说明：沉降/抬升结构以阈值轻微档作为稳定区间边界，速度分布按对称区间统计。里程分布采用 50m 分箱、200m 缓冲范围。
               </div>
             </div>
 
@@ -1608,7 +1888,7 @@ export default function Insar() {
             <div style={{ fontSize: 12, color: '#ffb86b', whiteSpace: 'pre-wrap', marginBottom: 8 }}>当前数据集未发现 D_YYYYMMDD 字段，无法显示关键日期位移。</div>
           ) : null}
           <div style={tab === 'map' ? undefined : { height: 1, overflow: 'hidden', opacity: 0.001, pointerEvents: 'none' }}>
-            <InsarNativeMap dataset={dataset} indicator={indicator} valueField={valueField} velocityFieldName={velocityField} thresholds={thresholds} useBbox={useBbox} showZones={showZones} zoneEpsM={zoneEpsM} zoneMinPts={zoneMinPts} onSummaryChange={setRiskSummary} onZonesChange={setZonesPanel} focusId={focusId} focusZoneId={focusZoneId} onSelectedChange={setSelectedPoint} />
+            <InsarNativeMap dataset={dataset} indicator={indicator} valueField={valueField} velocityFieldName={velocityField} thresholds={thresholds} useBbox={useBbox} showZones={showZones} zoneEpsM={zoneEpsM} zoneMinPts={zoneMinPts} onSummaryChange={setRiskSummary} onStatsChange={setRiskStats} onZonesChange={setZonesPanel} focusId={focusId} focusZoneId={focusZoneId} onSelectedChange={setSelectedPoint} />
           </div>
         </>
       ) : (
