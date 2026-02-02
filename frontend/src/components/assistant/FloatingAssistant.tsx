@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { apiPost } from '../../lib/api'
+import { API_BASE } from '../../lib/api'
 
 type AssistantResponse = {
   answerMarkdown: string
@@ -18,6 +18,7 @@ export default function FloatingAssistant() {
   const [answerMarkdown, setAnswerMarkdown] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string>('')
+  const [statusText, setStatusText] = useState<string>('')
 
   const inputRef = useRef<HTMLInputElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
@@ -59,6 +60,13 @@ export default function FloatingAssistant() {
     }
   }, [panelOffset])
 
+  function formatErrorMessage(resp: unknown): string {
+    if (resp && typeof resp === 'object' && 'message' in resp && typeof (resp as any).message === 'string') {
+      return (resp as any).message as string
+    }
+    return '请求失败'
+  }
+
   async function handleAsk() {
     const q = question.trim()
     if (loading) return
@@ -69,12 +77,42 @@ export default function FloatingAssistant() {
     setLoading(true)
     setError('')
     setAnswerMarkdown('')
+    setStatusText('发送中…')
     try {
-      const data = await apiPost<AssistantResponse>('/assistant/chat', { question: q, pagePath })
-      setAnswerMarkdown(data.answerMarkdown || '')
+      const controller = new AbortController()
+      const timeoutMs = 45000
+      const t = window.setTimeout(() => controller.abort(), timeoutMs)
+      const res = await fetch(`${API_BASE}/assistant/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: q, pagePath }),
+        signal: controller.signal,
+      })
+      window.clearTimeout(t)
+
+      const contentType = res.headers.get('content-type') || ''
+      const isJson = contentType.includes('application/json')
+      const body = isJson ? await res.json() : await res.text()
+
+      if (!res.ok) {
+        throw new Error(typeof body === 'string' ? body : formatErrorMessage(body))
+      }
+
+      if (!body || typeof body !== 'object' || !('data' in body)) {
+        throw new Error('后端返回格式异常')
+      }
+
+      const data = (body as any).data as AssistantResponse
+      setAnswerMarkdown(typeof data?.answerMarkdown === 'string' ? data.answerMarkdown : '')
+      setStatusText('已完成')
     } catch (e) {
       const msg = e instanceof Error ? e.message : '请求失败'
-      setError(msg)
+      if ((e as any)?.name === 'AbortError') {
+        setError('请求超时（45s），请稍后重试')
+      } else {
+        setError(msg)
+      }
+      setStatusText('失败')
     } finally {
       setLoading(false)
     }
@@ -234,6 +272,10 @@ export default function FloatingAssistant() {
             >
               {loading ? '发送中…' : '发送'}
             </button>
+          </div>
+          <div className="flex items-center justify-between border-t border-cyan-500/10 px-4 py-2 text-xs text-slate-400">
+            <div className="truncate">页面：{pagePath}</div>
+            <div className="shrink-0">{statusText}</div>
           </div>
         </div>
       )}

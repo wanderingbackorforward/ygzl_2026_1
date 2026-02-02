@@ -25,9 +25,15 @@ def _extract_answer(payload: Dict[str, Any]) -> str:
         raise ValueError("DeepSeek 返回缺少 choices")
     msg = (choices[0] or {}).get("message") or {}
     content = msg.get("content")
-    if not isinstance(content, str) or not content.strip():
-        raise ValueError("DeepSeek 返回缺少 message.content")
-    return content
+    if isinstance(content, str) and content.strip():
+        return content
+    reasoning = msg.get("reasoning_content")
+    if isinstance(reasoning, str) and reasoning.strip():
+        return reasoning
+    text = (choices[0] or {}).get("text")
+    if isinstance(text, str) and text.strip():
+        return text
+    raise ValueError("DeepSeek 返回缺少可用内容（message.content / message.reasoning_content / choice.text）")
 
 
 def _request_id() -> str:
@@ -110,4 +116,3 @@ def assistant_chat():
         return jsonify({"status": "error", "message": "DeepSeek response parse failed", "detail": str(e)}), 502
 
     return jsonify({"status": "success", "data": {"answerMarkdown": answer, "model": model}})
-
