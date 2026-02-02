@@ -1,0 +1,948 @@
+{
+  "items": [
+    {
+      "id": "DJI_202412260952_002_DJI_20241226095228_0002",
+      "group": "DJI_202412260952_002",
+      "image": "assets/drone/DJI_202412260952_002_DJI_20241226095228_0002.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260952_002_DJI_20241226095228_0002.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260952_002_DJI_20241226095234_0004",
+      "group": "DJI_202412260952_002",
+      "image": "assets/drone/DJI_202412260952_002_DJI_20241226095234_0004.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260952_002_DJI_20241226095234_0004.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260952_002_DJI_20241226095240_0006",
+      "group": "DJI_202412260952_002",
+      "image": "assets/drone/DJI_202412260952_002_DJI_20241226095240_0006.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260952_002_DJI_20241226095240_0006.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260952_002_DJI_20241226095246_0008",
+      "group": "DJI_202412260952_002",
+      "image": "assets/drone/DJI_202412260952_002_DJI_20241226095246_0008.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260952_002_DJI_20241226095246_0008.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260952_002_DJI_20241226095252_0010",
+      "group": "DJI_202412260952_002",
+      "image": "assets/drone/DJI_202412260952_002_DJI_20241226095252_0010.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260952_002_DJI_20241226095252_0010.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260952_002_DJI_20241226095258_0012",
+      "group": "DJI_202412260952_002",
+      "image": "assets/drone/DJI_202412260952_002_DJI_20241226095258_0012.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260952_002_DJI_20241226095258_0012.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260952_002_DJI_20241226095304_0014",
+      "group": "DJI_202412260952_002",
+      "image": "assets/drone/DJI_202412260952_002_DJI_20241226095304_0014.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260952_002_DJI_20241226095304_0014.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095322_0002",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095322_0002.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095322_0002.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095334_0004",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095334_0004.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095334_0004.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095347_0006",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095347_0006.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095347_0006.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095400_0008",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095400_0008.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095400_0008.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095411_0010",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095411_0010.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095411_0010.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095438_0012",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095438_0012.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095438_0012.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095451_0014",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095451_0014.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095451_0014.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095504_0016",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095504_0016.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095504_0016.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095516_0018",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095516_0018.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095516_0018.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095529_0020",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095529_0020.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095529_0020.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095536_0022",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095536_0022.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095536_0022.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095546_0024",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095546_0024.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095546_0024.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095556_0026",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095556_0026.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095556_0026.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095606_0028",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095606_0028.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095606_0028.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095609_0030",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095609_0030.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095609_0030.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095623_0032",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095623_0032.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095623_0032.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095636_0034",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095636_0034.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095636_0034.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095648_0036",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095648_0036.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095648_0036.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095701_0038",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095701_0038.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095701_0038.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095713_0040",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095713_0040.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095713_0040.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095740_0042",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095740_0042.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095740_0042.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095753_0044",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095753_0044.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095753_0044.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095806_0046",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095806_0046.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095806_0046.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095819_0048",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095819_0048.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095819_0048.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095831_0050",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095831_0050.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095831_0050.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095839_0052",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095839_0052.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095839_0052.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095850_0054",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095850_0054.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095850_0054.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095900_0056",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095900_0056.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095900_0056.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095909_0058",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095909_0058.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095909_0058.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095912_0060",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095912_0060.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095912_0060.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095926_0062",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095926_0062.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095926_0062.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095939_0064",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095939_0064.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095939_0064.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226095952_0066",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226095952_0066.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226095952_0066.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100004_0068",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100004_0068.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100004_0068.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100018_0070",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100018_0070.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100018_0070.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100044_0072",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100044_0072.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100044_0072.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100057_0074",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100057_0074.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100057_0074.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100110_0076",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100110_0076.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100110_0076.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100122_0078",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100122_0078.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100122_0078.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100135_0080",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100135_0080.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100135_0080.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100143_0082",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100143_0082.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100143_0082.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100152_0084",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100152_0084.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100152_0084.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100202_0086",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100202_0086.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100202_0086.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100206_0088",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100206_0088.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100206_0088.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100215_0090",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100215_0090.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100215_0090.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100225_0092",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100225_0092.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100225_0092.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100238_0094",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100238_0094.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100238_0094.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100250_0096",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100250_0096.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100250_0096.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100303_0098",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100303_0098.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100303_0098.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100316_0100",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100316_0100.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100316_0100.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100324_0102",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100324_0102.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100324_0102.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100351_0104",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100351_0104.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100351_0104.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100404_0106",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100404_0106.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100404_0106.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100417_0108",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100417_0108.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100417_0108.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100429_0110",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100429_0110.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100429_0110.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100442_0112",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100442_0112.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100442_0112.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100451_0114",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100451_0114.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100451_0114.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100501_0116",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100501_0116.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100501_0116.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100511_0118",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100511_0118.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100511_0118.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100524_0120",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100524_0120.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100524_0120.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100536_0122",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100536_0122.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100536_0122.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100549_0124",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100549_0124.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100549_0124.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100555_0126",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100555_0126.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100555_0126.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100606_0128",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100606_0128.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100606_0128.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100620_0130",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100620_0130.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100620_0130.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100633_0132",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100633_0132.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100633_0132.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100646_0134",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100646_0134.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100646_0134.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100658_0136",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100658_0136.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100658_0136.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100711_0138",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100711_0138.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100711_0138.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412260953_003_DJI_20241226100724_0140",
+      "group": "DJI_202412260953_003",
+      "image": "assets/drone/DJI_202412260953_003_DJI_20241226100724_0140.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412260953_003_DJI_20241226100724_0140.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103705_0002_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103705_0002_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103705_0002_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103717_0004_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103717_0004_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103717_0004_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103727_0006_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103727_0006_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103727_0006_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103737_0008_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103737_0008_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103737_0008_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103746_0010_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103746_0010_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103746_0010_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103756_0012_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103756_0012_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103756_0012_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103806_0014_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103806_0014_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103806_0014_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103816_0016_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103816_0016_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103816_0016_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103826_0018_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103826_0018_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103826_0018_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103832_0020_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103832_0020_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103832_0020_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103841_0022_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103841_0022_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103841_0022_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103853_0024_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103853_0024_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103853_0024_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103856_0026_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103856_0026_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103856_0026_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103904_0028_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103904_0028_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103904_0028_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103912_0030_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103912_0030_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103912_0030_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103922_0032_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103922_0032_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103922_0032_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103932_0034_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103932_0034_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103932_0034_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103942_0036_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103942_0036_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103942_0036_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103951_0038_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103951_0038_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226103951_0038_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104001_0040_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104001_0040_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104001_0040_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104027_0042_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104027_0042_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104027_0042_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104037_0044_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104037_0044_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104037_0044_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104047_0046_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104047_0046_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104047_0046_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104057_0048_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104057_0048_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104057_0048_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104106_0050_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104106_0050_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104106_0050_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104117_0052_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104117_0052_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104117_0052_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104126_0054_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104126_0054_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104126_0054_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104128_0056_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104128_0056_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104128_0056_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104140_0058_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104140_0058_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104140_0058_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104146_0060_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104146_0060_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104146_0060_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104155_0062_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104155_0062_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104155_0062_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104204_0064_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104204_0064_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104204_0064_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104214_0066_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104214_0066_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104214_0066_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104224_0068_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104224_0068_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104224_0068_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104234_0070_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104234_0070_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104234_0070_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104243_0072_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104243_0072_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104243_0072_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104253_0074_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104253_0074_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104253_0074_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104303_0076_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104303_0076_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104303_0076_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104313_0078_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104313_0078_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104313_0078_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104323_0080_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104323_0080_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104323_0080_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    },
+    {
+      "id": "DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104332_0082_Zenmuse-L1-mission",
+      "group": "DJI_202412261037_005_Zenmuse-L1-mission第二次",
+      "image": "assets/drone/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104332_0082_Zenmuse-L1-mission.webp",
+      "thumb": "assets/drone/thumbs/DJI_202412261037_005_Zenmuse-L1-mission第二次_DJI_20241226104332_0082_Zenmuse-L1-mission.webp",
+      "width": 1600,
+      "height": 1066
+    }
+  ]
+}

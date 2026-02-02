@@ -22,8 +22,18 @@
     </ul>
   </nav>
   <div class="main-content" style="padding:20px;color:#aaddff;">
-    <h2><i class="fas fa-drone"></i> 无人机页面</h2>
-    <p>占位页面：后续接入无人机数据与控制组件。</p>
+    <h2><i class="fas fa-drone"></i> 无人机数据预览</h2>
+    <p>已压缩为 WebP 供快速浏览，后续可替换为 3D 模型或正射影像。</p>
+    <section id="drone-gallery" class="tunnel-gallery-panel" style="margin-top:16px;">
+      <div class="tunnel-gallery-header">
+        <div class="tunnel-gallery-title">航测照片</div>
+        <div class="tunnel-gallery-status">加载中</div>
+      </div>
+      <div class="drone-gallery-filters"></div>
+      <div class="tunnel-gallery-list" style="max-height:520px;"></div>
+      <div class="tunnel-gallery-note">点击缩略图查看原图</div>
+    </section>
   </div>
+  <script src="js/drone_gallery.js"></script>
 </body>
 </html>

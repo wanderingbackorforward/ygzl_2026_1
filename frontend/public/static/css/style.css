@@ -1684,3 +1684,178 @@ td .stat-badge {
     border-radius: 2px;
     box-shadow: 0 0 5px var(--primary-color);
 }
+
+/* 3D viewer layout and tunnel gallery */
+.three-layout {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+    height: calc(100vh - 65px);
+    padding: 12px;
+}
+
+.three-viewer {
+    flex: 1;
+    position: relative;
+    border: 1px solid rgba(0, 229, 255, 0.3);
+    border-radius: 6px;
+    background: rgba(10, 18, 30, 0.6);
+    overflow: hidden;
+}
+
+.three-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #ffffff;
+    padding: 12px 20px;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 6px;
+    display: none;
+}
+
+.tunnel-gallery-panel {
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border: var(--panel-border);
+    border-radius: 6px;
+    background: var(--panel-bg);
+    box-shadow: var(--panel-glow);
+    color: #cfe9ff;
+}
+
+.tunnel-gallery-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.tunnel-gallery-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.tunnel-gallery-status {
+    font-size: 12px;
+    color: #8cc6ff;
+}
+
+.tunnel-gallery-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.tunnel-gallery-thumb {
+    border: 1px solid rgba(0, 229, 255, 0.2);
+    background: rgba(4, 10, 18, 0.8);
+    padding: 0;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.tunnel-gallery-thumb img {
+    display: block;
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+}
+
+.tunnel-gallery-note {
+    font-size: 11px;
+    color: #7aa7c7;
+    text-align: center;
+}
+
+.drone-gallery-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.drone-filter-btn {
+    padding: 4px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 229, 255, 0.25);
+    background: rgba(0, 229, 255, 0.08);
+    color: #bfe6ff;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.drone-filter-btn.is-active {
+    border-color: rgba(0, 229, 255, 0.6);
+    background: rgba(0, 229, 255, 0.2);
+    color: #ffffff;
+}
+
+.tunnel-gallery-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    z-index: 10050;
+}
+
+.tunnel-gallery-modal.is-open {
+    display: block;
+}
+
+.tunnel-gallery-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(4, 8, 12, 0.85);
+}
+
+.tunnel-gallery-modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 90vw;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tunnel-gallery-modal-image {
+    max-width: 90vw;
+    max-height: 75vh;
+    border: 1px solid rgba(0, 229, 255, 0.3);
+    border-radius: 6px;
+    background: #0a1628;
+}
+
+.tunnel-gallery-modal-close {
+    align-self: flex-end;
+    background: rgba(0, 229, 255, 0.15);
+    border: 1px solid rgba(0, 229, 255, 0.35);
+    color: #cfe9ff;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+@media (max-width: 1100px) {
+    .three-layout {
+        flex-direction: column;
+    }
+
+    .tunnel-gallery-panel {
+        width: 100%;
+        max-height: 240px;
+    }
+
+    .tunnel-gallery-list {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}

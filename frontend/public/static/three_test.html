@@ -23,11 +23,19 @@
                     <li><a href="/tickets"><i class="fas fa-ticket-alt"></i>工单</a></li>
                 </ul>
             </nav>
-            <div class="main-content" style="display:flex;justify-content:center;align-items:center;height:calc(100vh - 65px);">
-                <div id="viewer-container" style="width:95%;height:95%;position:relative;border:1px solid rgba(0,229,255,0.3);border-radius:6px;">
+            <div class="main-content three-layout">
+                <div id="viewer-container" class="three-viewer">
                     <canvas id="viewer-canvas"></canvas>
-                    <div id="loading-indicator" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;padding:12px 20px;background:rgba(0,0,0,0.6);border-radius:6px;display:none;">加载中...</div>
+                    <div id="loading-indicator" class="three-loading">加载中...</div>
                 </div>
+                <aside id="tunnel-gallery" class="tunnel-gallery-panel">
+                    <div class="tunnel-gallery-header">
+                        <div class="tunnel-gallery-title">隧道立体图</div>
+                        <div class="tunnel-gallery-status">加载中</div>
+                    </div>
+                    <div class="tunnel-gallery-list"></div>
+                    <div class="tunnel-gallery-note">点击缩略图查看原图</div>
+                </aside>
             </div>
         </div>
     </div>
@@ -35,6 +43,7 @@
     <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>
     <script src="js/three_viewer_enhanced.js"></script>
+    <script src="js/tunnel_gallery.js"></script>
     <script>
       (function(){
         var embedded = window.self !== window.top || window.location.search.indexOf('embedded=1') !== -1;
