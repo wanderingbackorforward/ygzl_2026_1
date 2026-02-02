@@ -159,6 +159,9 @@ function InsarNativeMap(
   const alertLayerRef = useRef<L.LayerGroup | null>(null)
   const tunnelLayerRef = useRef<L.GeoJSON | null>(null)
   const baseLayerRef = useRef<L.Layer | null>(null)
+  const baseLayerCleanupRef = useRef<(() => void) | null>(null)
+  const lastGoodBaseLayerNameRef = useRef('影像(Esri)')
+  const baseLayerAutoRevertRef = useRef(false)
   const pulseTimerRef = useRef<number | null>(null)
   const pulseMarkersRef = useRef<{ marker: L.CircleMarker, base: number, amp: number }[]>([])
   const pulsePhaseRef = useRef(0)
@@ -403,6 +406,7 @@ function InsarNativeMap(
     if (initialLayer) {
       initialLayer.addTo(map)
       baseLayerRef.current = initialLayer
+      lastGoodBaseLayerNameRef.current = baseLayerName
     }
 
     const baseAbort = new AbortController()
@@ -475,6 +479,10 @@ function InsarNativeMap(
     map.on('moveend', handleMoveEnd)
     return () => {
       baseAbort.abort()
+      if (baseLayerCleanupRef.current) {
+        baseLayerCleanupRef.current()
+        baseLayerCleanupRef.current = null
+      }
       window.removeEventListener('resize', handleResize)
       map.off('moveend', handleMoveEnd)
       if (moveendTimerRef.current) window.clearTimeout(moveendTimerRef.current)
@@ -500,12 +508,51 @@ function InsarNativeMap(
     const next = baseLayers.find((x) => x.name === baseLayerName)?.layer || null
     if (!next) return
     setBaseLayerError(null)
+    if (baseLayerCleanupRef.current) {
+      baseLayerCleanupRef.current()
+      baseLayerCleanupRef.current = null
+    }
     const prev = baseLayerRef.current
     try {
       if (prev === next) return
       next.addTo(map)
       if (prev && map.hasLayer(prev)) map.removeLayer(prev)
       baseLayerRef.current = next
+      baseLayerAutoRevertRef.current = false
+
+      const anyNext: any = next as any
+      if (anyNext && typeof anyNext.on === 'function') {
+        const recentErrors: number[] = []
+        const onLoad = () => {
+          lastGoodBaseLayerNameRef.current = baseLayerName
+        }
+        const onTileError = () => {
+          const now = Date.now()
+          recentErrors.push(now)
+          while (recentErrors.length && now - recentErrors[0] > 2000) recentErrors.shift()
+          if (recentErrors.length < 3) return
+          if (baseLayerAutoRevertRef.current) return
+          baseLayerAutoRevertRef.current = true
+          setBaseLayerError('瓦片加载失败：本地目录可能没有瓦片文件，或 URL 模板不匹配（x/y/z、后缀、tms）。')
+          try {
+            if (map.hasLayer(next)) map.removeLayer(next)
+          } catch {
+          }
+          const fallbackName = lastGoodBaseLayerNameRef.current || '影像(Esri)'
+          if (fallbackName && fallbackName !== baseLayerName) {
+            setBaseLayerName(fallbackName)
+          }
+        }
+        anyNext.on('tileerror', onTileError)
+        anyNext.on('load', onLoad)
+        baseLayerCleanupRef.current = () => {
+          try {
+            anyNext.off('tileerror', onTileError)
+            anyNext.off('load', onLoad)
+          } catch {
+          }
+        }
+      }
     } catch (e: any) {
       try {
         if (next && map.hasLayer(next)) map.removeLayer(next)
