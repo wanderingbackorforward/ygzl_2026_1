@@ -7,6 +7,16 @@ from flask import Blueprint, jsonify, request
 
 assistant_bp = Blueprint("assistant", __name__, url_prefix="/api/assistant")
 
+def _is_meaningful_question(q: str) -> bool:
+    s = (q or "").strip()
+    if not s:
+        return False
+    if len(s) < 2:
+        return False
+    if s.isdigit():
+        return False
+    return True
+
 
 def _deepseek_settings() -> Tuple[str, str, str, float]:
     api_key = (os.getenv("DEEPSEEK_API_KEY") or os.getenv("DEEPSEEK_KEY") or os.getenv("DEEPSEEK_TOKEN") or "").strip()
@@ -47,6 +57,16 @@ def assistant_chat():
     page_path = (body.get("pagePath") or body.get("page_path") or "").strip()
     if not question:
         return jsonify({"status": "error", "message": "missing question"}), 400
+    if not _is_meaningful_question(question):
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": "问题太短或不明确。请用一句话描述你要问什么（例如：‘/insar 页面 velocity 字段代表什么？’）。",
+                }
+            ),
+            400,
+        )
 
     api_key, api_base, model, timeout_s = _deepseek_settings()
     if not api_key:
@@ -61,12 +81,13 @@ def assistant_chat():
         )
 
     system_prompt = (
-        "你是本系统的悬浮小助手。只做一问一答。\n"
+        "你是本系统的悬浮小助手（只做一问一答）。\n"
+        "请直接回答用户问题，不要输出任何“页面路径/问题编号/后续步骤/需要提供XXX”的模板化内容。\n"
+        "如果用户问题不够明确：只提出 1-2 个最关键的追问，并给出可选示例问题。\n"
         "输出必须是可直接渲染的 Markdown，并且排版清晰：\n"
         "- 用短标题（###）组织\n"
         "- 用列表（-）表达步骤/要点\n"
         "- 代码用 ``` 包裹\n"
-        "- 不要输出多余的前言/免责声明\n"
         "- 中文为主，简洁明确\n"
     )
 
