@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LayoutProvider } from '../contexts/LayoutContext';
 import { DashboardGrid } from '../components/layout/DashboardGrid';
 import { PointSelector } from '../components/shared/PointSelector';
@@ -11,6 +11,16 @@ import type { CardConfig } from '../types/layout';
 import '../styles/variables.css';
 import '../styles/cards.css';
 import '../styles/grid.css';
+
+// 检查 ML API 是否可用
+const checkMLAvailability = async (): Promise<boolean> => {
+  try {
+    const response = await fetch('/api/ml/health', { method: 'GET' });
+    return response.ok;
+  } catch {
+    return false;
+  }
+};
 
 // 监测点选择器卡片
 const PointSelectorCard: React.FC<{ onSelectPoint: (id: string) => void; selectedPoint: string | null }> = ({ onSelectPoint, selectedPoint }) => {
@@ -35,6 +45,77 @@ const PointSelectorCard: React.FC<{ onSelectPoint: (id: string) => void; selecte
 // 主页面组件
 function MLAnalysisCenterContent() {
   const [selectedPointId, setSelectedPointId] = useState<string | null>('S1');
+  const [mlAvailable, setMlAvailable] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    checkMLAvailability().then(setMlAvailable);
+  }, []);
+
+  // 如果 ML API 不可用，显示提示信息
+  if (mlAvailable === false) {
+    return (
+      <div style={{
+        height: '100vh',
+        background: 'linear-gradient(135deg, #0a1628 0%, #1a2332 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'column',
+        gap: '24px',
+        padding: '40px'
+      }}>
+        <div style={{ fontSize: '72px' }}>🚧</div>
+        <div style={{
+          fontSize: '32px',
+          color: '#00ffff',
+          fontWeight: 'bold',
+          textAlign: 'center'
+        }}>
+          智能分析中心正在部署中
+        </div>
+        <div style={{
+          fontSize: '16px',
+          color: '#888',
+          textAlign: 'center',
+          maxWidth: '600px',
+          lineHeight: '1.8'
+        }}>
+          该功能需要大型机器学习库支持（scikit-learn、statsmodels），
+          由于 Vercel Serverless 环境的包大小限制（50MB），
+          我们正在准备独立的 ML API 服务部署方案。
+          <br /><br />
+          本地开发环境中该功能完全可用。
+        </div>
+        <div style={{
+          padding: '12px 24px',
+          background: 'rgba(0, 255, 255, 0.1)',
+          border: '1px solid rgba(0, 255, 255, 0.3)',
+          borderRadius: '8px',
+          color: '#00ffff',
+          fontSize: '14px'
+        }}>
+          预计完成时间：本周内
+        </div>
+      </div>
+    );
+  }
+
+  // 加载中
+  if (mlAvailable === null) {
+    return (
+      <div style={{
+        height: '100vh',
+        background: 'linear-gradient(135deg, #0a1628 0%, #1a2332 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#00ffff',
+        fontSize: '18px'
+      }}>
+        正在检查 ML 服务状态...
+      </div>
+    );
+  }
 
   // 卡片配置
   const cards: CardConfig[] = [
