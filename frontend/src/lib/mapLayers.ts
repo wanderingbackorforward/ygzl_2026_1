@@ -80,29 +80,29 @@ export async function loadOpticalRasterLayers(signal?: AbortSignal): Promise<Ras
 export function createRasterLayer(def: RasterLayerDef): L.Layer | null {
   if (def.kind === 'wms') {
     if (!def.wmsLayers) return null
-    const layer = L.tileLayer.wms(def.url, {
+    const wmsOptions: any = {
       layers: def.wmsLayers,
       format: def.wmsFormat || 'image/png',
       transparent: def.wmsTransparent ?? true,
-      maxZoom: def.maxZoom,
-      minZoom: def.minZoom,
-      attribution: def.attribution,
-      opacity: def.opacity,
-      bounds: def.bounds ? L.latLngBounds([def.bounds[1], def.bounds[0]], [def.bounds[3], def.bounds[2]]) : undefined,
-    } as any)
+    }
+    if (def.maxZoom !== undefined) wmsOptions.maxZoom = def.maxZoom
+    if (def.minZoom !== undefined) wmsOptions.minZoom = def.minZoom
+    if (def.attribution !== undefined) wmsOptions.attribution = def.attribution
+    if (def.opacity !== undefined) wmsOptions.opacity = def.opacity
+    if (def.bounds) wmsOptions.bounds = L.latLngBounds([def.bounds[1], def.bounds[0]], [def.bounds[3], def.bounds[2]])
+    const layer = L.tileLayer.wms(def.url, wmsOptions)
     return layer
   }
 
-  const layer = L.tileLayer(def.url, {
-    maxZoom: def.maxZoom,
-    minZoom: def.minZoom,
-    attribution: def.attribution,
-    opacity: def.opacity,
-    tms: def.tms,
-    tileSize: def.tileSize,
-    bounds: def.bounds ? L.latLngBounds([def.bounds[1], def.bounds[0]], [def.bounds[3], def.bounds[2]]) : undefined,
-    crossOrigin: true,
-  } as any)
+  const tileOptions: any = { crossOrigin: true }
+  if (def.maxZoom !== undefined) tileOptions.maxZoom = def.maxZoom
+  if (def.minZoom !== undefined) tileOptions.minZoom = def.minZoom
+  if (def.attribution !== undefined) tileOptions.attribution = def.attribution
+  if (def.opacity !== undefined) tileOptions.opacity = def.opacity
+  if (def.tms !== undefined) tileOptions.tms = def.tms
+  if (def.tileSize !== undefined) tileOptions.tileSize = def.tileSize
+  if (def.bounds) tileOptions.bounds = L.latLngBounds([def.bounds[1], def.bounds[0]], [def.bounds[3], def.bounds[2]])
+  const layer = L.tileLayer(def.url, tileOptions)
   return layer
 }
 
