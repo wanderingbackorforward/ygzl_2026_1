@@ -66,6 +66,9 @@ from modules.tunnel.api import tunnel_bp
 from modules.advanced_analysis.api import advanced_bp
 from modules.assistant.api import assistant_bp
 
+# 机器学习模块
+from modules.ml_models.api import ml_api
+
 # =========================================================
 # 应用初始化：创建Flask应用和Blueprint
 # =========================================================
@@ -1073,6 +1076,7 @@ def modules_update_by_key(module_key):
 app.register_blueprint(insar_bp)
 app.register_blueprint(tunnel_bp)
 app.register_blueprint(advanced_bp)
+app.register_blueprint(ml_api)  # 机器学习API
 
 # 健康检查路由
 @app.route('/api/health')

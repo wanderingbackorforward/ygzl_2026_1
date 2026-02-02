@@ -19,6 +19,7 @@ import Cover from './pages/Cover'
 import ModuleAdmin from './pages/ModuleAdmin'
 import Tunnel from './pages/Tunnel'
 import AdvancedAnalysis from './pages/AdvancedAnalysis'
+import MLAnalysisCenter from './pages/MLAnalysisCenter'
 
 function App() {
   return (
@@ -45,6 +46,7 @@ function App() {
           <Route path="/tickets" element={<ModuleGate moduleKey="tickets"><Tickets /></ModuleGate>} />
           <Route path="/tunnel" element={<ModuleGate moduleKey="tunnel"><Tunnel /></ModuleGate>} />
           <Route path="/advanced" element={<ModuleGate moduleKey="advanced"><AdvancedAnalysis /></ModuleGate>} />
+          <Route path="/ml-analysis" element={<ModuleGate moduleKey="ml-analysis"><MLAnalysisCenter /></ModuleGate>} />
           <Route path="/modules" element={<ModuleAdmin />} />
         </Routes>
       </BrowserRouter>
