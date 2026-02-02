@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { CardBase } from '../cards/CardBase';
-import { EChartsWrapper } from './EChartsWrapper';
-import { mlAutoPredict, type MLPredictionResult } from '../../lib/mlApi';
+import { CardBase } from '../../cards/CardBase';
+import { EChartsWrapper } from '../EChartsWrapper';
+import { mlAutoPredict, type MLPredictionResult } from '../../../lib/mlApi';
 import type { EChartsOption } from 'echarts';
 
 interface SmartPredictionChartProps {
