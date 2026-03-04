@@ -1,0 +1,18 @@
+[project]
+name = "terrain-settlement-api"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "Flask",
+  "Flask-Cors",
+  "Werkzeug",
+  "mysql-connector-python",
+  "requests",
+  "numpy",
+  "pandas",
+  "SQLAlchemy",
+  "pyshp",
+]
+
+[tool.uv]
+package = false
