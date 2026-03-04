@@ -5,6 +5,7 @@ import {
   useEventImpact,
   createEvent,
   deleteEvent,
+  createEventImpactTicket,
   type ConstructionEvent,
 } from '../../hooks/useAdvancedAnalysis';
 
@@ -17,6 +18,7 @@ export const EventManager: React.FC<EventManagerProps> = ({ onEventSelect }) => 
   const eventTypes = useEventTypes();
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [creatingImpactTicket, setCreatingImpactTicket] = useState<string | null>(null);
   const { analysis: impact, loading: impactLoading } = useEventImpact(selectedEventId);
 
   const handleEventClick = (event: ConstructionEvent) => {
@@ -42,6 +44,28 @@ export const EventManager: React.FC<EventManagerProps> = ({ onEventSelect }) => 
       refetch();
     } catch (e) {
       console.error('删除事件失败：', e);
+    }
+  };
+
+  const handleCreateImpactTicket = async (pointId: string, impactLevel: string, rateChange: number) => {
+    if (!impact?.event?.title) return;
+    const key = `${selectedEventId || 'event'}-${pointId}`;
+    if (creatingImpactTicket === key) return;
+    const sendEmail = window.confirm('创建事件影响工单并发送邮件通知？\n确定=发送；取消=仅创建工单');
+    setCreatingImpactTicket(key);
+    try {
+      const result = await createEventImpactTicket(
+        impact.event.title,
+        pointId,
+        impactLevel,
+        rateChange,
+        sendEmail,
+      );
+      window.alert(`工单创建成功\n工单号: ${result.data?.ticket_number || 'N/A'}`);
+    } catch (e) {
+      window.alert(`工单创建失败: ${e instanceof Error ? e.message : '未知错误'}`);
+    } finally {
+      setCreatingImpactTicket(null);
     }
   };
 
@@ -79,7 +103,12 @@ export const EventManager: React.FC<EventManagerProps> = ({ onEventSelect }) => 
             impactLoading ? (
               <div style={styles.loading}>正在分析影响...</div>
             ) : impact ? (
-              <ImpactDisplay analysis={impact} />
+              <ImpactDisplay
+                analysis={impact}
+                onCreateTicket={handleCreateImpactTicket}
+                creatingKey={creatingImpactTicket}
+                eventKeyPrefix={selectedEventId || 'event'}
+              />
             ) : (
               <div style={styles.empty}>暂无影响数据</div>
             )
@@ -164,7 +193,12 @@ const EventCard: React.FC<{
 };
 
 // Impact Display
-const ImpactDisplay: React.FC<{ analysis: any }> = ({ analysis }) => {
+const ImpactDisplay: React.FC<{
+  analysis: any;
+  onCreateTicket: (pointId: string, impactLevel: string, rateChange: number) => void;
+  creatingKey: string | null;
+  eventKeyPrefix: string | number;
+}> = ({ analysis, onCreateTicket, creatingKey, eventKeyPrefix }) => {
   const { event, affected_points, summary } = analysis;
 
   const impactLevelColors: Record<string, string> = {
@@ -208,7 +242,10 @@ const ImpactDisplay: React.FC<{ analysis: any }> = ({ analysis }) => {
 
       <div style={styles.pointsHeader}>受影响点位</div>
       <div style={styles.affectedPointsList}>
-        {affected_points.slice(0, 10).map((p: any, idx: number) => (
+        {affected_points.slice(0, 10).map((p: any, idx: number) => {
+          const key = `${eventKeyPrefix}-${p.point_id}`;
+          const creating = creatingKey === key;
+          return (
           <div key={idx} style={styles.affectedPoint}>
             <span style={styles.pointName}>{p.point_id}</span>
             <span
@@ -223,8 +260,17 @@ const ImpactDisplay: React.FC<{ analysis: any }> = ({ analysis }) => {
               {p.rate_change > 0 ? '+' : ''}
               {p.rate_change.toFixed(3)} mm/天
             </span>
+            {(p.impact_level === 'high' || p.impact_level === 'medium') && (
+              <button
+                style={styles.createTicketButton}
+                disabled={creating}
+                onClick={() => onCreateTicket(p.point_id, p.impact_level, p.rate_change)}
+              >
+                {creating ? '创建中...' : '建单'}
+              </button>
+            )}
           </div>
-        ))}
+        )})}
       </div>
     </div>
   );
@@ -534,6 +580,15 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '12px',
     color: '#888',
     fontFamily: 'monospace',
+  },
+  createTicketButton: {
+    padding: '4px 8px',
+    borderRadius: '4px',
+    border: '1px solid rgba(74, 255, 158, 0.5)',
+    backgroundColor: 'rgba(74, 255, 158, 0.12)',
+    color: '#4aff9e',
+    cursor: 'pointer',
+    fontSize: '11px',
   },
   modalOverlay: {
     position: 'fixed',

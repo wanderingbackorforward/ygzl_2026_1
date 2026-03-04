@@ -1,16 +1,26 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import * as echarts from 'echarts';
-import { useJointMapping, useJointData, useJointAlerts, type JointAlert } from '../../hooks/useAdvancedAnalysis';
+import {
+  useJointMapping,
+  useJointData,
+  useJointAlerts,
+  useJointCorrelation,
+  createJointAlertTicket,
+  type JointAlert,
+} from '../../hooks/useAdvancedAnalysis';
 
 interface JointDashboardProps {
   onSelectSettlementPoint?: (pointId: string) => void;
+  metric?: 'settlement' | 'crack' | 'correlation';
 }
 
-export const JointDashboard: React.FC<JointDashboardProps> = ({ onSelectSettlementPoint }) => {
+export const JointDashboard: React.FC<JointDashboardProps> = ({ onSelectSettlementPoint, metric = 'settlement' }) => {
   const { mapping, loading: mappingLoading } = useJointMapping();
   const { alerts, loading: alertsLoading } = useJointAlerts();
   const [selectedPoint, setSelectedPoint] = useState<string | null>(null);
   const { data: jointData, loading: dataLoading } = useJointData(selectedPoint);
+  const { analysis: correlation, loading: correlationLoading } = useJointCorrelation(selectedPoint);
+  const [creatingTickets, setCreatingTickets] = useState<Record<string, boolean>>({});
 
   // Get unique settlement points with crack associations
   const settlementPoints = useMemo(() => {
@@ -31,6 +41,21 @@ export const JointDashboard: React.FC<JointDashboardProps> = ({ onSelectSettleme
   const handlePointSelect = (pointId: string) => {
     setSelectedPoint(pointId);
     onSelectSettlementPoint?.(pointId);
+  };
+
+  const handleCreateTicket = async (alert: JointAlert) => {
+    const ticketKey = `${alert.settlement_point}-${alert.crack_point}`;
+    if (creatingTickets[ticketKey]) return;
+    const sendEmail = window.confirm('创建联合预警工单并发送邮件通知？\n确定=发送；取消=仅创建工单');
+    setCreatingTickets(prev => ({ ...prev, [ticketKey]: true }));
+    try {
+      const result = await createJointAlertTicket(alert, sendEmail);
+      window.alert(`工单创建成功\n工单号: ${result.data?.ticket_number || 'N/A'}`);
+    } catch (e) {
+      window.alert(`工单创建失败: ${e instanceof Error ? e.message : '未知错误'}`);
+    } finally {
+      setCreatingTickets(prev => ({ ...prev, [ticketKey]: false }));
+    }
   };
 
   return (
@@ -77,6 +102,9 @@ export const JointDashboard: React.FC<JointDashboardProps> = ({ onSelectSettleme
           {selectedPoint && jointData ? (
             <>
               <JointChart data={jointData} />
+              {metric === 'correlation' && (
+                <CorrelationPanel analysis={correlation} loading={correlationLoading} />
+              )}
             </>
           ) : (
             <div style={styles.placeholder}>
@@ -98,6 +126,8 @@ export const JointDashboard: React.FC<JointDashboardProps> = ({ onSelectSettleme
                   key={idx}
                   alert={alert}
                   onClick={() => handlePointSelect(alert.settlement_point)}
+                  onCreateTicket={() => handleCreateTicket(alert)}
+                  creating={creatingTickets[`${alert.settlement_point}-${alert.crack_point}`] === true}
                 />
               ))
             )}
@@ -239,7 +269,7 @@ const JointChart: React.FC<{ data: any }> = ({ data }) => {
 };
 
 // Alert Card component
-const AlertCard: React.FC<{ alert: JointAlert; onClick: () => void }> = ({ alert, onClick }) => {
+const AlertCard: React.FC<{ alert: JointAlert; onClick: () => void; onCreateTicket: () => void; creating: boolean }> = ({ alert, onClick, onCreateTicket, creating }) => {
   const severityColors: Record<string, string> = {
     critical: '#ff4444',
     high: '#ff8800',
@@ -270,6 +300,68 @@ const AlertCard: React.FC<{ alert: JointAlert; onClick: () => void }> = ({ alert
       </div>
       <div style={styles.alertMessage}>{alert.message}</div>
       <div style={styles.alertRecommendation}>{alert.recommendation}</div>
+      <button
+        style={styles.ticketButton}
+        onClick={e => {
+          e.stopPropagation();
+          onCreateTicket();
+        }}
+        disabled={creating}
+      >
+        {creating ? '创建中...' : '创建工单'}
+      </button>
+    </div>
+  );
+};
+
+const CorrelationPanel: React.FC<{
+  analysis: {
+    settlement_stats?: {
+      total_change?: number;
+      avg_daily_rate?: number;
+      max_daily_rate?: number;
+    };
+    crack_analysis?: Array<{
+      crack_point: string;
+      correlation_strength: string;
+      total_change: number;
+      avg_rate: number;
+    }>;
+    error?: string;
+  } | null;
+  loading: boolean;
+}> = ({ analysis, loading }) => {
+  if (loading) return <div style={styles.correlationLoading}>相关性计算中...</div>;
+  if (!analysis || analysis.error) return <div style={styles.correlationEmpty}>暂无相关性分析结果</div>;
+  const stats = analysis.settlement_stats;
+  const cracks = analysis.crack_analysis || [];
+
+  return (
+    <div style={styles.correlationPanel}>
+      <div style={styles.correlationTitle}>相关性摘要</div>
+      <div style={styles.correlationGrid}>
+        <div style={styles.correlationItem}>
+          <div style={styles.correlationValue}>{(stats?.total_change ?? 0).toFixed(3)}</div>
+          <div style={styles.correlationLabel}>累计变化</div>
+        </div>
+        <div style={styles.correlationItem}>
+          <div style={styles.correlationValue}>{(stats?.avg_daily_rate ?? 0).toFixed(4)}</div>
+          <div style={styles.correlationLabel}>平均速率</div>
+        </div>
+        <div style={styles.correlationItem}>
+          <div style={styles.correlationValue}>{(stats?.max_daily_rate ?? 0).toFixed(4)}</div>
+          <div style={styles.correlationLabel}>最大日速率</div>
+        </div>
+      </div>
+      <div style={styles.correlationCracks}>
+        {cracks.slice(0, 4).map(c => (
+          <div key={c.crack_point} style={styles.correlationCrackRow}>
+            <span style={styles.correlationCrackName}>{c.crack_point}</span>
+            <span style={styles.correlationCrackStrength}>{c.correlation_strength}</span>
+            <span style={styles.correlationCrackRate}>{c.avg_rate.toFixed(4)} mm/次</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
@@ -422,6 +514,91 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '11px',
     color: '#888',
     fontStyle: 'italic',
+  },
+  ticketButton: {
+    marginTop: '8px',
+    width: '100%',
+    padding: '6px 8px',
+    borderRadius: '4px',
+    border: '1px solid rgba(74, 255, 158, 0.5)',
+    backgroundColor: 'rgba(74, 255, 158, 0.15)',
+    color: '#4aff9e',
+    cursor: 'pointer',
+    fontSize: '12px',
+  },
+  correlationPanel: {
+    marginTop: '12px',
+    width: '100%',
+    border: '1px solid rgba(74, 158, 255, 0.25)',
+    borderRadius: '6px',
+    backgroundColor: 'rgba(20, 20, 40, 0.8)',
+    padding: '12px',
+  },
+  correlationTitle: {
+    color: '#fff',
+    fontSize: '13px',
+    fontWeight: 'bold',
+    marginBottom: '10px',
+  },
+  correlationGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '8px',
+    marginBottom: '10px',
+  },
+  correlationItem: {
+    backgroundColor: 'rgba(74, 158, 255, 0.1)',
+    borderRadius: '4px',
+    padding: '8px',
+    textAlign: 'center',
+  },
+  correlationValue: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: '14px',
+  },
+  correlationLabel: {
+    color: '#888',
+    fontSize: '11px',
+    marginTop: '2px',
+  },
+  correlationCracks: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+  correlationCrackRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    backgroundColor: 'rgba(40, 40, 60, 0.6)',
+    borderRadius: '4px',
+    padding: '6px 8px',
+  },
+  correlationCrackName: {
+    color: '#fff',
+    minWidth: '46px',
+    fontWeight: 'bold',
+  },
+  correlationCrackStrength: {
+    color: '#4a9eff',
+    fontSize: '11px',
+    textTransform: 'uppercase',
+  },
+  correlationCrackRate: {
+    marginLeft: 'auto',
+    color: '#aaa',
+    fontSize: '11px',
+  },
+  correlationLoading: {
+    marginTop: '12px',
+    color: '#888',
+    fontSize: '12px',
+  },
+  correlationEmpty: {
+    marginTop: '12px',
+    color: '#666',
+    fontSize: '12px',
   },
 };
 

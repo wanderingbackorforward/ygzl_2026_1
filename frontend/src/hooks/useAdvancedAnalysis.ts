@@ -65,6 +65,22 @@ export interface JointAlert {
   recommendation: string;
 }
 
+export interface JointCorrelation {
+  settlement_point: string;
+  settlement_stats: {
+    total_change: number;
+    avg_daily_rate: number;
+    max_daily_rate: number;
+  };
+  crack_analysis: Array<{
+    crack_point: string;
+    correlation_strength: string;
+    total_change: number;
+    avg_rate: number;
+  }>;
+  error?: string;
+}
+
 export interface ConstructionEvent {
   event_id: number;
   event_date: string;
@@ -101,6 +117,26 @@ export interface EventImpactAnalysis {
     medium_impact: number;
     max_rate_change: number;
   };
+}
+
+export interface ProfileStatistics {
+  points: Array<{
+    point_id: string;
+    chainage_m: number;
+    avg_value: number | null;
+    total_change: number | null;
+    trend_type: string | null;
+    alert_level: string | null;
+  }>;
+  max_settlement_point: {
+    point_id: string;
+    chainage_m: number;
+    avg_value: number | null;
+    total_change: number | null;
+    trend_type: string | null;
+    alert_level: string | null;
+  } | null;
+  total_points: number;
 }
 
 // Hook: Profile Data
@@ -231,6 +267,32 @@ export function useJointAlerts() {
   return { alerts, loading, refetch: fetchAlerts };
 }
 
+export function useJointCorrelation(settlementPoint: string | null) {
+  const [analysis, setAnalysis] = useState<JointCorrelation | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!settlementPoint) {
+      setAnalysis(null);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    fetch(`${API_BASE}/advanced/joint/correlation/${settlementPoint}`)
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch joint correlation');
+        return res.json();
+      })
+      .then(json => setAnalysis(json))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [settlementPoint]);
+
+  return { analysis, loading, error };
+}
+
 // Hook: Construction Events
 export function useConstructionEvents(filters?: { start?: string; end?: string; type?: string }) {
   const [events, setEvents] = useState<ConstructionEvent[]>([]);
@@ -304,6 +366,34 @@ export function useEventImpact(eventId: number | null, windowHours?: number) {
   return { analysis, loading, error };
 }
 
+export function useProfileStatistics() {
+  const [statistics, setStatistics] = useState<ProfileStatistics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchStatistics = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/advanced/profile/statistics`);
+      if (!res.ok) throw new Error('Failed to fetch profile statistics');
+      const json = await res.json();
+      setStatistics(json);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
+      setStatistics(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatistics();
+  }, [fetchStatistics]);
+
+  return { statistics, loading, error, refetch: fetchStatistics };
+}
+
 // Event CRUD operations
 export async function createEvent(data: Partial<ConstructionEvent>): Promise<ConstructionEvent> {
   const res = await fetch(`${API_BASE}/advanced/events`, {
@@ -330,4 +420,93 @@ export async function deleteEvent(eventId: number): Promise<void> {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error('Failed to delete event');
+}
+
+interface CreateTicketPayload {
+  pointId: string;
+  title: string;
+  description: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  anomalyType: string;
+  currentValue?: number;
+  threshold?: number;
+  sendEmail?: boolean;
+}
+
+interface CreateTicketResult {
+  success: boolean;
+  message?: string;
+  data?: {
+    ticket_id?: string;
+    ticket_number?: string;
+    point_id?: string;
+    priority?: string;
+  };
+}
+
+async function createSettlementTicket(payload: CreateTicketPayload): Promise<CreateTicketResult> {
+  const res = await fetch(`${API_BASE}/analysis/v2/settlement/create-ticket`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      point_id: payload.pointId,
+      title: payload.title,
+      description: payload.description,
+      severity: payload.severity === 'critical' ? 'high' : payload.severity,
+      anomaly_type: payload.anomalyType,
+      current_value: payload.currentValue,
+      threshold: payload.threshold,
+      send_email: payload.sendEmail !== false,
+    }),
+  });
+  const result = await res.json();
+  if (!res.ok || !result?.success) {
+    throw new Error(result?.message || 'Failed to create ticket');
+  }
+  return result;
+}
+
+export async function createJointAlertTicket(
+  alert: JointAlert,
+  sendEmail: boolean,
+): Promise<CreateTicketResult> {
+  const pointId = alert.settlement_point;
+  const title = `[${alert.settlement_point}+${alert.crack_point}] 联合预警`;
+  const description = `${alert.message}\n建议：${alert.recommendation}\n沉降速率：${alert.settlement_rate.toFixed(4)} mm/天\n裂缝速率：${alert.crack_rate.toFixed(4)} mm/天`;
+  const severity = alert.severity as 'low' | 'medium' | 'high' | 'critical';
+  return createSettlementTicket({
+    pointId,
+    title,
+    description,
+    severity,
+    anomalyType: 'joint_alert',
+    currentValue: alert.settlement_rate,
+    threshold: 0.05,
+    sendEmail,
+  });
+}
+
+export async function createEventImpactTicket(
+  eventTitle: string,
+  pointId: string,
+  impactLevel: string,
+  rateChange: number,
+  sendEmail: boolean,
+): Promise<CreateTicketResult> {
+  const severityMap: Record<string, 'low' | 'medium' | 'high'> = {
+    high: 'high',
+    medium: 'medium',
+    low: 'low',
+    none: 'low',
+  };
+  return createSettlementTicket({
+    pointId,
+    title: `[${pointId}] 施工事件影响预警`,
+    description: `施工事件：${eventTitle}\n影响等级：${impactLevel}\n速率变化：${rateChange.toFixed(4)} mm/天`,
+    severity: severityMap[impactLevel] || 'medium',
+    anomalyType: 'construction_event_impact',
+    currentValue: rateChange,
+    threshold: 0.05,
+    sendEmail,
+  });
 }

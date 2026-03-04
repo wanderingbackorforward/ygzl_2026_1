@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { ProfileChart, TimeSlider, JointDashboard, EventManager } from '../components/advanced';
-import { useProfileData, useAvailableDates } from '../hooks/useAdvancedAnalysis';
+import { useProfileData, useAvailableDates, useProfileStatistics } from '../hooks/useAdvancedAnalysis';
 
 import '../styles/variables.css';
 
@@ -42,7 +42,7 @@ const AdvancedAnalysis: React.FC = () => {
         </div>
         {activeTab === 'joint' && (
           <div style={styles.headerSub}>
-            <span style={styles.subLabel}>指标（预留）</span>
+            <span style={styles.subLabel}>指标</span>
             <select
               value={jointMetric}
               onChange={e => setJointMetric(e.target.value as JointMetric)}
@@ -52,14 +52,14 @@ const AdvancedAnalysis: React.FC = () => {
               <option value="crack">裂缝宽度</option>
               <option value="correlation">相关性/联动</option>
             </select>
-            <span style={styles.subHint}>后续可在此扩展“沉降/裂缝/联动”等筛选</span>
+            <span style={styles.subHint}>切换到“相关性/联动”可查看相关性摘要与联动结果</span>
           </div>
         )}
       </div>
 
       <div style={styles.content}>
         {activeTab === 'profile' && <ProfileTab />}
-        {activeTab === 'joint' && <JointTab />}
+        {activeTab === 'joint' && <JointTab metric={jointMetric} />}
         {activeTab === 'events' && <EventsTab />}
       </div>
     </div>
@@ -91,6 +91,7 @@ const ProfileTab: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const { dates, loading: datesLoading } = useAvailableDates();
   const { data, loading: dataLoading } = useProfileData(selectedDate);
+  const { statistics } = useProfileStatistics();
 
   const handleDateChange = useCallback((date: string) => {
     setSelectedDate(date);
@@ -144,7 +145,7 @@ const ProfileTab: React.FC = () => {
           <div style={styles.statsSection}>
             <StatCard
               label="点位总数"
-              value={data.profile.length.toString()}
+              value={(statistics?.total_points ?? data.profile.length).toString()}
               icon="map-marker-alt"
             />
             <StatCard
@@ -155,7 +156,9 @@ const ProfileTab: React.FC = () => {
             <StatCard
               label="最大沉降"
               value={
-                data.profile.length > 0
+                statistics?.max_settlement_point?.total_change !== null && statistics?.max_settlement_point?.total_change !== undefined
+                  ? `${statistics.max_settlement_point.total_change.toFixed(2)} mm`
+                  : data.profile.length > 0
                   ? `${Math.min(...data.profile.map(p => p.cumulative_change ?? 0)).toFixed(2)} mm`
                   : '-'
               }
@@ -163,9 +166,18 @@ const ProfileTab: React.FC = () => {
               highlight
             />
             <StatCard
-              label="地层数"
-              value={data.layers.length.toString()}
-              icon="layer-group"
+              label="最大沉降点"
+              value={statistics?.max_settlement_point?.point_id || '-'}
+              icon="crosshairs"
+            />
+            <StatCard
+              label="预警点位"
+              value={
+                statistics?.points
+                  ? statistics.points.filter(p => p.alert_level && p.alert_level !== 'normal').length.toString()
+                  : '-'
+              }
+              icon="exclamation-triangle"
             />
           </div>
         )}
@@ -175,10 +187,10 @@ const ProfileTab: React.FC = () => {
 };
 
 // Joint Tab
-const JointTab: React.FC = () => {
+const JointTab: React.FC<{ metric: JointMetric }> = ({ metric }) => {
   return (
     <div style={styles.tabContent}>
-      <JointDashboard />
+      <JointDashboard metric={metric} />
     </div>
   );
 };
@@ -322,7 +334,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   statsSection: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
+    gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
     gap: '16px',
     flexShrink: 0,
   },
