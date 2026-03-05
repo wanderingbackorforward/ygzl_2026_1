@@ -9,9 +9,51 @@ import '../styles/variables.css';
 type TabType = 'anomaly' | 'recommendation' | 'prediction' | 'correlation' | 'profile' | 'joint' | 'events';
 type JointMetric = 'settlement' | 'crack' | 'correlation';
 
+// 分析模块分组
+const analysisGroups = [
+  {
+    label: '第一阶段：智能诊断',
+    items: [
+      { id: 'anomaly' as TabType, label: '异常检测', icon: 'exclamation-triangle' },
+      { id: 'recommendation' as TabType, label: '处置建议', icon: 'clipboard-list' },
+    ],
+  },
+  {
+    label: '第二阶段：趋势预测',
+    items: [
+      { id: 'prediction' as TabType, label: '预测分析', icon: 'chart-area' },
+    ],
+  },
+  {
+    label: '第三阶段：关联分析',
+    items: [
+      { id: 'correlation' as TabType, label: '因果与空间', icon: 'project-diagram' },
+    ],
+  },
+  {
+    label: '额外功能',
+    items: [
+      { id: 'profile' as TabType, label: '纵断面', icon: 'chart-line' },
+      { id: 'joint' as TabType, label: '沉降+裂缝', icon: 'link' },
+      { id: 'events' as TabType, label: '施工事件', icon: 'calendar-alt' },
+    ],
+  },
+];
+
 const AdvancedAnalysis: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('anomaly');
   const [jointMetric, setJointMetric] = useState<JointMetric>('settlement');
+
+  // 获取当前激活的标签信息
+  const getActiveTabInfo = () => {
+    for (const group of analysisGroups) {
+      const item = group.items.find(i => i.id === activeTab);
+      if (item) return { group: group.label, item };
+    }
+    return null;
+  };
+
+  const activeInfo = getActiveTabInfo();
 
   return (
     <div style={styles.container}>
@@ -19,56 +61,34 @@ const AdvancedAnalysis: React.FC = () => {
       <div style={styles.header}>
         <div style={styles.headerTop}>
           <h1 style={styles.title}>高级分析</h1>
-          <div style={styles.tabs}>
-            <TabButton
-              active={activeTab === 'anomaly'}
-              onClick={() => setActiveTab('anomaly')}
-              icon="exclamation-triangle"
+
+          {/* 下拉选择器 */}
+          <div style={styles.selectorContainer}>
+            <label style={styles.selectorLabel}>分析模块:</label>
+            <select
+              value={activeTab}
+              onChange={e => setActiveTab(e.target.value as TabType)}
+              style={styles.selector}
             >
-              智能诊断
-            </TabButton>
-            <TabButton
-              active={activeTab === 'recommendation'}
-              onClick={() => setActiveTab('recommendation')}
-              icon="clipboard-list"
-            >
-              处置建议
-            </TabButton>
-            <TabButton
-              active={activeTab === 'prediction'}
-              onClick={() => setActiveTab('prediction')}
-              icon="chart-area"
-            >
-              趋势预测
-            </TabButton>
-            <TabButton
-              active={activeTab === 'correlation'}
-              onClick={() => setActiveTab('correlation')}
-              icon="project-diagram"
-            >
-              关联分析
-            </TabButton>
-            <TabButton
-              active={activeTab === 'profile'}
-              onClick={() => setActiveTab('profile')}
-              icon="chart-line"
-            >
-              纵断面
-            </TabButton>
-            <TabButton
-              active={activeTab === 'joint'}
-              onClick={() => setActiveTab('joint')}
-              icon="link"
-            >
-              沉降 + 裂缝
-            </TabButton>
-            <TabButton
-              active={activeTab === 'events'}
-              onClick={() => setActiveTab('events')}
-              icon="calendar-alt"
-            >
-              施工事件
-            </TabButton>
+              {analysisGroups.map(group => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.items.map(item => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+
+            {/* 当前选中的模块信息 */}
+            {activeInfo && (
+              <div style={styles.activeInfo}>
+                <i className={`fas fa-${activeInfo.item.icon}`} style={styles.activeIcon} />
+                <span style={styles.activeText}>{activeInfo.item.label}</span>
+                <span style={styles.activeGroup}>({activeInfo.group})</span>
+              </div>
+            )}
           </div>
         </div>
         {activeTab === 'joint' && (
@@ -100,25 +120,6 @@ const AdvancedAnalysis: React.FC = () => {
     </div>
   );
 };
-
-// Tab Button Component
-const TabButton: React.FC<{
-  active: boolean;
-  onClick: () => void;
-  icon: string;
-  children: React.ReactNode;
-}> = ({ active, onClick, icon, children }) => (
-  <button
-    style={{
-      ...styles.tabButton,
-      ...(active ? styles.tabButtonActive : {}),
-    }}
-    onClick={onClick}
-  >
-    <i className={`fas fa-${icon}`} style={styles.tabIcon} />
-    {children}
-  </button>
-);
 
 // Anomaly Tab
 const AnomalyTab: React.FC = () => {
@@ -236,7 +237,10 @@ const ProfileTab: React.FC = () => {
                 statistics?.max_settlement_point?.total_change !== null && statistics?.max_settlement_point?.total_change !== undefined
                   ? `${statistics.max_settlement_point.total_change.toFixed(2)} mm`
                   : data.profile.length > 0
-                  ? `${Math.min(...data.profile.map(p => p.cumulative_change ?? 0)).toFixed(2)} mm`
+                  ? (() => {
+                      const minValue = Math.min(...data.profile.map(p => p.cumulative_change ?? 0));
+                      return isFinite(minValue) ? `${minValue.toFixed(2)} mm` : '-';
+                    })()
                   : '-'
               }
               icon="arrow-down"
@@ -359,30 +363,51 @@ const styles: Record<string, React.CSSProperties> = {
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
   },
-  tabs: {
+  selectorContainer: {
     display: 'flex',
-    gap: '8px',
+    alignItems: 'center',
+    gap: '16px',
   },
-  tabButton: {
+  selectorLabel: {
+    fontSize: '14px',
+    fontWeight: '500',
+    color: '#888',
+    whiteSpace: 'nowrap',
+  },
+  selector: {
+    padding: '10px 16px',
+    backgroundColor: 'rgba(30, 30, 50, 0.8)',
+    border: '1px solid rgba(74, 158, 255, 0.3)',
+    borderRadius: '8px',
+    color: '#fff',
+    fontSize: '14px',
+    fontWeight: '500',
+    outline: 'none',
+    cursor: 'pointer',
+    minWidth: '200px',
+    transition: 'all 0.2s',
+  },
+  activeInfo: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    padding: '10px 20px',
-    backgroundColor: 'transparent',
+    padding: '8px 16px',
+    backgroundColor: 'rgba(74, 158, 255, 0.15)',
+    borderRadius: '20px',
     border: '1px solid rgba(74, 158, 255, 0.3)',
-    borderRadius: '6px',
-    color: '#888',
-    fontSize: '14px',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
   },
-  tabButtonActive: {
-    backgroundColor: 'rgba(74, 158, 255, 0.2)',
-    borderColor: '#4a9eff',
+  activeIcon: {
+    fontSize: '14px',
     color: '#4a9eff',
   },
-  tabIcon: {
+  activeText: {
     fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#4a9eff',
+  },
+  activeGroup: {
+    fontSize: '12px',
+    color: '#888',
   },
   content: {
     flex: 1,
