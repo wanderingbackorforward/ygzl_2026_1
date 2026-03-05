@@ -51,57 +51,73 @@ export function generateRealisticSettlement(
  * 生成批量异常检测结果
  */
 export function generateMockAnomalies(pointIds: string[]) {
-  const severityLevels = ['critical', 'high', 'medium', 'low', 'normal'];
-  const anomalyTypes = ['threshold', 'rate', 'trend', 'pattern'];
+  const results: any[] = [];
 
-  return pointIds.map(pointId => {
-    const pointIndex = parseInt(pointId.replace(/\D/g, '')) || 1;
-    const hasCritical = pointIndex % 7 === 0; // 每7个点有1个严重异常
-    const hasHigh = pointIndex % 4 === 0; // 每4个点有1个高风险
+  pointIds.forEach((pointId, index) => {
+    const anomalies: any[] = [];
+    const totalPoints = 100;
 
-    let severity: string;
-    let anomalyType: string;
-    let currentValue: number;
-    let threshold: number;
-    let reason: string;
-
-    if (hasCritical) {
-      severity = 'critical';
-      anomalyType = 'threshold';
-      currentValue = -35.2;
-      threshold = -30.0;
-      reason = '累积沉降超过安全阈值';
-    } else if (hasHigh) {
-      severity = 'high';
-      anomalyType = 'rate';
-      currentValue = -2.8;
-      threshold = -2.0;
-      reason = '沉降速率异常加快';
-    } else if (pointIndex % 3 === 0) {
-      severity = 'medium';
-      anomalyType = 'trend';
-      currentValue = -18.5;
-      threshold = -20.0;
-      reason = '沉降趋势持续增长';
-    } else {
-      severity = 'normal';
-      anomalyType = 'none';
-      currentValue = -12.3;
-      threshold = -30.0;
-      reason = '监测数据正常';
+    // 每7个点有1个严重异常
+    if (index % 7 === 0) {
+      anomalies.push({
+        point_id: pointId,
+        date: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        anomaly_type: 'spike',
+        severity: 'critical',
+        settlement: -35 - Math.random() * 10,
+        anomaly_score: 0.85 + Math.random() * 0.15,
+      });
     }
 
-    return {
+    // 每4个点有1个高风险
+    if (index % 4 === 0) {
+      anomalies.push({
+        point_id: pointId,
+        date: new Date(Date.now() - Math.random() * 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        anomaly_type: 'acceleration',
+        severity: 'high',
+        settlement: -25 - Math.random() * 5,
+        anomaly_score: 0.70 + Math.random() * 0.15,
+      });
+    }
+
+    // 每3个点有1个中等风险
+    if (index % 3 === 0) {
+      anomalies.push({
+        point_id: pointId,
+        date: new Date(Date.now() - Math.random() * 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        anomaly_type: 'trend',
+        severity: 'medium',
+        settlement: -18 - Math.random() * 5,
+        anomaly_score: 0.50 + Math.random() * 0.20,
+      });
+    }
+
+    results.push({
+      success: true,
       point_id: pointId,
-      severity,
-      anomaly_type: anomalyType,
-      current_value: currentValue,
-      threshold,
-      deviation: currentValue - threshold,
-      reason,
-      detected_at: new Date().toISOString(),
-    };
+      method: 'isolation_forest',
+      total_points: totalPoints,
+      anomaly_count: anomalies.length,
+      anomaly_rate: anomalies.length / totalPoints,
+      anomalies,
+    });
   });
+
+  const summary = {
+    total_points: pointIds.length,
+    total_anomalies: results.reduce((sum, r) => sum + r.anomaly_count, 0),
+    critical_count: results.reduce((sum, r) => sum + r.anomalies.filter((a: any) => a.severity === 'critical').length, 0),
+    high_count: results.reduce((sum, r) => sum + r.anomalies.filter((a: any) => a.severity === 'high').length, 0),
+    medium_count: results.reduce((sum, r) => sum + r.anomalies.filter((a: any) => a.severity === 'medium').length, 0),
+    low_count: results.reduce((sum, r) => sum + r.anomalies.filter((a: any) => a.severity === 'low').length, 0),
+  };
+
+  return {
+    success: true,
+    results,
+    summary,
+  };
 }
 
 /**
