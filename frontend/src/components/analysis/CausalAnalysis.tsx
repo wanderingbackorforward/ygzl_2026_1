@@ -29,9 +29,16 @@ interface EventImpactResult {
 export const CausalAnalysis: React.FC<CausalAnalysisProps> = ({
   pointIds = [],
 }) => {
-  const [selectedPoint, setSelectedPoint] = useState<string>('');
-  const [eventDate, setEventDate] = useState<string>('');
-  const [eventName, setEventName] = useState<string>('');
+  // 默认选择第一个点位和30天前的日期
+  const getDefaultDate = () => {
+    const date = new Date();
+    date.setDate(date.getDate() - 30);
+    return date.toISOString().split('T')[0];
+  };
+
+  const [selectedPoint, setSelectedPoint] = useState<string>(pointIds[0] || '');
+  const [eventDate, setEventDate] = useState<string>(getDefaultDate());
+  const [eventName, setEventName] = useState<string>('基坑开挖');
   const [controlPoints, setControlPoints] = useState<string[]>([]);
   const [method, setMethod] = useState<'DID' | 'SCM'>('DID');
   const [windowDays, setWindowDays] = useState<number>(30);
@@ -177,23 +184,32 @@ export const CausalAnalysis: React.FC<CausalAnalysisProps> = ({
         </div>
 
         {/* 分析按钮 */}
-        <button
-          style={styles.analyzeButton}
-          onClick={handleAnalyze}
-          disabled={loading || !selectedPoint || !eventDate}
-        >
-          {loading ? (
-            <>
-              <i className="fas fa-spinner fa-spin" style={{ marginRight: '8px' }} />
-              分析中...
-            </>
-          ) : (
-            <>
-              <i className="fas fa-chart-line" style={{ marginRight: '8px' }} />
-              开始分析
-            </>
+        <div style={styles.buttonGroup}>
+          <button
+            style={styles.analyzeButton}
+            onClick={handleAnalyze}
+            disabled={loading || !selectedPoint || !eventDate}
+          >
+            {loading ? (
+              <>
+                <i className="fas fa-spinner fa-spin" style={{ marginRight: '8px' }} />
+                分析中...
+              </>
+            ) : (
+              <>
+                <i className="fas fa-chart-line" style={{ marginRight: '8px' }} />
+                开始分析
+              </>
+            )}
+          </button>
+
+          {!result && !loading && (
+            <div style={styles.quickDemo}>
+              <i className="fas fa-info-circle" style={{ marginRight: '6px' }} />
+              已自动填充演示参数，直接点击"开始分析"即可查看效果
+            </div>
           )}
-        </button>
+        </div>
       </div>
 
       {/* 错误提示 */}
@@ -323,6 +339,11 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '12px',
     color: '#666',
   },
+  buttonGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
   analyzeButton: {
     width: '100%',
     padding: '12px 20px',
@@ -337,6 +358,17 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  quickDemo: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '10px 16px',
+    backgroundColor: 'rgba(82, 196, 26, 0.1)',
+    borderRadius: '6px',
+    border: '1px solid rgba(82, 196, 26, 0.3)',
+    color: '#52c41a',
+    fontSize: '13px',
   },
   errorContainer: {
     display: 'flex',

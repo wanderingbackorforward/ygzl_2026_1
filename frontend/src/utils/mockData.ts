@@ -130,45 +130,45 @@ export function generateMockRecommendations(anomalies: any[]) {
     if (anomaly.severity === 'critical') {
       recommendations.push({
         id: `rec-${anomaly.point_id}-1`,
-        point_id: anomaly.point_id,
         priority: 'urgent',
-        action: 'immediate_inspection',
+        action: 'inspect',
         title: '立即现场巡检',
-        description: `${anomaly.point_id} 点位累积沉降已超过安全阈值，需立即安排现场巡检，评估结构安全性。`,
+        reason: `${anomaly.point_id} 点位累积沉降已超过安全阈值，需立即安排现场巡检，评估结构安全性。`,
+        related_anomalies: [anomaly.point_id],
         estimated_time: '2小时内',
-        responsible: '现场工程师',
+        point_ids: [anomaly.point_id],
       });
       recommendations.push({
         id: `rec-${anomaly.point_id}-2`,
-        point_id: anomaly.point_id,
         priority: 'urgent',
         action: 'report',
         title: '上报技术负责人',
-        description: '准备详细的沉降分析报告，包括历史数据、趋势分析和风险评估。',
+        reason: '准备详细的沉降分析报告，包括历史数据、趋势分析和风险评估。',
+        related_anomalies: [anomaly.point_id],
         estimated_time: '4小时内',
-        responsible: '技术负责人',
+        point_ids: [anomaly.point_id],
       });
     } else if (anomaly.severity === 'high') {
       recommendations.push({
         id: `rec-${anomaly.point_id}-1`,
-        point_id: anomaly.point_id,
         priority: 'high',
-        action: 'increase_monitoring',
+        action: 'monitor',
         title: '加密监测频率',
-        description: `${anomaly.point_id} 点位沉降速率异常，建议将监测频率提高至每日2次。`,
+        reason: `${anomaly.point_id} 点位沉降速率异常，建议将监测频率提高至每日2次。`,
+        related_anomalies: [anomaly.point_id],
         estimated_time: '24小时内',
-        responsible: '监测人员',
+        point_ids: [anomaly.point_id],
       });
     } else if (anomaly.severity === 'medium') {
       recommendations.push({
         id: `rec-${anomaly.point_id}-1`,
-        point_id: anomaly.point_id,
         priority: 'medium',
-        action: 'continue_monitoring',
+        action: 'monitor',
         title: '持续关注',
-        description: `${anomaly.point_id} 点位沉降趋势需持续关注，保持现有监测频率。`,
+        reason: `${anomaly.point_id} 点位沉降趋势需持续关注，保持现有监测频率。`,
+        related_anomalies: [anomaly.point_id],
         estimated_time: '本周内',
-        responsible: '监测人员',
+        point_ids: [anomaly.point_id],
       });
     }
   });
