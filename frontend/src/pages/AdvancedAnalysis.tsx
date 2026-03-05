@@ -1,14 +1,15 @@
 import React, { useState, useCallback } from 'react';
 import { ProfileChart, TimeSlider, JointDashboard, EventManager } from '../components/advanced';
+import { AnomalyDashboard, RecommendationDashboard } from '../components/analysis';
 import { useProfileData, useAvailableDates, useProfileStatistics } from '../hooks/useAdvancedAnalysis';
 
 import '../styles/variables.css';
 
-type TabType = 'profile' | 'joint' | 'events';
+type TabType = 'anomaly' | 'recommendation' | 'profile' | 'joint' | 'events';
 type JointMetric = 'settlement' | 'crack' | 'correlation';
 
 const AdvancedAnalysis: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('profile');
+  const [activeTab, setActiveTab] = useState<TabType>('anomaly');
   const [jointMetric, setJointMetric] = useState<JointMetric>('settlement');
 
   return (
@@ -17,6 +18,20 @@ const AdvancedAnalysis: React.FC = () => {
         <div style={styles.headerTop}>
           <h1 style={styles.title}>高级分析</h1>
           <div style={styles.tabs}>
+            <TabButton
+              active={activeTab === 'anomaly'}
+              onClick={() => setActiveTab('anomaly')}
+              icon="exclamation-triangle"
+            >
+              智能诊断
+            </TabButton>
+            <TabButton
+              active={activeTab === 'recommendation'}
+              onClick={() => setActiveTab('recommendation')}
+              icon="clipboard-list"
+            >
+              处置建议
+            </TabButton>
             <TabButton
               active={activeTab === 'profile'}
               onClick={() => setActiveTab('profile')}
@@ -52,12 +67,14 @@ const AdvancedAnalysis: React.FC = () => {
               <option value="crack">裂缝宽度</option>
               <option value="correlation">相关性/联动</option>
             </select>
-            <span style={styles.subHint}>切换到“相关性/联动”可查看相关性摘要与联动结果</span>
+            <span style={styles.subHint}>切换到"相关性/联动"可查看相关性摘要与联动结果</span>
           </div>
         )}
       </div>
 
       <div style={styles.content}>
+        {activeTab === 'anomaly' && <AnomalyTab />}
+        {activeTab === 'recommendation' && <RecommendationTab />}
         {activeTab === 'profile' && <ProfileTab />}
         {activeTab === 'joint' && <JointTab metric={jointMetric} />}
         {activeTab === 'events' && <EventsTab />}
@@ -84,6 +101,24 @@ const TabButton: React.FC<{
     {children}
   </button>
 );
+
+// Anomaly Tab
+const AnomalyTab: React.FC = () => {
+  return (
+    <div style={styles.tabContent}>
+      <AnomalyDashboard />
+    </div>
+  );
+};
+
+// Recommendation Tab
+const RecommendationTab: React.FC = () => {
+  return (
+    <div style={styles.tabContent}>
+      <RecommendationDashboard />
+    </div>
+  );
+};
 
 // Profile Tab
 const ProfileTab: React.FC = () => {
