@@ -10,3 +10,7 @@ export { PredictionDashboard } from './PredictionDashboard';
 export { PredictionChart } from './PredictionChart';
 export { RiskPointList } from './RiskPointList';
 export { ModelComparisonTable } from './ModelComparisonTable';
+export { CorrelationDashboard } from './CorrelationDashboard';
+export { CausalAnalysis } from './CausalAnalysis';
+export { EventImpactChart } from './EventImpactChart';
+export { SpatialCorrelationHeatmap } from './SpatialCorrelationHeatmap';

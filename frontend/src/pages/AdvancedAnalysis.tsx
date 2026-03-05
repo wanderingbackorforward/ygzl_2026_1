@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import { ProfileChart, TimeSlider, JointDashboard, EventManager } from '../components/advanced';
-import { AnomalyDashboard, RecommendationDashboard, PredictionDashboard } from '../components/analysis';
+import { AnomalyDashboard, RecommendationDashboard, PredictionDashboard, CorrelationDashboard } from '../components/analysis';
 import { useProfileData, useAvailableDates, useProfileStatistics } from '../hooks/useAdvancedAnalysis';
 
 import '../styles/variables.css';
 
-type TabType = 'anomaly' | 'recommendation' | 'prediction' | 'profile' | 'joint' | 'events';
+type TabType = 'anomaly' | 'recommendation' | 'prediction' | 'correlation' | 'profile' | 'joint' | 'events';
 type JointMetric = 'settlement' | 'crack' | 'correlation';
 
 const AdvancedAnalysis: React.FC = () => {
@@ -38,6 +38,13 @@ const AdvancedAnalysis: React.FC = () => {
               icon="chart-area"
             >
               趋势预测
+            </TabButton>
+            <TabButton
+              active={activeTab === 'correlation'}
+              onClick={() => setActiveTab('correlation')}
+              icon="project-diagram"
+            >
+              关联分析
             </TabButton>
             <TabButton
               active={activeTab === 'profile'}
@@ -83,6 +90,7 @@ const AdvancedAnalysis: React.FC = () => {
         {activeTab === 'anomaly' && <AnomalyTab />}
         {activeTab === 'recommendation' && <RecommendationTab />}
         {activeTab === 'prediction' && <PredictionTab />}
+        {activeTab === 'correlation' && <CorrelationTab />}
         {activeTab === 'profile' && <ProfileTab />}
         {activeTab === 'joint' && <JointTab metric={jointMetric} />}
         {activeTab === 'events' && <EventsTab />}
@@ -136,6 +144,18 @@ const PredictionTab: React.FC = () => {
   return (
     <div style={styles.tabContent}>
       <PredictionDashboard pointIds={pointIds} threshold={-30} />
+    </div>
+  );
+};
+
+// Correlation Tab
+const CorrelationTab: React.FC = () => {
+  // 获取所有监测点位ID
+  const pointIds = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10'];
+
+  return (
+    <div style={styles.tabContent}>
+      <CorrelationDashboard pointIds={pointIds} />
     </div>
   );
 };
