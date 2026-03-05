@@ -3,6 +3,7 @@ import type { Anomaly, Recommendation } from '../../types/analysis';
 import { RecommendationList } from './RecommendationList';
 import { mlBatchDetectAnomalies } from '../../lib/mlApi';
 import { generateRecommendations } from '../../utils/analysis';
+import { fetchRecommendations } from '../../utils/apiClient';
 
 export const RecommendationDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -22,24 +23,24 @@ export const RecommendationDashboard: React.FC = () => {
       // 获取所有监测点ID
       const pointIds = Array.from({ length: 25 }, (_, i) => `S${i + 1}`);
 
-      // 批量检测异常
-      const result = await mlBatchDetectAnomalies(pointIds, 'isolation_forest', 0.05);
+      // 使用支持自动降级的 API 客户端
+      const result = await fetchRecommendations(pointIds);
 
       if (result.success) {
-        // 合并所有异常
-        const allAnomalies: Anomaly[] = [];
-        result.results.forEach(pointResult => {
-          pointResult.anomalies.forEach(anomaly => {
-            allAnomalies.push({
-              ...anomaly,
-              point_name: anomaly.point_id,
-            });
-          });
-        });
+        // 转换为 Recommendation 类型
+        const allRecommendations: Recommendation[] = result.recommendations.map((item: any) => ({
+          id: item.id,
+          point_id: item.point_id,
+          point_name: item.point_id,
+          priority: item.priority,
+          action: item.action,
+          title: item.title,
+          description: item.description,
+          estimated_time: item.estimated_time,
+          responsible: item.responsible,
+        }));
 
-        // 根据异常生成建议
-        const generatedRecommendations = generateRecommendations(allAnomalies);
-        setRecommendations(generatedRecommendations);
+        setRecommendations(allRecommendations);
       } else {
         setError('加载建议数据失败');
       }

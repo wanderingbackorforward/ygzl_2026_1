@@ -3,6 +3,7 @@ import { PredictionChart } from './PredictionChart';
 import { RiskPointList } from './RiskPointList';
 import { ModelComparisonTable } from './ModelComparisonTable';
 import type { PredictionResult } from '../../types/analysis';
+import { fetchAutoPrediction, fetchModelComparison } from '../../utils/apiClient';
 
 interface PredictionDashboardProps {
   pointIds?: string[];
@@ -34,11 +35,7 @@ export const PredictionDashboard: React.FC<PredictionDashboardProps> = ({
       const results: PredictionResult[] = [];
 
       for (const pointId of pointIds) {
-        const response = await fetch(`/api/ml/auto-predict/${pointId}?forecast_days=30`);
-        if (!response.ok) {
-          throw new Error(`预测失败: ${pointId}`);
-        }
-        const data = await response.json();
+        const data = await fetchAutoPrediction(pointId, 30);
         results.push(data);
       }
 
@@ -53,13 +50,9 @@ export const PredictionDashboard: React.FC<PredictionDashboardProps> = ({
     }
   };
 
-  const fetchModelComparison = async (pointId: string) => {
+  const fetchModelComparisonData = async (pointId: string) => {
     try {
-      const response = await fetch(`/api/ml/compare-models/${pointId}?forecast_days=30`);
-      if (!response.ok) {
-        throw new Error('模型对比失败');
-      }
-      const data = await response.json();
+      const data = await fetchModelComparison(pointId);
       setComparisonData(data);
       setShowComparison(true);
     } catch (err) {
@@ -180,7 +173,7 @@ export const PredictionDashboard: React.FC<PredictionDashboardProps> = ({
         {selectedPoint && (
           <button
             style={styles.compareButton}
-            onClick={() => fetchModelComparison(selectedPoint)}
+            onClick={() => fetchModelComparisonData(selectedPoint)}
           >
             <i className="fas fa-balance-scale" style={{ marginRight: '6px' }} />
             模型对比

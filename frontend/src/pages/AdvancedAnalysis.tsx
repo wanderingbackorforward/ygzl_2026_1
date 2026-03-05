@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { ProfileChart, TimeSlider, JointDashboard, EventManager } from '../components/advanced';
 import { AnomalyDashboard, RecommendationDashboard, PredictionDashboard, CorrelationDashboard } from '../components/analysis';
+import { MockModeIndicator } from '../components/common/MockModeIndicator';
 import { useProfileData, useAvailableDates, useProfileStatistics } from '../hooks/useAdvancedAnalysis';
 
 import '../styles/variables.css';
@@ -14,6 +15,7 @@ const AdvancedAnalysis: React.FC = () => {
 
   return (
     <div style={styles.container}>
+      <MockModeIndicator />
       <div style={styles.header}>
         <div style={styles.headerTop}>
           <h1 style={styles.title}>高级分析</h1>

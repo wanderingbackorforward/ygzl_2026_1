@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CausalAnalysis } from './CausalAnalysis';
 import { SpatialCorrelationHeatmap } from './SpatialCorrelationHeatmap';
+import { fetchSpatialCorrelation } from '../../utils/apiClient';
 
 interface CorrelationDashboardProps {
   pointIds?: string[];
@@ -32,24 +33,16 @@ export const CorrelationDashboard: React.FC<CorrelationDashboardProps> = ({
 
   useEffect(() => {
     if (analysisType === 'spatial') {
-      fetchSpatialCorrelation();
+      fetchSpatialCorrelationData();
     }
   }, [analysisType, distanceThreshold]);
 
-  const fetchSpatialCorrelation = async () => {
+  const fetchSpatialCorrelationData = async () => {
     setSpatialLoading(true);
     setSpatialError(null);
 
     try {
-      const response = await fetch(
-        `/api/ml/spatial/correlation?distance_threshold=${distanceThreshold}`
-      );
-
-      if (!response.ok) {
-        throw new Error('空间关联分析失败');
-      }
-
-      const data = await response.json();
+      const data = await fetchSpatialCorrelation(distanceThreshold);
       setSpatialData(data);
     } catch (err) {
       setSpatialError(err instanceof Error ? err.message : '加载失败');
@@ -144,7 +137,7 @@ export const CorrelationDashboard: React.FC<CorrelationDashboardProps> = ({
               step={10}
               style={styles.configInput}
             />
-            <button style={styles.refreshButton} onClick={fetchSpatialCorrelation}>
+            <button style={styles.refreshButton} onClick={fetchSpatialCorrelationData}>
               <i className="fas fa-sync-alt" style={{ marginRight: '6px' }} />
               刷新
             </button>
@@ -171,7 +164,7 @@ export const CorrelationDashboard: React.FC<CorrelationDashboardProps> = ({
               <div style={styles.errorContainer}>
                 <i className="fas fa-exclamation-circle" style={styles.errorIcon} />
                 <div style={styles.errorText}>{spatialError}</div>
-                <button style={styles.retryButton} onClick={fetchSpatialCorrelation}>
+                <button style={styles.retryButton} onClick={fetchSpatialCorrelationData}>
                   <i className="fas fa-redo" style={{ marginRight: '6px' }} />
                   重试
                 </button>

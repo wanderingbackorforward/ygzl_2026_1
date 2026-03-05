@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { EventImpactChart } from './EventImpactChart';
+import { fetchCausalAnalysis } from '../../utils/apiClient';
 
 interface CausalAnalysisProps {
   pointIds?: string[];
@@ -48,25 +49,14 @@ export const CausalAnalysis: React.FC<CausalAnalysisProps> = ({
     setError(null);
 
     try {
-      const response = await fetch('/api/ml/causal/event-impact', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          point_id: selectedPoint,
-          event_date: eventDate,
-          control_point_ids: controlPoints.length > 0 ? controlPoints : undefined,
-          method,
-          window_days: windowDays,
-        }),
+      const data = await fetchCausalAnalysis({
+        point_id: selectedPoint,
+        event_date: eventDate,
+        control_point_ids: controlPoints.length > 0 ? controlPoints : undefined,
+        method,
+        window_days: windowDays,
       });
 
-      if (!response.ok) {
-        throw new Error('因果分析失败');
-      }
-
-      const data = await response.json();
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : '分析失败');

@@ -4,6 +4,7 @@ import { AnomalyStatCards } from './AnomalyStatCards';
 import { AnomalyList } from './AnomalyList';
 import { mlBatchDetectAnomalies } from '../../lib/mlApi';
 import { calculateAnomalyStatistics } from '../../utils/analysis';
+import { fetchBatchAnomalies } from '../../utils/apiClient';
 
 export const AnomalyDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -21,24 +22,25 @@ export const AnomalyDashboard: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // 获取所有监测点ID（这里需要从实际数据源获取）
-      // 暂时使用示例数据
+      // 获取所有监测点ID
       const pointIds = Array.from({ length: 25 }, (_, i) => `S${i + 1}`);
 
-      // 批量检测异常
-      const result = await mlBatchDetectAnomalies(pointIds, 'isolation_forest', 0.05);
+      // 使用支持自动降级的 API 客户端
+      const result = await fetchBatchAnomalies(pointIds);
 
       if (result.success) {
-        // 合并所有异常
-        const allAnomalies: Anomaly[] = [];
-        result.results.forEach((pointResult: AnomalyDetectionResult) => {
-          pointResult.anomalies.forEach(anomaly => {
-            allAnomalies.push({
-              ...anomaly,
-              point_name: anomaly.point_id, // 可以从监测点数据中获取名称
-            });
-          });
-        });
+        // 转换为 Anomaly 类型
+        const allAnomalies: Anomaly[] = result.anomalies.map((item: any) => ({
+          point_id: item.point_id,
+          point_name: item.point_id,
+          date: item.detected_at || new Date().toISOString().split('T')[0],
+          value: item.current_value,
+          severity: item.severity,
+          anomaly_type: item.anomaly_type,
+          reason: item.reason,
+          threshold: item.threshold,
+          deviation: item.deviation,
+        }));
 
         setAnomalies(allAnomalies);
       } else {
