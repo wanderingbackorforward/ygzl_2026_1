@@ -28,19 +28,24 @@ export const AnomalyDashboard: React.FC = () => {
       // 使用支持自动降级的 API 客户端
       const result = await fetchBatchAnomalies(pointIds);
 
-      if (result.success) {
-        // 转换为 Anomaly 类型
-        const allAnomalies: Anomaly[] = result.anomalies.map((item: any) => ({
-          point_id: item.point_id,
-          point_name: item.point_id,
-          date: item.detected_at || new Date().toISOString().split('T')[0],
-          value: item.current_value,
-          severity: item.severity,
-          anomaly_type: item.anomaly_type,
-          reason: item.reason,
-          threshold: item.threshold,
-          deviation: item.deviation,
-        }));
+      if (result.success && result.results) {
+        // 从 results 中提取所有异常
+        const allAnomalies: Anomaly[] = [];
+        result.results.forEach((detectionResult: any) => {
+          if (detectionResult.anomalies && Array.isArray(detectionResult.anomalies)) {
+            detectionResult.anomalies.forEach((anomaly: any) => {
+              allAnomalies.push({
+                point_id: anomaly.point_id,
+                point_name: anomaly.point_id,
+                date: anomaly.date,
+                settlement: anomaly.settlement,
+                anomaly_score: anomaly.anomaly_score,
+                severity: anomaly.severity,
+                anomaly_type: anomaly.anomaly_type,
+              });
+            });
+          }
+        });
 
         setAnomalies(allAnomalies);
       } else {

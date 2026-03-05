@@ -200,6 +200,21 @@ const ImpactDisplay: React.FC<{
   eventKeyPrefix: string | number;
 }> = ({ analysis, onCreateTicket, creatingKey, eventKeyPrefix }) => {
   const { event, affected_points, summary } = analysis;
+  const toNumber = (value: unknown): number | null => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  };
+  const formatFixed = (value: unknown, digits: number): string => {
+    const num = toNumber(value);
+    return num === null ? '-' : num.toFixed(digits);
+  };
+  const points = Array.isArray(affected_points) ? affected_points : [];
 
   const impactLevelColors: Record<string, string> = {
     high: '#ff4444',
@@ -223,28 +238,31 @@ const ImpactDisplay: React.FC<{
 
       <div style={styles.summaryGrid}>
         <div style={styles.summaryItem}>
-          <div style={styles.summaryValue}>{summary.total_analyzed}</div>
+          <div style={styles.summaryValue}>{summary?.total_analyzed ?? '-'}</div>
           <div style={styles.summaryLabel}>分析点位</div>
         </div>
         <div style={{ ...styles.summaryItem, ...styles.summaryHigh }}>
-          <div style={styles.summaryValue}>{summary.high_impact}</div>
+          <div style={styles.summaryValue}>{summary?.high_impact ?? '-'}</div>
           <div style={styles.summaryLabel}>高影响</div>
         </div>
         <div style={{ ...styles.summaryItem, ...styles.summaryMedium }}>
-          <div style={styles.summaryValue}>{summary.medium_impact}</div>
+          <div style={styles.summaryValue}>{summary?.medium_impact ?? '-'}</div>
           <div style={styles.summaryLabel}>中影响</div>
         </div>
         <div style={styles.summaryItem}>
-          <div style={styles.summaryValue}>{summary.max_rate_change.toFixed(3)}</div>
+          <div style={styles.summaryValue}>{formatFixed(summary?.max_rate_change, 3)}</div>
           <div style={styles.summaryLabel}>最大变化率</div>
         </div>
       </div>
 
       <div style={styles.pointsHeader}>受影响点位</div>
       <div style={styles.affectedPointsList}>
-        {affected_points.slice(0, 10).map((p: any, idx: number) => {
+        {points.slice(0, 10).map((p: any, idx: number) => {
           const key = `${eventKeyPrefix}-${p.point_id}`;
           const creating = creatingKey === key;
+          const rateChange = toNumber(p?.rate_change);
+          const canCreateTicket =
+            rateChange !== null && (p.impact_level === 'high' || p.impact_level === 'medium');
           return (
           <div key={idx} style={styles.affectedPoint}>
             <span style={styles.pointName}>{p.point_id}</span>
@@ -257,14 +275,13 @@ const ImpactDisplay: React.FC<{
               {impactLevelLabels[p.impact_level] || p.impact_level}
             </span>
             <span style={styles.rateChange}>
-              {p.rate_change > 0 ? '+' : ''}
-              {p.rate_change.toFixed(3)} mm/天
+              {rateChange === null ? '-' : `${rateChange > 0 ? '+' : ''}${rateChange.toFixed(3)} mm/天`}
             </span>
-            {(p.impact_level === 'high' || p.impact_level === 'medium') && (
+            {canCreateTicket && (
               <button
                 style={styles.createTicketButton}
                 disabled={creating}
-                onClick={() => onCreateTicket(p.point_id, p.impact_level, p.rate_change)}
+                onClick={() => onCreateTicket(p.point_id, p.impact_level, rateChange)}
               >
                 {creating ? '创建中...' : '建单'}
               </button>

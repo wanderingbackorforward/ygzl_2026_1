@@ -76,10 +76,7 @@ export async function fetchBatchAnomalies(pointIds: string[]) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ point_ids: pointIds }),
     },
-    () => ({
-      success: true,
-      anomalies: generateMockAnomalies(pointIds),
-    })
+    () => generateMockAnomalies(pointIds)
   );
 }
 
@@ -91,10 +88,17 @@ export async function fetchRecommendations(pointIds: string[]) {
     '/api/analysis/v2/settlement/recommendations',
     undefined,
     () => {
-      const anomalies = generateMockAnomalies(pointIds);
+      const batchResult = generateMockAnomalies(pointIds);
+      // 从 results 中提取所有异常
+      const allAnomalies: any[] = [];
+      batchResult.results.forEach((result: any) => {
+        if (result.anomalies && Array.isArray(result.anomalies)) {
+          allAnomalies.push(...result.anomalies);
+        }
+      });
       return {
         success: true,
-        recommendations: generateMockRecommendations(anomalies),
+        recommendations: generateMockRecommendations(allAnomalies),
       };
     }
   );

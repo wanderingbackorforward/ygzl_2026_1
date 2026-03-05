@@ -191,7 +191,11 @@ export function generateMockPrediction(
   const recentData = historical.slice(-30);
   const trend = (recentData[recentData.length - 1].value - recentData[0].value) / 30;
 
-  const forecast: any[] = [];
+  const forecastDates: string[] = [];
+  const forecastValues: number[] = [];
+  const lowerBounds: number[] = [];
+  const upperBounds: number[] = [];
+
   let currentValue = lastValue;
 
   for (let i = 1; i <= forecastDays; i++) {
@@ -205,23 +209,31 @@ export function generateMockPrediction(
     // 置信区间（±15%）
     const confidence = Math.abs(currentValue) * 0.15;
 
-    forecast.push({
-      date: date.toISOString().split('T')[0],
-      predicted: parseFloat(currentValue.toFixed(2)),
-      lower_bound: parseFloat((currentValue - confidence).toFixed(2)),
-      upper_bound: parseFloat((currentValue + confidence).toFixed(2)),
-    });
+    forecastDates.push(date.toISOString().split('T')[0]);
+    forecastValues.push(parseFloat(currentValue.toFixed(2)));
+    lowerBounds.push(parseFloat((currentValue - confidence).toFixed(2)));
+    upperBounds.push(parseFloat((currentValue + confidence).toFixed(2)));
   }
 
   return {
+    success: true,
     point_id: pointId,
-    model: 'ARIMA',
-    historical: historical.slice(-30), // 最近30天
-    forecast,
-    metrics: {
-      mae: 0.45,
-      rmse: 0.62,
-      mape: 3.2,
+    selected_model: 'arima',
+    model_selection_info: {
+      best_score: 0.92,
+      metric: 'mape',
+      data_characteristics: {
+        data_size: 90,
+        trend_strength: 0.75,
+        volatility: 0.35,
+        seasonality_strength: 0.15,
+      },
+    },
+    forecast: {
+      dates: forecastDates,
+      values: forecastValues,
+      lower_bound: lowerBounds,
+      upper_bound: upperBounds,
     },
   };
 }
@@ -231,10 +243,12 @@ export function generateMockPrediction(
  */
 export function generateMockModelComparison(pointId: string) {
   return {
+    success: true,
     point_id: pointId,
+    best_model: 'arima',
     models: [
       {
-        name: 'ARIMA',
+        name: 'arima',
         mae: 0.45,
         rmse: 0.62,
         mape: 3.2,
@@ -242,7 +256,7 @@ export function generateMockModelComparison(pointId: string) {
         is_best: true,
       },
       {
-        name: 'SARIMA',
+        name: 'sarima',
         mae: 0.52,
         rmse: 0.71,
         mape: 3.8,
@@ -250,7 +264,7 @@ export function generateMockModelComparison(pointId: string) {
         is_best: false,
       },
       {
-        name: 'Prophet',
+        name: 'prophet',
         mae: 0.58,
         rmse: 0.79,
         mape: 4.2,
