@@ -1,7 +1,6 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
-
-from modules.db.repos.supabase_http_repo import SupabaseHttpRepo
+from modules.db.vendor import get_repo
 
 module_bp = Blueprint('modules', __name__, url_prefix='/api/modules')
 
@@ -30,7 +29,7 @@ DEFAULT_MODULES = [
 
 
 def _get_repo():
-    return SupabaseHttpRepo()
+    return get_repo()
 
 
 @module_bp.route('', methods=['GET'])
