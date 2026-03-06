@@ -99,6 +99,17 @@
   color: white;
 }
 
+.dashboard-card__action-btn--danger {
+  background: rgba(255, 62, 95, 0.1);
+  border-color: rgba(255, 62, 95, 0.2);
+}
+
+.dashboard-card__action-btn--danger:hover {
+  background: rgba(255, 62, 95, 0.25);
+  border-color: rgba(255, 62, 95, 0.4);
+  color: #ff3e5f;
+}
+
 .dashboard-card__action-btn--active {
   background: rgba(0, 229, 255, 0.3);
   color: var(--primary-color);

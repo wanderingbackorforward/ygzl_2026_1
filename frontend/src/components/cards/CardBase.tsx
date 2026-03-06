@@ -7,6 +7,7 @@ export interface CardBaseProps {
   collapsed?: boolean;
   onToggleCollapse?: () => void;
   onFullscreen?: () => void;
+  onRemove?: () => void;
   loading?: boolean;
   error?: string | null;
   children: React.ReactNode;
@@ -21,6 +22,7 @@ export const CardBase: React.FC<CardBaseProps> = ({
   collapsed = false,
   onToggleCollapse,
   onFullscreen,
+  onRemove,
   loading = false,
   error = null,
   children,
@@ -36,6 +38,11 @@ export const CardBase: React.FC<CardBaseProps> = ({
     e.stopPropagation();
     onFullscreen?.();
   }, [onFullscreen]);
+
+  const handleRemoveClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onRemove?.();
+  }, [onRemove]);
 
   return (
     <div
@@ -54,6 +61,16 @@ export const CardBase: React.FC<CardBaseProps> = ({
 
         <div className="dashboard-card__actions">
           {headerExtra}
+
+          {onRemove && (
+            <button
+              className="dashboard-card__action-btn dashboard-card__action-btn--danger"
+              onClick={handleRemoveClick}
+              title="移除卡片"
+            >
+              <i className="fas fa-times" />
+            </button>
+          )}
 
           {onToggleCollapse && (
             <button

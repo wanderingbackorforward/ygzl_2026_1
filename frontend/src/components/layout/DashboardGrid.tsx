@@ -13,6 +13,7 @@ interface DashboardGridProps {
   pageId: string;
   cards: CardConfig[];
   onCardFullscreen?: (cardId: string) => void;
+  onRemoveCard?: (cardId: string) => void;
 }
 
 function getCurrentBreakpoint(width: number): Breakpoint {
@@ -26,6 +27,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
   pageId,
   cards,
   onCardFullscreen,
+  onRemoveCard,
 }) => {
   const {
     layouts,
@@ -200,6 +202,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
                 collapsed={collapsed}
                 onToggleCollapse={() => toggleCollapse(cardId)}
                 onFullscreen={() => onCardFullscreen?.(cardId)}
+                onRemove={onRemoveCard ? () => onRemoveCard(cardId) : undefined}
               >
                 <CardComponent
                   cardId={cardId}
