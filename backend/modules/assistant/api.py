@@ -55,21 +55,38 @@ def _format_context(ctx: Any) -> str:
         return ""
 
     lines = []
+    page_title = ctx.get("pageTitle") or "未知页面"
+
+    lines.append(f"### 当前页面数据：{page_title}")
+
     snapshot = ctx.get("dataSnapshot") or {}
     summary = snapshot.get("summary") or {}
     stats = snapshot.get("statistics") or {}
+    metadata = ctx.get("metadata") or {}
 
     if summary:
-        lines.append("### Data Summary")
+        lines.append("\n**数据摘要**：")
         for key, val in summary.items():
             if val is not None:
                 lines.append(f"- {key}: {val}")
 
     if stats:
-        lines.append("\n### Statistics")
-        for key, val in stats.items():
-            if val is not None:
-                lines.append(f"- {key}: {val}")
+        lines.append("\n**统计信息**：")
+        total = stats.get("totalCount")
+        anomaly = stats.get("anomalyCount")
+        normal = stats.get("normalCount")
+        if total is not None:
+            lines.append(f"- 总数: {total}")
+        if anomaly is not None:
+            lines.append(f"- 异常数: {anomaly}")
+        if normal is not None:
+            lines.append(f"- 正常数: {normal}")
+
+    if metadata:
+        has_anomalies = metadata.get("hasAnomalies")
+        if has_anomalies is not None:
+            status = "存在异常" if has_anomalies else "全部正常"
+            lines.append(f"\n**状态**: {status}")
 
     return "\n".join(lines) if lines else ""
 
