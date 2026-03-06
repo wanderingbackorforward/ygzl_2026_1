@@ -9,6 +9,67 @@ const IS_MOBILE = import.meta.env.VITE_MOBILE === 'true'
 const MOBILE_TAB_KEYS = ['cover', 'settlement', 'temperature', 'cracks', 'overview']
 const MOBILE_HIDDEN_KEYS = ['modules', 'three']
 
+// 模块分类配置
+type ModuleCategory = 'monitoring' | 'analysis' | 'management' | 'other'
+
+interface CategoryStyle {
+  color: string
+  bgNormal: string
+  bgActive: string
+  border: string
+  label: string
+}
+
+const CATEGORY_STYLES: Record<ModuleCategory, CategoryStyle> = {
+  monitoring: {
+    color: '#40aeff',
+    bgNormal: 'rgba(64,174,255,.1)',
+    bgActive: 'rgba(64,174,255,.3)',
+    border: 'rgba(64,174,255,.4)',
+    label: '监测数据'
+  },
+  analysis: {
+    color: '#b37feb',
+    bgNormal: 'rgba(179,127,235,.1)',
+    bgActive: 'rgba(179,127,235,.3)',
+    border: 'rgba(179,127,235,.4)',
+    label: '分析展示'
+  },
+  management: {
+    color: '#ff9c6e',
+    bgNormal: 'rgba(255,156,110,.1)',
+    bgActive: 'rgba(255,156,110,.3)',
+    border: 'rgba(255,156,110,.4)',
+    label: '管理工具'
+  },
+  other: {
+    color: '#95de64',
+    bgNormal: 'rgba(149,222,100,.1)',
+    bgActive: 'rgba(149,222,100,.3)',
+    border: 'rgba(149,222,100,.4)',
+    label: '其他'
+  }
+}
+
+const MODULE_CATEGORIES: Record<string, ModuleCategory> = {
+  settlement: 'monitoring',
+  temperature: 'monitoring',
+  cracks: 'monitoring',
+  vibration: 'monitoring',
+  insar: 'monitoring',
+  advanced: 'analysis',
+  overview: 'analysis',
+  three: 'analysis',
+  tunnel: 'analysis',
+  tickets: 'management',
+  modules: 'management',
+  cover: 'other'
+}
+
+function getModuleCategory(moduleKey: string): ModuleCategory {
+  return MODULE_CATEGORIES[moduleKey] || 'other'
+}
+
 export default function Nav() {
   const { pathname } = useLocation()
   const { modules } = useModules()
@@ -32,48 +93,54 @@ export default function Nav() {
     ]
   }, [modules])
 
-  const Item = ({ module }: { module: AppModule }) => (
-    <li style={{ display: 'inline' }}>
-      <Link
-        to={module.route_path}
-        onClick={(e) => {
-          if (module.status === 'pending') {
-            e.preventDefault()
-            setPending(module)
-          }
-        }}
-        style={{
-          color: '#40aeff',
-          textDecoration: 'none',
-          padding: '8px 15px',
-          borderRadius: 5,
-          transition: 'all .3s ease',
-          background: pathname === module.route_path ? 'rgba(64,174,255,.3)' : (module.status === 'pending' ? 'rgba(250,173,20,.12)' : 'rgba(64,174,255,.1)'),
-          border: module.status === 'pending' ? '1px solid rgba(250,173,20,.35)' : '1px solid transparent',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 8,
-        }}
-      >
-        {module.icon_class && <i className={module.icon_class} />}
-        <span>{module.display_name}</span>
-        {module.status === 'pending' && (
-          <span style={{
-            display: 'inline-block',
-            padding: '1px 8px',
-            borderRadius: 999,
-            fontSize: 12,
-            lineHeight: '18px',
-            color: 'rgba(255,255,255,.85)',
-            background: 'rgba(250,173,20,.18)',
-            border: '1px solid rgba(250,173,20,.45)'
-          }}>
-            {module.pending_badge_text || '待开发模块'}
-          </span>
-        )}
-      </Link>
-    </li>
-  )
+  const Item = ({ module }: { module: AppModule }) => {
+    const category = getModuleCategory(module.module_key)
+    const style = CATEGORY_STYLES[category]
+    const isActive = pathname === module.route_path
+
+    return (
+      <li style={{ display: 'inline' }}>
+        <Link
+          to={module.route_path}
+          onClick={(e) => {
+            if (module.status === 'pending') {
+              e.preventDefault()
+              setPending(module)
+            }
+          }}
+          style={{
+            color: style.color,
+            textDecoration: 'none',
+            padding: '8px 15px',
+            borderRadius: 5,
+            transition: 'all .3s ease',
+            background: isActive ? style.bgActive : (module.status === 'pending' ? 'rgba(250,173,20,.12)' : style.bgNormal),
+            border: module.status === 'pending' ? '1px solid rgba(250,173,20,.35)' : `1px solid ${isActive ? style.border : 'transparent'}`,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          {module.icon_class && <i className={module.icon_class} />}
+          <span>{module.display_name}</span>
+          {module.status === 'pending' && (
+            <span style={{
+              display: 'inline-block',
+              padding: '1px 8px',
+              borderRadius: 999,
+              fontSize: 12,
+              lineHeight: '18px',
+              color: 'rgba(255,255,255,.85)',
+              background: 'rgba(250,173,20,.18)',
+              border: '1px solid rgba(250,173,20,.45)'
+            }}>
+              {module.pending_badge_text || '待开发模块'}
+            </span>
+          )}
+        </Link>
+      </li>
+    )
+  }
 
   /* ---- Mobile bottom tab bar ---- */
   if (IS_MOBILE) {
@@ -174,20 +241,138 @@ export default function Nav() {
     )
   }
 
-  /* ---- Desktop top nav bar (original) ---- */
+  /* ---- Desktop top nav bar with categories ---- */
+  // 按分类分组模块
+  const groupedItems = useMemo(() => {
+    const groups: Record<ModuleCategory, AppModule[]> = {
+      monitoring: [],
+      analysis: [],
+      management: [],
+      other: []
+    }
+    items.forEach(m => {
+      const category = getModuleCategory(m.module_key)
+      groups[category].push(m)
+    })
+    return groups
+  }, [items])
+
   return (
     <>
-      <nav style={{ textAlign: 'center', marginBottom: 10, padding: 10, background: 'rgba(10,25,47,.8)', borderBottom: '1px solid rgba(64,174,255,.3)' }}>
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 10 }}>
-          {items.map(m => <Item key={m.module_key} module={m} />)}
+      <nav style={{
+        textAlign: 'center',
+        marginBottom: 10,
+        padding: '10px 16px',
+        background: 'rgba(10,25,47,.8)',
+        borderBottom: '1px solid rgba(64,174,255,.3)'
+      }}>
+        <ul style={{
+          listStyle: 'none',
+          padding: 0,
+          margin: 0,
+          display: 'flex',
+          justifyContent: 'center',
+          flexWrap: 'wrap',
+          gap: 8,
+          alignItems: 'center'
+        }}>
+          {/* 监测数据类 */}
+          {groupedItems.monitoring.length > 0 && (
+            <>
+              <li style={{
+                fontSize: 11,
+                color: CATEGORY_STYLES.monitoring.color,
+                opacity: 0.6,
+                fontWeight: 600,
+                letterSpacing: '0.5px',
+                padding: '0 4px'
+              }}>
+                {CATEGORY_STYLES.monitoring.label}
+              </li>
+              {groupedItems.monitoring.map(m => <Item key={m.module_key} module={m} />)}
+              <li style={{
+                width: 1,
+                height: 20,
+                background: 'rgba(255,255,255,.15)',
+                margin: '0 4px'
+              }} />
+            </>
+          )}
+
+          {/* 分析展示类 */}
+          {groupedItems.analysis.length > 0 && (
+            <>
+              <li style={{
+                fontSize: 11,
+                color: CATEGORY_STYLES.analysis.color,
+                opacity: 0.6,
+                fontWeight: 600,
+                letterSpacing: '0.5px',
+                padding: '0 4px'
+              }}>
+                {CATEGORY_STYLES.analysis.label}
+              </li>
+              {groupedItems.analysis.map(m => <Item key={m.module_key} module={m} />)}
+              <li style={{
+                width: 1,
+                height: 20,
+                background: 'rgba(255,255,255,.15)',
+                margin: '0 4px'
+              }} />
+            </>
+          )}
+
+          {/* 管理工具类 */}
+          {groupedItems.management.length > 0 && (
+            <>
+              <li style={{
+                fontSize: 11,
+                color: CATEGORY_STYLES.management.color,
+                opacity: 0.6,
+                fontWeight: 600,
+                letterSpacing: '0.5px',
+                padding: '0 4px'
+              }}>
+                {CATEGORY_STYLES.management.label}
+              </li>
+              {groupedItems.management.map(m => <Item key={m.module_key} module={m} />)}
+            </>
+          )}
+
+          {/* 其他类 */}
+          {groupedItems.other.length > 0 && (
+            <>
+              {(groupedItems.monitoring.length > 0 || groupedItems.analysis.length > 0 || groupedItems.management.length > 0) && (
+                <li style={{
+                  width: 1,
+                  height: 20,
+                  background: 'rgba(255,255,255,.15)',
+                  margin: '0 4px'
+                }} />
+              )}
+              {groupedItems.other.map(m => <Item key={m.module_key} module={m} />)}
+            </>
+          )}
+
+          {/* 模块管理 */}
+          <li style={{
+            width: 1,
+            height: 20,
+            background: 'rgba(255,255,255,.15)',
+            margin: '0 4px'
+          }} />
           <li style={{ display: 'inline' }}>
             <Link to="/modules" style={{
-              color: '#40aeff',
+              color: CATEGORY_STYLES.management.color,
               textDecoration: 'none',
               padding: '8px 15px',
               borderRadius: 5,
               transition: 'all .3s ease',
-              background: pathname === '/modules' ? 'rgba(64,174,255,.3)' : 'rgba(64,174,255,.1)'
+              background: pathname === '/modules' ? CATEGORY_STYLES.management.bgActive : CATEGORY_STYLES.management.bgNormal,
+              border: pathname === '/modules' ? `1px solid ${CATEGORY_STYLES.management.border}` : '1px solid transparent',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
             }}>
               <i className="fas fa-sliders-h" /> 模块管理
             </Link>
