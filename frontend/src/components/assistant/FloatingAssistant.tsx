@@ -194,7 +194,11 @@ export default function FloatingAssistant() {
             <button
               type="button"
               className="rounded px-3 py-2 text-sm text-slate-200 hover:bg-white/10"
-              onClick={() => setOpen(false)}
+              onClick={(e) => {
+                e.stopPropagation()
+                setOpen(false)
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
             >
               关闭
             </button>
