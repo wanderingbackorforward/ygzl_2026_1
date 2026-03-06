@@ -65,6 +65,7 @@ from modules.insar.api import insar_bp
 from modules.tunnel.api import tunnel_bp
 from modules.advanced_analysis.api import advanced_bp
 from modules.assistant.api import assistant_bp
+from modules.module_registry.api.module_api import module_bp
 
 # 机器学习模块（条件导入，避免在缺少依赖时影响其他API）
 ml_api = None
@@ -1081,6 +1082,7 @@ def modules_update_by_key(module_key):
 app.register_blueprint(insar_bp)
 app.register_blueprint(tunnel_bp)
 app.register_blueprint(advanced_bp)
+app.register_blueprint(module_bp)
 if ml_api is not None:
     app.register_blueprint(ml_api)  # 机器学习API（仅在依赖可用时注册）
     print("[INFO] ML API registered successfully")
