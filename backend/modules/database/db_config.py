@@ -1,9 +1,12 @@
+# -*- coding: utf-8 -*-
 # 数据库连接配置
 db_config = {
     'user': 'root',
     'password': '123456',
     'host': 'localhost',
-    'database': 'settlement_monitoring'
+    'database': 'settlement_monitoring',
+    'charset': 'utf8mb4',
+    'use_unicode': True
 }
 
 import mysql.connector

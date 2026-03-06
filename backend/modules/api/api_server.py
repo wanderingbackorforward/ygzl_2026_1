@@ -82,6 +82,11 @@ except ImportError as e:
 # =========================================================
 app = Flask(__name__, static_folder='../../static', template_folder='../../templates')
 CORS(app)  # 允许跨域请求
+
+# 配置 Flask 使用 UTF-8 编码
+app.config['JSON_AS_ASCII'] = False
+app.config['JSON_SORT_KEYS'] = False
+
 IS_VERCEL = os.environ.get('VERCEL') == '1'
 if IS_VERCEL:
     upload_folder = '/tmp'
@@ -329,6 +334,10 @@ def add_header(response):
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Range'
+
+    # 为所有 JSON 响应设置 UTF-8 编码
+    if response.content_type and 'application/json' in response.content_type:
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
 
     # 为 GLB/GLTF 文件添加特殊处理
     if request.path.endswith(('.glb', '.gltf')):
