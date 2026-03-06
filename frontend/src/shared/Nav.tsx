@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useModules } from '../contexts/ModulesContext'
+import { useAuth } from '../contexts/AuthContext'
 import type { AppModule } from '../types/modules'
 import FullscreenModal from '../components/layout/FullscreenModal'
 
@@ -74,8 +75,10 @@ function getModuleCategory(moduleKey: string): ModuleCategory {
 export default function Nav() {
   const { pathname } = useLocation()
   const { modules } = useModules()
+  const { user, logout, isAuthEnabled } = useAuth()
   const [pending, setPending] = useState<AppModule | null>(null)
   const [moreOpen, setMoreOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
 
   const items = useMemo<AppModule[]>(() => {
     if (modules.length) return modules
@@ -266,7 +269,8 @@ export default function Nav() {
         marginBottom: 10,
         padding: '10px 16px',
         background: 'rgba(10,25,47,.8)',
-        borderBottom: '1px solid rgba(64,174,255,.3)'
+        borderBottom: '1px solid rgba(64,174,255,.3)',
+        position: 'relative'
       }}>
         <ul style={{
           listStyle: 'none',
@@ -380,6 +384,107 @@ export default function Nav() {
             </Link>
           </li>
         </ul>
+
+        {/* 用户信息（右上角） */}
+        {isAuthEnabled && user && (
+          <div style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)' }}>
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '6px 12px',
+                  background: 'rgba(100, 255, 218, 0.1)',
+                  border: '1px solid rgba(100, 255, 218, 0.3)',
+                  borderRadius: 6,
+                  color: '#64ffda',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(100, 255, 218, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(100, 255, 218, 0.1)';
+                }}
+              >
+                <i className="fas fa-user-circle" style={{ fontSize: 16 }} />
+                <span>{user.displayName}</span>
+                <i className={`fas fa-chevron-${userMenuOpen ? 'up' : 'down'}`} style={{ fontSize: 10 }} />
+              </button>
+
+              {userMenuOpen && (
+                <>
+                  <div
+                    style={{
+                      position: 'fixed',
+                      inset: 0,
+                      zIndex: 899,
+                    }}
+                    onClick={() => setUserMenuOpen(false)}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 8px)',
+                      right: 0,
+                      minWidth: 180,
+                      background: 'linear-gradient(135deg, rgba(10, 25, 47, 0.98) 0%, rgba(17, 34, 64, 0.98) 100%)',
+                      border: '1px solid rgba(100, 255, 218, 0.3)',
+                      borderRadius: 8,
+                      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
+                      zIndex: 900,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(100, 255, 218, 0.15)' }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#e6f7ff', marginBottom: 4 }}>
+                        {user.displayName}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#8ba0b6' }}>
+                        @{user.username}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        if (window.confirm('确认退出登录？')) {
+                          logout();
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '10px 16px',
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#ff3e5f',
+                        fontSize: 13,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 62, 95, 0.1)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <i className="fas fa-sign-out-alt" />
+                      <span>退出登录</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </nav>
       <FullscreenModal
         isOpen={!!pending}

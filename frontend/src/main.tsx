@@ -5,6 +5,8 @@ import './styles/tailwind.css'
 import Nav from './shared/Nav'
 import { OverdueTicketAlert } from './components/tickets/OverdueTicketAlert'
 import { ModulesProvider } from './contexts/ModulesContext'
+import { AuthProvider } from './contexts/AuthContext'
+import { AuthGuard } from './components/auth/AuthGuard'
 import ModuleGate from './components/modules/ModuleGate'
 
 const IS_MOBILE = import.meta.env.VITE_MOBILE === 'true'
@@ -27,49 +29,53 @@ const ShieldTrajectory = React.lazy(() => import('./pages/ShieldTrajectory'))
 
 function App() {
   return (
-    <ModulesProvider>
-      <BrowserRouter
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true,
-        }}
-      >
-        <Nav />
-        {!IS_MOBILE && <OverdueTicketAlert />}
-        {!IS_MOBILE && (
-          <Suspense fallback={null}>
-            <FloatingAssistant />
-          </Suspense>
-        )}
-        <Suspense
-          fallback={
-            <div className="px-6 py-6 text-sm text-slate-400">
-              加载中...
-            </div>
-          }
-        >
-          <div style={IS_MOBILE ? { paddingBottom: 64 } : undefined}>
-            <Routes>
-              <Route path="/" element={<Navigate to="/cover" replace />} />
-              <Route path="/cover" element={<Cover />} />
-              <Route path="/settlement" element={<ModuleGate moduleKey="settlement"><Settlement /></ModuleGate>} />
-              <Route path="/temperature" element={<ModuleGate moduleKey="temperature"><Temperature /></ModuleGate>} />
-              <Route path="/cracks" element={<ModuleGate moduleKey="cracks"><Cracks /></ModuleGate>} />
-              <Route path="/vibration" element={<ModuleGate moduleKey="vibration"><Vibration /></ModuleGate>} />
-              <Route path="/insar" element={<ModuleGate moduleKey="insar"><Insar /></ModuleGate>} />
-              <Route path="/overview" element={<ModuleGate moduleKey="overview"><Overview /></ModuleGate>} />
-              <Route path="/three" element={<ModuleGate moduleKey="three"><ThreeModel /></ModuleGate>} />
-              <Route path="/tickets" element={<ModuleGate moduleKey="tickets"><Tickets /></ModuleGate>} />
-              <Route path="/tunnel" element={<ModuleGate moduleKey="tunnel"><Tunnel /></ModuleGate>} />
-              <Route path="/advanced" element={<ModuleGate moduleKey="advanced"><AdvancedAnalysis /></ModuleGate>} />
-              <Route path="/shield-trajectory" element={<ShieldTrajectory />} />
+    <AuthProvider>
+      <AuthGuard>
+        <ModulesProvider>
+          <BrowserRouter
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true,
+            }}
+          >
+            <Nav />
+            {!IS_MOBILE && <OverdueTicketAlert />}
+            {!IS_MOBILE && (
+              <Suspense fallback={null}>
+                <FloatingAssistant />
+              </Suspense>
+            )}
+            <Suspense
+              fallback={
+                <div className="px-6 py-6 text-sm text-slate-400">
+                  加载中...
+                </div>
+              }
+            >
+              <div style={IS_MOBILE ? { paddingBottom: 64 } : undefined}>
+                <Routes>
+                  <Route path="/" element={<Navigate to="/cover" replace />} />
+                  <Route path="/cover" element={<Cover />} />
+                  <Route path="/settlement" element={<ModuleGate moduleKey="settlement"><Settlement /></ModuleGate>} />
+                  <Route path="/temperature" element={<ModuleGate moduleKey="temperature"><Temperature /></ModuleGate>} />
+                  <Route path="/cracks" element={<ModuleGate moduleKey="cracks"><Cracks /></ModuleGate>} />
+                  <Route path="/vibration" element={<ModuleGate moduleKey="vibration"><Vibration /></ModuleGate>} />
+                  <Route path="/insar" element={<ModuleGate moduleKey="insar"><Insar /></ModuleGate>} />
+                  <Route path="/overview" element={<ModuleGate moduleKey="overview"><Overview /></ModuleGate>} />
+                  <Route path="/three" element={<ModuleGate moduleKey="three"><ThreeModel /></ModuleGate>} />
+                  <Route path="/tickets" element={<ModuleGate moduleKey="tickets"><Tickets /></ModuleGate>} />
+                  <Route path="/tunnel" element={<ModuleGate moduleKey="tunnel"><Tunnel /></ModuleGate>} />
+                  <Route path="/advanced" element={<ModuleGate moduleKey="advanced"><AdvancedAnalysis /></ModuleGate>} />
+                  <Route path="/shield-trajectory" element={<ShieldTrajectory />} />
 
-              <Route path="/modules" element={<ModuleAdmin />} />
-            </Routes>
-          </div>
-        </Suspense>
-      </BrowserRouter>
-    </ModulesProvider>
+                  <Route path="/modules" element={<ModuleAdmin />} />
+                </Routes>
+              </div>
+            </Suspense>
+          </BrowserRouter>
+        </ModulesProvider>
+      </AuthGuard>
+    </AuthProvider>
   )
 }
 
