@@ -7,6 +7,7 @@ import EChartsWrapper from '../components/charts/EChartsWrapper'
 import { classifyVelocity, formatKeyDateField, toNumberOrNull, type Thresholds } from '../lib/insar'
 import { kmlToBestLineStringFeature } from '../lib/kml'
 import { createBuiltInBaseLayers, createRasterLayer, loadOpticalRasterLayers } from '../lib/mapLayers'
+import { extractInsarContext } from '../utils/contextExtractors/insarExtractor'
 
 type FeatureCollection = { type: 'FeatureCollection', features: any[] }
 type InsarMeta = { dataset?: string, cached?: boolean, feature_count?: number, total_feature_count?: number, value_field?: string, args?: Record<string, any> }
@@ -461,6 +462,15 @@ function InsarNativeMap(
         setSelected(null)
         setSeries(null)
         setSeriesError(null)
+
+        // 提取并缓存页面上下文
+        if (nextData) {
+          try {
+            extractInsarContext(nextData)
+          } catch (err) {
+            console.error('Failed to extract InSAR context:', err)
+          }
+        }
       } catch (e: any) {
         if (!mounted) return
         if (e?.name === 'AbortError') return
