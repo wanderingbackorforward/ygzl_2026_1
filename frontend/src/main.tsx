@@ -20,7 +20,7 @@ const Cover = React.lazy(() => import('./pages/Cover'))
 const ModuleAdmin = React.lazy(() => import('./pages/ModuleAdmin'))
 const Tunnel = React.lazy(() => import('./pages/Tunnel'))
 const AdvancedAnalysis = React.lazy(() => import('./pages/AdvancedAnalysis'))
-const MLAnalysisCenter = React.lazy(() => import('./pages/MLAnalysisCenter'))
+
 
 function App() {
   return (
@@ -56,7 +56,7 @@ function App() {
             <Route path="/tickets" element={<ModuleGate moduleKey="tickets"><Tickets /></ModuleGate>} />
             <Route path="/tunnel" element={<ModuleGate moduleKey="tunnel"><Tunnel /></ModuleGate>} />
             <Route path="/advanced" element={<ModuleGate moduleKey="advanced"><AdvancedAnalysis /></ModuleGate>} />
-            <Route path="/ml-analysis" element={<ModuleGate moduleKey="ml-analysis"><MLAnalysisCenter /></ModuleGate>} />
+
             <Route path="/modules" element={<ModuleAdmin />} />
           </Routes>
         </Suspense>
