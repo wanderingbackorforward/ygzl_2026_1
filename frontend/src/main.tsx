@@ -22,6 +22,7 @@ const Cover = React.lazy(() => import('./pages/Cover'))
 const ModuleAdmin = React.lazy(() => import('./pages/ModuleAdmin'))
 const Tunnel = React.lazy(() => import('./pages/Tunnel'))
 const AdvancedAnalysis = React.lazy(() => import('./pages/AdvancedAnalysis'))
+const ShieldTrajectory = React.lazy(() => import('./pages/ShieldTrajectory'))
 
 
 function App() {
@@ -61,6 +62,7 @@ function App() {
               <Route path="/tickets" element={<ModuleGate moduleKey="tickets"><Tickets /></ModuleGate>} />
               <Route path="/tunnel" element={<ModuleGate moduleKey="tunnel"><Tunnel /></ModuleGate>} />
               <Route path="/advanced" element={<ModuleGate moduleKey="advanced"><AdvancedAnalysis /></ModuleGate>} />
+              <Route path="/shield-trajectory" element={<ShieldTrajectory />} />
 
               <Route path="/modules" element={<ModuleAdmin />} />
             </Routes>

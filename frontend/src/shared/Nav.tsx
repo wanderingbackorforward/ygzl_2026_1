@@ -63,6 +63,7 @@ const MODULE_CATEGORIES: Record<string, ModuleCategory> = {
   tunnel: 'analysis',
   tickets: 'management',
   modules: 'management',
+  'shield-trajectory': 'management',
   cover: 'other'
 }
 
@@ -90,6 +91,7 @@ export default function Nav() {
       { module_key: 'overview', route_path: '/overview', display_name: '数据总览', icon_class: 'fas fa-chart-line', sort_order: 70, status: 'developed' },
       { module_key: 'three', route_path: '/three', display_name: '3D模型', icon_class: 'fas fa-cubes', sort_order: 80, status: 'developed' },
       { module_key: 'tickets', route_path: '/tickets', display_name: '工单', icon_class: 'fas fa-ticket-alt', sort_order: 90, status: 'developed' },
+      { module_key: 'shield-trajectory', route_path: '/shield-trajectory', display_name: '盾构轨迹', icon_class: 'fas fa-route', sort_order: 95, status: 'developed' },
     ]
   }, [modules])
 
