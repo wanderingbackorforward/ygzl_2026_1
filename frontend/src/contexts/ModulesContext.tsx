@@ -23,7 +23,7 @@ export function ModulesProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     setError(null)
     try {
-      const rows = await apiGet<AppModule[]>('/modules/')
+      const rows = await apiGet<AppModule[]>('/modules')
       const normalized = (rows || [])
         .filter(Boolean)
         .filter(m => m.is_visible !== false)
@@ -50,7 +50,7 @@ export function ModulesProvider({ children }: { children: ReactNode }) {
   }, [modules])
 
   const setStatus = useCallback(async (moduleKey: string, status: ModuleStatus, updatedBy?: string, reason?: string) => {
-    const updated = await apiPatch<AppModule | null>(`/modules/`, {
+    const updated = await apiPatch<AppModule | null>('/modules', {
       module_key: moduleKey,
       status,
       updated_by: updatedBy,
