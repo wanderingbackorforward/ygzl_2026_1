@@ -2,7 +2,7 @@ export default function ShieldTrajectory() {
   return (
     <iframe
       title="shield-trajectory"
-      src="http://localhost:8080"
+      src="/shield-trajectory/index.html"
       style={{
         width: '100%',
         height: 'calc(100vh - 64px)',
