@@ -50,11 +50,36 @@ def _request_id() -> str:
     return (request.headers.get("x-request-id") or request.headers.get("x-vercel-id") or "").strip()
 
 
+def _format_context(ctx: Any) -> str:
+    if not ctx or not isinstance(ctx, dict):
+        return ""
+
+    lines = []
+    snapshot = ctx.get("dataSnapshot") or {}
+    summary = snapshot.get("summary") or {}
+    stats = snapshot.get("statistics") or {}
+
+    if summary:
+        lines.append("### Data Summary")
+        for key, val in summary.items():
+            if val is not None:
+                lines.append(f"- {key}: {val}")
+
+    if stats:
+        lines.append("\n### Statistics")
+        for key, val in stats.items():
+            if val is not None:
+                lines.append(f"- {key}: {val}")
+
+    return "\n".join(lines) if lines else ""
+
+
 @assistant_bp.route("/chat", methods=["POST"])
 def assistant_chat():
     body = request.get_json(silent=True) or {}
     question = (body.get("question") or body.get("q") or "").strip()
     page_path = (body.get("pagePath") or body.get("page_path") or "").strip()
+    page_context = body.get("pageContext")
     if not question:
         return jsonify({"status": "error", "message": "missing question"}), 400
     if not _is_meaningful_question(question):
@@ -91,7 +116,13 @@ def assistant_chat():
         "- 中文为主，简洁明确\n"
     )
 
-    user_content = f"当前页面：{page_path}\n\n问题：{question}" if page_path else question
+    context_text = _format_context(page_context)
+    if context_text:
+        user_content = f"当前页面：{page_path}\n\n{context_text}\n\n问题：{question}"
+    elif page_path:
+        user_content = f"当前页面：{page_path}\n\n问题：{question}"
+    else:
+        user_content = question
     payload = {
         "model": model,
         "messages": [

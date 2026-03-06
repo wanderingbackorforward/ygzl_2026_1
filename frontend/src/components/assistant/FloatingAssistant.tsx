@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { API_BASE } from '../../lib/api'
+import { usePageContext } from '../../hooks/usePageContext'
 
 type AssistantResponse = {
   answerMarkdown: string
@@ -12,6 +13,7 @@ type AssistantResponse = {
 export default function FloatingAssistant() {
   const location = useLocation()
   const pagePath = useMemo(() => location.pathname, [location.pathname])
+  const pageContext = usePageContext()
 
   const [open, setOpen] = useState(false)
   const [question, setQuestion] = useState('')
@@ -85,7 +87,7 @@ export default function FloatingAssistant() {
       const res = await fetch(`${API_BASE}/assistant/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: q, pagePath }),
+        body: JSON.stringify({ question: q, pagePath, pageContext }),
         signal: controller.signal,
       })
       window.clearTimeout(t)
