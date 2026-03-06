@@ -82,7 +82,7 @@ class ProfileRenderer {
                 reject(new Error('基础剖面图加载失败'));
             };
 
-            img.src = 'images/ProfileView.png';
+            img.src = '/shield-trajectory/images/ProfileView.png';
         });
     }
 
