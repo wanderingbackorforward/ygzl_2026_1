@@ -47,7 +47,11 @@ from modules.data_processing.update_monitoring_points import update_monitoring_p
 from modules.data_import.crack_data_import import import_crack_excel, first_time_import
 from modules.data_processing.process_crack_data import process_crack_data
 # 盾构机轨迹模块
-from modules.api.shield_trajectory import shield_bp
+try:
+    from modules.api.shield_trajectory import shield_bp
+except Exception as e:
+    print(f"[WARNING] Failed to import shield_trajectory: {e}")
+    shield_bp = None
 # 温度模块
 try:
     from modules.data_import.temperature_data_import import import_mdb_to_mysql
@@ -1020,7 +1024,9 @@ app.register_blueprint(insar_bp)
 app.register_blueprint(tunnel_bp)
 app.register_blueprint(advanced_bp)
 app.register_blueprint(module_bp)
-app.register_blueprint(shield_bp)
+if shield_bp is not None:
+    app.register_blueprint(shield_bp)
+    print("[INFO] Shield trajectory API registered successfully")
 if ml_api is not None:
     app.register_blueprint(ml_api)  # 机器学习API（仅在依赖可用时注册）
     print("[INFO] ML API registered successfully")
