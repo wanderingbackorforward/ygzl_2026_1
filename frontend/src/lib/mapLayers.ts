@@ -1,4 +1,5 @@
 import L from 'leaflet'
+import { STATIC_BASE } from './api'
 
 export type RasterLayerKind = 'xyz' | 'wms'
 
@@ -66,7 +67,7 @@ function normalizeLayerDef(input: any): RasterLayerDef | null {
 
 export async function loadOpticalRasterLayers(signal?: AbortSignal): Promise<RasterLayerDef[]> {
   try {
-    const res = await fetch('/static/data/optical/layers.json', { signal })
+    const res = await fetch(`${STATIC_BASE}/static/data/optical/layers.json`, { signal })
     if (!res.ok) return []
     const body = await res.json().catch(() => null as any)
     if (!Array.isArray(body)) return []

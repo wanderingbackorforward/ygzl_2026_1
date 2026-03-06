@@ -7,6 +7,8 @@ import { OverdueTicketAlert } from './components/tickets/OverdueTicketAlert'
 import { ModulesProvider } from './contexts/ModulesContext'
 import ModuleGate from './components/modules/ModuleGate'
 
+const IS_MOBILE = import.meta.env.VITE_MOBILE === 'true'
+
 const FloatingAssistant = React.lazy(() => import('./components/assistant/FloatingAssistant'))
 const Settlement = React.lazy(() => import('./pages/Settlement'))
 const Temperature = React.lazy(() => import('./pages/Temperature'))
@@ -32,33 +34,37 @@ function App() {
         }}
       >
         <Nav />
-        <OverdueTicketAlert />
-        <Suspense fallback={null}>
-          <FloatingAssistant />
-        </Suspense>
+        {!IS_MOBILE && <OverdueTicketAlert />}
+        {!IS_MOBILE && (
+          <Suspense fallback={null}>
+            <FloatingAssistant />
+          </Suspense>
+        )}
         <Suspense
           fallback={
             <div className="px-6 py-6 text-sm text-slate-400">
-              加载中…
+              加载中...
             </div>
           }
         >
-          <Routes>
-            <Route path="/" element={<Navigate to="/cover" replace />} />
-            <Route path="/cover" element={<Cover />} />
-            <Route path="/settlement" element={<ModuleGate moduleKey="settlement"><Settlement /></ModuleGate>} />
-            <Route path="/temperature" element={<ModuleGate moduleKey="temperature"><Temperature /></ModuleGate>} />
-            <Route path="/cracks" element={<ModuleGate moduleKey="cracks"><Cracks /></ModuleGate>} />
-            <Route path="/vibration" element={<ModuleGate moduleKey="vibration"><Vibration /></ModuleGate>} />
-            <Route path="/insar" element={<ModuleGate moduleKey="insar"><Insar /></ModuleGate>} />
-            <Route path="/overview" element={<ModuleGate moduleKey="overview"><Overview /></ModuleGate>} />
-            <Route path="/three" element={<ModuleGate moduleKey="three"><ThreeModel /></ModuleGate>} />
-            <Route path="/tickets" element={<ModuleGate moduleKey="tickets"><Tickets /></ModuleGate>} />
-            <Route path="/tunnel" element={<ModuleGate moduleKey="tunnel"><Tunnel /></ModuleGate>} />
-            <Route path="/advanced" element={<ModuleGate moduleKey="advanced"><AdvancedAnalysis /></ModuleGate>} />
+          <div style={IS_MOBILE ? { paddingBottom: 64 } : undefined}>
+            <Routes>
+              <Route path="/" element={<Navigate to="/cover" replace />} />
+              <Route path="/cover" element={<Cover />} />
+              <Route path="/settlement" element={<ModuleGate moduleKey="settlement"><Settlement /></ModuleGate>} />
+              <Route path="/temperature" element={<ModuleGate moduleKey="temperature"><Temperature /></ModuleGate>} />
+              <Route path="/cracks" element={<ModuleGate moduleKey="cracks"><Cracks /></ModuleGate>} />
+              <Route path="/vibration" element={<ModuleGate moduleKey="vibration"><Vibration /></ModuleGate>} />
+              <Route path="/insar" element={<ModuleGate moduleKey="insar"><Insar /></ModuleGate>} />
+              <Route path="/overview" element={<ModuleGate moduleKey="overview"><Overview /></ModuleGate>} />
+              <Route path="/three" element={<ModuleGate moduleKey="three"><ThreeModel /></ModuleGate>} />
+              <Route path="/tickets" element={<ModuleGate moduleKey="tickets"><Tickets /></ModuleGate>} />
+              <Route path="/tunnel" element={<ModuleGate moduleKey="tunnel"><Tunnel /></ModuleGate>} />
+              <Route path="/advanced" element={<ModuleGate moduleKey="advanced"><AdvancedAnalysis /></ModuleGate>} />
 
-            <Route path="/modules" element={<ModuleAdmin />} />
-          </Routes>
+              <Route path="/modules" element={<ModuleAdmin />} />
+            </Routes>
+          </div>
         </Suspense>
       </BrowserRouter>
     </ModulesProvider>

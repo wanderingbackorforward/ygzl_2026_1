@@ -26,6 +26,15 @@ function getDefaultApiBase(): string {
 
 export const API_BASE = getDefaultApiBase()
 
+function getStaticBase(): string {
+  const envBase = import.meta.env.VITE_API_BASE || ''
+  if (!envBase || envBase === '/api') return ''
+  // 从 https://xxx.vercel.app/api 提取 https://xxx.vercel.app
+  return envBase.replace(/\/api\/?$/, '')
+}
+
+export const STATIC_BASE = getStaticBase()
+
 export async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`)
   if (!res.ok) throw new Error(`Request failed: ${res.status}`)

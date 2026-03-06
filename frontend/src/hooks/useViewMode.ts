@@ -3,6 +3,8 @@ import { useLocation } from 'react-router-dom';
 
 export type ViewMode = 'legacy' | 'new';
 
+export const IS_MOBILE = import.meta.env.VITE_MOBILE === 'true';
+
 function normalizeMode(value: unknown): ViewMode | null {
   if (value === 'legacy' || value === 'new') return value;
   return null;
@@ -20,6 +22,7 @@ export function useViewMode(pageKey: string, defaultMode: ViewMode = 'legacy') {
   }, [location.search]);
 
   const [mode, setModeState] = useState<ViewMode>(() => {
+    if (IS_MOBILE) return 'new';
     if (queryMode) return queryMode;
     try {
       const stored = localStorage.getItem(storageKey(pageKey));
@@ -30,6 +33,7 @@ export function useViewMode(pageKey: string, defaultMode: ViewMode = 'legacy') {
   });
 
   useEffect(() => {
+    if (IS_MOBILE) return;
     if (queryMode) {
       setModeState(queryMode);
     }
@@ -37,6 +41,7 @@ export function useViewMode(pageKey: string, defaultMode: ViewMode = 'legacy') {
 
   const setMode = useCallback(
     (next: ViewMode) => {
+      if (IS_MOBILE) return;
       setModeState(next);
       try {
         localStorage.setItem(storageKey(pageKey), next);

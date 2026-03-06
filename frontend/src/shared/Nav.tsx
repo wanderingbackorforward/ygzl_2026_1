@@ -4,10 +4,16 @@ import { useModules } from '../contexts/ModulesContext'
 import type { AppModule } from '../types/modules'
 import FullscreenModal from '../components/layout/FullscreenModal'
 
+const IS_MOBILE = import.meta.env.VITE_MOBILE === 'true'
+
+const MOBILE_TAB_KEYS = ['cover', 'settlement', 'temperature', 'cracks', 'overview']
+const MOBILE_HIDDEN_KEYS = ['modules', 'three']
+
 export default function Nav() {
   const { pathname } = useLocation()
   const { modules } = useModules()
   const [pending, setPending] = useState<AppModule | null>(null)
+  const [moreOpen, setMoreOpen] = useState(false)
 
   const items = useMemo<AppModule[]>(() => {
     if (modules.length) return modules
@@ -68,6 +74,107 @@ export default function Nav() {
       </Link>
     </li>
   )
+
+  /* ---- Mobile bottom tab bar ---- */
+  if (IS_MOBILE) {
+    const tabItems = items.filter(m => MOBILE_TAB_KEYS.includes(m.module_key))
+    const moreItems = items.filter(m => !MOBILE_TAB_KEYS.includes(m.module_key) && !MOBILE_HIDDEN_KEYS.includes(m.module_key))
+
+    return (
+      <>
+        {/* side drawer */}
+        {moreOpen && (
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 900, display: 'flex' }}
+            onClick={() => setMoreOpen(false)}
+          >
+            <div style={{ flex: 1, background: 'rgba(0,0,0,.5)' }} />
+            <nav
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: 220,
+                background: '#0a1930',
+                borderLeft: '1px solid rgba(64,174,255,.3)',
+                padding: '16px 0',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                overflowY: 'auto',
+              }}
+            >
+              <div style={{ padding: '0 16px 12px', fontSize: 14, color: '#8bb8e0', borderBottom: '1px solid rgba(64,174,255,.15)' }}>
+                更多模块
+              </div>
+              {moreItems.map(m => (
+                <Link
+                  key={m.module_key}
+                  to={m.route_path}
+                  onClick={() => setMoreOpen(false)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 16px',
+                    color: pathname === m.route_path ? '#40aeff' : '#b0cfee',
+                    background: pathname === m.route_path ? 'rgba(64,174,255,.12)' : 'transparent',
+                    textDecoration: 'none',
+                    fontSize: 14,
+                  }}
+                >
+                  {m.icon_class && <i className={m.icon_class} style={{ width: 20, textAlign: 'center' }} />}
+                  <span>{m.display_name}</span>
+                </Link>
+              ))}
+            </nav>
+          </div>
+        )}
+
+        {/* bottom tab bar */}
+        <nav style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 800,
+          background: 'rgba(10,25,47,.95)',
+          borderTop: '1px solid rgba(64,174,255,.3)',
+          display: 'flex',
+          justifyContent: 'space-around',
+          padding: '6px 0 env(safe-area-inset-bottom, 6px)',
+        }}>
+          {tabItems.map(m => {
+            const active = pathname === m.route_path
+            return (
+              <Link
+                key={m.module_key}
+                to={m.route_path}
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                  color: active ? '#40aeff' : '#6b8db5',
+                  textDecoration: 'none',
+                  fontSize: 10,
+                  padding: '4px 8px',
+                  minWidth: 48,
+                }}
+              >
+                {m.icon_class && <i className={m.icon_class} style={{ fontSize: 18 }} />}
+                <span>{m.display_name}</span>
+              </Link>
+            )
+          })}
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+              color: moreOpen ? '#40aeff' : '#6b8db5',
+              background: 'none', border: 'none',
+              fontSize: 10, padding: '4px 8px', minWidth: 48, cursor: 'pointer',
+            }}
+          >
+            <i className="fas fa-ellipsis-h" style={{ fontSize: 18 }} />
+            <span>更多</span>
+          </button>
+        </nav>
+      </>
+    )
+  }
+
+  /* ---- Desktop top nav bar (original) ---- */
   return (
     <>
       <nav style={{ textAlign: 'center', marginBottom: 10, padding: 10, background: 'rgba(10,25,47,.8)', borderBottom: '1px solid rgba(64,174,255,.3)' }}>

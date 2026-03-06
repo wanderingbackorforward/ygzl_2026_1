@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { API_BASE } from '../lib/api'
+import { API_BASE, STATIC_BASE } from '../lib/api'
 import type { EChartsOption } from 'echarts'
 import EChartsWrapper from '../components/charts/EChartsWrapper'
 import { classifyVelocity, formatKeyDateField, toNumberOrNull, type Thresholds } from '../lib/insar'
@@ -599,7 +599,7 @@ function InsarNativeMap(
     alertLayerRef.current = alertLayer
     ;(async () => {
       try {
-        const res = await fetch('/static/data/tunnel/YGL_KML.kml')
+        const res = await fetch(`${STATIC_BASE}/static/data/tunnel/YGL_KML.kml`)
         if (!res.ok) return
         const text = await res.text()
         const feat = kmlToBestLineStringFeature(text)

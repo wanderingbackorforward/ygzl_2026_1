@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { EChartsOption } from 'echarts'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { apiGet, apiPost } from '../lib/api'
+import { apiGet, apiPost, STATIC_BASE } from '../lib/api'
 import { EChartsWrapper } from '../components/charts/EChartsWrapper'
 import { kmlToBestLineStringFeature, type GeoJSONLineStringFeature } from '../lib/kml'
 import { installRasterBaseLayers } from '../lib/mapLayers'
@@ -225,7 +225,7 @@ export default function Tunnel() {
     try {
       let text = ''
       if (kmlSource === 'repo') {
-        const res = await fetch('/static/data/tunnel/YGL_KML.kml')
+        const res = await fetch(`${STATIC_BASE}/static/data/tunnel/YGL_KML.kml`)
         if (!res.ok) throw new Error(`Request failed: ${res.status}`)
         text = await res.text()
       } else {

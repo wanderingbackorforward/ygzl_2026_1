@@ -1,4 +1,5 @@
 // API 客户端 - 支持自动降级到 Mock 数据
+import { API_BASE } from '../lib/api';
 import {
   generateMockAnomalies,
   generateMockRecommendations,
@@ -70,7 +71,7 @@ async function fetchWithFallback<T>(
  */
 export async function fetchBatchAnomalies(pointIds: string[]) {
   return fetchWithFallback(
-    '/api/ml/anomalies/batch',
+    `${API_BASE}/ml/anomalies/batch`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -85,7 +86,7 @@ export async function fetchBatchAnomalies(pointIds: string[]) {
  */
 export async function fetchRecommendations(pointIds: string[]) {
   return fetchWithFallback(
-    '/api/analysis/v2/settlement/recommendations',
+    `${API_BASE}/analysis/v2/settlement/recommendations`,
     undefined,
     () => {
       const batchResult = generateMockAnomalies(pointIds);
@@ -112,7 +113,7 @@ export async function fetchAutoPrediction(
   forecastDays: number = 30
 ) {
   return fetchWithFallback(
-    `/api/ml/auto-predict/${pointId}?forecast_days=${forecastDays}`,
+    `${API_BASE}/ml/auto-predict/${pointId}?forecast_days=${forecastDays}`,
     undefined,
     () => generateMockPrediction(pointId, forecastDays)
   );
@@ -123,7 +124,7 @@ export async function fetchAutoPrediction(
  */
 export async function fetchModelComparison(pointId: string) {
   return fetchWithFallback(
-    `/api/ml/model-comparison/${pointId}`,
+    `${API_BASE}/ml/model-comparison/${pointId}`,
     undefined,
     () => generateMockModelComparison(pointId)
   );
@@ -134,7 +135,7 @@ export async function fetchModelComparison(pointId: string) {
  */
 export async function fetchSpatialCorrelation(distanceThreshold: number = 50) {
   return fetchWithFallback(
-    `/api/ml/spatial/correlation?distance_threshold=${distanceThreshold}`,
+    `${API_BASE}/ml/spatial/correlation?distance_threshold=${distanceThreshold}`,
     undefined,
     () => generateMockSpatialCorrelation(distanceThreshold)
   );
@@ -151,7 +152,7 @@ export async function fetchCausalAnalysis(params: {
   window_days: number;
 }) {
   return fetchWithFallback(
-    '/api/ml/causal/event-impact',
+    `${API_BASE}/ml/causal/event-impact`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

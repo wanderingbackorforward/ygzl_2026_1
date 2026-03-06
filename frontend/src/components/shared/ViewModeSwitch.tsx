@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ViewMode } from '../../hooks/useViewMode';
+import { IS_MOBILE } from '../../hooks/useViewMode';
 
 type Props = {
   mode: ViewMode;
@@ -14,6 +15,7 @@ export default function ViewModeSwitch({
   legacyLabel = '旧版',
   newLabel = '新版',
 }: Props) {
+  if (IS_MOBILE) return null;
   const baseBtn: React.CSSProperties = {
     padding: '6px 10px',
     borderRadius: 8,

@@ -1,0 +1,20 @@
+{
+  "name": "digital-twin-settlement-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "数字孪生沉降监测移动端",
+  "scripts": {
+    "build": "cd ../frontend && npx cross-env VITE_MOBILE=true VITE_API_BASE=https://self-made-digital-twin-terrain-settlement-v1.vercel.app/api npm run build -- --outDir ../mobile/www",
+    "sync": "npx cap sync android",
+    "open": "npx cap open android",
+    "run:android": "npx cap run android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/cli": "^6.2.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3"
+  }
+}
