@@ -8,51 +8,100 @@ interface ExportPanelProps {
 export default function ExportPanel({ conversation }: ExportPanelProps) {
   const [exportFormat, setExportFormat] = useState<'markdown' | 'txt' | 'json'>('markdown')
   const [copied, setCopied] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [summary, setSummary] = useState<string>('')
+
+  // 生成对话总结
+  const generateSummary = async () => {
+    if (!conversation) return
+
+    setGenerating(true)
+    try {
+      // 调用后端API生成总结
+      const response = await fetch('/api/assistant/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversation_id: conversation.id,
+          messages: conversation.messages
+        })
+      })
+
+      if (!response.ok) throw new Error('生成总结失败')
+
+      const data = await response.json()
+      setSummary(data.summary || '总结生成失败')
+    } catch (err) {
+      console.error('生成总结失败:', err)
+      // 如果API失败，使用简单的客户端总结
+      setSummary(generateClientSummary())
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  // 客户端简单总结（备用方案）
+  const generateClientSummary = () => {
+    if (!conversation) return ''
+
+    const messages = conversation.messages || []
+    const userMessages = messages.filter(m => m.role === 'user')
+    const assistantMessages = messages.filter(m => m.role === 'assistant')
+
+    let summary = `# ${conversation.title}\n\n`
+    summary += `**角色**: ${getRoleLabel(conversation.role)}\n`
+    summary += `**创建时间**: ${new Date(conversation.createdAt).toLocaleString('zh-CN')}\n`
+    summary += `**消息数**: ${messages.length} (用户: ${userMessages.length}, AI: ${assistantMessages.length})\n\n`
+    summary += `## 对话摘要\n\n`
+
+    // 提取用户的主要问题
+    if (userMessages.length > 0) {
+      summary += `### 主要问题\n\n`
+      userMessages.slice(0, 5).forEach((msg, index) => {
+        const preview = msg.content.slice(0, 100)
+        summary += `${index + 1}. ${preview}${msg.content.length > 100 ? '...' : ''}\n`
+      })
+      summary += `\n`
+    }
+
+    // 提取AI的关键回复
+    if (assistantMessages.length > 0) {
+      summary += `### 关键回复\n\n`
+      assistantMessages.slice(0, 3).forEach((msg, index) => {
+        const preview = msg.content.slice(0, 200)
+        summary += `${index + 1}. ${preview}${msg.content.length > 200 ? '...' : ''}\n\n`
+      })
+    }
+
+    return summary
+  }
 
   // 导出为 Markdown
   const exportAsMarkdown = () => {
-    if (!conversation) return ''
-
-    let content = `# ${conversation.title}\n\n`
-    content += `**角色**: ${getRoleLabel(conversation.role)}\n`
-    content += `**创建时间**: ${new Date(conversation.createdAt).toLocaleString('zh-CN')}\n`
-    content += `**消息数**: ${conversation.messages?.length || 0}\n\n`
-    content += `---\n\n`
-
-    conversation.messages?.forEach((msg, index) => {
-      const role = msg.role === 'user' ? '👤 用户' : '🤖 AI助手'
-      content += `## ${role}\n\n`
-      content += `${msg.content}\n\n`
-      if (index < conversation.messages.length - 1) {
-        content += `---\n\n`
-      }
-    })
-
-    return content
+    return summary || generateClientSummary()
   }
 
   // 导出为纯文本
   const exportAsText = () => {
-    if (!conversation) return ''
-
-    let content = `${conversation.title}\n`
-    content += `${'='.repeat(conversation.title.length)}\n\n`
-    content += `角色: ${getRoleLabel(conversation.role)}\n`
-    content += `创建时间: ${new Date(conversation.createdAt).toLocaleString('zh-CN')}\n`
-    content += `消息数: ${conversation.messages?.length || 0}\n\n`
-
-    conversation.messages?.forEach((msg, index) => {
-      const role = msg.role === 'user' ? '[用户]' : '[AI助手]'
-      content += `${role}\n${msg.content}\n\n`
-    })
-
+    const content = summary || generateClientSummary()
+    // 移除 Markdown 格式
     return content
+      .replace(/^#+\s/gm, '')
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
   }
 
   // 导出为 JSON
   const exportAsJSON = () => {
     if (!conversation) return ''
-    return JSON.stringify(conversation, null, 2)
+    return JSON.stringify({
+      id: conversation.id,
+      title: conversation.title,
+      role: conversation.role,
+      createdAt: conversation.createdAt,
+      messageCount: conversation.messages?.length || 0,
+      summary: summary || generateClientSummary()
+    }, null, 2)
   }
 
   // 获取导出内容
@@ -148,6 +197,50 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
           </div>
         </div>
 
+        {/* 生成总结按钮 */}
+        {!summary && (
+          <button
+            type="button"
+            className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/20 bg-cyan-500/20 px-4 py-3 text-sm font-medium text-cyan-300 transition-all hover:bg-cyan-500/30 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={generateSummary}
+            disabled={generating}
+          >
+            {generating ? (
+              <>
+                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-cyan-300 border-t-transparent" />
+                <span>生成总结中...</span>
+              </>
+            ) : (
+              <>
+                <span>✨</span>
+                <span>生成对话总结</span>
+              </>
+            )}
+          </button>
+        )}
+
+        {/* 总结预览 */}
+        {summary && (
+          <div className="mb-4">
+            <div className="mb-2 flex items-center justify-between">
+              <h4 className="text-sm font-medium text-slate-300">对话总结</h4>
+              <button
+                type="button"
+                className="text-xs text-cyan-400 hover:text-cyan-300"
+                onClick={generateSummary}
+                disabled={generating}
+              >
+                重新生成
+              </button>
+            </div>
+            <div className="max-h-60 overflow-auto rounded-lg border border-cyan-500/20 bg-black/40 p-3">
+              <pre className="whitespace-pre-wrap text-xs text-slate-300">
+                {summary}
+              </pre>
+            </div>
+          </div>
+        )}
+
         {/* 导出格式选择 */}
         <div className="mb-4">
           <h4 className="mb-2 text-sm font-medium text-slate-300">导出格式</h4>
@@ -173,20 +266,22 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
         <div className="space-y-2">
           <button
             type="button"
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/20 bg-cyan-500/20 px-4 py-3 text-sm font-medium text-cyan-300 transition-all hover:bg-cyan-500/30 active:scale-95"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/20 bg-cyan-500/20 px-4 py-3 text-sm font-medium text-cyan-300 transition-all hover:bg-cyan-500/30 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={handleDownload}
+            disabled={!summary}
           >
             <span>📥</span>
-            <span>下载文件</span>
+            <span>下载总结</span>
           </button>
 
           <button
             type="button"
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/20 bg-slate-800/30 px-4 py-3 text-sm font-medium text-slate-300 transition-all hover:bg-slate-800/50 active:scale-95"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/20 bg-slate-800/30 px-4 py-3 text-sm font-medium text-slate-300 transition-all hover:bg-slate-800/50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={handleCopy}
+            disabled={!summary}
           >
             <span>{copied ? '✅' : '📋'}</span>
-            <span>{copied ? '已复制' : '复制内容'}</span>
+            <span>{copied ? '已复制' : '复制总结'}</span>
           </button>
 
           <button
@@ -197,17 +292,6 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
             <span>🔗</span>
             <span>生成分享链接</span>
           </button>
-        </div>
-
-        {/* 预览 */}
-        <div className="mt-4">
-          <h4 className="mb-2 text-sm font-medium text-slate-300">内容预览</h4>
-          <div className="max-h-60 overflow-auto rounded-lg border border-cyan-500/20 bg-black/40 p-3">
-            <pre className="whitespace-pre-wrap text-xs text-slate-300">
-              {getExportContent().slice(0, 500)}
-              {getExportContent().length > 500 && '\n\n... (内容过长，已截断)'}
-            </pre>
-          </div>
         </div>
       </div>
     </div>
