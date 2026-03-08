@@ -25,7 +25,10 @@ export default function QuickCommandPanel({ currentRole, onCommandClick }: Quick
               key={cmd.id}
               type="button"
               className="w-full rounded-lg border border-cyan-500/20 bg-slate-800/30 p-3 text-left transition-all hover:border-cyan-500/40 hover:bg-slate-800/50"
-              onClick={() => onCommandClick(cmd.prompt)}
+              onClick={() => {
+                console.log('[QuickCommandPanel] 按钮被点击:', cmd.title, cmd.prompt)
+                onCommandClick(cmd.prompt)
+              }}
             >
               <div className="flex items-center gap-2">
                 <span className="text-xl leading-none">{cmd.icon}</span>

@@ -51,7 +51,9 @@ export default function ConversationView({
 
   // 处理快捷指令
   useEffect(() => {
+    console.log('[ConversationView] quickPrompt 变化:', quickPrompt)
     if (quickPrompt) {
+      console.log('[ConversationView] 填充输入框:', quickPrompt)
       setInput(quickPrompt)
       inputRef.current?.focus()
       onQuickPromptUsed?.()

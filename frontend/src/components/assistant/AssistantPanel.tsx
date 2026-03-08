@@ -104,8 +104,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
   }
 
   function handleQuickCommand(prompt: string) {
-    // 将快捷指令传递给 ConversationView
-    // 通过创建一个临时状态来触发输入框填充
+    console.log('[AssistantPanel] 快捷指令被点击:', prompt)
     setQuickPrompt(prompt)
   }
 
