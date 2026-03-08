@@ -6,6 +6,7 @@ import requests
 from flask import Blueprint, jsonify, request
 
 from .db_service import ConversationService
+from .prompts import get_role_prompt
 
 
 assistant_bp = Blueprint("assistant", __name__, url_prefix="/api/assistant")
