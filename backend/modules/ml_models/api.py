@@ -26,6 +26,14 @@ try:
 except:
     PROPHET_AVAILABLE = False
 
+# 导入深度学习模块
+try:
+    from modules.ml_models.informer_predictor import InformerPredictor
+    INFORMER_AVAILABLE = True
+except Exception as e:
+    print(f"[警告] Informer模块加载失败: {e}")
+    INFORMER_AVAILABLE = False
+
 from modules.database.db_config import db_config
 
 # 创建蓝图
@@ -376,7 +384,116 @@ def api_compare_models(point_id):
 
 
 # =========================================================
-# 6. 健康检查API
+# 6. 深度学习预测API (Informer)
+# =========================================================
+
+@ml_api.route('/predict/informer/<point_id>', methods=['GET'])
+def api_predict_informer(point_id):
+    """
+    使用Informer模型进行长序列预测
+
+    参数:
+        point_id: 监测点ID
+        steps: 预测步数（默认30天）
+        seq_len: 输入序列长度（默认60天）
+    """
+    try:
+        if not INFORMER_AVAILABLE:
+            return jsonify({
+                'success': False,
+                'message': 'Informer模块未安装，请运行: pip install torch'
+            }), 400
+
+        steps = int(request.args.get('steps', 30))
+        seq_len = int(request.args.get('seq_len', 60))
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
+
+        # 创建Informer预测器
+        predictor = InformerPredictor(
+            seq_len=seq_len,
+            pred_len=steps,
+            features=['settlement', 'temperature', 'crack_width', 'vibration']
+        )
+
+        # 准备数据
+        data = predictor.prepare_data(point_id, conn)
+
+        # 预测
+        result = predictor.predict(data)
+
+        conn.close()
+
+        return jsonify(result)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@ml_api.route('/train/informer/<point_id>', methods=['POST'])
+def api_train_informer(point_id):
+    """
+    训练Informer模型
+
+    请求体:
+        {
+            "seq_len": 60,
+            "pred_len": 30,
+            "epochs": 100,
+            "learning_rate": 0.0001
+        }
+    """
+    try:
+        if not INFORMER_AVAILABLE:
+            return jsonify({
+                'success': False,
+                'message': 'Informer模块未安装'
+            }), 400
+
+        data = request.get_json()
+        seq_len = data.get('seq_len', 60)
+        pred_len = data.get('pred_len', 30)
+        epochs = data.get('epochs', 100)
+        lr = data.get('learning_rate', 0.0001)
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
+
+        # 创建预测器
+        predictor = InformerPredictor(seq_len=seq_len, pred_len=pred_len)
+
+        # 准备数据
+        train_data = predictor.prepare_data(point_id, conn)
+
+        # 训练模型
+        predictor.train(train_data, epochs=epochs, lr=lr)
+
+        # 评估模型
+        metrics = predictor.evaluate(train_data)
+
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'point_id': point_id,
+            'model': 'informer',
+            'metrics': metrics,
+            'message': '模型训练完成'
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# =========================================================
+# 7. 健康检查API
 # =========================================================
 
 @ml_api.route('/health', methods=['GET'])
@@ -388,6 +505,7 @@ def api_health():
             'anomaly_detector': True,
             'time_series_predictor': True,
             'prophet': PROPHET_AVAILABLE,
+            'informer': INFORMER_AVAILABLE,
             'spatial_correlation': True,
             'causal_inference': True,
             'model_selector': True
