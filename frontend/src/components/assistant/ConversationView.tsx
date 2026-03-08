@@ -92,7 +92,7 @@ export default function ConversationView({
   const messages = conversation?.messages || []
 
   return (
-    <div className="flex h-full flex-1 flex-col">
+    <div className="flex flex-1 flex-col">
       {/* 消息列表 */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
