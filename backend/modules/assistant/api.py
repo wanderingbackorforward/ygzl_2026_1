@@ -373,3 +373,66 @@ def _get_role_system_prompt(role: str) -> str:
     else:
         return base_prompt
 
+
+@assistant_bp.route("/summarize", methods=["POST"])
+def summarize_conversation():
+    """生成对话总结"""
+    try:
+        body = request.get_json(silent=True) or {}
+        conversation_id = body.get("conversation_id")
+        messages = body.get("messages", [])
+
+        if not messages:
+            return jsonify({"status": "error", "message": "消息列表为空"}), 400
+
+        # 调用 DeepSeek 生成总结
+        api_key, api_base, model, timeout_s = _deepseek_settings()
+        if not api_key:
+            return jsonify({"status": "error", "message": "DeepSeek 未配置"}), 400
+
+        # 构建对话历史文本
+        conversation_text = ""
+        for msg in messages:
+            role_label = "用户" if msg.get("role") == "user" else "AI"
+            content = msg.get("content", "")
+            conversation_text += f"{role_label}: {content}\n\n"
+
+        system_prompt = (
+            "你是一个对话总结助手。请根据以下对话内容生成简洁的总结。\n"
+            "总结应包括：\n"
+            "1. 用户提出的主要问题（最多5个）\n"
+            "2. AI给出的关键回复要点（最多3个）\n"
+            "3. 对话的整体主题\n\n"
+            "输出格式为 Markdown，使用标题和列表组织内容。"
+        )
+
+        user_content = f"请总结以下对话：\n\n{conversation_text}"
+
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content},
+            ],
+            "temperature": 0.3,
+        }
+
+        url = f"{api_base}/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+
+        resp = requests.post(url, headers=headers, json=payload, timeout=timeout_s)
+
+        if not resp.ok:
+            return jsonify({"status": "error", "message": "DeepSeek 请求失败"}), 502
+
+        data = resp.json()
+        summary = _extract_answer(data)
+
+        return jsonify({"status": "success", "data": {"summary": summary}})
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
