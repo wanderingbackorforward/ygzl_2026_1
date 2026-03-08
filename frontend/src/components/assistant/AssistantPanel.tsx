@@ -149,9 +149,9 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
         </div>
 
         {/* 中间栏 - 对话视图 */}
-        <div className="flex flex-1 flex-col">
-          {/* 顶部工具栏 */}
-          <div className="flex items-center justify-between border-b border-cyan-500/20 px-4 py-3">
+        <div className="relative flex flex-1 flex-col">
+          {/* 顶部工具栏 - 固定定位 */}
+          <div className="absolute left-0 right-0 top-0 z-20 flex shrink-0 items-center justify-between border-b border-cyan-500/20 bg-slate-950/95 px-4 py-3 backdrop-blur-sm">
             <div className="flex items-center gap-4">
               <RoleSwitcher currentRole={currentRole} onChange={handleRoleChange} />
               <div className="text-sm text-slate-400">
@@ -185,15 +185,17 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
             </div>
           </div>
 
-          {/* 对话内容 */}
-          {currentConvId && (
-            <ConversationView
-              conversationId={currentConvId}
-              role={currentRole}
-              pagePath={location.pathname}
-              pageContext={pageContext}
-            />
-          )}
+          {/* 对话内容（留出顶部空间） */}
+          <div className="h-full pt-[57px]">
+            {currentConvId && (
+              <ConversationView
+                conversationId={currentConvId}
+                role={currentRole}
+                pagePath={location.pathname}
+                pageContext={pageContext}
+              />
+            )}
+          </div>
         </div>
 
         {/* 右侧栏 - 快捷面板 */}
