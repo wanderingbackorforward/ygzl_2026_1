@@ -186,7 +186,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
           </div>
 
           {/* 对话内容（留出顶部空间） */}
-          <div className="h-full pt-[57px]">
+          <div className="h-full pt-20">
             {currentConvId && (
               <ConversationView
                 conversationId={currentConvId}
