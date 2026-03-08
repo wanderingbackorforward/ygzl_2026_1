@@ -6,10 +6,6 @@ import requests
 from flask import Blueprint, jsonify, request
 
 from .db_service import ConversationService
-from .prompts import get_role_prompt
-from .intent_classifier import classify_intent
-from .prompt_templates import build_system_prompt
-from .context_formatter import format_context_for_prompt
 
 
 assistant_bp = Blueprint("assistant", __name__, url_prefix="/api/assistant")
@@ -129,16 +125,7 @@ def assistant_chat():
             400,
         )
 
-    system_prompt = (
-        "你是本系统的悬浮小助手（只做一问一答）。\n"
-        "请直接回答用户问题，不要输出任何“页面路径/问题编号/后续步骤/需要提供XXX”的模板化内容。\n"
-        "如果用户问题不够明确：只提出 1-2 个最关键的追问，并给出可选示例问题。\n"
-        "输出必须是可直接渲染的 Markdown，并且排版清晰：\n"
-        "- 用短标题（###）组织\n"
-        "- 用列表（-）表达步骤/要点\n"
-        "- 代码用 ``` 包裹\n"
-        "- 中文为主，简洁明确\n"
-    )
+    system_prompt = get_role_prompt('researcher')
 
     context_text = _format_context(page_context)
     if context_text:
@@ -304,15 +291,11 @@ def send_message(conv_id: str):
         if not api_key:
             return jsonify({"status": "error", "message": "DeepSeek 未配置"}), 400
 
-        # 分类用户意图
-        intent, confidence = classify_intent(content, page_path)
+        # 根据角色构建 system prompt
+        system_prompt = get_role_prompt(role)
 
-        # 根据角色和意图构建 system prompt
-        base_role_prompt = get_role_prompt(role)
-        system_prompt = build_system_prompt(role, intent, base_role_prompt)
-
-        # 根据意图格式化上下文
-        context_text = format_context_for_prompt(page_context, intent)
+        # 格式化上下文
+        context_text = _format_context(page_context)
         if context_text:
             user_content = f"当前页面：{page_path}\n\n{context_text}\n\n问题：{content}"
         elif page_path:
