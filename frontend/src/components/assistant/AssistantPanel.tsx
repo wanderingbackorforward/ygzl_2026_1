@@ -6,6 +6,8 @@ import type { Conversation, Role } from './types'
 import ConversationList from './ConversationList'
 import ConversationView from './ConversationView'
 import QuickCommandPanel from './QuickCommandPanel'
+import StatisticsPanel from './StatisticsPanel'
+import ExportPanel from './ExportPanel'
 import RoleSwitcher from './RoleSwitcher'
 
 interface AssistantPanelProps {
@@ -22,6 +24,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
   const [loading, setLoading] = useState(true)
   const [showQuickPanel, setShowQuickPanel] = useState(true)
   const [quickPrompt, setQuickPrompt] = useState<string>('')
+  const [rightPanelMode, setRightPanelMode] = useState<'quick' | 'stats' | 'export'>('quick')
 
   // 加载对话列表
   useEffect(() => {
@@ -172,7 +175,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                 className="rounded px-3 py-2 text-sm text-slate-300 hover:bg-white/10"
                 onClick={() => setShowQuickPanel(!showQuickPanel)}
               >
-                {showQuickPanel ? '隐藏快捷面板' : '显示快捷面板'}
+                {showQuickPanel ? '隐藏侧边栏' : '显示侧边栏'}
               </button>
               <button
                 type="button"
@@ -199,13 +202,61 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
           </div>
         </div>
 
-        {/* 右侧栏 - 快捷面板 */}
+        {/* 右侧栏 - 多功能面板 */}
         {showQuickPanel && (
-          <div className="w-72 border-l border-cyan-500/20 bg-slate-900/50">
-            <QuickCommandPanel
-              currentRole={currentRole}
-              onCommandClick={handleQuickCommand}
-            />
+          <div className="flex w-72 flex-col border-l border-cyan-500/20 bg-slate-900/50">
+            {/* 面板切换按钮 */}
+            <div className="flex shrink-0 border-b border-cyan-500/20">
+              <button
+                type="button"
+                className={`flex-1 px-3 py-2 text-sm transition-colors ${
+                  rightPanelMode === 'quick'
+                    ? 'bg-cyan-500/20 text-cyan-300'
+                    : 'text-slate-400 hover:bg-white/5'
+                }`}
+                onClick={() => setRightPanelMode('quick')}
+              >
+                快捷指令
+              </button>
+              <button
+                type="button"
+                className={`flex-1 px-3 py-2 text-sm transition-colors ${
+                  rightPanelMode === 'stats'
+                    ? 'bg-cyan-500/20 text-cyan-300'
+                    : 'text-slate-400 hover:bg-white/5'
+                }`}
+                onClick={() => setRightPanelMode('stats')}
+              >
+                统计
+              </button>
+              <button
+                type="button"
+                className={`flex-1 px-3 py-2 text-sm transition-colors ${
+                  rightPanelMode === 'export'
+                    ? 'bg-cyan-500/20 text-cyan-300'
+                    : 'text-slate-400 hover:bg-white/5'
+                }`}
+                onClick={() => setRightPanelMode('export')}
+              >
+                导出
+              </button>
+            </div>
+
+            {/* 面板内容 */}
+            <div className="min-h-0 flex-1">
+              {rightPanelMode === 'quick' && (
+                <QuickCommandPanel
+                  currentRole={currentRole}
+                  onCommandClick={handleQuickCommand}
+                />
+              )}
+              {rightPanelMode === 'stats' && (
+                <StatisticsPanel conversations={conversations} />
+              )}
+              {rightPanelMode === 'export' && (
+                <ExportPanel conversation={currentConversation || null} />
+              )}
+            </div>
           </div>
         )}
       </div>
