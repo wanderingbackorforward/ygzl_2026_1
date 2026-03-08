@@ -25,11 +25,28 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
   const [showQuickPanel, setShowQuickPanel] = useState(true)
   const [quickPrompt, setQuickPrompt] = useState<string>('')
   const [rightPanelMode, setRightPanelMode] = useState<'quick' | 'stats' | 'export'>('quick')
+  const [fullConversation, setFullConversation] = useState<Conversation | null>(null)
 
   // 加载对话列表
   useEffect(() => {
     loadConversations()
   }, [])
+
+  // 当切换到导出面板时，加载完整对话数据
+  useEffect(() => {
+    if (rightPanelMode === 'export' && currentConvId) {
+      loadFullConversation(currentConvId)
+    }
+  }, [rightPanelMode, currentConvId])
+
+  async function loadFullConversation(convId: string) {
+    try {
+      const conv = await assistantApi.getConversation(convId)
+      setFullConversation(conv)
+    } catch (error) {
+      console.error('加载完整对话失败:', error)
+    }
+  }
 
   async function loadConversations() {
     try {
@@ -254,7 +271,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                 <StatisticsPanel conversations={conversations} />
               )}
               {rightPanelMode === 'export' && (
-                <ExportPanel conversation={currentConversation || null} />
+                <ExportPanel conversation={fullConversation} />
               )}
             </div>
           </div>
