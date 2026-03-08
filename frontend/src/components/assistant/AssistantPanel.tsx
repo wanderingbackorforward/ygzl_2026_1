@@ -21,6 +21,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
   const [currentRole, setCurrentRole] = useState<Role>('researcher')
   const [loading, setLoading] = useState(true)
   const [showQuickPanel, setShowQuickPanel] = useState(true)
+  const [quickPrompt, setQuickPrompt] = useState<string>('')
 
   // 加载对话列表
   useEffect(() => {
@@ -103,9 +104,9 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
   }
 
   function handleQuickCommand(prompt: string) {
-    // 快捷指令会传递给 ConversationView 组件
-    // 这里通过 key 强制重新渲染来传递 prompt
-    // 实际实现中可以用 ref 或状态管理
+    // 将快捷指令传递给 ConversationView
+    // 通过创建一个临时状态来触发输入框填充
+    setQuickPrompt(prompt)
   }
 
   const currentConversation = conversations.find(c => c.id === currentConvId)
@@ -193,6 +194,8 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                 role={currentRole}
                 pagePath={location.pathname}
                 pageContext={pageContext}
+                quickPrompt={quickPrompt}
+                onQuickPromptUsed={() => setQuickPrompt('')}
               />
             )}
           </div>

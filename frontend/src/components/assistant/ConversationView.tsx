@@ -9,6 +9,8 @@ interface ConversationViewProps {
   role: Role
   pagePath: string
   pageContext: any
+  quickPrompt?: string
+  onQuickPromptUsed?: () => void
 }
 
 export default function ConversationView({
@@ -16,6 +18,8 @@ export default function ConversationView({
   role,
   pagePath,
   pageContext,
+  quickPrompt,
+  onQuickPromptUsed,
 }: ConversationViewProps) {
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [input, setInput] = useState('')
@@ -45,6 +49,15 @@ export default function ConversationView({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [conversation?.messages])
 
+  // 处理快捷指令
+  useEffect(() => {
+    if (quickPrompt) {
+      setInput(quickPrompt)
+      inputRef.current?.focus()
+      onQuickPromptUsed?.()
+    }
+  }, [quickPrompt, onQuickPromptUsed])
+
   async function loadConversation() {
     try {
       const conv = await assistantApi.getConversation(conversationId)
@@ -61,6 +74,24 @@ export default function ConversationView({
 
     setLoading(true)
     setError('')
+
+    // 立即显示用户消息
+    const tempUserMessage: Message = {
+      id: `temp-${Date.now()}`,
+      role: 'user',
+      content: content,
+      contentType: 'text',
+      createdAt: new Date().toISOString()
+    }
+
+    setConversation(prev => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        messages: [...(prev.messages || []), tempUserMessage],
+      }
+    })
+
     setInput('')
 
     try {
@@ -72,17 +103,26 @@ export default function ConversationView({
         pageContext
       )
 
-      // 更新消息列表
+      // 替换临时消息为真实消息
       setConversation(prev => {
         if (!prev) return prev
+        const messagesWithoutTemp = prev.messages.filter(m => m.id !== tempUserMessage.id)
         return {
           ...prev,
-          messages: [...(prev.messages || []), userMessage, assistantMessage],
+          messages: [...messagesWithoutTemp, userMessage, assistantMessage],
         }
       })
     } catch (err: any) {
       console.error('发送消息失败:', err)
       setError(err.message || '发送消息失败')
+      // 发送失败时移除临时消息
+      setConversation(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          messages: prev.messages.filter(m => m.id !== tempUserMessage.id),
+        }
+      })
     } finally {
       setLoading(false)
       inputRef.current?.focus()
