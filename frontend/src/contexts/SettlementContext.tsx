@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import { useSettlementSummary, usePointData, useSettlementPoints } from '../hooks/useSettlementData';
+import { cachePageData } from '../hooks/usePageContext';
 import type { SummaryDataItem, PointDetailData } from '../types/api';
 
 interface SettlementContextValue {
@@ -53,7 +54,9 @@ export const SettlementProvider: React.FC<SettlementProviderProps> = ({ children
   const selectPoint = useCallback((pointId: string | null) => {
     setSelectedPointId(pointId);
   }, []);
-  React.useEffect(() => {
+
+  // 自动选择第一个有效的监测点
+  useEffect(() => {
     if (!selectedPointId && points && points.length > 0) {
       const firstValid = points.find(id => id && id !== 'null' && id !== 'undefined') || null;
       if (firstValid) setSelectedPointId(firstValid);
@@ -62,6 +65,72 @@ export const SettlementProvider: React.FC<SettlementProviderProps> = ({ children
       setSelectedPointId(firstValid || null);
     }
   }, [points, selectedPointId]);
+
+  // 缓存页面数据供悬浮助手使用
+  useEffect(() => {
+    if (!summaryData || summaryLoading) return;
+
+    // 计算统计数据
+    const totalCount = summaryData.length;
+    const anomalyCount = summaryData.filter(item => {
+      const alertLevel = item.alert_level?.toLowerCase() || '';
+      return alertLevel.includes('warning') ||
+             alertLevel.includes('danger') ||
+             alertLevel.includes('critical') ||
+             alertLevel.includes('high') ||
+             alertLevel.includes('警告') ||
+             alertLevel.includes('异常');
+    }).length;
+    const normalCount = totalCount - anomalyCount;
+
+    // 计算平均沉降值
+    const avgSettlement = summaryData.reduce((sum, item) => {
+      const value = parseFloat(item.latest_settlement as any) || 0;
+      return sum + value;
+    }, 0) / totalCount;
+
+    // 找出最大沉降值
+    const maxSettlement = Math.max(...summaryData.map(item =>
+      parseFloat(item.latest_settlement as any) || 0
+    ));
+
+    // 统计趋势类型
+    const trendTypes = summaryData.reduce((acc, item) => {
+      const trend = item.trend_type || '未知';
+      acc[trend] = (acc[trend] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // 统计风险等级
+    const riskLevels = summaryData.reduce((acc, item) => {
+      const risk = item.risk_level || '未知';
+      acc[risk] = (acc[risk] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // 构建数据快照
+    const dataSnapshot = {
+      summary: {
+        totalCount,
+        anomalyCount,
+        normalCount,
+        avgSettlement: avgSettlement.toFixed(2),
+        maxSettlement: maxSettlement.toFixed(2),
+        trendTypes,
+        riskLevels,
+      },
+      selectedItems: selectedPointId ? [selectedPointId] : [],
+      filters: {},
+      statistics: {
+        totalCount,
+        anomalyCount,
+        normalCount,
+      },
+    };
+
+    // 缓存到 localStorage
+    cachePageData('settlement', dataSnapshot);
+  }, [summaryData, summaryLoading, selectedPointId]);
 
   const value: SettlementContextValue = {
     summaryData,

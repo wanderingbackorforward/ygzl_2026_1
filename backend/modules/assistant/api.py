@@ -6,6 +6,7 @@ import requests
 from flask import Blueprint, jsonify, request
 
 from .db_service import ConversationService
+from .prompts import get_role_prompt
 
 
 assistant_bp = Blueprint("assistant", __name__, url_prefix="/api/assistant")
@@ -301,7 +302,7 @@ def send_message(conv_id: str):
             return jsonify({"status": "error", "message": "DeepSeek 未配置"}), 400
 
         # 根据角色调整 system prompt
-        system_prompt = _get_role_system_prompt(role)
+        system_prompt = get_role_prompt(role)
 
         context_text = _format_context(page_context)
         if context_text:
@@ -352,26 +353,6 @@ def send_message(conv_id: str):
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
-
-
-def _get_role_system_prompt(role: str) -> str:
-    base_prompt = (
-        "[成功] ni shi ben xi tong de xuan fu xiao zhu shou.\n"
-        "[成功] qing zhi jie hui da yong hu wen ti.\n"
-        "[成功] shu chu bi xu shi ke zhi jie xuan ran de Markdown.\n"
-        "- yong duan biao ti zu zhi\n"
-        "- yong lie biao biao da bu zhou\n"
-        "- dai ma yong bao guo\n"
-    )
-
-    if role == "researcher":
-        return base_prompt + "\n[成功] ke yan ren yuan mo shi\n"
-    elif role == "worker":
-        return base_prompt + "\n[成功] shi gong ren yuan mo shi\n"
-    elif role == "reporter":
-        return base_prompt + "\n[成功] xiang mu hui bao mo shi\n"
-    else:
-        return base_prompt
 
 
 @assistant_bp.route("/summarize", methods=["POST"])
