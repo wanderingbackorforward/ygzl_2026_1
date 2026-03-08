@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import {
   useTemperatureSummary,
   useTemperatureSensors,
@@ -6,6 +6,7 @@ import {
   useTemperatureTrends,
 } from '../hooks/useTemperatureData';
 import { apiGet } from '../lib/api';
+import { cachePageData } from '../hooks/usePageContext';
 import type { TemperatureSummary, TemperatureDataPoint, TemperatureAnalysisData } from '../types/api';
 
 interface TemperatureContextValue {
@@ -127,6 +128,29 @@ export const TemperatureProvider: React.FC<TemperatureProviderProps> = ({ childr
     trendLoading,
     trendError,
   };
+
+  // 缓存页面数据供悬浮助手使用
+  useEffect(() => {
+    if (summary && sensors.length > 0) {
+      const dataSnapshot = {
+        summary: {
+          totalSensors: sensors.length,
+          problemSensors: problemSensorIds.length,
+          avgTemperature: summary.avg_temperature,
+          maxTemperature: summary.max_temperature,
+          minTemperature: summary.min_temperature,
+        },
+        statistics: {
+          totalCount: sensors.length,
+          anomalyCount: problemSensorIds.length,
+          normalCount: sensors.length - problemSensorIds.length,
+        },
+        selectedItems: selectedSensorId ? [selectedSensorId] : [],
+      };
+
+      cachePageData('temperature', dataSnapshot);
+    }
+  }, [summary, sensors, problemSensorIds, selectedSensorId]);
 
   return (
     <TemperatureContext.Provider value={value}>

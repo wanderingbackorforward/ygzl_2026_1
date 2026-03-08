@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import {
   useVibrationDatasets,
   useVibrationChannels,
@@ -8,6 +8,7 @@ import {
   useVibrationFactors,
   useVibrationRadar,
 } from '../hooks/useVibrationData';
+import { cachePageData } from '../hooks/usePageContext';
 import type { VibrationChannel, VibrationData, VibrationMetrics } from '../types/api';
 
 interface VibrationContextValue {
@@ -107,6 +108,29 @@ export const VibrationProvider: React.FC<VibrationProviderProps> = ({ children }
     radarLoading,
     radarError,
   };
+
+  // 缓存页面数据供悬浮助手使用
+  useEffect(() => {
+    if (datasets.length > 0 && channels.length > 0 && metrics) {
+      const dataSnapshot = {
+        summary: {
+          totalDatasets: datasets.length,
+          totalChannels: channels.length,
+          rmsValue: metrics.rms,
+          peakValue: metrics.peak,
+          kurtosis: metrics.kurtosis,
+        },
+        statistics: {
+          totalCount: channels.length,
+          anomalyCount: 0, // 振动数据没有明确的异常标记
+          normalCount: channels.length,
+        },
+        selectedItems: selectedChannelId ? [selectedChannelId] : [],
+      };
+
+      cachePageData('vibration', dataSnapshot);
+    }
+  }, [datasets, channels, metrics, selectedChannelId]);
 
   return (
     <VibrationContext.Provider value={value}>

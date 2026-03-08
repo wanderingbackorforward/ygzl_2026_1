@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import {
   useCrackPoints,
   useCrackTrend,
@@ -8,6 +8,7 @@ import {
   useCrackRate,
   useCrackCorrelation,
 } from '../hooks/useCracksData';
+import { cachePageData } from '../hooks/usePageContext';
 import type { CrackDataPoint, CrackStatsOverview } from '../types/api';
 
 interface CracksContextValue {
@@ -93,6 +94,30 @@ export const CracksProvider: React.FC<CracksProviderProps> = ({ children }) => {
     correlationLoading,
     correlationError,
   };
+
+  // 缓存页面数据供悬浮助手使用
+  useEffect(() => {
+    if (overview && points.length > 0) {
+      const dataSnapshot = {
+        summary: {
+          totalPoints: points.length,
+          normalCount: overview.normal || 0,
+          warningCount: overview.warning || 0,
+          dangerCount: overview.danger || 0,
+          avgCrackWidth: overview.avg_width,
+          maxCrackWidth: overview.max_width,
+        },
+        statistics: {
+          totalCount: points.length,
+          anomalyCount: (overview.warning || 0) + (overview.danger || 0),
+          normalCount: overview.normal || 0,
+        },
+        selectedItems: selectedPointId ? [selectedPointId] : [],
+      };
+
+      cachePageData('cracks', dataSnapshot);
+    }
+  }, [overview, points, selectedPointId]);
 
   return (
     <CracksContext.Provider value={value}>
