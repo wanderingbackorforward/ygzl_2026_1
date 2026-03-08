@@ -123,6 +123,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
       <div className="relative flex h-[85vh] w-[90vw] max-w-[1400px] overflow-hidden rounded-xl border border-cyan-500/30 bg-slate-950/95 shadow-2xl shadow-cyan-500/20">
         {/* 左侧栏 - 对话列表 */}
         <div className="flex w-60 shrink-0 flex-col border-r border-cyan-500/20 bg-slate-900/50">
+          {/* 标题栏 - 固定不滚动 */}
           <div className="flex shrink-0 items-center justify-between border-b border-cyan-500/20 p-4">
             <h2 className="text-base font-medium text-cyan-200">对话列表</h2>
             <button
@@ -135,7 +136,8 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          {/* 对话列表 - 可滚动 */}
+          <div className="min-h-0 flex-1 overflow-y-auto">
             <ConversationList
               conversations={conversations}
               currentConvId={currentConvId}
@@ -147,8 +149,8 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
         </div>
 
         {/* 中间栏 - 对话视图 */}
-        <div className="flex flex-1 flex-col">
-          {/* 顶部工具栏 */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* 顶部工具栏 - 固定不滚动 */}
           <div className="flex shrink-0 items-center justify-between border-b border-cyan-500/20 px-4 py-3">
             <div className="flex items-center gap-4">
               <RoleSwitcher currentRole={currentRole} onChange={handleRoleChange} />
@@ -183,15 +185,17 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
             </div>
           </div>
 
-          {/* 对话内容 */}
-          {currentConvId && (
-            <ConversationView
-              conversationId={currentConvId}
-              role={currentRole}
-              pagePath={location.pathname}
-              pageContext={pageContext}
-            />
-          )}
+          {/* 对话内容 - 可滚动 */}
+          <div className="min-h-0 flex-1">
+            {currentConvId && (
+              <ConversationView
+                conversationId={currentConvId}
+                role={currentRole}
+                pagePath={location.pathname}
+                pageContext={pageContext}
+              />
+            )}
+          </div>
         </div>
 
         {/* 右侧栏 - 快捷面板 */}

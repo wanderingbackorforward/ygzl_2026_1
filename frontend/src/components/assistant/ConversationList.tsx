@@ -48,7 +48,7 @@ export default function ConversationList({
   const grouped = groupConversationsByTime(conversations)
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="h-full">
       {Object.entries(grouped).map(([group, convs]) => (
         <div key={group} className="mb-4">
           <div className="px-4 py-2 text-xs font-medium text-slate-500">{group}</div>

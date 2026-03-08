@@ -40,16 +40,10 @@ export default function ConversationView({
     loadConversation()
   }, [conversationId])
 
-  // 自动滚动到底部 - 仅在发送新消息后滚动
+  // 自动滚动到底部
   useEffect(() => {
-    if (conversation?.messages && conversation.messages.length > 0) {
-      const lastMessage = conversation.messages[conversation.messages.length - 1]
-      // 只在最后一条消息是助手回复时滚动
-      if (lastMessage.role === 'assistant') {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-      }
-    }
-  }, [conversation?.messages?.length])
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [conversation?.messages])
 
   async function loadConversation() {
     try {
@@ -98,9 +92,9 @@ export default function ConversationView({
   const messages = conversation?.messages || []
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex h-full flex-col">
       {/* 消息列表 */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
           <div className="flex h-full items-center justify-center text-slate-400">
             <div className="text-center">
@@ -199,7 +193,7 @@ export default function ConversationView({
       </div>
 
       {/* 输入区域 */}
-      <div className="border-t border-cyan-500/20 px-4 py-3">
+      <div className="shrink-0 border-t border-cyan-500/20 px-4 py-3">
         <div className="flex items-center gap-3">
           <input
             ref={inputRef}
