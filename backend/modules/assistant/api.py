@@ -9,6 +9,7 @@ from .db_service import ConversationService
 from .prompts import get_role_prompt
 from .intent_classifier import classify_intent
 from .prompt_templates import build_system_prompt
+from .context_formatter import format_context_for_prompt
 
 
 assistant_bp = Blueprint("assistant", __name__, url_prefix="/api/assistant")
@@ -310,7 +311,8 @@ def send_message(conv_id: str):
         base_role_prompt = get_role_prompt(role)
         system_prompt = build_system_prompt(role, intent, base_role_prompt)
 
-        context_text = _format_context(page_context)
+        # 根据意图格式化上下文
+        context_text = format_context_for_prompt(page_context, intent)
         if context_text:
             user_content = f"当前页面：{page_path}\n\n{context_text}\n\n问题：{content}"
         elif page_path:
