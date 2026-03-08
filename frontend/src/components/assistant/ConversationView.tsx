@@ -40,10 +40,16 @@ export default function ConversationView({
     loadConversation()
   }, [conversationId])
 
-  // 自动滚动到底部
+  // 自动滚动到底部 - 仅在发送新消息后滚动
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [conversation?.messages])
+    if (conversation?.messages && conversation.messages.length > 0) {
+      const lastMessage = conversation.messages[conversation.messages.length - 1]
+      // 只在最后一条消息是助手回复时滚动
+      if (lastMessage.role === 'assistant') {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }
+    }
+  }, [conversation?.messages?.length])
 
   async function loadConversation() {
     try {
