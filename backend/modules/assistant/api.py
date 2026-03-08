@@ -355,44 +355,21 @@ def send_message(conv_id: str):
 
 
 def _get_role_system_prompt(role: str) -> str:
-    """根据角色返回不同的 system prompt"""
     base_prompt = (
-        "你是本系统的悬浮小助手。\n"
-        "请直接回答用户问题，不要输出任何"页面路径/问题编号/后续步骤/需要提供XXX"的模板化内容。\n"
-        "输出必须是可直接渲染的 Markdown，并且排版清晰：\n"
-        "- 用短标题（###）组织\n"
-        "- 用列表（-）表达步骤/要点\n"
-        "- 代码用 ``` 包裹\n"
-        "- 中文为主，简洁明确\n"
+        "[成功] ni shi ben xi tong de xuan fu xiao zhu shou.\n"
+        "[成功] qing zhi jie hui da yong hu wen ti.\n"
+        "[成功] shu chu bi xu shi ke zhi jie xuan ran de Markdown.\n"
+        "- yong duan biao ti zu zhi\n"
+        "- yong lie biao biao da bu zhou\n"
+        "- dai ma yong bao guo\n"
     )
 
     if role == "researcher":
-        return (
-            base_prompt
-            + "\n你当前处于【科研人员模式】：\n"
-            "- 回答要专业、详细，引用数据和算法原理\n"
-            "- 可以使用专业术语，提供公式和统计指标\n"
-            "- 引用相关论文和标准\n"
-            "- 提供置信区间、p 值等统计指标\n"
-        )
+        return base_prompt + "\n[成功] ke yan ren yuan mo shi\n"
     elif role == "worker":
-        return (
-            base_prompt
-            + "\n你当前处于【施工人员模式】：\n"
-            "- 回答要简单、直白、可操作\n"
-            "- 避免专业术语，用通俗语言解释\n"
-            "- 给出明确的操作步骤（第一步、第二步...）\n"
-            "- 用颜色标注严重程度（严重/中等/轻微）\n"
-        )
+        return base_prompt + "\n[成功] shi gong ren yuan mo shi\n"
     elif role == "reporter":
-        return (
-            base_prompt
-            + "\n你当前处于【项目汇报模式】：\n"
-            "- 回答要总结性、结构化、适合展示\n"
-            "- 自动生成摘要、关键指标、趋势分析\n"
-            "- 输出格式适合导出为报告（标题、摘要、详情）\n"
-            "- 突出关键数据和结论\n"
-        )
+        return base_prompt + "\n[成功] xiang mu hui bao mo shi\n"
     else:
         return base_prompt
 
