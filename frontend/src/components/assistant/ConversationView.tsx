@@ -51,9 +51,7 @@ export default function ConversationView({
 
   // 处理快捷指令
   useEffect(() => {
-    console.log('[ConversationView] quickPrompt 变化:', quickPrompt)
     if (quickPrompt) {
-      console.log('[ConversationView] 填充输入框:', quickPrompt)
       setInput(quickPrompt)
       inputRef.current?.focus()
       onQuickPromptUsed?.()
@@ -74,7 +72,6 @@ export default function ConversationView({
     const content = input.trim()
     if (!content || loading) return
 
-    console.log('[ConversationView] 开始发送消息:', content)
     setLoading(true)
     setError('')
 
@@ -87,7 +84,6 @@ export default function ConversationView({
       createdAt: new Date().toISOString()
     }
 
-    console.log('[ConversationView] 立即显示临时用户消息:', tempUserMessage)
     setConversation(prev => {
       if (!prev) return prev
       return {
@@ -99,7 +95,6 @@ export default function ConversationView({
     setInput('')
 
     try {
-      console.log('[ConversationView] 调用 API 发送消息...')
       const { userMessage, assistantMessage } = await assistantApi.sendMessage(
         conversationId,
         content,
@@ -108,7 +103,6 @@ export default function ConversationView({
         pageContext
       )
 
-      console.log('[ConversationView] API 返回成功，替换临时消息')
       // 替换临时消息为真实消息
       setConversation(prev => {
         if (!prev) return prev
@@ -119,7 +113,7 @@ export default function ConversationView({
         }
       })
     } catch (err: any) {
-      console.error('[ConversationView] 发送消息失败:', err)
+      console.error('发送消息失败:', err)
       setError(err.message || '发送消息失败')
       // 发送失败时移除临时消息
       setConversation(prev => {

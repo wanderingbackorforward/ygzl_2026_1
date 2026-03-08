@@ -104,7 +104,6 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
   }
 
   function handleQuickCommand(prompt: string) {
-    console.log('[AssistantPanel] 快捷指令被点击:', prompt)
     setQuickPrompt(prompt)
   }
 
