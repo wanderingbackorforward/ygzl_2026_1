@@ -61,9 +61,9 @@ class ConversationService:
 
     @staticmethod
     def get_conversations(limit: int = 100) -> List[Dict[str, Any]]:
-        # Get conversations
+        # Get conversations (deleted_at is null)
         r = requests.get(
-            _url(f'/rest/v1/assistant_conversations?select=*&is.deleted_at=null&order=updated_at.desc&limit={limit}'),
+            _url(f'/rest/v1/assistant_conversations?select=*&deleted_at=is.null&order=updated_at.desc&limit={limit}'),
             headers=_headers()
         )
         r.raise_for_status()
@@ -95,7 +95,7 @@ class ConversationService:
     def get_conversation(conv_id: str) -> Optional[Dict[str, Any]]:
         # Get conversation
         r = requests.get(
-            _url(f'/rest/v1/assistant_conversations?select=*&id=eq.{conv_id}&is.deleted_at=null'),
+            _url(f'/rest/v1/assistant_conversations?select=*&id=eq.{conv_id}&deleted_at=is.null'),
             headers=_headers()
         )
         r.raise_for_status()
