@@ -34,6 +34,13 @@ except Exception as e:
     print(f"[警告] Informer模块加载失败: {e}")
     INFORMER_AVAILABLE = False
 
+try:
+    from modules.ml_models.stgcn_predictor import STGCNPredictor
+    STGCN_AVAILABLE = True
+except Exception as e:
+    print(f"[警告] STGCN模块加载失败: {e}")
+    STGCN_AVAILABLE = False
+
 from modules.database.db_config import db_config
 
 # 创建蓝图
@@ -493,7 +500,126 @@ def api_train_informer(point_id):
 
 
 # =========================================================
-# 7. 健康检查API
+# 7. 时空图卷积网络API (STGCN)
+# =========================================================
+
+@ml_api.route('/predict/stgcn', methods=['GET'])
+def api_predict_stgcn():
+    """
+    使用STGCN模型进行多点联合预测
+
+    参数:
+        steps: 预测步数（默认30天）
+        seq_len: 输入序列长度（默认60天）
+    """
+    try:
+        if not STGCN_AVAILABLE:
+            return jsonify({
+                'success': False,
+                'message': 'STGCN模块未安装，请运行: pip install torch scipy'
+            }), 400
+
+        steps = int(request.args.get('steps', 30))
+        seq_len = int(request.args.get('seq_len', 60))
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
+
+        # 创建STGCN预测器
+        predictor = STGCNPredictor(
+            seq_len=seq_len,
+            pred_len=steps
+        )
+
+        # 准备数据
+        data = predictor.prepare_data(conn)
+
+        # 预测
+        result = predictor.predict(data)
+
+        conn.close()
+
+        return jsonify(result)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@ml_api.route('/train/stgcn', methods=['POST'])
+def api_train_stgcn():
+    """
+    训练STGCN模型
+
+    请求体:
+        {
+            "seq_len": 60,
+            "pred_len": 30,
+            "epochs": 100,
+            "learning_rate": 0.001,
+            "spatial_channels": 16,
+            "out_channels": 32,
+            "num_layers": 2
+        }
+    """
+    try:
+        if not STGCN_AVAILABLE:
+            return jsonify({
+                'success': False,
+                'message': 'STGCN模块未安装'
+            }), 400
+
+        data = request.get_json()
+        seq_len = data.get('seq_len', 60)
+        pred_len = data.get('pred_len', 30)
+        epochs = data.get('epochs', 100)
+        lr = data.get('learning_rate', 0.001)
+        spatial_channels = data.get('spatial_channels', 16)
+        out_channels = data.get('out_channels', 32)
+        num_layers = data.get('num_layers', 2)
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
+
+        # 创建预测器
+        predictor = STGCNPredictor(
+            seq_len=seq_len,
+            pred_len=pred_len,
+            spatial_channels=spatial_channels,
+            out_channels=out_channels,
+            num_layers=num_layers
+        )
+
+        # 准备数据
+        train_data = predictor.prepare_data(conn)
+
+        # 训练模型
+        predictor.train(train_data, epochs=epochs, lr=lr)
+
+        # 评估模型
+        metrics = predictor.evaluate(train_data)
+
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'model': 'stgcn',
+            'num_nodes': predictor.num_nodes,
+            'metrics': metrics,
+            'message': '模型训练完成'
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# =========================================================
+# 8. 健康检查API
 # =========================================================
 
 @ml_api.route('/health', methods=['GET'])
@@ -506,6 +632,7 @@ def api_health():
             'time_series_predictor': True,
             'prophet': PROPHET_AVAILABLE,
             'informer': INFORMER_AVAILABLE,
+            'stgcn': STGCN_AVAILABLE,
             'spatial_correlation': True,
             'causal_inference': True,
             'model_selector': True
