@@ -162,6 +162,14 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
             <div className="flex items-center gap-2">
               <button
                 type="button"
+                className="rounded bg-cyan-500/20 px-3 py-2 text-sm font-medium text-cyan-300 hover:bg-cyan-500/30 active:scale-95"
+                onClick={handleCreateConversation}
+                title="新建对话"
+              >
+                + 新建对话
+              </button>
+              <button
+                type="button"
                 className="rounded px-3 py-2 text-sm text-slate-300 hover:bg-white/10"
                 onClick={() => setShowQuickPanel(!showQuickPanel)}
               >
