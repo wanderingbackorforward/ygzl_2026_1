@@ -122,9 +122,8 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
     <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="relative flex h-[85vh] w-[90vw] max-w-[1400px] overflow-hidden rounded-xl border border-cyan-500/30 bg-slate-950/95 shadow-2xl shadow-cyan-500/20">
         {/* 左侧栏 - 对话列表 */}
-        <div className="relative flex h-full w-60 flex-col border-r border-cyan-500/20 bg-slate-900/50">
-          {/* 固定标题栏 */}
-          <div className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between border-b border-cyan-500/20 bg-slate-900/95 p-4 backdrop-blur-sm">
+        <div className="flex w-60 shrink-0 flex-col border-r border-cyan-500/20 bg-slate-900/50">
+          <div className="flex shrink-0 items-center justify-between border-b border-cyan-500/20 p-4">
             <h2 className="text-base font-medium text-cyan-200">对话列表</h2>
             <button
               type="button"
@@ -136,8 +135,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
             </button>
           </div>
 
-          {/* 对话列表（留出顶部空间） */}
-          <div className="h-full overflow-y-auto pt-16">
+          <div className="flex-1 overflow-y-auto">
             <ConversationList
               conversations={conversations}
               currentConvId={currentConvId}
@@ -149,9 +147,9 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
         </div>
 
         {/* 中间栏 - 对话视图 */}
-        <div className="relative flex flex-1 flex-col">
-          {/* 顶部工具栏 - 固定定位 */}
-          <div className="absolute left-0 right-0 top-0 z-20 flex shrink-0 items-center justify-between border-b border-cyan-500/20 bg-slate-950/95 px-4 py-3 backdrop-blur-sm">
+        <div className="flex flex-1 flex-col">
+          {/* 顶部工具栏 */}
+          <div className="flex shrink-0 items-center justify-between border-b border-cyan-500/20 px-4 py-3">
             <div className="flex items-center gap-4">
               <RoleSwitcher currentRole={currentRole} onChange={handleRoleChange} />
               <div className="text-sm text-slate-400">
@@ -185,17 +183,15 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
             </div>
           </div>
 
-          {/* 对话内容（留出顶部空间） */}
-          <div className="h-full pt-20">
-            {currentConvId && (
-              <ConversationView
-                conversationId={currentConvId}
-                role={currentRole}
-                pagePath={location.pathname}
-                pageContext={pageContext}
-              />
-            )}
-          </div>
+          {/* 对话内容 */}
+          {currentConvId && (
+            <ConversationView
+              conversationId={currentConvId}
+              role={currentRole}
+              pagePath={location.pathname}
+              pageContext={pageContext}
+            />
+          )}
         </div>
 
         {/* 右侧栏 - 快捷面板 */}
