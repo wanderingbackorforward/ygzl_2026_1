@@ -7,6 +7,8 @@ from flask import Blueprint, jsonify, request
 
 from .db_service import ConversationService
 from .prompts import get_role_prompt
+from .intent_classifier import classify_intent
+from .prompt_templates import build_system_prompt
 
 
 assistant_bp = Blueprint("assistant", __name__, url_prefix="/api/assistant")
@@ -301,8 +303,12 @@ def send_message(conv_id: str):
         if not api_key:
             return jsonify({"status": "error", "message": "DeepSeek 未配置"}), 400
 
-        # 根据角色调整 system prompt
-        system_prompt = get_role_prompt(role)
+        # 分类用户意图
+        intent, confidence = classify_intent(content, page_path)
+
+        # 根据角色和意图构建 system prompt
+        base_role_prompt = get_role_prompt(role)
+        system_prompt = build_system_prompt(role, intent, base_role_prompt)
 
         context_text = _format_context(page_context)
         if context_text:
