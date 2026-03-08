@@ -30,7 +30,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
   // 加载对话列表
   useEffect(() => {
     loadConversations()
-  }, [])
+  }, [location.pathname])
 
   // 当切换到导出面板时，加载完整对话数据
   useEffect(() => {
@@ -51,12 +51,12 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
   async function loadConversations() {
     try {
       setLoading(true)
-      const convs = await assistantApi.getConversations()
+      const convs = await assistantApi.getConversations(100, location.pathname)
       setConversations(convs)
 
       // 如果没有对话，自动创建一个
       if (convs.length === 0) {
-        const newConv = await assistantApi.createConversation('新对话', currentRole)
+        const newConv = await assistantApi.createConversation('新对话', currentRole, location.pathname)
         setConversations([newConv])
         setCurrentConvId(newConv.id)
       } else {
@@ -73,7 +73,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
 
   async function handleCreateConversation() {
     try {
-      const newConv = await assistantApi.createConversation('新对话', currentRole)
+      const newConv = await assistantApi.createConversation('新对话', currentRole, location.pathname)
       setConversations(prev => [newConv, ...prev])
       setCurrentConvId(newConv.id)
     } catch (error) {

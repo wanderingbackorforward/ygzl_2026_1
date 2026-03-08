@@ -28,12 +28,13 @@ def _url(path):
 
 class ConversationService:
     @staticmethod
-    def create_conversation(title: str = "新对话", role: str = "researcher") -> Dict[str, Any]:
+    def create_conversation(title: str = "新对话", role: str = "researcher", page_path: Optional[str] = None) -> Dict[str, Any]:
         conv_id = str(uuid.uuid4())
         payload = {
             'id': conv_id,
             'title': title,
-            'role': role
+            'role': role,
+            'page_path': page_path
         }
 
         r = requests.post(
@@ -53,6 +54,7 @@ class ConversationService:
             'id': row['id'],
             'title': row['title'],
             'role': row['role'],
+            'pagePath': row.get('page_path'),
             'createdAt': row.get('created_at'),
             'updatedAt': row.get('updated_at'),
             'messageCount': 0,
@@ -60,10 +62,17 @@ class ConversationService:
         }
 
     @staticmethod
-    def get_conversations(limit: int = 100) -> List[Dict[str, Any]]:
+    def get_conversations(limit: int = 100, page_path: Optional[str] = None) -> List[Dict[str, Any]]:
+        # Build query URL with optional page_path filter
+        query_parts = ['select=*', 'deleted_at=is.null', f'order=updated_at.desc', f'limit={limit}']
+        if page_path:
+            query_parts.append(f'page_path=eq.{page_path}')
+
+        query_string = '&'.join(query_parts)
+
         # Get conversations (deleted_at is null)
         r = requests.get(
-            _url(f'/rest/v1/assistant_conversations?select=*&deleted_at=is.null&order=updated_at.desc&limit={limit}'),
+            _url(f'/rest/v1/assistant_conversations?{query_string}'),
             headers=_headers()
         )
         r.raise_for_status()
@@ -83,6 +92,7 @@ class ConversationService:
                 'id': conv['id'],
                 'title': conv['title'],
                 'role': conv['role'],
+                'pagePath': conv.get('page_path'),
                 'createdAt': conv.get('created_at'),
                 'updatedAt': conv.get('updated_at'),
                 'messageCount': len(messages),
@@ -118,6 +128,7 @@ class ConversationService:
             'id': conv['id'],
             'title': conv['title'],
             'role': conv['role'],
+            'pagePath': conv.get('page_path'),
             'createdAt': conv.get('created_at'),
             'updatedAt': conv.get('updated_at'),
             'messages': [

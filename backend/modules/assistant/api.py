@@ -189,7 +189,8 @@ def get_conversations():
     """获取对话列表"""
     try:
         limit = int(request.args.get("limit", 100))
-        conversations = ConversationService.get_conversations(limit=limit)
+        page_path = request.args.get("page_path")
+        conversations = ConversationService.get_conversations(limit=limit, page_path=page_path)
         return jsonify({"status": "success", "data": conversations})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -202,11 +203,12 @@ def create_conversation():
         body = request.get_json(silent=True) or {}
         title = body.get("title", "新对话")
         role = body.get("role", "researcher")
+        page_path = body.get("pagePath") or body.get("page_path")
 
         if role not in ["researcher", "worker", "reporter"]:
             return jsonify({"status": "error", "message": "无效的角色类型"}), 400
 
-        conversation = ConversationService.create_conversation(title=title, role=role)
+        conversation = ConversationService.create_conversation(title=title, role=role, page_path=page_path)
         return jsonify({"status": "success", "data": conversation})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

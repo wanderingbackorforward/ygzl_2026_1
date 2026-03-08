@@ -6,6 +6,7 @@ export interface Conversation {
   id: string
   title: string
   role: Role
+  pagePath?: string
   createdAt: string
   updatedAt: string
   messageCount?: number

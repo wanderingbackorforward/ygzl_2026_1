@@ -11,8 +11,12 @@ interface ApiResponse<T> {
 
 export const assistantApi = {
   // 获取对话列表
-  async getConversations(limit = 100): Promise<Conversation[]> {
-    const res = await fetch(`${API_BASE}/assistant/conversations?limit=${limit}`)
+  async getConversations(limit = 100, pagePath?: string): Promise<Conversation[]> {
+    const params = new URLSearchParams({ limit: limit.toString() })
+    if (pagePath) {
+      params.append('page_path', pagePath)
+    }
+    const res = await fetch(`${API_BASE}/assistant/conversations?${params}`)
     const json: ApiResponse<Conversation[]> = await res.json()
     if (!res.ok || json.status !== 'success') {
       throw new Error(json.message || '获取对话列表失败')
@@ -21,11 +25,11 @@ export const assistantApi = {
   },
 
   // 创建新对话
-  async createConversation(title = '新对话', role: Role = 'researcher'): Promise<Conversation> {
+  async createConversation(title = '新对话', role: Role = 'researcher', pagePath?: string): Promise<Conversation> {
     const res = await fetch(`${API_BASE}/assistant/conversations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, role }),
+      body: JSON.stringify({ title, role, pagePath }),
     })
     const json: ApiResponse<Conversation> = await res.json()
     if (!res.ok || json.status !== 'success') {
