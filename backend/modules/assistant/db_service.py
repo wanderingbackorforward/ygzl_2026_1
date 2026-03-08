@@ -1,195 +1,168 @@
 # -*- coding: utf-8 -*-
-"""
-悬浮小助手 - 数据库服务层
-提供对话和消息的 CRUD 操作
-"""
-import json
+import os
 import uuid
-from datetime import datetime
+import json
+import requests
 from typing import Any, Dict, List, Optional
 
-from ..database.db_config import get_db_cursor
+
+def _headers():
+    """Supabase HTTP headers"""
+    anon = os.environ.get('SUPABASE_ANON_KEY', '')
+    h = {
+        'apikey': anon,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+    }
+    if anon:
+        h['Authorization'] = f'Bearer {anon}'
+    return h
 
 
-def generate_id(prefix: str = "") -> str:
-    """生成唯一 ID"""
-    return f"{prefix}{uuid.uuid4().hex[:12]}"
+def _url(path):
+    """Supabase URL"""
+    base = os.environ.get('SUPABASE_URL', '').rstrip('/')
+    return f'{base}{path}'
 
 
 class ConversationService:
-    """对话管理服务"""
-
     @staticmethod
     def create_conversation(title: str = "新对话", role: str = "researcher") -> Dict[str, Any]:
-        """创建新对话"""
-        conv_id = generate_id("conv_")
-        now = datetime.now()
+        conv_id = str(uuid.uuid4())
+        payload = {
+            'id': conv_id,
+            'title': title,
+            'role': role
+        }
 
-        with get_db_cursor() as cursor:
-            cursor.execute(
-                """
-                INSERT INTO assistant_conversations (id, title, role, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s)
-                """,
-                (conv_id, title, role, now, now),
-            )
+        r = requests.post(
+            _url('/rest/v1/assistant_conversations'),
+            headers=_headers(),
+            json=payload
+        )
+        r.raise_for_status()
+
+        result = r.json()
+        if isinstance(result, list) and len(result) > 0:
+            row = result[0]
+        else:
+            row = result
 
         return {
-            "id": conv_id,
-            "title": title,
-            "role": role,
-            "createdAt": now.isoformat(),
-            "updatedAt": now.isoformat(),
-            "messageCount": 0,
+            'id': row['id'],
+            'title': row['title'],
+            'role': row['role'],
+            'createdAt': row.get('created_at'),
+            'updatedAt': row.get('updated_at'),
+            'messageCount': 0,
+            'messages': []
         }
 
     @staticmethod
     def get_conversations(limit: int = 100) -> List[Dict[str, Any]]:
-        """获取对话列表（按更新时间倒序）"""
-        with get_db_cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT
-                    c.id,
-                    c.title,
-                    c.role,
-                    c.created_at,
-                    c.updated_at,
-                    COUNT(m.id) as message_count,
-                    (SELECT content FROM assistant_messages
-                     WHERE conversation_id = c.id
-                     ORDER BY created_at DESC LIMIT 1) as last_message
-                FROM assistant_conversations c
-                LEFT JOIN assistant_messages m ON c.id = m.conversation_id
-                WHERE c.deleted_at IS NULL
-                GROUP BY c.id
-                ORDER BY c.updated_at DESC
-                LIMIT %s
-                """,
-                (limit,),
-            )
-            rows = cursor.fetchall()
+        # Get conversations
+        r = requests.get(
+            _url(f'/rest/v1/assistant_conversations?select=*&is.deleted_at=null&order=updated_at.desc&limit={limit}'),
+            headers=_headers()
+        )
+        r.raise_for_status()
+        conversations = r.json()
 
-        conversations = []
-        for row in rows:
-            conversations.append(
-                {
-                    "id": row["id"],
-                    "title": row["title"],
-                    "role": row["role"],
-                    "createdAt": row["created_at"].isoformat() if row["created_at"] else None,
-                    "updatedAt": row["updated_at"].isoformat() if row["updated_at"] else None,
-                    "messageCount": row["message_count"] or 0,
-                    "lastMessage": (row["last_message"] or "")[:100] if row["last_message"] else None,
-                }
+        result = []
+        for conv in conversations:
+            # Get message count and last message for each conversation
+            msg_r = requests.get(
+                _url(f'/rest/v1/assistant_messages?select=id,content&conversation_id=eq.{conv["id"]}&order=created_at.desc'),
+                headers=_headers()
             )
+            msg_r.raise_for_status()
+            messages = msg_r.json()
 
-        return conversations
+            result.append({
+                'id': conv['id'],
+                'title': conv['title'],
+                'role': conv['role'],
+                'createdAt': conv.get('created_at'),
+                'updatedAt': conv.get('updated_at'),
+                'messageCount': len(messages),
+                'lastMessage': messages[0]['content'] if messages else None
+            })
+
+        return result
 
     @staticmethod
     def get_conversation(conv_id: str) -> Optional[Dict[str, Any]]:
-        """获取单个对话详情（包含所有消息）"""
-        with get_db_cursor() as cursor:
-            # 获取对话基本信息
-            cursor.execute(
-                """
-                SELECT id, title, role, created_at, updated_at
-                FROM assistant_conversations
-                WHERE id = %s AND deleted_at IS NULL
-                """,
-                (conv_id,),
-            )
-            conv_row = cursor.fetchone()
+        # Get conversation
+        r = requests.get(
+            _url(f'/rest/v1/assistant_conversations?select=*&id=eq.{conv_id}&is.deleted_at=null'),
+            headers=_headers()
+        )
+        r.raise_for_status()
+        conversations = r.json()
 
-            if not conv_row:
-                return None
+        if not conversations:
+            return None
 
-            # 获取消息列表
-            cursor.execute(
-                """
-                SELECT id, role, content, content_type, metadata, created_at
-                FROM assistant_messages
-                WHERE conversation_id = %s
-                ORDER BY created_at ASC
-                """,
-                (conv_id,),
-            )
-            message_rows = cursor.fetchall()
+        conv = conversations[0]
 
-        messages = []
-        for msg_row in message_rows:
-            metadata = None
-            if msg_row["metadata"]:
-                try:
-                    metadata = json.loads(msg_row["metadata"]) if isinstance(msg_row["metadata"], str) else msg_row["metadata"]
-                except Exception:
-                    metadata = None
-
-            messages.append(
-                {
-                    "id": msg_row["id"],
-                    "role": msg_row["role"],
-                    "content": msg_row["content"],
-                    "contentType": msg_row["content_type"],
-                    "metadata": metadata,
-                    "createdAt": msg_row["created_at"].isoformat() if msg_row["created_at"] else None,
-                }
-            )
+        # Get messages
+        msg_r = requests.get(
+            _url(f'/rest/v1/assistant_messages?select=*&conversation_id=eq.{conv_id}&order=created_at.asc'),
+            headers=_headers()
+        )
+        msg_r.raise_for_status()
+        messages = msg_r.json()
 
         return {
-            "id": conv_row["id"],
-            "title": conv_row["title"],
-            "role": conv_row["role"],
-            "createdAt": conv_row["created_at"].isoformat() if conv_row["created_at"] else None,
-            "updatedAt": conv_row["updated_at"].isoformat() if conv_row["updated_at"] else None,
-            "messages": messages,
+            'id': conv['id'],
+            'title': conv['title'],
+            'role': conv['role'],
+            'createdAt': conv.get('created_at'),
+            'updatedAt': conv.get('updated_at'),
+            'messages': [
+                {
+                    'id': msg['id'],
+                    'role': msg['role'],
+                    'content': msg['content'],
+                    'contentType': msg.get('content_type', 'markdown'),
+                    'metadata': msg.get('metadata'),
+                    'createdAt': msg.get('created_at')
+                }
+                for msg in messages
+            ]
         }
 
     @staticmethod
     def update_conversation(conv_id: str, title: Optional[str] = None, role: Optional[str] = None) -> bool:
-        """更新对话信息"""
-        updates = []
-        params = []
-
+        payload = {}
         if title is not None:
-            updates.append("title = %s")
-            params.append(title)
-
+            payload['title'] = title
         if role is not None:
-            updates.append("role = %s")
-            params.append(role)
+            payload['role'] = role
 
-        if not updates:
+        if not payload:
             return True
 
-        updates.append("updated_at = %s")
-        params.append(datetime.now())
-        params.append(conv_id)
-
-        with get_db_cursor() as cursor:
-            cursor.execute(
-                f"""
-                UPDATE assistant_conversations
-                SET {', '.join(updates)}
-                WHERE id = %s AND deleted_at IS NULL
-                """,
-                tuple(params),
-            )
-            return cursor.rowcount > 0
+        r = requests.patch(
+            _url(f'/rest/v1/assistant_conversations?id=eq.{conv_id}'),
+            headers=_headers(),
+            json=payload
+        )
+        r.raise_for_status()
+        return True
 
     @staticmethod
     def delete_conversation(conv_id: str) -> bool:
-        """软删除对话"""
-        with get_db_cursor() as cursor:
-            cursor.execute(
-                """
-                UPDATE assistant_conversations
-                SET deleted_at = %s
-                WHERE id = %s AND deleted_at IS NULL
-                """,
-                (datetime.now(), conv_id),
-            )
-            return cursor.rowcount > 0
+        from datetime import datetime
+
+        r = requests.patch(
+            _url(f'/rest/v1/assistant_conversations?id=eq.{conv_id}'),
+            headers=_headers(),
+            json={'deleted_at': datetime.utcnow().isoformat()}
+        )
+        r.raise_for_status()
+        return True
 
     @staticmethod
     def add_message(
@@ -199,38 +172,35 @@ class ConversationService:
         content_type: str = "markdown",
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """添加消息到对话"""
-        msg_id = generate_id("msg_")
-        now = datetime.now()
+        msg_id = str(uuid.uuid4())
 
-        metadata_json = json.dumps(metadata, ensure_ascii=False) if metadata else None
+        payload = {
+            'id': msg_id,
+            'conversation_id': conv_id,
+            'role': role,
+            'content': content,
+            'content_type': content_type,
+            'metadata': metadata
+        }
 
-        with get_db_cursor() as cursor:
-            # 插入消息
-            cursor.execute(
-                """
-                INSERT INTO assistant_messages (id, conversation_id, role, content, content_type, metadata, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """,
-                (msg_id, conv_id, role, content, content_type, metadata_json, now),
-            )
+        r = requests.post(
+            _url('/rest/v1/assistant_messages'),
+            headers=_headers(),
+            json=payload
+        )
+        r.raise_for_status()
 
-            # 更新对话的 updated_at
-            cursor.execute(
-                """
-                UPDATE assistant_conversations
-                SET updated_at = %s
-                WHERE id = %s
-                """,
-                (now, conv_id),
-            )
+        result = r.json()
+        if isinstance(result, list) and len(result) > 0:
+            row = result[0]
+        else:
+            row = result
 
         return {
-            "id": msg_id,
-            "conversationId": conv_id,
-            "role": role,
-            "content": content,
-            "contentType": content_type,
-            "metadata": metadata,
-            "createdAt": now.isoformat(),
+            'id': row['id'],
+            'role': row['role'],
+            'content': row['content'],
+            'contentType': row.get('content_type', 'markdown'),
+            'metadata': row.get('metadata'),
+            'createdAt': row.get('created_at')
         }
