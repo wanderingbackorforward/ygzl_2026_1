@@ -17,6 +17,11 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
 
     setGenerating(true)
     try {
+      console.log('[DEBUG] 发送总结请求:', {
+        conversation_id: conversation.id,
+        messages_count: conversation.messages?.length
+      })
+
       // 调用后端API生成总结
       const response = await fetch('/api/assistant/summarize', {
         method: 'POST',
@@ -27,9 +32,16 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
         })
       })
 
-      if (!response.ok) throw new Error('生成总结失败')
+      console.log('[DEBUG] 响应状态:', response.status, response.statusText)
 
       const data = await response.json()
+      console.log('[DEBUG] 响应数据:', data)
+
+      if (!response.ok) {
+        console.error('[DEBUG] API错误:', data)
+        throw new Error(data.message || '生成总结失败')
+      }
+
       setSummary(data.data?.summary || data.summary || '总结生成失败')
     } catch (err) {
       console.error('生成总结失败:', err)
