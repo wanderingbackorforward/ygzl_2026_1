@@ -30,7 +30,7 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
       if (!response.ok) throw new Error('生成总结失败')
 
       const data = await response.json()
-      setSummary(data.summary || '总结生成失败')
+      setSummary(data.data?.summary || data.summary || '总结生成失败')
     } catch (err) {
       console.error('生成总结失败:', err)
       // 如果API失败，使用简单的客户端总结
