@@ -21,9 +21,19 @@ export default function ConversationView({
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [dots, setDots] = useState('.')
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // 动态加载动画
+  useEffect(() => {
+    if (!loading) return
+    const interval = setInterval(() => {
+      setDots(prev => (prev.length >= 3 ? '.' : prev + '.'))
+    }, 500)
+    return () => clearInterval(interval)
+  }, [loading])
 
   // 加载对话详情
   useEffect(() => {
@@ -82,9 +92,9 @@ export default function ConversationView({
   const messages = conversation?.messages || []
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex h-full flex-1 flex-col">
       {/* 消息列表 */}
-      <div className="flex-1 overflow-auto px-4 py-4">
+      <div className="flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
           <div className="flex h-full items-center justify-center text-slate-400">
             <div className="text-center">
@@ -165,6 +175,20 @@ export default function ConversationView({
           </div>
         )}
 
+        {/* 加载动画 */}
+        {loading && (
+          <div className="mb-4 flex justify-start">
+            <div className="rounded-lg bg-slate-800/50 px-4 py-3">
+              <div className="flex items-center gap-2 text-slate-400">
+                <div className="h-2 w-2 animate-bounce rounded-full bg-cyan-500" style={{ animationDelay: '0ms' }} />
+                <div className="h-2 w-2 animate-bounce rounded-full bg-cyan-500" style={{ animationDelay: '150ms' }} />
+                <div className="h-2 w-2 animate-bounce rounded-full bg-cyan-500" style={{ animationDelay: '300ms' }} />
+                <span className="ml-1 text-sm">AI 正在思考{dots}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div ref={messagesEndRef} />
       </div>
 
@@ -191,7 +215,15 @@ export default function ConversationView({
             onClick={handleSend}
             disabled={loading || !input.trim()}
           >
-            {loading ? '发送中...' : '发送'}
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                发送中
+              </span>
+            ) : '发送'}
           </button>
         </div>
       </div>
