@@ -122,12 +122,13 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
     <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="relative flex h-[85vh] w-[90vw] max-w-[1400px] overflow-hidden rounded-xl border border-cyan-500/30 bg-slate-950/95 shadow-2xl shadow-cyan-500/20">
         {/* 左侧栏 - 对话列表 */}
-        <div className="flex h-full w-60 flex-col border-r border-cyan-500/20 bg-slate-900/50">
-          <div className="flex shrink-0 items-center justify-between border-b border-cyan-500/20 p-4">
+        <div className="relative flex h-full w-60 flex-col border-r border-cyan-500/20 bg-slate-900/50">
+          {/* 固定标题栏 */}
+          <div className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between border-b border-cyan-500/20 bg-slate-900/95 p-4 backdrop-blur-sm">
             <h2 className="text-base font-medium text-cyan-200">对话列表</h2>
             <button
               type="button"
-              className="relative z-10 rounded p-2 text-cyan-400 hover:bg-white/10 active:scale-95"
+              className="rounded p-2 text-cyan-400 hover:bg-white/10 active:scale-95"
               onClick={handleCreateConversation}
               title="新建对话"
             >
@@ -135,7 +136,8 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          {/* 对话列表（留出顶部空间） */}
+          <div className="h-full overflow-y-auto pt-16">
             <ConversationList
               conversations={conversations}
               currentConvId={currentConvId}
