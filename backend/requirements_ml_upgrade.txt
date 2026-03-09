@@ -1,0 +1,83 @@
+# 科研创新升级 - 阶段1深度学习依赖
+# 制定时间: 2026-03-09
+
+# ===== 核心深度学习框架 =====
+# PyTorch (CPU版本,如果有GPU请安装CUDA版本)
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+# PyTorch Lightning (简化训练流程)
+pytorch-lightning>=2.0.0
+
+# PyTorch Geometric (图神经网络,用于STGCN)
+torch-geometric>=2.3.0
+
+# ===== 时间序列深度学习 =====
+# TSai (时间序列深度学习库)
+tsai>=0.3.0
+
+# Darts (时间序列预测库,包含多种模型)
+darts>=0.24.0
+
+# StatsForecast (统计预测模型)
+statsforecast>=1.5.0
+
+# ===== 可解释性工具 =====
+# SHAP (特征重要性分析)
+shap>=0.42.0
+
+# Captum (PyTorch可解释性库)
+captum>=0.6.0
+
+# ===== 实验跟踪与可视化 =====
+# TensorBoard (训练可视化)
+tensorboard>=2.13.0
+
+# Weights & Biases (实验跟踪,可选)
+# wandb>=0.15.0
+
+# ===== 数据处理 =====
+# 这些库已经在主requirements.txt中,这里列出版本要求
+# pandas>=1.5.0
+# numpy>=1.23.0
+# scikit-learn>=1.2.0
+
+# ===== 可视化 =====
+# 这些库已经在主requirements.txt中
+# matplotlib>=3.7.0
+# seaborn>=0.12.0
+# plotly>=5.14.0
+
+# ===== 模型优化与部署 =====
+# ONNX (模型导出)
+onnx>=1.14.0
+onnxruntime>=1.15.0
+
+# ===== 自动机器学习 =====
+# Optuna (超参数优化)
+optuna>=3.2.0
+
+# ===== 其他工具 =====
+# tqdm (进度条)
+# 已在主requirements.txt中
+
+# einops (张量操作简化)
+einops>=0.6.0
+
+# timm (PyTorch图像模型库,可能用于特征提取)
+timm>=0.9.0
+
+# ===== 注意事项 =====
+# 1. 如果有NVIDIA GPU,请安装CUDA版本的PyTorch:
+#    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+#
+# 2. torch-geometric需要额外安装依赖:
+#    pip install torch-scatter torch-sparse torch-cluster torch-spline-conv -f https://data.pyg.org/whl/torch-2.0.0+cpu.html
+#
+# 3. 某些库可能需要C++编译器,Windows用户需要安装Visual Studio Build Tools
+#
+# 4. 建议使用虚拟环境:
+#    python -m venv venv_ml
+#    venv_ml\Scripts\activate
+#    pip install -r requirements_ml_upgrade.txt
