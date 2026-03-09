@@ -61,6 +61,26 @@ except Exception as e:
     print(f"[警告] Explainability模块加载失败: {e}")
     SHAP_AVAILABLE = False
 
+try:
+    from modules.ml_models.knowledge_graph import KnowledgeGraphBuilder, NEO4J_AVAILABLE
+except Exception as e:
+    print(f"[警告] KnowledgeGraph模块加载失败: {e}")
+    NEO4J_AVAILABLE = False
+
+try:
+    from modules.ml_models.causal_reasoning import CausalReasoningEngine
+    CAUSAL_REASONING_AVAILABLE = True
+except Exception as e:
+    print(f"[警告] CausalReasoning模块加载失败: {e}")
+    CAUSAL_REASONING_AVAILABLE = False
+
+try:
+    from modules.ml_models.kgqa import KGQA
+    KGQA_AVAILABLE = True
+except Exception as e:
+    print(f"[警告] KGQA模块加载失败: {e}")
+    KGQA_AVAILABLE = False
+
 from modules.database.db_config import db_config
 
 # 创建蓝图
@@ -909,12 +929,259 @@ def api_health():
             'pinn': PINN_AVAILABLE,
             'ensemble': ENSEMBLE_AVAILABLE,
             'shap': SHAP_AVAILABLE,
+            'neo4j': NEO4J_AVAILABLE,
+            'causal_reasoning': CAUSAL_REASONING_AVAILABLE,
+            'kgqa': KGQA_AVAILABLE,
             'spatial_correlation': True,
             'causal_inference': True,
             'model_selector': True
         },
         'message': 'ML模块运行正常'
     })
+
+
+# =========================================================
+# 12. 知识图谱API
+# =========================================================
+
+@ml_api.route('/kg/query/neighbors/<point_id>', methods=['GET'])
+def api_kg_query_neighbors(point_id):
+    """
+    查询监测点的邻近点
+
+    参数:
+        point_id: 监测点ID
+        max_distance: 最大距离（默认50米）
+    """
+    try:
+        if not NEO4J_AVAILABLE:
+            return jsonify({
+                'success': False,
+                'message': 'Neo4j未安装'
+            }), 400
+
+        max_distance = float(request.args.get('max_distance', 50.0))
+
+        # 创建知识图谱构建器
+        kg = KnowledgeGraphBuilder()
+        neighbors = kg.query_neighbors(point_id, max_distance)
+        kg.close()
+
+        return jsonify({
+            'success': True,
+            'point_id': point_id,
+            'neighbors': neighbors
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@ml_api.route('/kg/query/causal-chain/<event_id>', methods=['GET'])
+def api_kg_query_causal_chain(event_id):
+    """
+    查询施工事件的因果链
+
+    参数:
+        event_id: 施工事件ID
+    """
+    try:
+        if not NEO4J_AVAILABLE:
+            return jsonify({
+                'success': False,
+                'message': 'Neo4j未安装'
+            }), 400
+
+        kg = KnowledgeGraphBuilder()
+        chain = kg.query_causal_chain(event_id)
+        kg.close()
+
+        return jsonify({
+            'success': True,
+            'event_id': event_id,
+            'causal_chain': chain
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@ml_api.route('/kg/query/risk-points', methods=['GET'])
+def api_kg_query_risk_points():
+    """
+    查询高风险监测点
+
+    参数:
+        severity: 严重程度（默认high）
+    """
+    try:
+        if not NEO4J_AVAILABLE:
+            return jsonify({
+                'success': False,
+                'message': 'Neo4j未安装'
+            }), 400
+
+        severity = request.args.get('severity', 'high')
+
+        kg = KnowledgeGraphBuilder()
+        points = kg.query_high_risk_points(severity)
+        kg.close()
+
+        return jsonify({
+            'success': True,
+            'severity': severity,
+            'risk_points': points
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@ml_api.route('/kg/stats', methods=['GET'])
+def api_kg_stats():
+    """查询知识图谱统计信息"""
+    try:
+        if not NEO4J_AVAILABLE:
+            return jsonify({
+                'success': False,
+                'message': 'Neo4j未安装'
+            }), 400
+
+        kg = KnowledgeGraphBuilder()
+        stats = kg.query_graph_statistics()
+        kg.close()
+
+        return jsonify({
+            'success': True,
+            'statistics': stats
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# =========================================================
+# 13. KGQA问答API
+# =========================================================
+
+@ml_api.route('/kgqa/ask', methods=['POST'])
+def api_kgqa_ask():
+    """
+    知识图谱问答
+
+    请求体:
+        {
+            "question": "S1附近有哪些监测点？"
+        }
+    """
+    try:
+        if not KGQA_AVAILABLE or not NEO4J_AVAILABLE:
+            return jsonify({
+                'success': False,
+                'message': 'KGQA或Neo4j未安装'
+            }), 400
+
+        data = request.get_json()
+        question = data.get('question')
+
+        if not question:
+            return jsonify({
+                'success': False,
+                'message': '缺少问题参数'
+            }), 400
+
+        # 创建KGQA系统
+        kg = KnowledgeGraphBuilder()
+        kgqa = KGQA(kg)
+
+        # 回答问题
+        result = kgqa.answer(question)
+
+        kg.close()
+
+        return jsonify(result)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# =========================================================
+# 14. 因果推理API
+# =========================================================
+
+@ml_api.route('/causal/discover', methods=['POST'])
+def api_causal_discover():
+    """
+    因果发现
+
+    请求体:
+        {
+            "point_ids": ["S1", "S2", "S3"],
+            "method": "granger",
+            "max_lag": 5
+        }
+    """
+    try:
+        if not CAUSAL_REASONING_AVAILABLE:
+            return jsonify({
+                'success': False,
+                'message': 'CausalReasoning模块未安装'
+            }), 400
+
+        data = request.get_json()
+        point_ids = data.get('point_ids', [])
+        method = data.get('method', 'granger')
+        max_lag = data.get('max_lag', 5)
+
+        if not point_ids:
+            return jsonify({
+                'success': False,
+                'message': '缺少监测点ID'
+            }), 400
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
+
+        # 查询数据
+        query = f"""
+        SELECT point_id, date, settlement
+        FROM settlement_data
+        WHERE point_id IN ({','.join(['%s'] * len(point_ids))})
+        ORDER BY date
+        """
+
+        df = pd.read_sql(query, conn, params=point_ids)
+        conn.close()
+
+        # 透视表
+        pivot_df = df.pivot(index='date', columns='point_id', values='settlement')
+        pivot_df = pivot_df.fillna(method='ffill').fillna(method='bfill')
+
+        # 因果发现
+        engine = CausalReasoningEngine()
+        causal_pairs = engine.discover_causal_relationships(pivot_df, method, max_lag)
+
+        return jsonify({
+            'success': True,
+            'method': method,
+            'causal_pairs': causal_pairs
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 # 导出蓝图
