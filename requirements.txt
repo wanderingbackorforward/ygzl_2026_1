@@ -9,3 +9,6 @@ SQLAlchemy
 pyshp
 scikit-learn
 statsmodels
+torch
+scipy
+shap
