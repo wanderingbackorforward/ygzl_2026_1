@@ -133,6 +133,10 @@ const modelNameMap: Record<string, string> = {
   sarima: 'SARIMA',
   prophet: 'Prophet',
   lstm: 'LSTM',
+  informer: 'Informer',
+  stgcn: 'STGCN',
+  pinn: 'PINN',
+  ensemble: 'Ensemble',
   linear: '线性回归',
 };
 
