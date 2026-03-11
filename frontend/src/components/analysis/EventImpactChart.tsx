@@ -255,8 +255,8 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
         <div style={styles.resultCard}>
           <div style={styles.resultLabel}>处理效应</div>
           <div style={styles.resultValue}>
-            {data.treatment_effect > 0 ? '+' : ''}
-            {data.treatment_effect.toFixed(3)} mm
+            {(data.treatment_effect ?? 0) > 0 ? '+' : ''}
+            {(data.treatment_effect ?? 0).toFixed(3)} mm
           </div>
           <div style={styles.resultHint}>
             事件导致的净影响
@@ -266,8 +266,8 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
         <div style={styles.resultCard}>
           <div style={styles.resultLabel}>处理组变化</div>
           <div style={styles.resultValue}>
-            {data.treated_change > 0 ? '+' : ''}
-            {data.treated_change.toFixed(3)} mm
+            {(data.treated_change ?? 0) > 0 ? '+' : ''}
+            {(data.treated_change ?? 0).toFixed(3)} mm
           </div>
           <div style={styles.resultHint}>
             受影响点位的变化
@@ -277,8 +277,8 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
         <div style={styles.resultCard}>
           <div style={styles.resultLabel}>对照组变化</div>
           <div style={styles.resultValue}>
-            {data.control_change > 0 ? '+' : ''}
-            {data.control_change.toFixed(3)} mm
+            {(data.control_change ?? 0) > 0 ? '+' : ''}
+            {(data.control_change ?? 0).toFixed(3)} mm
           </div>
           <div style={styles.resultHint}>
             未受影响点位的变化
@@ -288,7 +288,7 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
         <div style={styles.resultCard}>
           <div style={styles.resultLabel}>置信区间</div>
           <div style={styles.resultValue}>
-            [{data.confidence_interval[0].toFixed(3)}, {data.confidence_interval[1].toFixed(3)}]
+            [{(data.confidence_interval?.[0] ?? 0).toFixed(3)}, {(data.confidence_interval?.[1] ?? 0).toFixed(3)}]
           </div>
           <div style={styles.resultHint}>
             95%置信水平

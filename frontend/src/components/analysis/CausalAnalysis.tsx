@@ -64,7 +64,16 @@ export const CausalAnalysis: React.FC<CausalAnalysisProps> = ({
         window_days: windowDays,
       });
 
-      setResult(data);
+      // 检查后端是否返回错误（success: false）
+      if (data && (data as any).success === false) {
+        setError((data as any).message || '分析失败，请检查参数');
+        setResult(null);
+      } else if (data && typeof data.treatment_effect === 'number') {
+        setResult(data);
+      } else {
+        setError('返回数据格式异常，请检查参数后重试');
+        setResult(null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '分析失败');
     } finally {
