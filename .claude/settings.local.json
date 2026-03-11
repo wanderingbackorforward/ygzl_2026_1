@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "mcp__context7__resolve-library-id",
-      "mcp__context7__query-docs"
+      "mcp__context7__query-docs",
+      "Skill(claude-scientific-writer:scientific-writing)",
+      "Skill(ralph-loop:cancel-ralph)",
+      "WebSearch",
+      "mcp__web-search-prime__web_search_prime"
     ]
   }
 }

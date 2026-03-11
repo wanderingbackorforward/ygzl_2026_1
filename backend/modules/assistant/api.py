@@ -518,6 +518,9 @@ def send_message(conv_id: str):
                     "tool_steps": agent_result.get("tool_steps", []),
                     "total_iterations": agent_result.get("total_iterations", 0),
                     "total_duration_ms": agent_result.get("total_duration_ms", 0),
+                    "kg_visualization": agent_result.get("kg_visualization"),
+                    "papers": agent_result.get("papers", []),
+                    "papers_query": agent_result.get("papers_query", ""),
                 }
                 assistant_message = ConversationService.add_message(
                     conv_id=conv_id,
@@ -537,6 +540,9 @@ def send_message(conv_id: str):
                         "agentSteps": agent_result.get("tool_steps", []),
                         "agentIterations": agent_result.get("total_iterations", 0),
                         "agentDurationMs": agent_result.get("total_duration_ms", 0),
+                        "kgVisualization": agent_result.get("kg_visualization"),
+                        "papers": agent_result.get("papers", []),
+                        "papersQuery": agent_result.get("papers_query", ""),
                     },
                 })
             except Exception as agent_exc:

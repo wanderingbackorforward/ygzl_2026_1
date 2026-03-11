@@ -210,4 +210,23 @@ AGENT_TOOLS = [
             "required": [],
         },
     },
+    {
+        "name": "search_academic_papers",
+        "description": "Search for relevant academic papers on Semantic Scholar. Use this to find research references related to settlement monitoring, anomaly detection, geotechnical engineering, or any technical topic the user asks about. Returns paper titles, authors, year, citation count, and URLs.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Search query in English, e.g. 'settlement monitoring anomaly detection' or 'geotechnical foundation subsidence prediction'",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Max number of papers to return (default: 5, max: 10)",
+                    "default": 5,
+                },
+            },
+            "required": ["query"],
+        },
+    },
 ]

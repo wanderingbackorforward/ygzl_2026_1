@@ -14,6 +14,7 @@ const TOOL_NAME_MAP: Record<string, string> = {
   query_knowledge_graph: '查询知识图谱',
   analyze_correlation: '关联分析',
   query_anomalies: '批量异常检测',
+  search_academic_papers: '搜索学术论文',
 }
 
 // 工具图标映射
@@ -29,6 +30,7 @@ const TOOL_ICON_MAP: Record<string, string> = {
   query_knowledge_graph: '🔎',
   analyze_correlation: '🔗',
   query_anomalies: '🔬',
+  search_academic_papers: '📚',
 }
 
 interface AgentStepsProps {

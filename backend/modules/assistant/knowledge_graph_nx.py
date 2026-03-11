@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 """
 In-memory knowledge graph using networkx.
-Replaces Neo4j dependency. Singleton with 5-min TTL cache for Serverless reuse.
+Every call builds a FRESH graph (no cache) - each query gets unique real-time data.
 
 Node types: MonitoringPoint, ConstructionEvent, Anomaly
 Edge types: SPATIAL_NEAR, CORRELATES_WITH, CAUSES, DETECTED_AT
 """
+import math
+import random
 import time
 import numpy as np
 import pandas as pd
@@ -16,16 +18,21 @@ except ImportError:
     nx = None
 
 
-_KG_INSTANCE = None
-_KG_TTL = 300  # 5 minutes
+def build_fresh_knowledge_graph(distance_threshold=50, correlation_threshold=0.7):
+    """Build a completely fresh knowledge graph every time. No cache."""
+    kg = KnowledgeGraphNX()
+    stats = kg.build(
+        distance_threshold=distance_threshold,
+        correlation_threshold=correlation_threshold,
+    )
+    viz = kg.export_for_visualization()
+    return kg, stats, viz
 
 
+# Keep backward compat
 def get_knowledge_graph():
-    """Singleton accessor."""
-    global _KG_INSTANCE
-    if _KG_INSTANCE is None:
-        _KG_INSTANCE = KnowledgeGraphNX()
-    return _KG_INSTANCE
+    """Create fresh instance each time."""
+    return KnowledgeGraphNX()
 
 
 class KnowledgeGraphNX:
@@ -39,11 +46,7 @@ class KnowledgeGraphNX:
         self._build_params = {}
 
     def is_built(self):
-        if not self._built_at:
-            return False
-        if time.time() - self._built_at > _KG_TTL:
-            return False
-        return len(self.G.nodes) > 0
+        return self._built_at > 0 and len(self.G.nodes) > 0
 
     def build(self, distance_threshold=50, correlation_threshold=0.7):
         """
@@ -312,3 +315,82 @@ class KnowledgeGraphNX:
                 })
         clusters.sort(key=lambda x: x['cluster_size'], reverse=True)
         return clusters
+
+    def export_for_visualization(self):
+        """Export graph as nodes + edges for frontend force-directed visualization."""
+        # Color scheme by node type
+        type_colors = {
+            "MonitoringPoint": "#06b6d4",   # cyan
+            "ConstructionEvent": "#f59e0b", # amber
+            "Anomaly": "#ef4444",           # red
+        }
+        type_sizes = {
+            "MonitoringPoint": 24,
+            "ConstructionEvent": 18,
+            "Anomaly": 14,
+        }
+        edge_colors = {
+            "SPATIAL_NEAR": "#38bdf8",      # sky
+            "CORRELATES_WITH": "#a78bfa",   # violet
+            "CAUSES": "#fb923c",            # orange
+            "DETECTED_AT": "#f87171",       # red
+        }
+
+        # Build layout using spring layout
+        pos = {}
+        if len(self.G.nodes) > 0:
+            try:
+                undirected = self.G.to_undirected()
+                raw_pos = nx.spring_layout(undirected, k=2.0, iterations=50, seed=None)
+                # Scale to 0-800 range
+                for nid, (x, y) in raw_pos.items():
+                    pos[nid] = (round((x + 1) * 400, 1), round((y + 1) * 300, 1))
+            except Exception:
+                # Fallback: circular layout
+                nodes_list = list(self.G.nodes)
+                for i, nid in enumerate(nodes_list):
+                    angle = 2 * math.pi * i / max(len(nodes_list), 1)
+                    pos[nid] = (round(400 + 300 * math.cos(angle), 1),
+                                round(300 + 250 * math.sin(angle), 1))
+
+        viz_nodes = []
+        for nid, data in self.G.nodes(data=True):
+            ntype = data.get('type', 'Unknown')
+            x, y = pos.get(nid, (400+random.randint(-200,200), 300+random.randint(-200,200)))
+            label = data.get('point_id', '') or data.get('event_type', '') or nid.split(':')[-1]
+            viz_nodes.append({
+                "id": nid,
+                "label": label[:12],
+                "type": ntype,
+                "color": type_colors.get(ntype, "#94a3b8"),
+                "size": type_sizes.get(ntype, 16),
+                "x": x,
+                "y": y,
+                "severity": data.get('severity', ''),
+                "attrs": {k: v for k, v in data.items()
+                          if k not in ('type',) and not callable(v)},
+            })
+
+        viz_edges = []
+        seen = set()
+        for u, v, data in self.G.edges(data=True):
+            key = f"{u}->{v}"
+            if key in seen:
+                continue
+            seen.add(key)
+            etype = data.get('type', '')
+            viz_edges.append({
+                "source": u,
+                "target": v,
+                "type": etype,
+                "color": edge_colors.get(etype, "#64748b"),
+                "label": etype.replace('_', ' ').title(),
+                "attrs": {k: v2 for k, v2 in data.items()
+                          if k not in ('type',) and not callable(v2)},
+            })
+
+        return {
+            "nodes": viz_nodes,
+            "edges": viz_edges,
+            "stats": self.statistics(),
+        }

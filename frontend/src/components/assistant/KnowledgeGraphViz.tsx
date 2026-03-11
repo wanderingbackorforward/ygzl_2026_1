@@ -1,0 +1,363 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+
+interface KGNode {
+  id: string
+  label: string
+  type: string
+  color: string
+  size: number
+  x: number
+  y: number
+  severity?: string
+  attrs?: Record<string, any>
+}
+
+interface KGEdge {
+  source: string
+  target: string
+  type: string
+  color: string
+  label: string
+  attrs?: Record<string, any>
+}
+
+interface KnowledgeGraphVizProps {
+  nodes: KGNode[]
+  edges: KGEdge[]
+  stats?: {
+    total_nodes?: number
+    total_edges?: number
+    node_types?: Record<string, number>
+    edge_types?: Record<string, number>
+  }
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  MonitoringPoint: '监测点',
+  ConstructionEvent: '施工事件',
+  Anomaly: '异常',
+  SPATIAL_NEAR: '空间邻近',
+  CORRELATES_WITH: '关联',
+  CAUSES: '因果',
+  DETECTED_AT: '检测于',
+}
+
+export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGraphVizProps) {
+  const svgRef = useRef<SVGSVGElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [hoveredNode, setHoveredNode] = useState<KGNode | null>(null)
+  const [hoveredEdge, setHoveredEdge] = useState<KGEdge | null>(null)
+  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const [collapsed, setCollapsed] = useState(false)
+
+  // Build node position map
+  const nodeMap = useRef<Map<string, KGNode>>(new Map())
+  useEffect(() => {
+    const m = new Map<string, KGNode>()
+    nodes.forEach(n => m.set(n.id, n))
+    nodeMap.current = m
+  }, [nodes])
+
+  // Pan handlers
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return
+    setIsDragging(true)
+    setDragStart({ x: e.clientX - transform.x, y: e.clientY - transform.y })
+  }, [transform])
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging) return
+    setTransform(prev => ({
+      ...prev,
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y,
+    }))
+  }, [isDragging, dragStart])
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false)
+  }, [])
+
+  // Zoom handler
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? 0.9 : 1.1
+    setTransform(prev => ({
+      ...prev,
+      scale: Math.max(0.3, Math.min(3, prev.scale * delta)),
+    }))
+  }, [])
+
+  if (!nodes || nodes.length === 0) return null
+
+  if (collapsed) {
+    return (
+      <div className="mb-3 rounded-lg border border-cyan-500/20 bg-gradient-to-br from-slate-900/80 to-cyan-950/30 px-3 py-2">
+        <button
+          type="button"
+          onClick={() => setCollapsed(false)}
+          className="flex w-full items-center justify-between text-left"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🕸</span>
+            <span className="text-sm font-medium text-cyan-200">知识图谱</span>
+            <span className="text-xs text-slate-400">
+              {stats?.total_nodes ?? nodes.length} 节点 / {stats?.total_edges ?? edges.length} 边
+            </span>
+          </div>
+          <span className="text-xs text-slate-500">点击展开 ▼</span>
+        </button>
+      </div>
+    )
+  }
+
+  // Compute viewBox from node positions
+  const xs = nodes.map(n => n.x)
+  const ys = nodes.map(n => n.y)
+  const minX = Math.min(...xs) - 60
+  const maxX = Math.max(...xs) + 60
+  const minY = Math.min(...ys) - 60
+  const maxY = Math.max(...ys) + 60
+  const viewWidth = maxX - minX || 800
+  const viewHeight = maxY - minY || 600
+
+  return (
+    <div className="mb-3 rounded-lg border border-cyan-500/20 bg-gradient-to-br from-slate-900/80 to-cyan-950/30 overflow-hidden">
+      {/* Header */}
+      <div className="flex shrink-0 items-center justify-between border-b border-cyan-500/10 px-3 py-2">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🕸</span>
+          <span className="text-sm font-medium text-cyan-200">知识图谱</span>
+          {stats && (
+            <span className="text-xs text-slate-400">
+              {stats.total_nodes} 节点 / {stats.total_edges} 边
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Zoom controls */}
+          <button type="button" onClick={() => setTransform(p => ({ ...p, scale: Math.min(3, p.scale * 1.2) }))}
+            className="rounded px-1.5 py-0.5 text-xs text-slate-400 hover:bg-white/10 hover:text-slate-200">+</button>
+          <button type="button" onClick={() => setTransform(p => ({ ...p, scale: Math.max(0.3, p.scale * 0.8) }))}
+            className="rounded px-1.5 py-0.5 text-xs text-slate-400 hover:bg-white/10 hover:text-slate-200">-</button>
+          <button type="button" onClick={() => setTransform({ x: 0, y: 0, scale: 1 })}
+            className="rounded px-1.5 py-0.5 text-xs text-slate-400 hover:bg-white/10 hover:text-slate-200">Reset</button>
+          <button type="button" onClick={() => setCollapsed(true)}
+            className="rounded px-1.5 py-0.5 text-xs text-slate-400 hover:bg-white/10 hover:text-slate-200">收起 ▲</button>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-cyan-500/10 px-3 py-1.5">
+        <div className="flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#06b6d4' }} />
+          <span className="text-[10px] text-slate-400">监测点</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#f59e0b' }} />
+          <span className="text-[10px] text-slate-400">施工事件</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#ef4444' }} />
+          <span className="text-[10px] text-slate-400">异常</span>
+        </div>
+        <span className="text-[10px] text-slate-600">|</span>
+        <div className="flex items-center gap-1">
+          <span className="inline-block h-0.5 w-3" style={{ backgroundColor: '#38bdf8' }} />
+          <span className="text-[10px] text-slate-400">空间邻近</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="inline-block h-0.5 w-3" style={{ backgroundColor: '#a78bfa' }} />
+          <span className="text-[10px] text-slate-400">关联</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="inline-block h-0.5 w-3" style={{ backgroundColor: '#fb923c' }} />
+          <span className="text-[10px] text-slate-400">因果</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="inline-block h-0.5 w-3" style={{ backgroundColor: '#f87171' }} />
+          <span className="text-[10px] text-slate-400">检测于</span>
+        </div>
+      </div>
+
+      {/* SVG Canvas */}
+      <div
+        ref={containerRef}
+        className="relative cursor-grab active:cursor-grabbing"
+        style={{ height: '320px' }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onWheel={handleWheel}
+      >
+        <svg
+          ref={svgRef}
+          viewBox={`${minX} ${minY} ${viewWidth} ${viewHeight}`}
+          className="h-full w-full"
+          style={{ background: 'transparent' }}
+        >
+          <defs>
+            {/* Glow filter */}
+            <filter id="kg-glow">
+              <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+              <feMerge>
+                <feMergeNode in="coloredBlur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            {/* Arrow marker */}
+            <marker id="kg-arrow" viewBox="0 0 10 10" refX="8" refY="5"
+              markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b" opacity="0.6" />
+            </marker>
+          </defs>
+
+          <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.scale})`}>
+            {/* Edges */}
+            {edges.map((edge, i) => {
+              const src = nodeMap.current.get(edge.source)
+              const tgt = nodeMap.current.get(edge.target)
+              if (!src || !tgt) return null
+              const isHovered = hoveredEdge === edge
+              return (
+                <g key={`e-${i}`}>
+                  <line
+                    x1={src.x} y1={src.y}
+                    x2={tgt.x} y2={tgt.y}
+                    stroke={edge.color}
+                    strokeWidth={isHovered ? 2.5 : 1.2}
+                    strokeOpacity={isHovered ? 0.9 : 0.4}
+                    markerEnd="url(#kg-arrow)"
+                    className="transition-all duration-200"
+                  />
+                  {/* Invisible wider line for hover */}
+                  <line
+                    x1={src.x} y1={src.y}
+                    x2={tgt.x} y2={tgt.y}
+                    stroke="transparent"
+                    strokeWidth={10}
+                    onMouseEnter={() => setHoveredEdge(edge)}
+                    onMouseLeave={() => setHoveredEdge(null)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                </g>
+              )
+            })}
+
+            {/* Animated pulse ring behind nodes */}
+            {nodes.map(node => {
+              if (node.type !== 'Anomaly') return null
+              return (
+                <circle
+                  key={`pulse-${node.id}`}
+                  cx={node.x} cy={node.y}
+                  r={node.size * 0.6}
+                  fill="none"
+                  stroke={node.color}
+                  strokeWidth={1}
+                  opacity={0.4}
+                >
+                  <animate attributeName="r" from={String(node.size * 0.5)} to={String(node.size * 1.2)} dur="2s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" from="0.5" to="0" dur="2s" repeatCount="indefinite" />
+                </circle>
+              )
+            })}
+
+            {/* Nodes */}
+            {nodes.map(node => {
+              const isHovered = hoveredNode?.id === node.id
+              const r = (node.size / 2) * (isHovered ? 1.3 : 1)
+              return (
+                <g
+                  key={node.id}
+                  onMouseEnter={() => setHoveredNode(node)}
+                  onMouseLeave={() => setHoveredNode(null)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {/* Node circle */}
+                  <circle
+                    cx={node.x} cy={node.y} r={r}
+                    fill={node.color}
+                    fillOpacity={isHovered ? 0.9 : 0.7}
+                    stroke={isHovered ? '#fff' : node.color}
+                    strokeWidth={isHovered ? 2 : 1}
+                    strokeOpacity={isHovered ? 0.8 : 0.3}
+                    filter={isHovered ? 'url(#kg-glow)' : undefined}
+                    className="transition-all duration-200"
+                  />
+                  {/* Node label */}
+                  <text
+                    x={node.x} y={node.y + r + 12}
+                    textAnchor="middle"
+                    fill={isHovered ? '#e2e8f0' : '#94a3b8'}
+                    fontSize={isHovered ? 11 : 9}
+                    fontWeight={isHovered ? 600 : 400}
+                    className="pointer-events-none select-none transition-all duration-200"
+                  >
+                    {node.label}
+                  </text>
+                </g>
+              )
+            })}
+          </g>
+        </svg>
+
+        {/* Tooltip */}
+        {hoveredNode && (
+          <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[200px] rounded-lg border border-cyan-500/30 bg-slate-900/95 px-3 py-2 text-xs shadow-lg shadow-cyan-500/10 backdrop-blur">
+            <div className="mb-1 font-medium text-cyan-200">{hoveredNode.label}</div>
+            <div className="text-slate-400">
+              {TYPE_LABELS[hoveredNode.type] || hoveredNode.type}
+            </div>
+            {hoveredNode.severity && (
+              <div className="mt-1">
+                <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                  hoveredNode.severity === 'critical' ? 'bg-red-500/20 text-red-300' :
+                  hoveredNode.severity === 'high' ? 'bg-orange-500/20 text-orange-300' :
+                  hoveredNode.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-300' :
+                  'bg-green-500/20 text-green-300'
+                }`}>
+                  {hoveredNode.severity}
+                </span>
+              </div>
+            )}
+            {hoveredNode.attrs?.point_id && (
+              <div className="mt-1 text-slate-500">ID: {hoveredNode.attrs.point_id}</div>
+            )}
+          </div>
+        )}
+
+        {/* Edge tooltip */}
+        {hoveredEdge && !hoveredNode && (
+          <div className="pointer-events-none absolute right-3 top-3 z-10 max-w-[180px] rounded-lg border border-purple-500/30 bg-slate-900/95 px-3 py-2 text-xs shadow-lg backdrop-blur">
+            <div className="mb-1 font-medium text-purple-200">
+              {TYPE_LABELS[hoveredEdge.type] || hoveredEdge.type}
+            </div>
+            {hoveredEdge.attrs?.distance != null && (
+              <div className="text-slate-400">距离: {hoveredEdge.attrs.distance}m</div>
+            )}
+            {hoveredEdge.attrs?.correlation != null && (
+              <div className="text-slate-400">相关系数: {hoveredEdge.attrs.correlation}</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Stats bar */}
+      {stats?.node_types && (
+        <div className="flex shrink-0 items-center gap-3 border-t border-cyan-500/10 px-3 py-1.5 text-[10px] text-slate-500">
+          {Object.entries(stats.node_types).map(([type, count]) => (
+            <span key={type}>{TYPE_LABELS[type] || type}: {count}</span>
+          ))}
+          <span className="text-slate-600">|</span>
+          {Object.entries(stats.edge_types || {}).map(([type, count]) => (
+            <span key={type}>{TYPE_LABELS[type] || type}: {count}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

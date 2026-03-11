@@ -144,6 +144,9 @@ def run_agent(user_content, page_path="", page_context=None):
 
     start_time = time.time()
     tool_steps = []
+    kg_visualization = None  # Captured from build_knowledge_graph
+    papers = []              # Captured from search_academic_papers
+    papers_query = ""
 
     # Build initial user message with context
     user_msg_text = user_content
@@ -163,6 +166,7 @@ def run_agent(user_content, page_path="", page_context=None):
             return _force_finish(
                 messages, tool_steps, iteration, start_time,
                 api_key, api_base, model, max_tokens,
+                kg_visualization=kg_visualization, papers=papers, papers_query=papers_query,
             )
 
         try:
@@ -195,6 +199,9 @@ def run_agent(user_content, page_path="", page_context=None):
                 "total_iterations": iteration + 1,
                 "total_duration_ms": int((time.time() - start_time) * 1000),
                 "error": None,
+                "kg_visualization": kg_visualization,
+                "papers": papers,
+                "papers_query": papers_query,
             }
 
         # Execute tools
@@ -225,6 +232,14 @@ def run_agent(user_content, page_path="", page_context=None):
             result_str = json.dumps(result, ensure_ascii=False, default=str)
             result_str = _truncate_result(result_str)
 
+            # Capture special data for frontend visualization
+            if isinstance(result, dict) and result.get("success"):
+                if tool_name == "build_knowledge_graph" and result.get("visualization"):
+                    kg_visualization = result["visualization"]
+                elif tool_name == "search_academic_papers" and result.get("papers"):
+                    papers = result["papers"]
+                    papers_query = result.get("query", "")
+
             # Record step
             tool_steps.append({
                 "iteration": iteration + 1,
@@ -248,11 +263,13 @@ def run_agent(user_content, page_path="", page_context=None):
     return _force_finish(
         messages, tool_steps, MAX_ITERATIONS, start_time,
         api_key, api_base, model, max_tokens,
+        kg_visualization=kg_visualization, papers=papers, papers_query=papers_query,
     )
 
 
 def _force_finish(messages, tool_steps, iterations, start_time,
-                   api_key, api_base, model, max_tokens):
+                   api_key, api_base, model, max_tokens,
+                   kg_visualization=None, papers=None, papers_query=""):
     """Force a final text response when timeout/max iterations reached."""
     try:
         # Add a user message asking for summary
@@ -281,6 +298,9 @@ def _force_finish(messages, tool_steps, iterations, start_time,
         "total_iterations": iterations,
         "total_duration_ms": int((time.time() - start_time) * 1000),
         "error": None,
+        "kg_visualization": kg_visualization,
+        "papers": papers or [],
+        "papers_query": papers_query,
     }
 
 
@@ -321,6 +341,9 @@ def _make_summary(tool_name, result):
             f"Checked {r.get('points_checked',0)} points, "
             f"{r.get('total_anomalies',0)} anomalies found "
             f"(critical={r.get('severity_summary',{}).get('critical',0)})"
+        ),
+        "search_academic_papers": lambda r: (
+            f"Found {len(r.get('papers',[]))} papers for '{r.get('query','?')}'"
         ),
     }
 

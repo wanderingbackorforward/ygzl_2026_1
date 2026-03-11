@@ -1,7 +1,7 @@
 // 悬浮小助手 - API 客户端
 
 import { API_BASE } from '../../lib/api'
-import type { AgentStep, AssistantMode, Conversation, Message, Provider, ProviderInfo, Role } from './types'
+import type { AgentStep, AcademicPaper, AssistantMode, Conversation, KGVisualization, Message, Provider, ProviderInfo, Role } from './types'
 
 interface ApiResponse<T> {
   status: string
@@ -99,6 +99,9 @@ export const assistantApi = {
     agentSteps?: AgentStep[]
     agentIterations?: number
     agentDurationMs?: number
+    kgVisualization?: KGVisualization
+    papers?: AcademicPaper[]
+    papersQuery?: string
   }> {
     const res = await fetch(`${API_BASE}/assistant/conversations/${convId}/messages`, {
       method: 'POST',
@@ -113,6 +116,9 @@ export const assistantApi = {
       agentSteps?: AgentStep[]
       agentIterations?: number
       agentDurationMs?: number
+      kgVisualization?: KGVisualization
+      papers?: AcademicPaper[]
+      papersQuery?: string
     }> = await res.json()
     if (!res.ok || json.status !== 'success') {
       throw new Error(json.message || 'Failed to send message')

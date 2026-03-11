@@ -264,15 +264,17 @@ def tool_predict_settlement(point_id, steps=30, **kwargs):
 
 
 def tool_build_knowledge_graph(distance_threshold=50, correlation_threshold=0.7, **kwargs):
-    """Build the in-memory knowledge graph."""
+    """Build the in-memory knowledge graph. Returns stats + visualization data."""
     try:
-        from .knowledge_graph_nx import get_knowledge_graph
-        kg = get_knowledge_graph()
-        stats = kg.build(
+        from .knowledge_graph_nx import build_fresh_knowledge_graph
+        kg, stats, viz = build_fresh_knowledge_graph(
             distance_threshold=distance_threshold,
             correlation_threshold=correlation_threshold,
         )
-        return {"success": True, **stats}
+        # Store ref for subsequent queries in same agent loop
+        import sys
+        sys.modules[__name__]._last_kg = kg
+        return {"success": True, **stats, "visualization": viz}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -280,8 +282,12 @@ def tool_build_knowledge_graph(distance_threshold=50, correlation_threshold=0.7,
 def tool_query_knowledge_graph(query_type, node_id=None, **kwargs):
     """Query the in-memory knowledge graph."""
     try:
-        from .knowledge_graph_nx import get_knowledge_graph
-        kg = get_knowledge_graph()
+        # Try to use the last built KG from this agent loop
+        import sys
+        kg = getattr(sys.modules[__name__], '_last_kg', None)
+        if kg is None or not kg.is_built():
+            from .knowledge_graph_nx import get_knowledge_graph
+            kg = get_knowledge_graph()
         if not kg.is_built():
             return {"success": False, "error": "Knowledge graph not built yet. Call build_knowledge_graph first."}
 
@@ -424,6 +430,52 @@ def tool_query_anomalies(point_ids=None, severity_filter=None, **kwargs):
         return {"success": False, "error": str(e)}
 
 
+def tool_search_academic_papers(query, limit=5, **kwargs):
+    """Search Semantic Scholar for relevant academic papers."""
+    try:
+        limit = min(int(limit), 10)
+        url = "https://api.semanticscholar.org/graph/v1/paper/search"
+        params = {
+            "query": query,
+            "limit": limit,
+            "fields": "title,authors,year,citationCount,url,abstract,externalIds",
+        }
+        r = requests.get(url, params=params, timeout=10)
+        if not r.ok:
+            return {"success": False, "error": f"Semantic Scholar HTTP {r.status_code}"}
+
+        data = r.json()
+        papers = []
+        for p in data.get("data", []):
+            authors = p.get("authors", [])
+            author_names = [a.get("name", "") for a in authors[:4]]
+            if len(authors) > 4:
+                author_names.append("et al.")
+
+            doi = (p.get("externalIds") or {}).get("DOI", "")
+            paper_url = p.get("url", "")
+            if doi:
+                paper_url = f"https://doi.org/{doi}"
+
+            papers.append({
+                "title": p.get("title", ""),
+                "authors": ", ".join(author_names),
+                "year": p.get("year"),
+                "citations": p.get("citationCount", 0),
+                "url": paper_url,
+                "abstract": (p.get("abstract") or "")[:200],
+                "doi": doi,
+            })
+        return {
+            "success": True,
+            "query": query,
+            "papers": papers,
+            "total": data.get("total", len(papers)),
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 # ==================== Tool Registry ====================
 
 TOOL_REGISTRY = {
@@ -438,4 +490,5 @@ TOOL_REGISTRY = {
     "query_knowledge_graph": tool_query_knowledge_graph,
     "analyze_correlation": tool_analyze_correlation,
     "query_anomalies": tool_query_anomalies,
+    "search_academic_papers": tool_search_academic_papers,
 }

@@ -26,6 +26,48 @@ export interface AgentStep {
   success: boolean
 }
 
+export interface KGNode {
+  id: string
+  label: string
+  type: string
+  color: string
+  size: number
+  x: number
+  y: number
+  severity?: string
+  attrs?: Record<string, any>
+}
+
+export interface KGEdge {
+  source: string
+  target: string
+  type: string
+  color: string
+  label: string
+  attrs?: Record<string, any>
+}
+
+export interface KGVisualization {
+  nodes: KGNode[]
+  edges: KGEdge[]
+  stats?: {
+    total_nodes?: number
+    total_edges?: number
+    node_types?: Record<string, number>
+    edge_types?: Record<string, number>
+  }
+}
+
+export interface AcademicPaper {
+  title: string
+  authors: string
+  year: number | null
+  citations: number
+  url: string
+  abstract: string
+  doi: string
+}
+
 export interface Message {
   id: string
   conversationId?: string
@@ -42,6 +84,9 @@ export interface Message {
     tool_steps?: AgentStep[]
     total_iterations?: number
     total_duration_ms?: number
+    kg_visualization?: KGVisualization
+    papers?: AcademicPaper[]
+    papers_query?: string
   }
   createdAt: string
 }

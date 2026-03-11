@@ -3,6 +3,8 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { assistantApi } from './api'
 import AgentSteps from './AgentSteps'
+import KnowledgeGraphViz from './KnowledgeGraphViz'
+import PaperReferences from './PaperReferences'
 import type { AgentStep, AssistantMode, Conversation, Message, Provider, Role } from './types'
 
 interface ConversationViewProps {
@@ -136,6 +138,9 @@ export default function ConversationView({
           tool_steps: result.agentSteps,
           total_iterations: result.agentIterations,
           total_duration_ms: result.agentDurationMs,
+          kg_visualization: result.kgVisualization || undefined,
+          papers: result.papers || undefined,
+          papers_query: result.papersQuery || undefined,
         },
       }
 
@@ -217,6 +222,15 @@ export default function ConversationView({
                   />
                 )}
 
+                {/* Knowledge Graph visualization */}
+                {msg.role === 'assistant' && msg.metadata?.kg_visualization && (
+                  <KnowledgeGraphViz
+                    nodes={msg.metadata.kg_visualization.nodes}
+                    edges={msg.metadata.kg_visualization.edges}
+                    stats={msg.metadata.kg_visualization.stats}
+                  />
+                )}
+
                 {msg.role === 'user' ? (
                   <div className="whitespace-pre-wrap break-words">{msg.content}</div>
                 ) : (
@@ -265,6 +279,14 @@ export default function ConversationView({
                       {msg.content}
                     </ReactMarkdown>
                   </div>
+                )}
+
+                {/* Paper references (after answer) */}
+                {msg.role === 'assistant' && msg.metadata?.papers && msg.metadata.papers.length > 0 && (
+                  <PaperReferences
+                    papers={msg.metadata.papers}
+                    query={msg.metadata.papers_query}
+                  />
                 )}
               </div>
             </div>
