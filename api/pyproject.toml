@@ -6,12 +6,14 @@ dependencies = [
   "Flask",
   "Flask-Cors",
   "Werkzeug",
-  "mysql-connector-python",
   "requests",
   "numpy",
   "pandas",
   "SQLAlchemy",
   "pyshp",
+  "scikit-learn",
+  "statsmodels",
+  "scipy",
 ]
 
 [tool.uv]
