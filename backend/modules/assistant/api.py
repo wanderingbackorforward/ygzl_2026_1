@@ -513,13 +513,23 @@ def send_message(conv_id: str):
                     agent_result = {"tool_steps": [], "total_iterations": 0, "total_duration_ms": 0}
 
                 # Save AI response with agent metadata
+                kg_viz = agent_result.get("kg_visualization")
+                papers_data = agent_result.get("papers", [])
+                print(f"[DEBUG] Agent result: kg_viz={'YES' if kg_viz else 'NO'}, "
+                      f"papers={len(papers_data)}, "
+                      f"tool_steps={len(agent_result.get('tool_steps', []))}, "
+                      f"iterations={agent_result.get('total_iterations', 0)}")
+                if kg_viz:
+                    print(f"[DEBUG] KG viz: {len(kg_viz.get('nodes',[]))} nodes, "
+                          f"{len(kg_viz.get('edges',[]))} edges")
+
                 metadata = {
                     "mode": "agent",
                     "tool_steps": agent_result.get("tool_steps", []),
                     "total_iterations": agent_result.get("total_iterations", 0),
                     "total_duration_ms": agent_result.get("total_duration_ms", 0),
-                    "kg_visualization": agent_result.get("kg_visualization"),
-                    "papers": agent_result.get("papers", []),
+                    "kg_visualization": kg_viz,
+                    "papers": papers_data,
                     "papers_query": agent_result.get("papers_query", ""),
                 }
                 assistant_message = ConversationService.add_message(

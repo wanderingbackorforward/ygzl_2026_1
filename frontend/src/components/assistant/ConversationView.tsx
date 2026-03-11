@@ -128,6 +128,19 @@ export default function ConversationView({
       )
 
       // Attach model info and agent metadata to assistant message
+      const kgViz = result.kgVisualization || undefined
+      const papersData = result.papers || undefined
+      const papersQ = result.papersQuery || undefined
+      console.log('[DEBUG] Agent response:', {
+        hasKgViz: !!kgViz,
+        kgNodes: kgViz?.nodes?.length ?? 0,
+        kgEdges: kgViz?.edges?.length ?? 0,
+        papersCount: papersData?.length ?? 0,
+        papersQuery: papersQ,
+        agentSteps: result.agentSteps?.length ?? 0,
+        toolNames: result.agentSteps?.map((s: any) => s.tool_name) ?? [],
+      })
+
       const assistantMsg: Message = {
         ...result.assistantMessage,
         model: result.model,
@@ -138,9 +151,9 @@ export default function ConversationView({
           tool_steps: result.agentSteps,
           total_iterations: result.agentIterations,
           total_duration_ms: result.agentDurationMs,
-          kg_visualization: result.kgVisualization || undefined,
-          papers: result.papers || undefined,
-          papers_query: result.papersQuery || undefined,
+          kg_visualization: kgViz,
+          papers: papersData,
+          papers_query: papersQ,
         },
       }
 

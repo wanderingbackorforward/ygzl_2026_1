@@ -234,11 +234,20 @@ def run_agent(user_content, page_path="", page_context=None):
 
             # Capture special data for frontend visualization
             if isinstance(result, dict) and result.get("success"):
-                if tool_name == "build_knowledge_graph" and result.get("visualization"):
-                    kg_visualization = result["visualization"]
-                elif tool_name == "search_academic_papers" and result.get("papers"):
-                    papers = result["papers"]
-                    papers_query = result.get("query", "")
+                if tool_name == "build_knowledge_graph":
+                    viz = result.get("visualization")
+                    print(f"[DEBUG] build_knowledge_graph result keys: {list(result.keys())}")
+                    print(f"[DEBUG] visualization present: {viz is not None}, "
+                          f"nodes: {len(viz.get('nodes',[])) if viz else 0}, "
+                          f"edges: {len(viz.get('edges',[])) if viz else 0}")
+                    if viz:
+                        kg_visualization = viz
+                elif tool_name == "search_academic_papers":
+                    found_papers = result.get("papers", [])
+                    print(f"[DEBUG] search_academic_papers: found {len(found_papers)} papers")
+                    if found_papers:
+                        papers = found_papers
+                        papers_query = result.get("query", "")
 
             # Record step
             tool_steps.append({
