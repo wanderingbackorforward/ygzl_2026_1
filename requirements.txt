@@ -13,3 +13,4 @@ torch
 scipy
 shap
 neo4j
+networkx

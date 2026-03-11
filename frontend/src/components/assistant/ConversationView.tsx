@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { assistantApi } from './api'
-import type { Conversation, Message, Provider, Role } from './types'
+import AgentSteps from './AgentSteps'
+import type { AgentStep, AssistantMode, Conversation, Message, Provider, Role } from './types'
 
 interface ConversationViewProps {
   conversationId: string
@@ -10,6 +11,7 @@ interface ConversationViewProps {
   pagePath: string
   pageContext: any
   provider: Provider
+  mode: AssistantMode
   quickPrompt?: string
   onQuickPromptUsed?: () => void
 }
@@ -35,6 +37,7 @@ export default function ConversationView({
   pagePath,
   pageContext,
   provider,
+  mode,
   quickPrompt,
   onQuickPromptUsed,
 }: ConversationViewProps) {
@@ -118,14 +121,22 @@ export default function ConversationView({
         role,
         pagePath,
         pageContext,
-        provider
+        provider,
+        mode
       )
 
-      // Attach model info to assistant message
+      // Attach model info and agent metadata to assistant message
       const assistantMsg: Message = {
         ...result.assistantMessage,
         model: result.model,
         provider: result.provider,
+        metadata: {
+          ...result.assistantMessage.metadata,
+          mode: mode,
+          tool_steps: result.agentSteps,
+          total_iterations: result.agentIterations,
+          total_duration_ms: result.agentDurationMs,
+        },
       }
 
       // Replace temp message with real messages
@@ -189,7 +200,21 @@ export default function ConversationView({
                     <span className={`inline-block rounded border px-1.5 py-0.5 text-[11px] font-medium ${badge.color}`}>
                       {badge.label}
                     </span>
+                    {msg.metadata?.mode === 'agent' && (
+                      <span className="inline-block rounded border border-purple-500/30 bg-purple-500/20 px-1.5 py-0.5 text-[11px] font-medium text-purple-300">
+                        Agent
+                      </span>
+                    )}
                   </div>
+                )}
+
+                {/* Agent steps (before answer) */}
+                {msg.role === 'assistant' && msg.metadata?.tool_steps && msg.metadata.tool_steps.length > 0 && (
+                  <AgentSteps
+                    steps={msg.metadata.tool_steps}
+                    totalIterations={msg.metadata.total_iterations}
+                    totalDurationMs={msg.metadata.total_duration_ms}
+                  />
                 )}
 
                 {msg.role === 'user' ? (
@@ -260,7 +285,7 @@ export default function ConversationView({
                 <div className="h-2 w-2 animate-bounce rounded-full bg-cyan-500" style={{ animationDelay: '0ms' }} />
                 <div className="h-2 w-2 animate-bounce rounded-full bg-cyan-500" style={{ animationDelay: '150ms' }} />
                 <div className="h-2 w-2 animate-bounce rounded-full bg-cyan-500" style={{ animationDelay: '300ms' }} />
-                <span className="ml-1 text-sm">AI 正在思考{dots}</span>
+                <span className="ml-1 text-sm">{mode === 'agent' ? 'Agent 正在分析' : 'AI 正在思考'}{dots}</span>
               </div>
             </div>
           </div>

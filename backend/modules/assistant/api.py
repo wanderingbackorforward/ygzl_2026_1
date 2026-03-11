@@ -466,6 +466,7 @@ def send_message(conv_id: str):
         page_path = (body.get("pagePath") or "").strip()
         page_context = body.get("pageContext")
         provider = (body.get("provider") or "auto").strip()
+        mode = (body.get("mode") or "chat").strip()
 
         if not content:
             return jsonify({"status": "error", "message": "Message content cannot be empty"}), 400
@@ -488,13 +489,67 @@ def send_message(conv_id: str):
             content_type="text",
         )
 
-        # Call AI with provider selection
+        # ==================== Agent mode ====================
+        if mode == "agent":
+            try:
+                from .agent_loop import run_agent
+                agent_result = run_agent(
+                    user_content=content,
+                    page_path=page_path,
+                    page_context=page_context,
+                )
+                answer = agent_result.get("answer")
+                model_name = agent_result.get("model", "claude")
+                agent_error = agent_result.get("error")
+
+                if not answer and agent_error:
+                    # Agent failed, fallback to normal chat
+                    print(f"[WARN] Agent failed: {agent_error}, falling back to chat")
+                    system_prompt = get_role_prompt(role)
+                    user_content_str = _build_user_content(content, page_path, page_context)
+                    answer, model_name, _ = _call_ai(
+                        system_prompt, user_content_str, temperature=0.2, provider=provider
+                    )
+                    agent_result = {"tool_steps": [], "total_iterations": 0, "total_duration_ms": 0}
+
+                # Save AI response with agent metadata
+                metadata = {
+                    "mode": "agent",
+                    "tool_steps": agent_result.get("tool_steps", []),
+                    "total_iterations": agent_result.get("total_iterations", 0),
+                    "total_duration_ms": agent_result.get("total_duration_ms", 0),
+                }
+                assistant_message = ConversationService.add_message(
+                    conv_id=conv_id,
+                    role="assistant",
+                    content=answer or "",
+                    content_type="markdown",
+                    metadata=metadata,
+                )
+
+                return jsonify({
+                    "status": "success",
+                    "data": {
+                        "userMessage": user_message,
+                        "assistantMessage": assistant_message,
+                        "model": model_name,
+                        "provider": "claude",
+                        "agentSteps": agent_result.get("tool_steps", []),
+                        "agentIterations": agent_result.get("total_iterations", 0),
+                        "agentDurationMs": agent_result.get("total_duration_ms", 0),
+                    },
+                })
+            except Exception as agent_exc:
+                print(f"[WARN] Agent exception: {agent_exc}, falling back to chat")
+                # Fall through to normal chat mode
+
+        # ==================== Normal chat mode ====================
         system_prompt = get_role_prompt(role)
-        user_content = _build_user_content(content, page_path, page_context)
+        user_content_str = _build_user_content(content, page_path, page_context)
 
         try:
             answer, model_name, is_fallback = _call_ai(
-                system_prompt, user_content, temperature=0.2, provider=provider
+                system_prompt, user_content_str, temperature=0.2, provider=provider
             )
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 502

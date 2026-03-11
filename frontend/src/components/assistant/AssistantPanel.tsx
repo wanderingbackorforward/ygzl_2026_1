@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { usePageContext } from '../../hooks/usePageContext'
 import { assistantApi } from './api'
-import type { Conversation, Provider, ProviderInfo, Role } from './types'
+import type { AssistantMode, Conversation, Provider, ProviderInfo, Role } from './types'
 import ConversationList from './ConversationList'
 import ConversationView from './ConversationView'
 import QuickCommandPanel from './QuickCommandPanel'
@@ -28,6 +28,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
   const [currentConvId, setCurrentConvId] = useState<string | null>(null)
   const [currentRole, setCurrentRole] = useState<Role>('researcher')
   const [currentProvider, setCurrentProvider] = useState<Provider>('auto')
+  const [currentMode, setCurrentMode] = useState<AssistantMode>('chat')
   const [loading, setLoading] = useState(true)
   const [showQuickPanel, setShowQuickPanel] = useState(true)
   const [quickPrompt, setQuickPrompt] = useState<string>('')
@@ -216,6 +217,34 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                 })}
               </div>
 
+              {/* Mode toggle: Chat / Agent */}
+              <div className="flex items-center gap-1.5 rounded-lg border border-cyan-500/20 bg-slate-900/60 p-0.5">
+                <button
+                  type="button"
+                  title="普通对话模式"
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+                    currentMode === 'chat'
+                      ? 'bg-cyan-500/30 text-cyan-200 shadow-sm'
+                      : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                  }`}
+                  onClick={() => setCurrentMode('chat')}
+                >
+                  Chat
+                </button>
+                <button
+                  type="button"
+                  title="Agent 模式：自主调用工具查询真实数据"
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+                    currentMode === 'agent'
+                      ? 'bg-purple-500/30 text-purple-200 shadow-sm'
+                      : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                  }`}
+                  onClick={() => setCurrentMode('agent')}
+                >
+                  Agent
+                </button>
+              </div>
+
               <div className="text-sm text-slate-400">
                 {currentConversation?.title || 'New conversation'}
               </div>
@@ -256,6 +285,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                 pagePath={location.pathname}
                 pageContext={pageContext}
                 provider={currentProvider}
+                mode={currentMode}
                 quickPrompt={quickPrompt}
                 onQuickPromptUsed={() => setQuickPrompt('')}
               />

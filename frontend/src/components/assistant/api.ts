@@ -1,7 +1,7 @@
 // 悬浮小助手 - API 客户端
 
 import { API_BASE } from '../../lib/api'
-import type { Conversation, Message, Provider, ProviderInfo, Role } from './types'
+import type { AgentStep, AssistantMode, Conversation, Message, Provider, ProviderInfo, Role } from './types'
 
 interface ApiResponse<T> {
   status: string
@@ -82,21 +82,38 @@ export const assistantApi = {
     }
   },
 
-  // 发送消息（支持选择 AI 模型）
+  // 发送消息（支持选择 AI 模型和 Agent 模式）
   async sendMessage(
     convId: string,
     content: string,
     role: Role,
     pagePath?: string,
     pageContext?: any,
-    provider: Provider = 'auto'
-  ): Promise<{ userMessage: Message; assistantMessage: Message; model?: string; provider?: string }> {
+    provider: Provider = 'auto',
+    mode: AssistantMode = 'chat'
+  ): Promise<{
+    userMessage: Message
+    assistantMessage: Message
+    model?: string
+    provider?: string
+    agentSteps?: AgentStep[]
+    agentIterations?: number
+    agentDurationMs?: number
+  }> {
     const res = await fetch(`${API_BASE}/assistant/conversations/${convId}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, role, pagePath, pageContext, provider }),
+      body: JSON.stringify({ content, role, pagePath, pageContext, provider, mode }),
     })
-    const json: ApiResponse<{ userMessage: Message; assistantMessage: Message; model?: string; provider?: string }> = await res.json()
+    const json: ApiResponse<{
+      userMessage: Message
+      assistantMessage: Message
+      model?: string
+      provider?: string
+      agentSteps?: AgentStep[]
+      agentIterations?: number
+      agentDurationMs?: number
+    }> = await res.json()
     if (!res.ok || json.status !== 'success') {
       throw new Error(json.message || 'Failed to send message')
     }

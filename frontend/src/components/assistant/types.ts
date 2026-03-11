@@ -15,6 +15,16 @@ export interface Conversation {
 }
 
 export type Provider = 'auto' | 'claude' | 'deepseek'
+export type AssistantMode = 'chat' | 'agent'
+
+export interface AgentStep {
+  iteration: number
+  tool_name: string
+  tool_input: Record<string, any>
+  result_summary: string
+  duration_ms: number
+  success: boolean
+}
 
 export interface Message {
   id: string
@@ -28,6 +38,10 @@ export interface Message {
     charts?: any[]
     dataCards?: any[]
     tables?: any[]
+    mode?: AssistantMode
+    tool_steps?: AgentStep[]
+    total_iterations?: number
+    total_duration_ms?: number
   }
   createdAt: string
 }
