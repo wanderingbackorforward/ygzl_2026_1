@@ -125,6 +125,7 @@ export const TrendPredictionChart: React.FC<TrendPredictionChartProps> = ({ poin
           name: '置信区间',
           type: 'line',
           data: upperSeries,
+          smooth: true,
           lineStyle: { opacity: 0 },
           areaStyle: { opacity: 0 },
           stack: 'confidence',
@@ -135,9 +136,10 @@ export const TrendPredictionChart: React.FC<TrendPredictionChartProps> = ({ poin
           name: '置信区间',
           type: 'line',
           data: lowerSeries.map((val, i) => val !== null && upperSeries[i] !== null ? (upperSeries[i] as number) - (val as number) : null),
+          smooth: true,
           lineStyle: { opacity: 0 },
           areaStyle: {
-            color: 'rgba(0, 229, 255, 0.15)',
+            color: 'rgba(0, 229, 255, 0.12)',
             origin: 'start'
           },
           stack: 'confidence',
@@ -146,13 +148,26 @@ export const TrendPredictionChart: React.FC<TrendPredictionChartProps> = ({ poin
         },
         {
           name: '实测值',
-          type: 'scatter',
+          type: 'line',
           data: historicalSeries,
-          symbolSize: 6,
+          smooth: true,
+          showSymbol: false,
+          lineStyle: {
+            color: NEON_COLORS.primary,
+            width: 2.5,
+          },
           itemStyle: {
             color: NEON_COLORS.primary,
-            shadowColor: NEON_COLORS.primary,
-            shadowBlur: 4
+          },
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0, y: 0, x2: 0, y2: 1,
+              colorStops: [
+                { offset: 0, color: 'rgba(0, 229, 255, 0.18)' },
+                { offset: 1, color: 'rgba(0, 229, 255, 0.01)' },
+              ],
+            },
           },
           z: 10
         },
@@ -160,27 +175,26 @@ export const TrendPredictionChart: React.FC<TrendPredictionChartProps> = ({ poin
           name: '拟合线',
           type: 'line',
           data: fittedSeries,
-          smooth: false,
+          smooth: true,
           lineStyle: {
             color: NEON_COLORS.success,
             width: 2,
             type: 'solid'
           },
-          symbol: 'none',
+          showSymbol: false,
           z: 5
         },
         {
           name: '预测值',
           type: 'line',
           data: predictionSeries,
-          smooth: false,
+          smooth: true,
           lineStyle: {
             color: riskColor,
-            width: 2,
+            width: 2.5,
             type: 'dashed'
           },
-          symbol: 'circle',
-          symbolSize: 4,
+          showSymbol: false,
           itemStyle: {
             color: riskColor,
             shadowColor: riskColor,
