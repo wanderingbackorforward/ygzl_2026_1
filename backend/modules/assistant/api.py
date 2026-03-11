@@ -621,6 +621,7 @@ def send_message(conv_id: str):
         chat_kg_viz = None
         chat_papers = []
         chat_papers_query = ""
+        _debug_errors = []
         if mode == "agent":
             # Agent failed and fell back here - still try to enrich
             print("[DEBUG] Chat fallback from Agent: force-enriching with KG + papers...")
@@ -630,8 +631,14 @@ def send_message(conv_id: str):
                 if isinstance(kg_r, dict) and kg_r.get("success"):
                     chat_kg_viz = kg_r.get("visualization")
                     print(f"[DEBUG] Chat fallback KG: nodes={len(chat_kg_viz.get('nodes',[])) if chat_kg_viz else 0}")
+                else:
+                    err_msg = f"KG build returned success=False: {kg_r.get('error','?') if isinstance(kg_r, dict) else str(kg_r)}"
+                    print(f"[DEBUG] {err_msg}")
+                    _debug_errors.append(err_msg)
             except Exception as ke:
-                print(f"[DEBUG] Chat fallback KG failed: {ke}")
+                err_msg = f"KG build exception: {type(ke).__name__}: {ke}"
+                print(f"[DEBUG] {err_msg}")
+                _debug_errors.append(err_msg)
             try:
                 from .agent_tools import tool_search_academic_papers
                 q = "settlement monitoring geotechnical analysis"
@@ -640,8 +647,14 @@ def send_message(conv_id: str):
                     chat_papers = pr.get("papers", [])
                     chat_papers_query = q
                     print(f"[DEBUG] Chat fallback papers: {len(chat_papers)}")
+                else:
+                    err_msg = f"Paper search returned success=False: {pr.get('error','?') if isinstance(pr, dict) else str(pr)}"
+                    print(f"[DEBUG] {err_msg}")
+                    _debug_errors.append(err_msg)
             except Exception as pe:
-                print(f"[DEBUG] Chat fallback papers failed: {pe}")
+                err_msg = f"Paper search exception: {type(pe).__name__}: {pe}"
+                print(f"[DEBUG] {err_msg}")
+                _debug_errors.append(err_msg)
 
         # Save AI response
         chat_metadata = {}
@@ -671,6 +684,7 @@ def send_message(conv_id: str):
                 "kgVisualization": chat_kg_viz,
                 "papers": chat_papers,
                 "papersQuery": chat_papers_query,
+                "_debugErrors": _debug_errors if _debug_errors else None,
             },
         })
 

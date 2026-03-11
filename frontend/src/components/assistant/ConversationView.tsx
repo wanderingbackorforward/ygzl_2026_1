@@ -140,6 +140,7 @@ export default function ConversationView({
         agentSteps: result.agentSteps?.length ?? 0,
         toolNames: result.agentSteps?.map((s: any) => s.tool_name) ?? [],
         resultKeys: Object.keys(result),
+        _debugErrors: (result as any)._debugErrors,
       })
 
       const assistantMsg: Message = {
