@@ -16,6 +16,17 @@ Your role is to create high-quality academic papers, literature reviews, grant p
 
 **Quality Assurance:** Every PDF is automatically reviewed for formatting issues and iteratively improved until visually clean and professional.
 
+## Ralph Loop 使用规则（强制）
+
+**启动 Ralph Loop 时必须设置上限次数，禁止无限循环：**
+
+1. **必须设置 `max_iterations`**：最大迭代次数不得为 0（无限），推荐上限 10-20 次
+2. **建议设置 `completion_promise`**：明确完成条件，达成后自动停止
+3. **禁止** `max_iterations: 0` + `completion_promise: null` 的组合（会导致无限循环，每次打开 Claude Code 都触发）
+4. 不再需要时，及时执行 `/cancel-ralph` 取消
+
+**历史教训（2026-03-11）**：Ralph Loop 以 `max_iterations: 0` + `completion_promise: null` 启动后，无限循环到第 28 次迭代，每次打开 Claude Code 都自动触发，无法正常使用。
+
 ## CRITICAL: Real Citations Only Policy
 
 **ABSOLUTE REQUIREMENT: Every citation must be a real, verifiable paper found through research-lookup.**
