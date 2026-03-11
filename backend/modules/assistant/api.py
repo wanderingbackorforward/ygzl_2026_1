@@ -11,6 +11,7 @@ from .prompts import get_role_prompt
 
 assistant_bp = Blueprint("assistant", __name__, url_prefix="/api/assistant")
 
+
 def _is_meaningful_question(q: str) -> bool:
     s = (q or "").strip()
     if not s:
@@ -22,8 +23,42 @@ def _is_meaningful_question(q: str) -> bool:
     return True
 
 
+# ==================== AI Provider Settings ====================
+
+
+def _claude_settings() -> Tuple[str, str, str, float, int]:
+    """Get Claude API settings (Anthropic Messages format)"""
+    api_key = (
+        os.getenv("CLAUDE_API_KEY")
+        or os.getenv("ANTHROPIC_AUTH_TOKEN")
+        or os.getenv("ANTHROPIC_API_KEY")
+        or ""
+    ).strip()
+    api_base = (
+        os.getenv("CLAUDE_API_BASE")
+        or os.getenv("ANTHROPIC_BASE_URL")
+        or "https://api.anthropic.com"
+    ).strip().rstrip("/")
+    model = (os.getenv("CLAUDE_MODEL") or "claude-sonnet-4-20250514").strip()
+    try:
+        timeout_s = float((os.getenv("CLAUDE_TIMEOUT_SECONDS") or "60").strip())
+    except Exception:
+        timeout_s = 60.0
+    try:
+        max_tokens = int((os.getenv("CLAUDE_MAX_TOKENS") or "4096").strip())
+    except Exception:
+        max_tokens = 4096
+    return api_key, api_base, model, timeout_s, max_tokens
+
+
 def _deepseek_settings() -> Tuple[str, str, str, float]:
-    api_key = (os.getenv("DEEPSEEK_API_KEY") or os.getenv("DEEPSEEK_KEY") or os.getenv("DEEPSEEK_TOKEN") or "").strip()
+    """Get DeepSeek API settings (OpenAI-compatible, fallback)"""
+    api_key = (
+        os.getenv("DEEPSEEK_API_KEY")
+        or os.getenv("DEEPSEEK_KEY")
+        or os.getenv("DEEPSEEK_TOKEN")
+        or ""
+    ).strip()
     api_base = (os.getenv("DEEPSEEK_API_BASE") or "https://api.deepseek.com").strip().rstrip("/")
     model = (os.getenv("DEEPSEEK_MODEL") or "deepseek-chat").strip()
     try:
@@ -33,21 +68,165 @@ def _deepseek_settings() -> Tuple[str, str, str, float]:
     return api_key, api_base, model, timeout_s
 
 
-def _extract_answer(payload: Dict[str, Any]) -> str:
-    choices = payload.get("choices") or []
-    if not isinstance(choices, list) or not choices:
-        raise ValueError("DeepSeek 返回缺少 choices")
-    msg = (choices[0] or {}).get("message") or {}
-    content = msg.get("content")
-    if isinstance(content, str) and content.strip():
-        return content
-    reasoning = msg.get("reasoning_content")
-    if isinstance(reasoning, str) and reasoning.strip():
-        return reasoning
-    text = (choices[0] or {}).get("text")
-    if isinstance(text, str) and text.strip():
-        return text
-    raise ValueError("DeepSeek 返回缺少可用内容（message.content / message.reasoning_content / choice.text）")
+# ==================== AI Call Functions ====================
+
+
+def _call_claude(
+    system_prompt: str, user_content: str, temperature: float = 0.2
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    Call Claude API (Anthropic Messages format).
+    Returns: (answer, model_name, error_message)
+    """
+    api_key, api_base, model, timeout_s, max_tokens = _claude_settings()
+    if not api_key:
+        return None, None, "Claude API key not configured"
+
+    url = f"{api_base}/v1/messages"
+    headers = {
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+    }
+    payload = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "system": system_prompt,
+        "messages": [
+            {"role": "user", "content": user_content},
+        ],
+        "temperature": temperature,
+    }
+
+    try:
+        resp = requests.post(url, headers=headers, json=payload, timeout=timeout_s)
+    except Exception as e:
+        return None, None, f"Claude request failed: {str(e)}"
+
+    if not resp.ok:
+        detail = ""
+        try:
+            detail = resp.text[:500]
+        except Exception:
+            pass
+        return None, None, f"Claude HTTP {resp.status_code}: {detail}"
+
+    try:
+        data = resp.json()
+        content_list = data.get("content") or []
+        if not content_list:
+            return None, None, "Claude response missing content"
+        texts = []
+        for block in content_list:
+            if isinstance(block, dict) and block.get("type") == "text":
+                texts.append(block.get("text", ""))
+        answer = "\n".join(texts).strip()
+        if not answer:
+            return None, None, "Claude response content is empty"
+        actual_model = data.get("model", model)
+        return answer, actual_model, None
+    except Exception as e:
+        return None, None, f"Claude response parse failed: {str(e)}"
+
+
+def _call_deepseek(
+    system_prompt: str, user_content: str, temperature: float = 0.2
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    Call DeepSeek API (OpenAI-compatible format, fallback).
+    Returns: (answer, model_name, error_message)
+    """
+    api_key, api_base, model, timeout_s = _deepseek_settings()
+    if not api_key:
+        return None, None, "DeepSeek API key not configured"
+
+    url = f"{api_base}/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ],
+        "temperature": temperature,
+    }
+
+    try:
+        resp = requests.post(url, headers=headers, json=payload, timeout=timeout_s)
+    except Exception as e:
+        return None, None, f"DeepSeek request failed: {str(e)}"
+
+    if not resp.ok:
+        detail = ""
+        try:
+            detail = resp.text[:500]
+        except Exception:
+            pass
+        return None, None, f"DeepSeek HTTP {resp.status_code}: {detail}"
+
+    try:
+        data = resp.json()
+        choices = data.get("choices") or []
+        if not isinstance(choices, list) or not choices:
+            return None, None, "DeepSeek response missing choices"
+        msg = (choices[0] or {}).get("message") or {}
+        content = msg.get("content")
+        if isinstance(content, str) and content.strip():
+            return content, model, None
+        reasoning = msg.get("reasoning_content")
+        if isinstance(reasoning, str) and reasoning.strip():
+            return reasoning, model, None
+        text_val = (choices[0] or {}).get("text")
+        if isinstance(text_val, str) and text_val.strip():
+            return text_val, model, None
+        return None, None, "DeepSeek response missing usable content"
+    except Exception as e:
+        return None, None, f"DeepSeek response parse failed: {str(e)}"
+
+
+def _call_ai(
+    system_prompt: str, user_content: str, temperature: float = 0.2
+) -> Tuple[str, str, bool]:
+    """
+    Call AI with fallback: Claude first, DeepSeek as fallback.
+    Returns: (answer, model_name, is_fallback)
+    Raises Exception if both fail.
+    """
+    # Try Claude first
+    answer, model_name, claude_error = _call_claude(system_prompt, user_content, temperature)
+    if answer:
+        return answer, model_name or "claude", False
+
+    # Claude failed, try DeepSeek as fallback
+    print(f"[WARN] Claude failed: {claude_error}, falling back to DeepSeek")
+    answer, model_name, deepseek_error = _call_deepseek(system_prompt, user_content, temperature)
+    if answer:
+        return answer, f"{model_name} (fallback)", True
+
+    # Both failed
+    raise Exception(
+        f"All AI providers failed. Claude: {claude_error}. DeepSeek: {deepseek_error}"
+    )
+
+
+def _any_ai_configured() -> bool:
+    """Check if at least one AI provider is configured"""
+    claude_key = (
+        os.getenv("CLAUDE_API_KEY")
+        or os.getenv("ANTHROPIC_AUTH_TOKEN")
+        or os.getenv("ANTHROPIC_API_KEY")
+        or ""
+    ).strip()
+    deepseek_key = (
+        os.getenv("DEEPSEEK_API_KEY")
+        or os.getenv("DEEPSEEK_KEY")
+        or os.getenv("DEEPSEEK_TOKEN")
+        or ""
+    ).strip()
+    return bool(claude_key or deepseek_key)
 
 
 def _request_id() -> str:
@@ -59,9 +238,9 @@ def _format_context(ctx: Any) -> str:
         return ""
 
     lines = []
-    page_title = ctx.get("pageTitle") or "未知页面"
+    page_title = ctx.get("pageTitle") or "unknown"
 
-    lines.append(f"### 当前页面数据：{page_title}")
+    lines.append(f"### Current page data: {page_title}")
 
     snapshot = ctx.get("dataSnapshot") or {}
     summary = snapshot.get("summary") or {}
@@ -69,30 +248,44 @@ def _format_context(ctx: Any) -> str:
     metadata = ctx.get("metadata") or {}
 
     if summary:
-        lines.append("\n**数据摘要**：")
+        lines.append("\n**Data summary**:")
         for key, val in summary.items():
             if val is not None:
                 lines.append(f"- {key}: {val}")
 
     if stats:
-        lines.append("\n**统计信息**：")
+        lines.append("\n**Statistics**:")
         total = stats.get("totalCount")
         anomaly = stats.get("anomalyCount")
         normal = stats.get("normalCount")
         if total is not None:
-            lines.append(f"- 总数: {total}")
+            lines.append(f"- Total: {total}")
         if anomaly is not None:
-            lines.append(f"- 异常数: {anomaly}")
+            lines.append(f"- Anomalies: {anomaly}")
         if normal is not None:
-            lines.append(f"- 正常数: {normal}")
+            lines.append(f"- Normal: {normal}")
 
     if metadata:
         has_anomalies = metadata.get("hasAnomalies")
         if has_anomalies is not None:
-            status = "存在异常" if has_anomalies else "全部正常"
-            lines.append(f"\n**状态**: {status}")
+            status = "has anomalies" if has_anomalies else "all normal"
+            lines.append(f"\n**Status**: {status}")
 
     return "\n".join(lines) if lines else ""
+
+
+def _build_user_content(question: str, page_path: str, page_context: Any) -> str:
+    """Build user content string with page context"""
+    context_text = _format_context(page_context)
+    if context_text:
+        return f"Current page: {page_path}\n\n{context_text}\n\nQuestion: {question}"
+    elif page_path:
+        return f"Current page: {page_path}\n\nQuestion: {question}"
+    else:
+        return question
+
+
+# ==================== Chat API ====================
 
 
 @assistant_bp.route("/chat", methods=["POST"])
@@ -104,90 +297,36 @@ def assistant_chat():
     if not question:
         return jsonify({"status": "error", "message": "missing question"}), 400
     if not _is_meaningful_question(question):
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": "问题太短或不明确。请用一句话描述你要问什么（例如：‘/insar 页面 velocity 字段代表什么？’）。",
-                }
-            ),
-            400,
-        )
+        return jsonify({"status": "error", "message": "Question too short or unclear"}), 400
 
-    api_key, api_base, model, timeout_s = _deepseek_settings()
-    if not api_key:
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": "DeepSeek 未配置：请在 Vercel 环境变量中设置 DEEPSEEK_API_KEY（或 DEEPSEEK_KEY / DEEPSEEK_TOKEN）后重新部署。",
-                }
-            ),
-            400,
-        )
-
-    system_prompt = get_role_prompt('researcher')
-
-    context_text = _format_context(page_context)
-    if context_text:
-        user_content = f"当前页面：{page_path}\n\n{context_text}\n\n问题：{question}"
-    elif page_path:
-        user_content = f"当前页面：{page_path}\n\n问题：{question}"
-    else:
-        user_content = question
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_content},
-        ],
-        "temperature": 0.2,
-    }
-
-    url = f"{api_base}/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-
-    try:
-        resp = requests.post(url, headers=headers, json=payload, timeout=timeout_s)
-    except Exception as e:
-        return jsonify({"status": "error", "message": "DeepSeek request failed", "detail": str(e)}), 502
-
-    if not resp.ok:
-        detail: Optional[str] = None
-        try:
-            detail = resp.text[:2000]
-        except Exception:
-            detail = None
-        out: Dict[str, Any] = {
+    if not _any_ai_configured():
+        return jsonify({
             "status": "error",
-            "message": "DeepSeek response not ok",
-            "http_status": resp.status_code,
-        }
-        if detail:
-            out["detail"] = detail
-        rid = _request_id()
-        if rid:
-            out["request_id"] = rid
-        return jsonify(out), 502
+            "message": "No AI provider configured. Set CLAUDE_API_KEY or DEEPSEEK_API_KEY in environment.",
+        }), 400
+
+    system_prompt = get_role_prompt("researcher")
+    user_content = _build_user_content(question, page_path, page_context)
 
     try:
-        data = resp.json()
-        answer = _extract_answer(data)
+        answer, model_name, is_fallback = _call_ai(system_prompt, user_content, temperature=0.2)
     except Exception as e:
-        return jsonify({"status": "error", "message": "DeepSeek response parse failed", "detail": str(e)}), 502
+        return jsonify({"status": "error", "message": str(e)}), 502
 
-    return jsonify({"status": "success", "data": {"answerMarkdown": answer, "model": model}})
+    return jsonify({
+        "status": "success",
+        "data": {
+            "answerMarkdown": answer,
+            "model": model_name,
+        },
+    })
 
 
-# ==================== 对话管理 API ====================
+# ==================== Conversation Management API ====================
 
 
 @assistant_bp.route("/conversations", methods=["GET"])
 def get_conversations():
-    """获取对话列表"""
     try:
         limit = int(request.args.get("limit", 100))
         page_path = request.args.get("page_path")
@@ -199,15 +338,14 @@ def get_conversations():
 
 @assistant_bp.route("/conversations", methods=["POST"])
 def create_conversation():
-    """创建新对话"""
     try:
         body = request.get_json(silent=True) or {}
-        title = body.get("title", "新对话")
+        title = body.get("title", "New conversation")
         role = body.get("role", "researcher")
         page_path = body.get("pagePath") or body.get("page_path")
 
         if role not in ["researcher", "worker", "reporter"]:
-            return jsonify({"status": "error", "message": "无效的角色类型"}), 400
+            return jsonify({"status": "error", "message": "Invalid role type"}), 400
 
         conversation = ConversationService.create_conversation(title=title, role=role, page_path=page_path)
         return jsonify({"status": "success", "data": conversation})
@@ -217,11 +355,10 @@ def create_conversation():
 
 @assistant_bp.route("/conversations/<conv_id>", methods=["GET"])
 def get_conversation(conv_id: str):
-    """获取对话详情（包含所有消息）"""
     try:
         conversation = ConversationService.get_conversation(conv_id)
         if not conversation:
-            return jsonify({"status": "error", "message": "对话不存在"}), 404
+            return jsonify({"status": "error", "message": "Conversation not found"}), 404
         return jsonify({"status": "success", "data": conversation})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -229,18 +366,17 @@ def get_conversation(conv_id: str):
 
 @assistant_bp.route("/conversations/<conv_id>", methods=["PUT"])
 def update_conversation(conv_id: str):
-    """更新对话（重命名、切换角色）"""
     try:
         body = request.get_json(silent=True) or {}
         title = body.get("title")
         role = body.get("role")
 
         if role and role not in ["researcher", "worker", "reporter"]:
-            return jsonify({"status": "error", "message": "无效的角色类型"}), 400
+            return jsonify({"status": "error", "message": "Invalid role type"}), 400
 
         success = ConversationService.update_conversation(conv_id, title=title, role=role)
         if not success:
-            return jsonify({"status": "error", "message": "对话不存在或更新失败"}), 404
+            return jsonify({"status": "error", "message": "Conversation not found"}), 404
 
         return jsonify({"status": "success", "data": {"id": conv_id}})
     except Exception as e:
@@ -249,11 +385,10 @@ def update_conversation(conv_id: str):
 
 @assistant_bp.route("/conversations/<conv_id>", methods=["DELETE"])
 def delete_conversation(conv_id: str):
-    """删除对话"""
     try:
         success = ConversationService.delete_conversation(conv_id)
         if not success:
-            return jsonify({"status": "error", "message": "对话不存在或删除失败"}), 404
+            return jsonify({"status": "error", "message": "Conversation not found"}), 404
 
         return jsonify({"status": "success", "data": {"id": conv_id}})
     except Exception as e:
@@ -262,7 +397,6 @@ def delete_conversation(conv_id: str):
 
 @assistant_bp.route("/conversations/<conv_id>/messages", methods=["POST"])
 def send_message(conv_id: str):
-    """发送消息到对话"""
     try:
         body = request.get_json(silent=True) or {}
         content = (body.get("content") or body.get("question") or "").strip()
@@ -271,17 +405,19 @@ def send_message(conv_id: str):
         page_context = body.get("pageContext")
 
         if not content:
-            return jsonify({"status": "error", "message": "消息内容不能为空"}), 400
+            return jsonify({"status": "error", "message": "Message content cannot be empty"}), 400
 
         if not _is_meaningful_question(content):
-            return jsonify({"status": "error", "message": "问题太短或不明确"}), 400
+            return jsonify({"status": "error", "message": "Question too short or unclear"}), 400
 
-        # 验证对话是否存在
         conversation = ConversationService.get_conversation(conv_id)
         if not conversation:
-            return jsonify({"status": "error", "message": "对话不存在"}), 404
+            return jsonify({"status": "error", "message": "Conversation not found"}), 404
 
-        # 保存用户消息
+        if not _any_ai_configured():
+            return jsonify({"status": "error", "message": "No AI provider configured"}), 400
+
+        # Save user message
         user_message = ConversationService.add_message(
             conv_id=conv_id,
             role="user",
@@ -289,47 +425,16 @@ def send_message(conv_id: str):
             content_type="text",
         )
 
-        # 调用 AI 生成回答
-        api_key, api_base, model, timeout_s = _deepseek_settings()
-        if not api_key:
-            return jsonify({"status": "error", "message": "DeepSeek 未配置"}), 400
-
-        # 根据角色构建 system prompt
+        # Call AI with fallback
         system_prompt = get_role_prompt(role)
+        user_content = _build_user_content(content, page_path, page_context)
 
-        # 格式化上下文
-        context_text = _format_context(page_context)
-        if context_text:
-            user_content = f"当前页面：{page_path}\n\n{context_text}\n\n问题：{content}"
-        elif page_path:
-            user_content = f"当前页面：{page_path}\n\n问题：{content}"
-        else:
-            user_content = content
+        try:
+            answer, model_name, is_fallback = _call_ai(system_prompt, user_content, temperature=0.2)
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 502
 
-        payload = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_content},
-            ],
-            "temperature": 0.2,
-        }
-
-        url = f"{api_base}/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        }
-
-        resp = requests.post(url, headers=headers, json=payload, timeout=timeout_s)
-
-        if not resp.ok:
-            return jsonify({"status": "error", "message": "DeepSeek 请求失败"}), 502
-
-        data = resp.json()
-        answer = _extract_answer(data)
-
-        # 保存 AI 回答
+        # Save AI response
         assistant_message = ConversationService.add_message(
             conv_id=conv_id,
             role="assistant",
@@ -342,7 +447,7 @@ def send_message(conv_id: str):
             "data": {
                 "userMessage": user_message,
                 "assistantMessage": assistant_message,
-            }
+            },
         })
 
     except Exception as e:
@@ -351,63 +456,37 @@ def send_message(conv_id: str):
 
 @assistant_bp.route("/summarize", methods=["POST"])
 def summarize_conversation():
-    """生成对话总结"""
     try:
         body = request.get_json(silent=True) or {}
-        conversation_id = body.get("conversation_id")
         messages = body.get("messages", [])
 
         if not messages:
-            return jsonify({"status": "error", "message": "消息列表为空"}), 400
+            return jsonify({"status": "error", "message": "Messages list is empty"}), 400
 
-        # 调用 DeepSeek 生成总结
-        api_key, api_base, model, timeout_s = _deepseek_settings()
-        if not api_key:
-            return jsonify({"status": "error", "message": "DeepSeek 未配置"}), 400
+        if not _any_ai_configured():
+            return jsonify({"status": "error", "message": "No AI provider configured"}), 400
 
-        # 构建对话历史文本
+        # Build conversation text
         conversation_text = ""
         for msg in messages:
-            role_label = "用户" if msg.get("role") == "user" else "AI"
-            content = msg.get("content", "")
-            conversation_text += f"{role_label}: {content}\n\n"
+            role_label = "User" if msg.get("role") == "user" else "AI"
+            msg_content = msg.get("content", "")
+            conversation_text += f"{role_label}: {msg_content}\n\n"
 
         system_prompt = (
-            "你是一个对话总结助手。请根据以下对话内容生成简洁的总结。\n"
-            "总结应包括：\n"
-            "1. 用户提出的主要问题（最多5个）\n"
-            "2. AI给出的关键回复要点（最多3个）\n"
-            "3. 对话的整体主题\n\n"
-            "输出格式为 Markdown，使用标题和列表组织内容。"
+            "You are a conversation summarizer. Summarize the following conversation.\n"
+            "Include: 1) Main questions (max 5), 2) Key answers (max 3), 3) Overall topic.\n"
+            "Output in Chinese using Markdown with headings and lists."
         )
 
-        user_content = f"请总结以下对话：\n\n{conversation_text}"
+        user_content = f"Please summarize this conversation:\n\n{conversation_text}"
 
-        payload = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_content},
-            ],
-            "temperature": 0.3,
-        }
+        try:
+            answer, model_name, is_fallback = _call_ai(system_prompt, user_content, temperature=0.3)
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 502
 
-        url = f"{api_base}/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        }
-
-        resp = requests.post(url, headers=headers, json=payload, timeout=timeout_s)
-
-        if not resp.ok:
-            return jsonify({"status": "error", "message": "DeepSeek 请求失败"}), 502
-
-        data = resp.json()
-        summary = _extract_answer(data)
-
-        return jsonify({"status": "success", "data": {"summary": summary}})
+        return jsonify({"status": "success", "data": {"summary": answer}})
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
-
