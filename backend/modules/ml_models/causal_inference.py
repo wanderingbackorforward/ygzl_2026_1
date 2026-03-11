@@ -206,20 +206,39 @@ def analyze_event_impact(point_id, event_date, conn=None, control_point_ids=None
         }
     event_idx = matches.index[0]
 
-    # 定义事件前后窗口
-    before_start = max(0, event_idx - window_days)
-    after_end = min(len(treated_df), event_idx + window_days)
+    # 用日期定义事件前后窗口（而非位置索引，避免跨DataFrame索引错位）
+    event_date_ts = pd.to_datetime(event_date)
+    window_start_date = event_date_ts - pd.Timedelta(days=window_days)
+    window_end_date = event_date_ts + pd.Timedelta(days=window_days)
 
     # cumulative_change is the column from fetch_point_raw()
     value_col = 'cumulative_change' if 'cumulative_change' in treated_df.columns else 'cumulative_settlement'
-    treated_before = treated_df.iloc[before_start:event_idx][value_col].values
-    treated_after = treated_df.iloc[event_idx:after_end][value_col].values
+    treated_before = treated_df[
+        (treated_df['measurement_date'] >= window_start_date) &
+        (treated_df['measurement_date'] < event_date_ts)
+    ][value_col].values
+    treated_after = treated_df[
+        (treated_df['measurement_date'] >= event_date_ts) &
+        (treated_df['measurement_date'] <= window_end_date)
+    ][value_col].values
+
+    if len(treated_before) == 0 or len(treated_after) == 0:
+        return {
+            'success': False,
+            'message': f'Insufficient data around event date {event_date_ts.strftime("%Y-%m-%d")}. '
+                       f'Before: {len(treated_before)} points, After: {len(treated_after)} points',
+            'point_id': point_id
+        }
 
     if control_point_ids is None:
-        # 自动选择对照组（距离较远的点）
-        if points_df is not None:
+        # 自动选择对照组
+        if points_df is not None and not points_df.empty:
             from modules.ml_models.supabase_data import find_distant_points
             control_point_ids = find_distant_points(point_id, points_df, n=3)
+            # 如果坐标全为0导致距离选择失败,随机选3个其他点
+            if not control_point_ids:
+                other_ids = points_df[points_df['point_id'] != point_id]['point_id'].tolist()
+                control_point_ids = other_ids[:3]
         elif conn is not None:
             query_control_points = """
                 SELECT p1.point_id,
@@ -236,11 +255,18 @@ def analyze_event_impact(point_id, event_date, conn=None, control_point_ids=None
         else:
             control_point_ids = []
 
+    if not control_point_ids:
+        return {
+            'success': False,
+            'message': 'No control points available. Please specify control_point_ids manually.',
+            'point_id': point_id
+        }
+
     # 创建因果推断分析器
     causal = CausalInference()
 
     if method == 'DID':
-        # 查询对照组数据
+        # 查询对照组数据 - 使用日期筛选（非位置索引）
         control_before_list = []
         control_after_list = []
 
@@ -259,20 +285,25 @@ def analyze_event_impact(point_id, event_date, conn=None, control_point_ids=None
                 continue
             ctrl_df['measurement_date'] = pd.to_datetime(ctrl_df['measurement_date'])
 
-            ctrl_matches = ctrl_df[ctrl_df['measurement_date'] >= event_date]
-            if ctrl_matches.empty:
-                continue
-            ctrl_event_idx = ctrl_matches.index[0]
-            ctrl_before = ctrl_df.iloc[before_start:ctrl_event_idx]['cumulative_change'].values
-            ctrl_after = ctrl_df.iloc[ctrl_event_idx:after_end]['cumulative_change'].values
+            ctrl_before = ctrl_df[
+                (ctrl_df['measurement_date'] >= window_start_date) &
+                (ctrl_df['measurement_date'] < event_date_ts)
+            ]['cumulative_change'].values
+            ctrl_after = ctrl_df[
+                (ctrl_df['measurement_date'] >= event_date_ts) &
+                (ctrl_df['measurement_date'] <= window_end_date)
+            ]['cumulative_change'].values
 
-            control_before_list.extend(ctrl_before)
-            control_after_list.extend(ctrl_after)
+            if len(ctrl_before) > 0:
+                control_before_list.extend(ctrl_before)
+            if len(ctrl_after) > 0:
+                control_after_list.extend(ctrl_after)
 
         if not control_before_list or not control_after_list:
             return {
                 'success': False,
-                'message': 'No control group data available for the given event date',
+                'message': f'No control group data in window [{window_start_date.strftime("%Y-%m-%d")}, '
+                           f'{window_end_date.strftime("%Y-%m-%d")}]. Control points tried: {control_point_ids}',
                 'point_id': point_id
             }
 
@@ -300,7 +331,7 @@ def analyze_event_impact(point_id, event_date, conn=None, control_point_ids=None
             else:
                 continue
             ctrl_df['measurement_date'] = pd.to_datetime(ctrl_df['measurement_date'])
-            control_matrix_list.append(ctrl_df['cumulative_change'].values)
+            control_matrix_list.append(ctrl_df[value_col].values)
 
         if not control_matrix_list:
             return {
@@ -310,10 +341,15 @@ def analyze_event_impact(point_id, event_date, conn=None, control_point_ids=None
             }
 
         control_matrix = np.column_stack(control_matrix_list)
-        treated_full = treated_df['cumulative_change'].values
+        treated_full = treated_df[value_col].values
+
+        # 计算位置索引用于SCM
+        scm_event_idx = treated_df.index.get_loc(event_idx) if event_idx in treated_df.index else 0
+        if isinstance(scm_event_idx, slice):
+            scm_event_idx = scm_event_idx.start or 0
 
         # 执行SCM分析
-        result = causal.synthetic_control(treated_full, control_matrix, event_idx)
+        result = causal.synthetic_control(treated_full, control_matrix, scm_event_idx)
 
     else:
         raise ValueError("method必须是'DID'或'SCM'")
