@@ -186,7 +186,7 @@ export const PredictionDashboard: React.FC<PredictionDashboardProps> = ({
         <div style={styles.chartSection}>
           <PredictionChart
             prediction={selectedPrediction}
-            historicalData={(selectedPrediction as any).historical || []}
+            historicalData={selectedPrediction.historical || []}
             height={450}
           />
         </div>

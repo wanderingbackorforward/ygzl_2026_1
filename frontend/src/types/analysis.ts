@@ -73,6 +73,7 @@ export interface PredictionResult {
       seasonality_strength: number;
     };
   };
+  historical?: Array<{ date: string; value: number }>;
   forecast: {
     dates: string[];
     values: number[];

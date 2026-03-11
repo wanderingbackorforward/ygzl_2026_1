@@ -266,7 +266,7 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
         <div style={styles.infoItem}>
           <span style={styles.infoLabel}>模型得分</span>
           <span style={styles.infoValue}>
-            {prediction.model_selection_info.best_score.toFixed(3)}
+            {prediction.model_selection_info.best_score?.toFixed(3) ?? '-'}
           </span>
         </div>
       </div>
