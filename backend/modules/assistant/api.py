@@ -515,22 +515,67 @@ def send_message(conv_id: str):
                 # Save AI response with agent metadata
                 kg_viz = agent_result.get("kg_visualization")
                 papers_data = agent_result.get("papers", [])
-                print(f"[DEBUG] Agent result: kg_viz={'YES' if kg_viz else 'NO'}, "
+                papers_query_str = agent_result.get("papers_query", "")
+                tool_steps_list = agent_result.get("tool_steps", [])
+
+                print(f"[DEBUG] Agent result BEFORE enrich: kg_viz={'YES' if kg_viz else 'NO'}, "
                       f"papers={len(papers_data)}, "
-                      f"tool_steps={len(agent_result.get('tool_steps', []))}, "
-                      f"iterations={agent_result.get('total_iterations', 0)}")
-                if kg_viz:
-                    print(f"[DEBUG] KG viz: {len(kg_viz.get('nodes',[]))} nodes, "
-                          f"{len(kg_viz.get('edges',[]))} edges")
+                      f"tool_steps={len(tool_steps_list)}")
+
+                # ---- Force-enrich: always build KG if agent didn't ----
+                if not kg_viz:
+                    print("[DEBUG] api.py: Force-building knowledge graph...")
+                    try:
+                        from .agent_tools import tool_build_knowledge_graph
+                        kg_result = tool_build_knowledge_graph()
+                        if isinstance(kg_result, dict) and kg_result.get("success"):
+                            kg_viz = kg_result.get("visualization")
+                            print(f"[DEBUG] api.py: KG built OK, "
+                                  f"nodes={len(kg_viz.get('nodes',[])) if kg_viz else 0}, "
+                                  f"edges={len(kg_viz.get('edges',[])) if kg_viz else 0}")
+                        else:
+                            print(f"[DEBUG] api.py: KG build failed: {kg_result.get('error','?')}")
+                    except Exception as kg_exc:
+                        print(f"[DEBUG] api.py: KG build exception: {kg_exc}")
+
+                # ---- Force-enrich: always search papers if agent didn't ----
+                if not papers_data:
+                    print("[DEBUG] api.py: Force-searching academic papers...")
+                    try:
+                        from .agent_tools import tool_search_academic_papers
+                        q = "settlement monitoring geotechnical analysis"
+                        cl = (content or "").lower()
+                        if any(k in cl for k in ["anomal", "\u5f02\u5e38"]):
+                            q = "settlement anomaly detection monitoring"
+                        elif any(k in cl for k in ["predict", "\u9884\u6d4b", "\u8d8b\u52bf"]):
+                            q = "settlement prediction time series forecasting"
+                        elif any(k in cl for k in ["spatial", "\u7a7a\u95f4", "\u5173\u8054", "correlat"]):
+                            q = "spatial correlation settlement monitoring"
+                        elif any(k in cl for k in ["risk", "\u98ce\u9669"]):
+                            q = "geotechnical risk assessment settlement"
+                        elif any(k in cl for k in ["crack", "\u88c2\u7f1d"]):
+                            q = "structural crack monitoring settlement"
+                        paper_result = tool_search_academic_papers(query=q, limit=5)
+                        if isinstance(paper_result, dict) and paper_result.get("success"):
+                            papers_data = paper_result.get("papers", [])
+                            papers_query_str = q
+                            print(f"[DEBUG] api.py: Found {len(papers_data)} papers for '{q}'")
+                        else:
+                            print(f"[DEBUG] api.py: Paper search failed: {paper_result.get('error','?')}")
+                    except Exception as paper_exc:
+                        print(f"[DEBUG] api.py: Paper search exception: {paper_exc}")
+
+                print(f"[DEBUG] Agent result AFTER enrich: kg_viz={'YES' if kg_viz else 'NO'}, "
+                      f"papers={len(papers_data)}")
 
                 metadata = {
                     "mode": "agent",
-                    "tool_steps": agent_result.get("tool_steps", []),
+                    "tool_steps": tool_steps_list,
                     "total_iterations": agent_result.get("total_iterations", 0),
                     "total_duration_ms": agent_result.get("total_duration_ms", 0),
                     "kg_visualization": kg_viz,
                     "papers": papers_data,
-                    "papers_query": agent_result.get("papers_query", ""),
+                    "papers_query": papers_query_str,
                 }
                 assistant_message = ConversationService.add_message(
                     conv_id=conv_id,
@@ -547,12 +592,12 @@ def send_message(conv_id: str):
                         "assistantMessage": assistant_message,
                         "model": model_name,
                         "provider": "claude",
-                        "agentSteps": agent_result.get("tool_steps", []),
+                        "agentSteps": tool_steps_list,
                         "agentIterations": agent_result.get("total_iterations", 0),
                         "agentDurationMs": agent_result.get("total_duration_ms", 0),
-                        "kgVisualization": agent_result.get("kg_visualization"),
-                        "papers": agent_result.get("papers", []),
-                        "papersQuery": agent_result.get("papers_query", ""),
+                        "kgVisualization": kg_viz,
+                        "papers": papers_data,
+                        "papersQuery": papers_query_str,
                     },
                 })
             except Exception as agent_exc:
