@@ -132,6 +132,7 @@ export default function ConversationView({
       const papersData = result.papers || undefined
       const papersQ = result.papersQuery || undefined
       console.log('[DEBUG] Agent response:', {
+        sentMode: mode,
         hasKgViz: !!kgViz,
         kgNodes: kgViz?.nodes?.length ?? 0,
         kgEdges: kgViz?.edges?.length ?? 0,

@@ -617,14 +617,13 @@ def send_message(conv_id: str):
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 502
 
-        # Force-enrich chat mode with KG + papers too
+        # Force-enrich with KG + papers (always, regardless of mode)
         chat_kg_viz = None
         chat_papers = []
         chat_papers_query = ""
         _debug_errors = []
-        if mode == "agent":
-            # Agent failed and fell back here - still try to enrich
-            print("[DEBUG] Chat fallback from Agent: force-enriching with KG + papers...")
+        if True:  # Always enrich - mode guard removed for reliability
+            print(f"[DEBUG] Chat path: force-enriching with KG + papers (mode={mode})...")
             try:
                 from .agent_tools import tool_build_knowledge_graph
                 kg_r = tool_build_knowledge_graph()
