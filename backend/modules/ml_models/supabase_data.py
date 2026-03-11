@@ -112,6 +112,30 @@ def fetch_all_settlement():
     return df
 
 
+def fetch_settlement_point_ids():
+    """
+    Fetch distinct point_ids from processed_settlement_data.
+    Returns list of point_id strings that actually have settlement data.
+    """
+    url = f"{_base_url()}/rest/v1/processed_settlement_data"
+    params = {
+        'select': 'point_id',
+        'order': 'point_id.asc',
+        'limit': '1000',
+    }
+    try:
+        r = requests.get(url, headers=_headers(), params=params, timeout=15)
+        r.raise_for_status()
+        data = r.json()
+        if not data:
+            return []
+        # Deduplicate
+        return list(dict.fromkeys(row['point_id'] for row in data))
+    except Exception as e:
+        print(f"[WARN] fetch_settlement_point_ids failed: {e}")
+        return []
+
+
 def fetch_monitoring_points():
     """
     Fetch monitoring point coordinates.

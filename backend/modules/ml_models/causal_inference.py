@@ -231,27 +231,12 @@ def analyze_event_impact(point_id, event_date, conn=None, control_point_ids=None
         }
 
     if control_point_ids is None:
-        # 自动选择对照组
-        if points_df is not None and not points_df.empty:
-            from modules.ml_models.supabase_data import find_distant_points
-            control_point_ids = find_distant_points(point_id, points_df, n=3)
-            # 如果坐标全为0导致距离选择失败,随机选3个其他点
-            if not control_point_ids:
-                other_ids = points_df[points_df['point_id'] != point_id]['point_id'].tolist()
-                control_point_ids = other_ids[:3]
-        elif conn is not None:
-            query_control_points = """
-                SELECT p1.point_id,
-                       SQRT(POW(p1.x_coord - p2.x_coord, 2) +
-                            POW(p1.y_coord - p2.y_coord, 2)) as distance
-                FROM monitoring_points p1
-                CROSS JOIN monitoring_points p2
-                WHERE p2.point_id = %s AND p1.point_id != %s
-                ORDER BY distance DESC
-                LIMIT 3
-            """
-            control_df = pd.read_sql(query_control_points, conn, params=(point_id, point_id))
-            control_point_ids = control_df['point_id'].tolist()
+        # 从实际沉降数据中选择对照组（避免monitoring_points表ID不匹配）
+        from modules.ml_models.supabase_data import fetch_settlement_point_ids
+        all_point_ids = fetch_settlement_point_ids()
+        other_ids = [pid for pid in all_point_ids if pid != point_id]
+        if other_ids:
+            control_point_ids = other_ids[:3]
         else:
             control_point_ids = []
 
