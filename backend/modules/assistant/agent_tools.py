@@ -440,9 +440,23 @@ def tool_search_academic_papers(query, limit=5, **kwargs):
             "limit": limit,
             "fields": "title,authors,year,citationCount,url,abstract,externalIds",
         }
-        r = requests.get(url, params=params, timeout=10)
-        if not r.ok:
+
+        # Retry with backoff for 429 rate limiting
+        last_error = ""
+        for attempt in range(3):
+            if attempt > 0:
+                time.sleep(1.5 * attempt)  # 1.5s, 3s backoff
+            r = requests.get(url, params=params, timeout=10)
+            if r.ok:
+                break
+            if r.status_code == 429:
+                last_error = f"Semantic Scholar HTTP 429 (attempt {attempt+1}/3)"
+                print(f"[DEBUG] {last_error}, retrying...")
+                continue
             return {"success": False, "error": f"Semantic Scholar HTTP {r.status_code}"}
+        else:
+            # All retries exhausted
+            return {"success": False, "error": last_error}
 
         data = r.json()
         papers = []

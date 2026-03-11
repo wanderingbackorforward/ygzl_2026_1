@@ -1,1 +1,13 @@
--r ../requirements.txt
+# Vercel serverless - only essential packages (250MB limit)
+# DO NOT include torch/shap/neo4j - too large for Vercel
+Flask
+Flask-Cors
+Werkzeug
+requests
+numpy
+pandas
+scikit-learn
+statsmodels
+scipy
+networkx
+pyshp
