@@ -351,7 +351,7 @@ class ModelSelector:
         }
 
 
-def auto_predict(point_id, conn, steps=30, metric='mae'):
+def auto_predict(point_id, conn=None, steps=30, metric='mae', df=None):
     """
     自动选择最优模型并预测
 
@@ -360,22 +360,28 @@ def auto_predict(point_id, conn, steps=30, metric='mae'):
 
     Args:
         point_id: 监测点ID
-        conn: 数据库连接
+        conn: 数据库连接 (legacy, optional)
         steps: 预测步数
         metric: 评估指标
+        df: 预取的DataFrame (columns: date, settlement), 优先使用
 
     Returns:
         result: 预测结果
     """
-    # 查询数据
-    query = """
-        SELECT measurement_date as date, cumulative_change as settlement
-        FROM processed_settlement_data
-        WHERE point_id = %s
-        ORDER BY measurement_date
-    """
-
-    df = pd.read_sql(query, conn, params=(point_id,))
+    if df is None and conn is not None:
+        query = """
+            SELECT measurement_date as date, cumulative_change as settlement
+            FROM processed_settlement_data
+            WHERE point_id = %s
+            ORDER BY measurement_date
+        """
+        df = pd.read_sql(query, conn, params=(point_id,))
+    elif df is None:
+        return {
+            'success': False,
+            'message': 'No data source provided',
+            'point_id': point_id
+        }
 
     if len(df) < 20:
         return {

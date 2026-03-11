@@ -182,25 +182,32 @@ class SpatialCorrelationAnalyzer:
         return propagation_path
 
 
-def analyze_spatial_correlation(conn, distance_threshold=50.0):
+def analyze_spatial_correlation(conn=None, distance_threshold=50.0,
+                                points_df=None, settlement_df=None):
     """
     分析所有监测点的空间关联
 
     Args:
-        conn: 数据库连接
+        conn: 数据库连接 (legacy, optional)
         distance_threshold: 距离阈值
+        points_df: 预取的监测点DataFrame (columns: point_id, x_coord, y_coord)
+        settlement_df: 预取的沉降DataFrame (columns: point_id, measurement_date, cumulative_change)
 
     Returns:
         result: 分析结果
     """
-    # 查询监测点坐标
-    query_points = """
-        SELECT DISTINCT point_id, x_coord, y_coord
-        FROM monitoring_points
-        ORDER BY point_id
-    """
-
-    points_df = pd.read_sql(query_points, conn)
+    if points_df is None and conn is not None:
+        query_points = """
+            SELECT DISTINCT point_id, x_coord, y_coord
+            FROM monitoring_points
+            ORDER BY point_id
+        """
+        points_df = pd.read_sql(query_points, conn)
+    elif points_df is None:
+        return {
+            'success': False,
+            'message': 'No data source provided'
+        }
 
     if len(points_df) < 2:
         return {
@@ -208,14 +215,18 @@ def analyze_spatial_correlation(conn, distance_threshold=50.0):
             'message': '监测点数量不足，至少需要2个点'
         }
 
-    # 查询沉降数据
-    query_settlement = """
-        SELECT point_id, measurement_date, cumulative_change
-        FROM processed_settlement_data
-        ORDER BY point_id, measurement_date
-    """
-
-    settlement_df = pd.read_sql(query_settlement, conn)
+    if settlement_df is None and conn is not None:
+        query_settlement = """
+            SELECT point_id, measurement_date, cumulative_change
+            FROM processed_settlement_data
+            ORDER BY point_id, measurement_date
+        """
+        settlement_df = pd.read_sql(query_settlement, conn)
+    elif settlement_df is None:
+        return {
+            'success': False,
+            'message': 'No settlement data provided'
+        }
 
     # 转换为矩阵格式
     pivot_df = settlement_df.pivot(index='measurement_date',

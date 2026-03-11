@@ -4,7 +4,6 @@
 提供智能预测、异常检测、空间关联分析、因果推断等高级功能
 """
 from flask import Blueprint, jsonify, request
-import mysql.connector
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -13,6 +12,24 @@ import os
 
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
+# 加载环境变量
+try:
+    from dotenv import load_dotenv
+    _env_path = os.path.join(os.path.dirname(__file__), '../../../.env')
+    if os.path.exists(_env_path):
+        load_dotenv(_env_path)
+except ImportError:
+    pass
+
+# 导入 Supabase 数据层（替代 MySQL）
+from modules.ml_models.supabase_data import (
+    fetch_point_settlement,
+    fetch_point_raw,
+    fetch_all_settlement,
+    fetch_monitoring_points,
+    find_distant_points,
+)
 
 # 导入ML模块
 from modules.ml_models.anomaly_detector import AnomalyDetector, detect_anomalies_for_point
@@ -81,20 +98,8 @@ except Exception as e:
     print(f"[警告] KGQA模块加载失败: {e}")
     KGQA_AVAILABLE = False
 
-from modules.database.db_config import db_config
-
 # 创建蓝图
 ml_api = Blueprint('ml_api', __name__, url_prefix='/api/ml')
-
-
-def get_db_connection():
-    """创建数据库连接"""
-    try:
-        conn = mysql.connector.connect(**db_config)
-        return conn
-    except Exception as e:
-        print(f"[错误] 数据库连接失败: {str(e)}")
-        return None
 
 
 # =========================================================
@@ -115,16 +120,14 @@ def api_auto_predict(point_id):
         steps = int(request.args.get('steps', 30))
         metric = request.args.get('metric', 'mae')
 
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
-
-        result = auto_predict(point_id, conn, steps=steps, metric=metric)
-        conn.close()
+        df = fetch_point_settlement(point_id)
+        result = auto_predict(point_id, steps=steps, metric=metric, df=df)
 
         return jsonify(result)
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
@@ -142,9 +145,7 @@ def api_predict(point_id):
         model_type = request.args.get('model', 'arima')
         steps = int(request.args.get('steps', 30))
 
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
+        df = fetch_point_settlement(point_id)
 
         if model_type == 'prophet':
             if not PROPHET_AVAILABLE:
@@ -152,15 +153,15 @@ def api_predict(point_id):
                     'success': False,
                     'message': 'Prophet未安装，请运行: pip install prophet'
                 }), 400
-            result = predict_with_prophet(point_id, conn, steps=steps)
+            result = predict_with_prophet(point_id, None, steps=steps)
         else:
-            result = predict_settlement(point_id, conn, model_type=model_type, steps=steps)
-
-        conn.close()
+            result = predict_settlement(point_id, model_type=model_type, steps=steps, df=df)
 
         return jsonify(result)
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
@@ -182,17 +183,15 @@ def api_detect_anomalies(point_id):
         method = request.args.get('method', 'isolation_forest')
         contamination = float(request.args.get('contamination', 0.05))
 
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
-
-        result = detect_anomalies_for_point(point_id, conn, method=method,
-                                           contamination=contamination)
-        conn.close()
+        df = fetch_point_settlement(point_id)
+        result = detect_anomalies_for_point(point_id, method=method,
+                                           contamination=contamination, df=df)
 
         return jsonify(result)
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
@@ -217,17 +216,12 @@ def api_batch_detect_anomalies():
         if not point_ids:
             return jsonify({'success': False, 'message': '未提供监测点ID'}), 400
 
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
-
         results = []
         for point_id in point_ids:
-            result = detect_anomalies_for_point(point_id, conn, method=method,
-                                               contamination=contamination)
+            df = fetch_point_settlement(point_id)
+            result = detect_anomalies_for_point(point_id, method=method,
+                                               contamination=contamination, df=df)
             results.append(result)
-
-        conn.close()
 
         # 汇总统计
         total_anomalies = sum(r.get('anomaly_count', 0) for r in results if r.get('success'))
@@ -242,6 +236,8 @@ def api_batch_detect_anomalies():
         })
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
@@ -260,12 +256,14 @@ def api_spatial_correlation():
     try:
         distance_threshold = float(request.args.get('distance_threshold', 50.0))
 
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
+        points_df = fetch_monitoring_points()
+        settlement_df = fetch_all_settlement()
 
-        result = analyze_spatial_correlation(conn, distance_threshold=distance_threshold)
-        conn.close()
+        result = analyze_spatial_correlation(
+            points_df=points_df,
+            settlement_df=settlement_df,
+            distance_threshold=distance_threshold
+        )
 
         return jsonify(result)
 
@@ -285,38 +283,19 @@ def api_influence_propagation(source_point_idx):
     try:
         distance_threshold = float(request.args.get('distance_threshold', 50.0))
 
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
-
-        # 查询监测点坐标
-        query_points = """
-            SELECT DISTINCT point_id, x_coord, y_coord
-            FROM monitoring_points
-            ORDER BY point_id
-        """
-        points_df = pd.read_sql(query_points, conn)
+        points_df = fetch_monitoring_points()
         coordinates = list(zip(points_df['x_coord'], points_df['y_coord']))
 
-        # 查询沉降数据
-        query_settlement = """
-            SELECT point_id, measurement_date, cumulative_change
-            FROM processed_settlement_data
-            ORDER BY point_id, measurement_date
-        """
-        settlement_df = pd.read_sql(query_settlement, conn)
+        settlement_df = fetch_all_settlement()
         pivot_df = settlement_df.pivot(index='measurement_date',
                                        columns='point_id',
                                        values='cumulative_change')
         settlement_matrix = pivot_df.values.T
 
-        # 分析影响传播
         analyzer = SpatialCorrelationAnalyzer(distance_threshold=distance_threshold)
         propagation = analyzer.analyze_influence_propagation(
             source_point_idx, coordinates, settlement_matrix
         )
-
-        conn.close()
 
         return jsonify({
             'success': True,
@@ -360,18 +339,18 @@ def api_event_impact():
                 'message': '缺少必要参数：point_id和event_date'
             }), 400
 
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
+        treated_df = fetch_point_raw(point_id)
+        points_df = fetch_monitoring_points()
 
         result = analyze_event_impact(
-            point_id, event_date, conn,
+            point_id, event_date,
             control_point_ids=control_point_ids,
             method=method,
-            window_days=window_days
+            window_days=window_days,
+            treated_df=treated_df,
+            fetch_point_fn=fetch_point_raw,
+            points_df=points_df
         )
-
-        conn.close()
 
         return jsonify(result)
 
@@ -392,19 +371,7 @@ def api_compare_models(point_id):
         point_id: 监测点ID
     """
     try:
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
-
-        # 查询数据
-        query = """
-            SELECT measurement_date as date, cumulative_change as settlement
-            FROM processed_settlement_data
-            WHERE point_id = %s
-            ORDER BY measurement_date
-        """
-        df = pd.read_sql(query, conn, params=(point_id,))
-        conn.close()
+        df = fetch_point_settlement(point_id)
 
         if len(df) < 20:
             return jsonify({
@@ -454,9 +421,7 @@ def api_predict_informer(point_id):
         steps = int(request.args.get('steps', 30))
         seq_len = int(request.args.get('seq_len', 60))
 
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
+        df = fetch_point_settlement(point_id)
 
         # 创建Informer预测器
         predictor = InformerPredictor(
@@ -465,13 +430,11 @@ def api_predict_informer(point_id):
             features=['settlement', 'temperature', 'crack_width', 'vibration']
         )
 
-        # 准备数据
-        data = predictor.prepare_data(point_id, conn)
+        # 准备数据（传入df替代conn）
+        data = predictor.prepare_data(point_id, df=df)
 
         # 预测
         result = predictor.predict(data)
-
-        conn.close()
 
         return jsonify(result)
 
@@ -507,23 +470,19 @@ def api_train_informer(point_id):
         epochs = data.get('epochs', 100)
         lr = data.get('learning_rate', 0.0001)
 
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
+        df = fetch_point_settlement(point_id)
 
         # 创建预测器
         predictor = InformerPredictor(seq_len=seq_len, pred_len=pred_len)
 
         # 准备数据
-        train_data = predictor.prepare_data(point_id, conn)
+        train_data = predictor.prepare_data(point_id, df=df)
 
         # 训练模型
         predictor.train(train_data, epochs=epochs, lr=lr)
 
         # 评估模型
         metrics = predictor.evaluate(train_data)
-
-        conn.close()
 
         return jsonify({
             'success': True,
@@ -562,9 +521,9 @@ def api_predict_stgcn():
         steps = int(request.args.get('steps', 30))
         seq_len = int(request.args.get('seq_len', 60))
 
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
+        # STGCN needs all points data
+        settlement_df = fetch_all_settlement()
+        points_df = fetch_monitoring_points()
 
         # 创建STGCN预测器
         predictor = STGCNPredictor(
@@ -572,13 +531,11 @@ def api_predict_stgcn():
             pred_len=steps
         )
 
-        # 准备数据
-        data = predictor.prepare_data(conn)
+        # 准备数据（传入df替代conn）
+        data = predictor.prepare_data(df=settlement_df, points_df=points_df)
 
         # 预测
         result = predictor.predict(data)
-
-        conn.close()
 
         return jsonify(result)
 
@@ -620,9 +577,8 @@ def api_train_stgcn():
         out_channels = data.get('out_channels', 32)
         num_layers = data.get('num_layers', 2)
 
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
+        settlement_df = fetch_all_settlement()
+        points_df = fetch_monitoring_points()
 
         # 创建预测器
         predictor = STGCNPredictor(
@@ -634,15 +590,13 @@ def api_train_stgcn():
         )
 
         # 准备数据
-        train_data = predictor.prepare_data(conn)
+        train_data = predictor.prepare_data(df=settlement_df, points_df=points_df)
 
         # 训练模型
         predictor.train(train_data, epochs=epochs, lr=lr)
 
         # 评估模型
         metrics = predictor.evaluate(train_data)
-
-        conn.close()
 
         return jsonify({
             'success': True,
@@ -682,9 +636,7 @@ def api_predict_pinn(point_id):
         steps = int(request.args.get('steps', 30))
         physics_weight = float(request.args.get('physics_weight', 0.1))
 
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
+        df = fetch_point_settlement(point_id)
 
         # 创建PINN预测器
         predictor = PINNPredictor(
@@ -693,13 +645,11 @@ def api_predict_pinn(point_id):
             physics_weight=physics_weight
         )
 
-        # 准备数据
-        data = predictor.prepare_data(point_id, conn)
+        # 准备数据（传入df替代conn）
+        data = predictor.prepare_data(point_id, df=df)
 
         # 预测
         result = predictor.predict(data)
-
-        conn.close()
 
         return jsonify(result)
 
@@ -737,9 +687,7 @@ def api_train_pinn(point_id):
         lr = data.get('learning_rate', 0.001)
         physics_weight = data.get('physics_weight', 0.1)
 
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
+        df = fetch_point_settlement(point_id)
 
         # 创建预测器
         predictor = PINNPredictor(
@@ -749,15 +697,13 @@ def api_train_pinn(point_id):
         )
 
         # 准备数据
-        train_data = predictor.prepare_data(point_id, conn)
+        train_data = predictor.prepare_data(point_id, df=df)
 
         # 训练模型
         predictor.train(train_data, epochs=epochs, lr=lr)
 
         # 评估模型
         metrics = predictor.evaluate(train_data)
-
-        conn.close()
 
         return jsonify({
             'success': True,
@@ -800,9 +746,7 @@ def api_predict_ensemble(point_id):
         base_models_str = request.args.get('base_models', 'arima,informer,pinn')
         base_models = [m.strip() for m in base_models_str.split(',')]
 
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
+        df = fetch_point_settlement(point_id)
 
         # 创建集成预测器
         predictor = EnsemblePredictor(
@@ -810,13 +754,11 @@ def api_predict_ensemble(point_id):
             base_models=base_models
         )
 
-        # 准备数据
-        data = {'point_id': point_id, 'conn': conn}
+        # 准备数据（传入df替代conn）
+        data = {'point_id': point_id, 'df': df}
 
         # 预测
         result = predictor.predict(data)
-
-        conn.close()
 
         return jsonify(result)
 
@@ -848,28 +790,7 @@ def api_explain_model(point_id):
 
         model_type = request.args.get('model_type', 'tree')
 
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
-
-        # 查询数据
-        query = """
-        SELECT
-            s.date,
-            s.settlement,
-            COALESCE(t.temperature, 0) as temperature,
-            COALESCE(c.crack_width, 0) as crack_width,
-            COALESCE(v.vibration_intensity, 0) as vibration
-        FROM settlement_data s
-        LEFT JOIN temperature_data t ON s.date = t.date AND s.point_id = t.point_id
-        LEFT JOIN crack_data c ON s.date = c.date
-        LEFT JOIN vibration_data v ON s.date = v.date
-        WHERE s.point_id = %s
-        ORDER BY s.date ASC
-        """
-
-        df = pd.read_sql(query, conn, params=(point_id,))
-        conn.close()
+        df = fetch_point_settlement(point_id)
 
         if len(df) < 20:
             return jsonify({
@@ -877,10 +798,16 @@ def api_explain_model(point_id):
                 'message': '数据量不足，至少需要20条记录'
             }), 400
 
-        # 准备特征
-        feature_names = ['temperature', 'crack_width', 'vibration']
-        X = df[feature_names].values
-        y = df['settlement'].values
+        # 使用沉降数据构建简单特征（滞后特征）
+        settlement = df['settlement'].values
+        # 构建滞后特征作为输入
+        lag1 = np.roll(settlement, 1); lag1[0] = settlement[0]
+        lag2 = np.roll(settlement, 2); lag2[:2] = settlement[0]
+        lag3 = np.roll(settlement, 3); lag3[:3] = settlement[0]
+
+        feature_names = ['lag_1', 'lag_2', 'lag_3']
+        X = np.column_stack([lag1, lag2, lag3])
+        y = settlement
 
         # 训练简单模型用于解释
         from sklearn.ensemble import RandomForestRegressor
@@ -1149,23 +1076,22 @@ def api_causal_discover():
                 'message': '缺少监测点ID'
             }), 400
 
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'message': '数据库连接失败'}), 500
+        # 从Supabase获取各点数据
+        frames = []
+        for pid in point_ids:
+            pt_df = fetch_point_settlement(pid)
+            if len(pt_df) > 0:
+                pt_df = pt_df.rename(columns={'settlement': pid})
+                pt_df = pt_df.set_index('date')[[pid]]
+                frames.append(pt_df)
 
-        # 查询数据
-        query = f"""
-        SELECT point_id, date, settlement
-        FROM settlement_data
-        WHERE point_id IN ({','.join(['%s'] * len(point_ids))})
-        ORDER BY date
-        """
+        if not frames:
+            return jsonify({
+                'success': False,
+                'message': '未查询到沉降数据'
+            }), 400
 
-        df = pd.read_sql(query, conn, params=point_ids)
-        conn.close()
-
-        # 透视表
-        pivot_df = df.pivot(index='date', columns='point_id', values='settlement')
+        pivot_df = pd.concat(frames, axis=1)
         pivot_df = pivot_df.fillna(method='ffill').fillna(method='bfill')
 
         # 因果发现

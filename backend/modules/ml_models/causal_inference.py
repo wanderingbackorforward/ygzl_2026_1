@@ -159,33 +159,42 @@ class CausalInference:
         return f"施工事件导致沉降{direction} {abs(effect):.3f} mm（{magnitude}）"
 
 
-def analyze_event_impact(point_id, event_date, conn, control_point_ids=None,
-                        method='DID', window_days=30):
+def analyze_event_impact(point_id, event_date, conn=None, control_point_ids=None,
+                        method='DID', window_days=30,
+                        treated_df=None, fetch_point_fn=None, points_df=None):
     """
     分析施工事件对特定监测点的影响
 
     Args:
         point_id: 受影响的监测点ID
         event_date: 事件发生日期
-        conn: 数据库连接
+        conn: 数据库连接 (legacy, optional)
         control_point_ids: 对照组监测点ID列表（未受影响的点）
         method: 'DID' 或 'SCM'
         window_days: 事件前后的观察窗口（天）
+        treated_df: 预取的处理组DataFrame (columns: measurement_date, cumulative_change)
+        fetch_point_fn: 函数，接受point_id返回DataFrame
+        points_df: 监测点坐标DataFrame (columns: point_id, x_coord, y_coord)
 
     Returns:
         result: 因果推断结果
     """
     event_date = pd.to_datetime(event_date)
 
-    # 查询处理组数据
-    query_treated = """
-        SELECT measurement_date, cumulative_change
-        FROM processed_settlement_data
-        WHERE point_id = %s
-        ORDER BY measurement_date
-    """
+    # 获取处理组数据
+    if treated_df is None and fetch_point_fn is not None:
+        treated_df = fetch_point_fn(point_id)
+    elif treated_df is None and conn is not None:
+        query_treated = """
+            SELECT measurement_date, cumulative_change
+            FROM processed_settlement_data
+            WHERE point_id = %s
+            ORDER BY measurement_date
+        """
+        treated_df = pd.read_sql(query_treated, conn, params=(point_id,))
+    elif treated_df is None:
+        return {'success': False, 'message': 'No data source provided'}
 
-    treated_df = pd.read_sql(query_treated, conn, params=(point_id,))
     treated_df['measurement_date'] = pd.to_datetime(treated_df['measurement_date'])
 
     # 找到事件时间索引
@@ -200,18 +209,24 @@ def analyze_event_impact(point_id, event_date, conn, control_point_ids=None,
 
     if control_point_ids is None:
         # 自动选择对照组（距离较远的点）
-        query_control_points = """
-            SELECT p1.point_id,
-                   SQRT(POW(p1.x_coord - p2.x_coord, 2) +
-                        POW(p1.y_coord - p2.y_coord, 2)) as distance
-            FROM monitoring_points p1
-            CROSS JOIN monitoring_points p2
-            WHERE p2.point_id = %s AND p1.point_id != %s
-            ORDER BY distance DESC
-            LIMIT 3
-        """
-        control_df = pd.read_sql(query_control_points, conn, params=(point_id, point_id))
-        control_point_ids = control_df['point_id'].tolist()
+        if points_df is not None:
+            from modules.ml_models.supabase_data import find_distant_points
+            control_point_ids = find_distant_points(point_id, points_df, n=3)
+        elif conn is not None:
+            query_control_points = """
+                SELECT p1.point_id,
+                       SQRT(POW(p1.x_coord - p2.x_coord, 2) +
+                            POW(p1.y_coord - p2.y_coord, 2)) as distance
+                FROM monitoring_points p1
+                CROSS JOIN monitoring_points p2
+                WHERE p2.point_id = %s AND p1.point_id != %s
+                ORDER BY distance DESC
+                LIMIT 3
+            """
+            control_df = pd.read_sql(query_control_points, conn, params=(point_id, point_id))
+            control_point_ids = control_df['point_id'].tolist()
+        else:
+            control_point_ids = []
 
     # 创建因果推断分析器
     causal = CausalInference()
@@ -222,7 +237,18 @@ def analyze_event_impact(point_id, event_date, conn, control_point_ids=None,
         control_after_list = []
 
         for ctrl_id in control_point_ids:
-            ctrl_df = pd.read_sql(query_treated, conn, params=(ctrl_id,))
+            if fetch_point_fn is not None:
+                ctrl_df = fetch_point_fn(ctrl_id)
+            elif conn is not None:
+                query_ctrl = """
+                    SELECT measurement_date, cumulative_change
+                    FROM processed_settlement_data
+                    WHERE point_id = %s
+                    ORDER BY measurement_date
+                """
+                ctrl_df = pd.read_sql(query_ctrl, conn, params=(ctrl_id,))
+            else:
+                continue
             ctrl_df['measurement_date'] = pd.to_datetime(ctrl_df['measurement_date'])
 
             ctrl_event_idx = ctrl_df[ctrl_df['measurement_date'] >= event_date].index[0]
@@ -243,7 +269,18 @@ def analyze_event_impact(point_id, event_date, conn, control_point_ids=None,
         control_matrix_list = []
 
         for ctrl_id in control_point_ids:
-            ctrl_df = pd.read_sql(query_treated, conn, params=(ctrl_id,))
+            if fetch_point_fn is not None:
+                ctrl_df = fetch_point_fn(ctrl_id)
+            elif conn is not None:
+                query_ctrl = """
+                    SELECT measurement_date, cumulative_change
+                    FROM processed_settlement_data
+                    WHERE point_id = %s
+                    ORDER BY measurement_date
+                """
+                ctrl_df = pd.read_sql(query_ctrl, conn, params=(ctrl_id,))
+            else:
+                continue
             ctrl_df['measurement_date'] = pd.to_datetime(ctrl_df['measurement_date'])
             control_matrix_list.append(ctrl_df['cumulative_change'].values)
 

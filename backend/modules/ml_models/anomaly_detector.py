@@ -227,29 +227,36 @@ class AnomalyDetector:
                 for name in self.feature_names}
 
 
-def detect_anomalies_for_point(point_id, conn, method='isolation_forest',
-                               contamination=0.05):
+def detect_anomalies_for_point(point_id, conn=None, method='isolation_forest',
+                               contamination=0.05, df=None):
     """
     为单个监测点检测异常
 
     Args:
         point_id: 监测点ID
-        conn: 数据库连接
+        conn: 数据库连接 (legacy, optional)
         method: 检测方法
         contamination: 异常比例
+        df: 预取的DataFrame (columns: date, settlement), 优先使用
 
     Returns:
         result: 异常检测结果
     """
-    # 查询数据
-    query = """
-        SELECT measurement_date as date, cumulative_change as settlement
-        FROM processed_settlement_data
-        WHERE point_id = %s
-        ORDER BY measurement_date
-    """
-
-    df = pd.read_sql(query, conn, params=(point_id,))
+    if df is None and conn is not None:
+        # Legacy path
+        query = """
+            SELECT measurement_date as date, cumulative_change as settlement
+            FROM processed_settlement_data
+            WHERE point_id = %s
+            ORDER BY measurement_date
+        """
+        df = pd.read_sql(query, conn, params=(point_id,))
+    elif df is None:
+        return {
+            'success': False,
+            'message': 'No data source provided',
+            'point_id': point_id
+        }
 
     if len(df) < 10:
         return {

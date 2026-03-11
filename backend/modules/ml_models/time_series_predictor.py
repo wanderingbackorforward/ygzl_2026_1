@@ -224,28 +224,35 @@ class TimeSeriesPredictor:
         return self.fitted_model.resid
 
 
-def predict_settlement(point_id, conn, model_type='arima', steps=30):
+def predict_settlement(point_id, conn=None, model_type='arima', steps=30, df=None):
     """
     为单个监测点预测沉降
 
     Args:
         point_id: 监测点ID
-        conn: 数据库连接
+        conn: 数据库连接 (legacy, optional)
         model_type: 'arima' 或 'sarima'
         steps: 预测步数
+        df: 预取的DataFrame (columns: date, settlement), 优先使用
 
     Returns:
         result: 预测结果
     """
-    # 查询数据
-    query = """
-        SELECT measurement_date as date, cumulative_change as settlement
-        FROM processed_settlement_data
-        WHERE point_id = %s
-        ORDER BY measurement_date
-    """
-
-    df = pd.read_sql(query, conn, params=(point_id,))
+    if df is None and conn is not None:
+        # Legacy path
+        query = """
+            SELECT measurement_date as date, cumulative_change as settlement
+            FROM processed_settlement_data
+            WHERE point_id = %s
+            ORDER BY measurement_date
+        """
+        df = pd.read_sql(query, conn, params=(point_id,))
+    elif df is None:
+        return {
+            'success': False,
+            'message': 'No data source provided',
+            'point_id': point_id
+        }
 
     if len(df) < 20:
         return {
