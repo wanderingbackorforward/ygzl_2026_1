@@ -29,15 +29,9 @@ interface EventImpactResult {
 export const CausalAnalysis: React.FC<CausalAnalysisProps> = ({
   pointIds = [],
 }) => {
-  // 默认选择第一个点位和30天前的日期
-  const getDefaultDate = () => {
-    const date = new Date();
-    date.setDate(date.getDate() - 30);
-    return date.toISOString().split('T')[0];
-  };
-
+  // 默认日期设为数据中间时段（数据范围约2021年）
   const [selectedPoint, setSelectedPoint] = useState<string>(pointIds[0] || '');
-  const [eventDate, setEventDate] = useState<string>(getDefaultDate());
+  const [eventDate, setEventDate] = useState<string>('2021-06-01');
   const [eventName, setEventName] = useState<string>('基坑开挖');
   const [controlPoints, setControlPoints] = useState<string[]>([]);
   const [method, setMethod] = useState<'DID' | 'SCM'>('DID');
