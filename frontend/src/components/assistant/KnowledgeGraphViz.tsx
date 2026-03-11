@@ -36,10 +36,12 @@ const TYPE_LABELS: Record<string, string> = {
   MonitoringPoint: '监测点',
   ConstructionEvent: '施工事件',
   Anomaly: '异常',
+  AcademicPaper: '参考文献',
   SPATIAL_NEAR: '空间邻近',
   CORRELATES_WITH: '关联',
   CAUSES: '因果',
   DETECTED_AT: '检测于',
+  REFERENCES: '参考',
 }
 
 export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGraphVizProps) {
@@ -80,14 +82,20 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
     setIsDragging(false)
   }, [])
 
-  // Zoom handler
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault()
-    const delta = e.deltaY > 0 ? 0.9 : 1.1
-    setTransform(prev => ({
-      ...prev,
-      scale: Math.max(0.3, Math.min(3, prev.scale * delta)),
-    }))
+  // Zoom handler - use native event listener to avoid passive event issue
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const handler = (e: WheelEvent) => {
+      e.preventDefault()
+      const delta = e.deltaY > 0 ? 0.9 : 1.1
+      setTransform(prev => ({
+        ...prev,
+        scale: Math.max(0.3, Math.min(3, prev.scale * delta)),
+      }))
+    }
+    container.addEventListener('wheel', handler, { passive: false })
+    return () => container.removeEventListener('wheel', handler)
   }, [])
 
   if (!nodes || nodes.length === 0) return null
@@ -163,6 +171,10 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
           <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#ef4444' }} />
           <span className="text-[10px] text-slate-400">异常</span>
         </div>
+        <div className="flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#8b5cf6' }} />
+          <span className="text-[10px] text-slate-400">参考文献</span>
+        </div>
         <span className="text-[10px] text-slate-600">|</span>
         <div className="flex items-center gap-1">
           <span className="inline-block h-0.5 w-3" style={{ backgroundColor: '#38bdf8' }} />
@@ -180,6 +192,10 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
           <span className="inline-block h-0.5 w-3" style={{ backgroundColor: '#f87171' }} />
           <span className="text-[10px] text-slate-400">检测于</span>
         </div>
+        <div className="flex items-center gap-1">
+          <span className="inline-block h-0.5 w-3" style={{ backgroundColor: '#c084fc' }} />
+          <span className="text-[10px] text-slate-400">参考</span>
+        </div>
       </div>
 
       {/* SVG Canvas */}
@@ -191,7 +207,6 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
       >
         <svg
           ref={svgRef}
@@ -270,24 +285,45 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
             {nodes.map(node => {
               const isHovered = hoveredNode?.id === node.id
               const r = (node.size / 2) * (isHovered ? 1.3 : 1)
+              const isPaper = node.type === 'AcademicPaper'
               return (
                 <g
                   key={node.id}
                   onMouseEnter={() => setHoveredNode(node)}
                   onMouseLeave={() => setHoveredNode(null)}
-                  style={{ cursor: 'pointer' }}
+                  style={{ cursor: isPaper && node.attrs?.url ? 'pointer' : 'default' }}
+                  onClick={() => {
+                    if (isPaper && node.attrs?.url) {
+                      window.open(node.attrs.url, '_blank', 'noreferrer')
+                    }
+                  }}
                 >
-                  {/* Node circle */}
-                  <circle
-                    cx={node.x} cy={node.y} r={r}
-                    fill={node.color}
-                    fillOpacity={isHovered ? 0.9 : 0.7}
-                    stroke={isHovered ? '#fff' : node.color}
-                    strokeWidth={isHovered ? 2 : 1}
-                    strokeOpacity={isHovered ? 0.8 : 0.3}
-                    filter={isHovered ? 'url(#kg-glow)' : undefined}
-                    className="transition-all duration-200"
-                  />
+                  {/* Paper nodes: rounded rectangle; others: circle */}
+                  {isPaper ? (
+                    <rect
+                      x={node.x - r} y={node.y - r * 0.75}
+                      width={r * 2} height={r * 1.5}
+                      rx={3} ry={3}
+                      fill={node.color}
+                      fillOpacity={isHovered ? 0.9 : 0.7}
+                      stroke={isHovered ? '#fff' : node.color}
+                      strokeWidth={isHovered ? 2 : 1}
+                      strokeOpacity={isHovered ? 0.8 : 0.3}
+                      filter={isHovered ? 'url(#kg-glow)' : undefined}
+                      className="transition-all duration-200"
+                    />
+                  ) : (
+                    <circle
+                      cx={node.x} cy={node.y} r={r}
+                      fill={node.color}
+                      fillOpacity={isHovered ? 0.9 : 0.7}
+                      stroke={isHovered ? '#fff' : node.color}
+                      strokeWidth={isHovered ? 2 : 1}
+                      strokeOpacity={isHovered ? 0.8 : 0.3}
+                      filter={isHovered ? 'url(#kg-glow)' : undefined}
+                      className="transition-all duration-200"
+                    />
+                  )}
                   {/* Node label */}
                   <text
                     x={node.x} y={node.y + r + 12}
@@ -307,7 +343,7 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
 
         {/* Tooltip */}
         {hoveredNode && (
-          <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[200px] rounded-lg border border-cyan-500/30 bg-slate-900/95 px-3 py-2 text-xs shadow-lg shadow-cyan-500/10 backdrop-blur">
+          <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[260px] rounded-lg border border-cyan-500/30 bg-slate-900/95 px-3 py-2 text-xs shadow-lg shadow-cyan-500/10 backdrop-blur">
             <div className="mb-1 font-medium text-cyan-200">{hoveredNode.label}</div>
             <div className="text-slate-400">
               {TYPE_LABELS[hoveredNode.type] || hoveredNode.type}
@@ -326,6 +362,28 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
             )}
             {hoveredNode.attrs?.point_id && (
               <div className="mt-1 text-slate-500">ID: {hoveredNode.attrs.point_id}</div>
+            )}
+            {/* Paper-specific tooltip */}
+            {hoveredNode.type === 'AcademicPaper' && hoveredNode.attrs && (
+              <div className="mt-1.5 space-y-1 border-t border-white/10 pt-1.5">
+                {hoveredNode.attrs.title && (
+                  <div className="text-[11px] font-medium leading-tight text-violet-200">{hoveredNode.attrs.title}</div>
+                )}
+                {hoveredNode.attrs.authors && (
+                  <div className="text-[10px] text-slate-400 truncate">{hoveredNode.attrs.authors}</div>
+                )}
+                <div className="flex items-center gap-2 text-[10px]">
+                  {hoveredNode.attrs.year && (
+                    <span className="rounded bg-slate-800 px-1 py-0.5 text-slate-300">{hoveredNode.attrs.year}</span>
+                  )}
+                  {hoveredNode.attrs.citations > 0 && (
+                    <span className="text-amber-400/70">{hoveredNode.attrs.citations} 引用</span>
+                  )}
+                  {hoveredNode.attrs.doi && (
+                    <span className="text-slate-500">DOI</span>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         )}

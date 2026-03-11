@@ -12,6 +12,90 @@ from .prompts import get_role_prompt
 assistant_bp = Blueprint("assistant", __name__, url_prefix="/api/assistant")
 
 
+def _merge_papers_into_kg(kg_viz, papers):
+    """Merge academic papers into the knowledge graph as nodes + edges."""
+    import math
+    import random
+    if not kg_viz or not papers:
+        return kg_viz
+
+    nodes = list(kg_viz.get("nodes", []))
+    edges = list(kg_viz.get("edges", []))
+    stats = dict(kg_viz.get("stats", {}))
+
+    # Find center of existing nodes for paper cluster placement
+    if nodes:
+        cx = sum(n["x"] for n in nodes) / len(nodes)
+        cy = sum(n["y"] for n in nodes) / len(nodes)
+    else:
+        cx, cy = 400, 300
+
+    # Place papers in a ring around the bottom-right of the graph
+    paper_cx = cx + 250
+    paper_cy = cy + 150
+    n_papers = len(papers)
+
+    for i, paper in enumerate(papers):
+        angle = 2 * math.pi * i / max(n_papers, 1) - math.pi / 2
+        radius = 80 + random.randint(-10, 10)
+        px = round(paper_cx + radius * math.cos(angle), 1)
+        py = round(paper_cy + radius * math.sin(angle), 1)
+
+        paper_id = f"paper:{i}"
+        year_str = f" ({paper.get('year', '')})" if paper.get("year") else ""
+        # Short label: first author + year
+        authors = paper.get("authors", "")
+        first_author = authors.split(",")[0].strip() if authors else "Paper"
+        label = f"{first_author}{year_str}"
+        if len(label) > 14:
+            label = label[:12] + ".."
+
+        nodes.append({
+            "id": paper_id,
+            "label": label,
+            "type": "AcademicPaper",
+            "color": "#8b5cf6",  # violet
+            "size": 16,
+            "x": px,
+            "y": py,
+            "severity": "",
+            "attrs": {
+                "title": paper.get("title", ""),
+                "authors": authors,
+                "year": paper.get("year"),
+                "citations": paper.get("citations", 0),
+                "doi": paper.get("doi", ""),
+                "url": paper.get("url", ""),
+                "abstract": paper.get("abstract", ""),
+            },
+        })
+
+        # Connect paper to all monitoring point nodes
+        for node in kg_viz.get("nodes", []):
+            if node.get("type") == "MonitoringPoint":
+                edges.append({
+                    "source": paper_id,
+                    "target": node["id"],
+                    "type": "REFERENCES",
+                    "color": "#c084fc",  # purple-400
+                    "label": "References",
+                    "attrs": {},
+                })
+                break  # Connect to first monitoring point only (avoid clutter)
+
+    # Update stats
+    stats["total_nodes"] = len(nodes)
+    stats["total_edges"] = len(edges)
+    node_types = dict(stats.get("node_types", {}))
+    node_types["AcademicPaper"] = n_papers
+    stats["node_types"] = node_types
+    edge_types = dict(stats.get("edge_types", {}))
+    edge_types["REFERENCES"] = n_papers
+    stats["edge_types"] = edge_types
+
+    return {"nodes": nodes, "edges": edges, "stats": stats}
+
+
 def _is_meaningful_question(q: str) -> bool:
     s = (q or "").strip()
     if not s:
@@ -568,6 +652,10 @@ def send_message(conv_id: str):
                 print(f"[DEBUG] Agent result AFTER enrich: kg_viz={'YES' if kg_viz else 'NO'}, "
                       f"papers={len(papers_data)}")
 
+                # Merge papers into KG as nodes
+                if kg_viz and papers_data:
+                    kg_viz = _merge_papers_into_kg(kg_viz, papers_data)
+
                 metadata = {
                     "mode": "agent",
                     "tool_steps": tool_steps_list,
@@ -656,6 +744,10 @@ def send_message(conv_id: str):
                 _debug_errors.append(err_msg)
 
         # Save AI response
+        # Merge papers into KG as nodes before saving
+        if chat_kg_viz and chat_papers:
+            chat_kg_viz = _merge_papers_into_kg(chat_kg_viz, chat_papers)
+
         chat_metadata = {}
         if chat_kg_viz or chat_papers:
             chat_metadata = {
