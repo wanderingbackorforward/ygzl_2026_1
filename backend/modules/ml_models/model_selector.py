@@ -2,9 +2,12 @@
 """
 模型自动选择器
 根据数据特征自动选择最优预测模型
+支持从训练结果中加载预训练参数
 """
 import numpy as np
 import pandas as pd
+import json
+import os
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import warnings
 warnings.filterwarnings('ignore')
@@ -15,6 +18,35 @@ try:
     from .prophet_predictor import ProphetPredictor, PROPHET_AVAILABLE
 except:
     PROPHET_AVAILABLE = False
+
+# =========================================================
+# 训练结果缓存 - 启动时加载一次
+# =========================================================
+_TRAINED_PARAMS = None
+_TRAINED_PARAMS_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    'trained_models', 'training_results.json'
+)
+
+
+def _load_trained_params():
+    """Load pre-trained model parameters from JSON (cached)"""
+    global _TRAINED_PARAMS
+    if _TRAINED_PARAMS is not None:
+        return _TRAINED_PARAMS
+
+    if os.path.exists(_TRAINED_PARAMS_PATH):
+        try:
+            with open(_TRAINED_PARAMS_PATH, 'r', encoding='utf-8') as f:
+                _TRAINED_PARAMS = json.load(f)
+            print(f"[OK] Loaded trained params for {len(_TRAINED_PARAMS)} points")
+        except Exception as e:
+            print(f"[WARN] Failed to load training_results.json: {e}")
+            _TRAINED_PARAMS = {}
+    else:
+        _TRAINED_PARAMS = {}
+
+    return _TRAINED_PARAMS
 
 
 class ModelSelector:
@@ -323,6 +355,9 @@ def auto_predict(point_id, conn, steps=30, metric='mae'):
     """
     自动选择最优模型并预测
 
+    优先使用训练好的参数（training_results.json），
+    如果没有训练结果则回退到实时模型选择。
+
     Args:
         point_id: 监测点ID
         conn: 数据库连接
@@ -345,58 +380,113 @@ def auto_predict(point_id, conn, steps=30, metric='mae'):
     if len(df) < 20:
         return {
             'success': False,
-            'message': '数据量不足，至少需要20条记录',
+            'message': 'Data insufficient, need at least 20 records',
             'point_id': point_id
         }
 
     settlement_data = df['settlement'].values
 
-    # 创建模型选择器
-    selector = ModelSelector()
+    # =========================================================
+    # 优先使用预训练参数
+    # =========================================================
+    trained_params = _load_trained_params()
+    pretrained = trained_params.get(point_id)
 
-    # 选择最优模型
-    selection_result = selector.select_best_model(settlement_data, metric=metric)
+    if pretrained:
+        # 使用训练好的模型类型和参数
+        best_model = pretrained['model_type']
+        order = tuple(pretrained['model_info'].get('order', [1, 1, 1]))
+        seasonal_order = pretrained['model_info'].get('seasonal_order')
+        if seasonal_order:
+            seasonal_order = tuple(seasonal_order)
+        trained_metrics = pretrained.get('metrics', {})
 
-    best_model = selection_result['best_model']
+        print(f"[OK] {point_id}: using pre-trained {best_model.upper()} order={order}")
 
-    # 使用最优模型进行预测
-    if best_model == 'linear_regression':
-        # 线性回归预测
-        x = np.arange(len(settlement_data))
-        coeffs = np.polyfit(x, settlement_data, 1)
-        x_future = np.arange(len(settlement_data), len(settlement_data) + steps)
-        predictions = np.polyval(coeffs, x_future)
+        # 用训练好的参数直接拟合（跳过网格搜索）
+        try:
+            if best_model == 'arima':
+                predictor = TimeSeriesPredictor(model_type='arima')
+                predictor.fit_arima(settlement_data, order=order, auto_select=False)
+                forecast = predictor.predict(steps=steps)
+            elif best_model == 'sarima':
+                predictor = TimeSeriesPredictor(model_type='sarima')
+                predictor.fit_sarima(
+                    settlement_data,
+                    order=order,
+                    seasonal_order=seasonal_order,
+                    auto_select=False
+                )
+                forecast = predictor.predict(steps=steps)
+            else:
+                # 未知模型类型，回退
+                raise ValueError(f"Unknown model type: {best_model}")
 
-        forecast = {
-            'forecast': predictions.tolist(),
-            'lower_bound': (predictions - 1.96 * np.std(settlement_data)).tolist(),
-            'upper_bound': (predictions + 1.96 * np.std(settlement_data)).tolist()
-        }
+            # 构建 selection_info（兼容前端）
+            characteristics = ModelSelector().analyze_data_characteristics(settlement_data)
+            selection_result = {
+                'best_model': best_model,
+                'best_score': trained_metrics.get('mae', 0),
+                'metric': 'mae',
+                'data_characteristics': characteristics,
+                'recommendations': [{'model': best_model, 'reason': 'Pre-trained optimal', 'priority': 1}],
+                'all_results': {best_model: {'mae': trained_metrics.get('mae', 0),
+                                             'rmse': trained_metrics.get('rmse', 0),
+                                             'mape': trained_metrics.get('mape', 0),
+                                             'status': 'pre-trained'}},
+                'source': 'pre-trained'
+            }
 
-    elif best_model in ['arima', 'sarima']:
-        predictor = TimeSeriesPredictor(model_type=best_model)
-        if best_model == 'arima':
-            predictor.fit_arima(settlement_data, auto_select=True)
+        except Exception as e:
+            print(f"[WARN] {point_id}: pre-trained params failed ({e}), falling back to auto-select")
+            pretrained = None  # 回退到实时选择
+
+    if not pretrained:
+        # =========================================================
+        # 回退: 实时模型选择（无预训练参数时）
+        # =========================================================
+        print(f"[INFO] {point_id}: no pre-trained params, running auto-select")
+
+        selector = ModelSelector()
+        selection_result = selector.select_best_model(settlement_data, metric=metric)
+        best_model = selection_result['best_model']
+
+        if best_model == 'linear_regression':
+            x = np.arange(len(settlement_data))
+            coeffs = np.polyfit(x, settlement_data, 1)
+            x_future = np.arange(len(settlement_data), len(settlement_data) + steps)
+            predictions = np.polyval(coeffs, x_future)
+
+            forecast = {
+                'forecast': predictions.tolist(),
+                'lower_bound': (predictions - 1.96 * np.std(settlement_data)).tolist(),
+                'upper_bound': (predictions + 1.96 * np.std(settlement_data)).tolist()
+            }
+
+        elif best_model in ['arima', 'sarima']:
+            predictor = TimeSeriesPredictor(model_type=best_model)
+            if best_model == 'arima':
+                predictor.fit_arima(settlement_data, auto_select=True)
+            else:
+                predictor.fit_sarima(settlement_data, auto_select=True)
+
+            forecast = predictor.predict(steps=steps)
+
+        elif best_model == 'prophet' and PROPHET_AVAILABLE:
+            df_prophet = pd.DataFrame({
+                'ds': pd.to_datetime(df['date']),
+                'y': settlement_data
+            })
+            predictor = ProphetPredictor()
+            predictor.fit(df_prophet)
+            forecast = predictor.predict(periods=steps)
+
         else:
-            predictor.fit_sarima(settlement_data, auto_select=True)
-
-        forecast = predictor.predict(steps=steps)
-
-    elif best_model == 'prophet' and PROPHET_AVAILABLE:
-        df_prophet = pd.DataFrame({
-            'ds': pd.to_datetime(df['date']),
-            'y': settlement_data
-        })
-        predictor = ProphetPredictor()
-        predictor.fit(df_prophet)
-        forecast = predictor.predict(periods=steps)
-
-    else:
-        return {
-            'success': False,
-            'message': f'模型 {best_model} 不可用',
-            'point_id': point_id
-        }
+            return {
+                'success': False,
+                'message': f'Model {best_model} unavailable',
+                'point_id': point_id
+            }
 
     # 生成预测日期
     last_date = pd.to_datetime(df['date'].iloc[-1])
