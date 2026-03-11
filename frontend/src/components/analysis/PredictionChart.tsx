@@ -128,15 +128,27 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
           name: '历史数据',
           type: 'line',
           data: [...historicalValues, ...Array(forecastDates.length).fill(null)],
+          smooth: true,
           lineStyle: {
             color: '#4a9eff',
-            width: 2,
+            width: 2.5,
           },
           itemStyle: {
             color: '#4a9eff',
           },
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0, y: 0, x2: 0, y2: 1,
+              colorStops: [
+                { offset: 0, color: 'rgba(74, 158, 255, 0.15)' },
+                { offset: 1, color: 'rgba(74, 158, 255, 0.01)' },
+              ],
+            },
+          },
           symbol: 'circle',
-          symbolSize: 4,
+          symbolSize: 3,
+          showSymbol: false,
         },
         // 预测值
         {
@@ -147,16 +159,18 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
             historicalValues[historicalValues.length - 1],
             ...forecastValues,
           ],
+          smooth: true,
           lineStyle: {
             color: '#ff7a45',
-            width: 2,
+            width: 2.5,
             type: 'dashed',
           },
           itemStyle: {
             color: '#ff7a45',
           },
-          symbol: 'circle',
-          symbolSize: 4,
+          symbol: 'diamond',
+          symbolSize: 5,
+          showSymbol: false,
         },
         // 置信区间上界
         {
@@ -167,6 +181,7 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
             historicalValues[historicalValues.length - 1],
             ...upperBound,
           ],
+          smooth: true,
           lineStyle: {
             opacity: 0,
           },
@@ -182,11 +197,12 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
             historicalValues[historicalValues.length - 1],
             ...lowerBound,
           ],
+          smooth: true,
           lineStyle: {
             opacity: 0,
           },
           areaStyle: {
-            color: 'rgba(255, 122, 69, 0.2)',
+            color: 'rgba(255, 122, 69, 0.15)',
           },
           stack: 'confidence',
           symbol: 'none',

@@ -403,11 +403,20 @@ def auto_predict(point_id, conn, steps=30, metric='mae'):
     future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1),
                                 periods=steps, freq='D')
 
+    # 构建历史数据用于前端展示
+    historical = []
+    for _, row in df.iterrows():
+        historical.append({
+            'date': pd.to_datetime(row['date']).strftime('%Y-%m-%d'),
+            'value': float(row['settlement'])
+        })
+
     return {
         'success': True,
         'point_id': point_id,
         'selected_model': best_model,
         'model_selection_info': selection_result,
+        'historical': historical,
         'forecast': {
             'dates': future_dates.strftime('%Y-%m-%d').tolist(),
             'values': forecast['forecast'],

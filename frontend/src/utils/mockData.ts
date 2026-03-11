@@ -229,6 +229,7 @@ export function generateMockPrediction(
         seasonality_strength: 0.15,
       },
     },
+    historical: historical.map(h => ({ date: h.date, value: h.value })),
     forecast: {
       dates: forecastDates,
       values: forecastValues,
