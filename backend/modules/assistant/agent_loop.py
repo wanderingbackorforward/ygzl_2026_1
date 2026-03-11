@@ -192,6 +192,13 @@ def run_agent(user_content, page_path="", page_context=None):
         if stop_reason == "end_turn" or not tool_uses:
             # Final answer
             answer = _extract_text(response_data)
+
+            # Auto-enrich: build KG and search papers if not already done
+            kg_visualization, papers, papers_query, tool_steps = _auto_enrich(
+                kg_visualization, papers, papers_query, tool_steps,
+                user_content, start_time,
+            )
+
             return {
                 "answer": answer,
                 "model": actual_model,
@@ -274,6 +281,96 @@ def run_agent(user_content, page_path="", page_context=None):
         api_key, api_base, model, max_tokens,
         kg_visualization=kg_visualization, papers=papers, papers_query=papers_query,
     )
+
+
+def _auto_enrich(kg_visualization, papers, papers_query, tool_steps,
+                  user_content, start_time):
+    """Auto-call build_knowledge_graph and search_academic_papers if Agent didn't."""
+    from .agent_tools import TOOL_REGISTRY
+
+    # Check remaining time budget
+    elapsed = time.time() - start_time
+    time_left = AGENT_TIMEOUT - elapsed
+
+    # 1. Auto-build knowledge graph if not already done
+    if kg_visualization is None and time_left > 15:
+        print("[DEBUG] _auto_enrich: Agent did NOT call build_knowledge_graph, calling now...")
+        try:
+            step_start = time.time()
+            func = TOOL_REGISTRY.get("build_knowledge_graph")
+            if func:
+                result = func()
+                step_duration = int((time.time() - step_start) * 1000)
+                if isinstance(result, dict) and result.get("success"):
+                    viz = result.get("visualization")
+                    if viz:
+                        kg_visualization = viz
+                        print(f"[DEBUG] _auto_enrich: KG built OK, "
+                              f"nodes={len(viz.get('nodes',[]))}, "
+                              f"edges={len(viz.get('edges',[]))}")
+                    tool_steps.append({
+                        "iteration": 0,
+                        "tool_name": "build_knowledge_graph",
+                        "tool_input": {},
+                        "result_summary": _make_summary("build_knowledge_graph", result),
+                        "duration_ms": step_duration,
+                        "success": True,
+                    })
+                else:
+                    print(f"[DEBUG] _auto_enrich: KG build failed: {result.get('error','?')}")
+        except Exception as e:
+            print(f"[DEBUG] _auto_enrich: KG build exception: {e}")
+
+    # 2. Auto-search papers if not already done
+    elapsed = time.time() - start_time
+    time_left = AGENT_TIMEOUT - elapsed
+    if not papers and time_left > 8:
+        # Extract a search query from user content (use first 60 chars as base)
+        search_q = "settlement monitoring geotechnical analysis"
+        content_lower = user_content.lower() if user_content else ""
+        if any(kw in content_lower for kw in ["anomal", "异常"]):
+            search_q = "settlement anomaly detection monitoring"
+        elif any(kw in content_lower for kw in ["predict", "预测", "趋势"]):
+            search_q = "settlement prediction time series forecasting"
+        elif any(kw in content_lower for kw in ["spatial", "空间", "关联", "correlat"]):
+            search_q = "spatial correlation settlement monitoring"
+        elif any(kw in content_lower for kw in ["risk", "风险"]):
+            search_q = "geotechnical risk assessment settlement"
+        elif any(kw in content_lower for kw in ["crack", "裂缝"]):
+            search_q = "structural crack monitoring settlement"
+        elif any(kw in content_lower for kw in ["温度", "temperature"]):
+            search_q = "temperature effect ground settlement"
+        elif any(kw in content_lower for kw in ["知识图谱", "knowledge graph"]):
+            search_q = "knowledge graph structural health monitoring"
+
+        print(f"[DEBUG] _auto_enrich: Agent did NOT call search_academic_papers, "
+              f"searching for: {search_q}")
+        try:
+            step_start = time.time()
+            func = TOOL_REGISTRY.get("search_academic_papers")
+            if func:
+                result = func(query=search_q, limit=5)
+                step_duration = int((time.time() - step_start) * 1000)
+                if isinstance(result, dict) and result.get("success"):
+                    found = result.get("papers", [])
+                    if found:
+                        papers = found
+                        papers_query = search_q
+                        print(f"[DEBUG] _auto_enrich: Found {len(found)} papers")
+                    tool_steps.append({
+                        "iteration": 0,
+                        "tool_name": "search_academic_papers",
+                        "tool_input": {"query": search_q, "limit": 5},
+                        "result_summary": _make_summary("search_academic_papers", result),
+                        "duration_ms": step_duration,
+                        "success": True,
+                    })
+                else:
+                    print(f"[DEBUG] _auto_enrich: Paper search failed: {result.get('error','?')}")
+        except Exception as e:
+            print(f"[DEBUG] _auto_enrich: Paper search exception: {e}")
+
+    return kg_visualization, papers, papers_query, tool_steps
 
 
 def _force_finish(messages, tool_steps, iterations, start_time,
