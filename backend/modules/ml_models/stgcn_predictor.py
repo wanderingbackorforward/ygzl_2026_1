@@ -384,7 +384,7 @@ class STGCNPredictor:
         pivot_df = pivot_df.sort_index()
 
         # 填充缺失值
-        pivot_df = pivot_df.fillna(method='ffill').fillna(method='bfill')
+        pivot_df = pivot_df.ffill().bfill()
 
         # 归一化
         from sklearn.preprocessing import StandardScaler

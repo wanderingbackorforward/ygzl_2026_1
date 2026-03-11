@@ -1092,7 +1092,7 @@ def api_causal_discover():
             }), 400
 
         pivot_df = pd.concat(frames, axis=1)
-        pivot_df = pivot_df.fillna(method='ffill').fillna(method='bfill')
+        pivot_df = pivot_df.ffill().bfill()
 
         # 因果发现
         engine = CausalReasoningEngine()

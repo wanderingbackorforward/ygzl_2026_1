@@ -368,7 +368,7 @@ class KnowledgeGraphBuilder:
 
         # 透视表
         pivot_df = df.pivot(index='date', columns='point_id', values='settlement')
-        pivot_df = pivot_df.fillna(method='ffill').fillna(method='bfill')
+        pivot_df = pivot_df.ffill().bfill()
 
         # 计算相关系数矩阵
         corr_matrix = pivot_df.corr(method='pearson')

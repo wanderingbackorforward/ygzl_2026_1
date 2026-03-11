@@ -148,8 +148,8 @@ def preprocess_data(df: pd.DataFrame, data_type: str) -> pd.DataFrame:
     # 3. 处理缺失值
     # 数值列使用前向填充
     numeric_cols = df.select_dtypes(include=[np.number]).columns
-    df[numeric_cols] = df[numeric_cols].fillna(method='ffill')
-    df[numeric_cols] = df[numeric_cols].fillna(method='bfill')
+    df[numeric_cols] = df[numeric_cols].ffill()
+    df[numeric_cols] = df[numeric_cols].bfill()
     df[numeric_cols] = df[numeric_cols].fillna(0)
 
     # 4. 移除异常值 (3-sigma原则)
@@ -202,7 +202,7 @@ def merge_multi_source_data(
         merged_df = pd.merge(merged_df, crack_df_renamed, on='date', how='left')
 
     # 填充合并后的缺失值
-    merged_df = merged_df.fillna(method='ffill').fillna(method='bfill').fillna(0)
+    merged_df = merged_df.ffill().bfill().fillna(0)
 
     print(f"[成功] 合并完成,共 {len(merged_df)} 条数据, {len(merged_df.columns)} 个特征")
     return merged_df

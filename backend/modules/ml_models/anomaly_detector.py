@@ -85,7 +85,7 @@ class AnomalyDetector:
         features['trend_diff'] = features['ma_7'] - features['ma_14']
 
         # 填充剩余缺失值
-        features = features.fillna(method='bfill').fillna(0)
+        features = features.bfill().fillna(0)
 
         self.feature_names = features.columns.tolist()
 
