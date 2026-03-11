@@ -298,6 +298,43 @@ def analyze_event_impact(point_id, event_date, conn=None, control_point_ids=None
             np.array(control_before_list), np.array(control_after_list)
         )
 
+        # 添加前端图表需要的时间序列数据 (before_period / after_period)
+        before_dates = treated_df[
+            (treated_df['measurement_date'] >= window_start_date) &
+            (treated_df['measurement_date'] < event_date_ts)
+        ]['measurement_date'].dt.strftime('%Y-%m-%d').tolist()
+        after_dates = treated_df[
+            (treated_df['measurement_date'] >= event_date_ts) &
+            (treated_df['measurement_date'] <= window_end_date)
+        ]['measurement_date'].dt.strftime('%Y-%m-%d').tolist()
+
+        # 获取第一个对照点的时间序列用于图表展示
+        if fetch_point_fn and control_point_ids:
+            c_df = fetch_point_fn(control_point_ids[0])
+            c_df['measurement_date'] = pd.to_datetime(c_df['measurement_date'])
+            c_before = c_df[
+                (c_df['measurement_date'] >= window_start_date) &
+                (c_df['measurement_date'] < event_date_ts)
+            ]['cumulative_change'].values.tolist()
+            c_after = c_df[
+                (c_df['measurement_date'] >= event_date_ts) &
+                (c_df['measurement_date'] <= window_end_date)
+            ]['cumulative_change'].values.tolist()
+        else:
+            c_before = [0.0] * len(before_dates)
+            c_after = [0.0] * len(after_dates)
+
+        result['before_period'] = {
+            'dates': before_dates,
+            'treated_values': treated_before.tolist(),
+            'control_values': c_before,
+        }
+        result['after_period'] = {
+            'dates': after_dates,
+            'treated_values': treated_after.tolist(),
+            'control_values': c_after,
+        }
+
     elif method == 'SCM':
         # 构建对照组矩阵
         control_matrix_list = []
