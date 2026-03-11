@@ -52,21 +52,37 @@ def fetch_settlement_data() -> pd.DataFrame:
     """
     print("[成功] 正在获取沉降数据...")
     try:
-        # 获取所有沉降数据,按时间排序
-        r = requests.get(
-            _url('/rest/v1/settlement_data?select=*&order=date.asc'),
-            headers=_headers(),
-            timeout=30
-        )
-        r.raise_for_status()
-        data = r.json()
+        # 获取所有沉降数据(分页),按时间排序
+        all_data = []
+        offset = 0
+        page_size = 1000
 
-        if not data:
+        while True:
+            r = requests.get(
+                _url(f'/rest/v1/processed_settlement_data?select=*&order=measurement_date.asc&offset={offset}&limit={page_size}'),
+                headers=_headers(),
+                timeout=30
+            )
+            r.raise_for_status()
+            batch = r.json()
+            if not batch:
+                break
+            all_data.extend(batch)
+            if len(batch) < page_size:
+                break
+            offset += page_size
+
+        if not all_data:
             print("[警告] 没有找到沉降数据")
             return pd.DataFrame()
 
-        df = pd.DataFrame(data)
-        print(f"[成功] 获取到 {len(df)} 条沉降数据")
+        df = pd.DataFrame(all_data)
+        # 统一列名: measurement_date -> date, cumulative_change -> settlement
+        if 'measurement_date' in df.columns:
+            df = df.rename(columns={'measurement_date': 'date'})
+        if 'cumulative_change' in df.columns:
+            df = df.rename(columns={'cumulative_change': 'settlement'})
+        print(f"[成功] 获取到 {len(df)} 条沉降数据, {df['point_id'].nunique()} 个监测点")
         return df
     except Exception as e:
         print(f"[错误] 获取沉降数据失败: {e}")

@@ -1,6 +1,6 @@
 # Settlement Prediction Training Report
 
-**Generated**: 2026-03-11 19:31:11
+**Generated**: 2026-03-12 06:52:32
 **Environment**: Windows CPU (PyTorch 2.9.0+cpu)
 **Data**: 1300 total records, 25 points
 
