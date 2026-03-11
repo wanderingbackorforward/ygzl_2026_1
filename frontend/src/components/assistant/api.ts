@@ -1,7 +1,7 @@
 // 悬浮小助手 - API 客户端
 
 import { API_BASE } from '../../lib/api'
-import type { Conversation, Message, Role } from './types'
+import type { Conversation, Message, Provider, ProviderInfo, Role } from './types'
 
 interface ApiResponse<T> {
   status: string
@@ -10,6 +10,16 @@ interface ApiResponse<T> {
 }
 
 export const assistantApi = {
+  // 获取可用 AI 模型列表
+  async getProviders(): Promise<{ providers: ProviderInfo[]; default: string }> {
+    const res = await fetch(`${API_BASE}/assistant/providers`)
+    const json: ApiResponse<{ providers: ProviderInfo[]; default: string }> = await res.json()
+    if (!res.ok || json.status !== 'success') {
+      throw new Error(json.message || 'Failed to get providers')
+    }
+    return json.data!
+  },
+
   // 获取对话列表
   async getConversations(limit = 100, pagePath?: string): Promise<Conversation[]> {
     const params = new URLSearchParams({ limit: limit.toString() })
@@ -19,13 +29,13 @@ export const assistantApi = {
     const res = await fetch(`${API_BASE}/assistant/conversations?${params}`)
     const json: ApiResponse<Conversation[]> = await res.json()
     if (!res.ok || json.status !== 'success') {
-      throw new Error(json.message || '获取对话列表失败')
+      throw new Error(json.message || 'Failed to get conversations')
     }
     return json.data || []
   },
 
   // 创建新对话
-  async createConversation(title = '新对话', role: Role = 'researcher', pagePath?: string): Promise<Conversation> {
+  async createConversation(title = 'New conversation', role: Role = 'researcher', pagePath?: string): Promise<Conversation> {
     const res = await fetch(`${API_BASE}/assistant/conversations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -33,7 +43,7 @@ export const assistantApi = {
     })
     const json: ApiResponse<Conversation> = await res.json()
     if (!res.ok || json.status !== 'success') {
-      throw new Error(json.message || '创建对话失败')
+      throw new Error(json.message || 'Failed to create conversation')
     }
     return json.data!
   },
@@ -43,7 +53,7 @@ export const assistantApi = {
     const res = await fetch(`${API_BASE}/assistant/conversations/${convId}`)
     const json: ApiResponse<Conversation> = await res.json()
     if (!res.ok || json.status !== 'success') {
-      throw new Error(json.message || '获取对话详情失败')
+      throw new Error(json.message || 'Failed to get conversation')
     }
     return json.data!
   },
@@ -57,7 +67,7 @@ export const assistantApi = {
     })
     const json: ApiResponse<any> = await res.json()
     if (!res.ok || json.status !== 'success') {
-      throw new Error(json.message || '更新对话失败')
+      throw new Error(json.message || 'Failed to update conversation')
     }
   },
 
@@ -68,26 +78,27 @@ export const assistantApi = {
     })
     const json: ApiResponse<any> = await res.json()
     if (!res.ok || json.status !== 'success') {
-      throw new Error(json.message || '删除对话失败')
+      throw new Error(json.message || 'Failed to delete conversation')
     }
   },
 
-  // 发送消息
+  // 发送消息（支持选择 AI 模型）
   async sendMessage(
     convId: string,
     content: string,
     role: Role,
     pagePath?: string,
-    pageContext?: any
-  ): Promise<{ userMessage: Message; assistantMessage: Message }> {
+    pageContext?: any,
+    provider: Provider = 'auto'
+  ): Promise<{ userMessage: Message; assistantMessage: Message; model?: string; provider?: string }> {
     const res = await fetch(`${API_BASE}/assistant/conversations/${convId}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, role, pagePath, pageContext }),
+      body: JSON.stringify({ content, role, pagePath, pageContext, provider }),
     })
-    const json: ApiResponse<{ userMessage: Message; assistantMessage: Message }> = await res.json()
+    const json: ApiResponse<{ userMessage: Message; assistantMessage: Message; model?: string; provider?: string }> = await res.json()
     if (!res.ok || json.status !== 'success') {
-      throw new Error(json.message || '发送消息失败')
+      throw new Error(json.message || 'Failed to send message')
     }
     return json.data!
   },

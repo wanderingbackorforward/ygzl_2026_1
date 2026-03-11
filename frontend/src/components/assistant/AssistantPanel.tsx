@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { usePageContext } from '../../hooks/usePageContext'
 import { assistantApi } from './api'
-import type { Conversation, Role } from './types'
+import type { Conversation, Provider, ProviderInfo, Role } from './types'
 import ConversationList from './ConversationList'
 import ConversationView from './ConversationView'
 import QuickCommandPanel from './QuickCommandPanel'
@@ -14,6 +14,12 @@ interface AssistantPanelProps {
   onClose: () => void
 }
 
+const PROVIDER_OPTIONS: { id: Provider; label: string; desc: string }[] = [
+  { id: 'auto', label: 'Auto', desc: 'Claude 优先，失败回退 DeepSeek' },
+  { id: 'claude', label: 'Claude', desc: 'Anthropic Claude' },
+  { id: 'deepseek', label: 'DeepSeek', desc: 'DeepSeek Chat' },
+]
+
 export default function AssistantPanel({ onClose }: AssistantPanelProps) {
   const location = useLocation()
   const pageContext = usePageContext()
@@ -21,30 +27,42 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [currentConvId, setCurrentConvId] = useState<string | null>(null)
   const [currentRole, setCurrentRole] = useState<Role>('researcher')
+  const [currentProvider, setCurrentProvider] = useState<Provider>('auto')
   const [loading, setLoading] = useState(true)
   const [showQuickPanel, setShowQuickPanel] = useState(true)
   const [quickPrompt, setQuickPrompt] = useState<string>('')
   const [rightPanelMode, setRightPanelMode] = useState<'quick' | 'stats' | 'export'>('quick')
   const [fullConversation, setFullConversation] = useState<Conversation | null>(null)
+  const [availableProviders, setAvailableProviders] = useState<ProviderInfo[]>([])
 
-  // 加载对话列表
+  // Load conversation list
   useEffect(() => {
     loadConversations()
+    loadProviders()
   }, [location.pathname])
 
-  // 当切换到导出面板时，加载完整对话数据
+  // Load full conversation when switching to export panel
   useEffect(() => {
     if (rightPanelMode === 'export' && currentConvId) {
       loadFullConversation(currentConvId)
     }
   }, [rightPanelMode, currentConvId])
 
+  async function loadProviders() {
+    try {
+      const data = await assistantApi.getProviders()
+      setAvailableProviders(data.providers)
+    } catch (err) {
+      console.error('Failed to load providers:', err)
+    }
+  }
+
   async function loadFullConversation(convId: string) {
     try {
       const conv = await assistantApi.getConversation(convId)
       setFullConversation(conv)
     } catch (error) {
-      console.error('加载完整对话失败:', error)
+      console.error('Failed to load full conversation:', error)
     }
   }
 
@@ -54,18 +72,16 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
       const convs = await assistantApi.getConversations(100, location.pathname)
       setConversations(convs)
 
-      // 如果没有对话，自动创建一个
       if (convs.length === 0) {
-        const newConv = await assistantApi.createConversation('新对话', currentRole, location.pathname)
+        const newConv = await assistantApi.createConversation('New conversation', currentRole, location.pathname)
         setConversations([newConv])
         setCurrentConvId(newConv.id)
       } else {
-        // 默认选中第一个对话
         setCurrentConvId(convs[0].id)
         setCurrentRole(convs[0].role)
       }
     } catch (error) {
-      console.error('加载对话列表失败:', error)
+      console.error('Failed to load conversations:', error)
     } finally {
       setLoading(false)
     }
@@ -73,11 +89,11 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
 
   async function handleCreateConversation() {
     try {
-      const newConv = await assistantApi.createConversation('新对话', currentRole, location.pathname)
+      const newConv = await assistantApi.createConversation('New conversation', currentRole, location.pathname)
       setConversations(prev => [newConv, ...prev])
       setCurrentConvId(newConv.id)
     } catch (error) {
-      console.error('创建对话失败:', error)
+      console.error('Failed to create conversation:', error)
     }
   }
 
@@ -86,18 +102,16 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
       await assistantApi.deleteConversation(convId)
       setConversations(prev => prev.filter(c => c.id !== convId))
 
-      // 如果删除的是当前对话，切换到第一个对话
       if (convId === currentConvId) {
         const remaining = conversations.filter(c => c.id !== convId)
         if (remaining.length > 0) {
           setCurrentConvId(remaining[0].id)
         } else {
-          // 没有对话了，创建一个新的
           handleCreateConversation()
         }
       }
     } catch (error) {
-      console.error('删除对话失败:', error)
+      console.error('Failed to delete conversation:', error)
     }
   }
 
@@ -108,13 +122,12 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
         prev.map(c => (c.id === convId ? { ...c, title: newTitle } : c))
       )
     } catch (error) {
-      console.error('重命名对话失败:', error)
+      console.error('Failed to rename conversation:', error)
     }
   }
 
   function handleRoleChange(role: Role) {
     setCurrentRole(role)
-    // 如果当前对话存在，更新对话的角色
     if (currentConvId) {
       assistantApi.updateConversation(currentConvId, { role }).catch(console.error)
       setConversations(prev =>
@@ -140,9 +153,9 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
   return (
     <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="relative flex h-[85vh] w-[90vw] max-w-[1400px] overflow-hidden rounded-xl border border-cyan-500/30 bg-slate-950/95 shadow-2xl shadow-cyan-500/20">
-        {/* 左侧栏 - 对话列表 */}
+        {/* Left sidebar - conversation list */}
         <div className="flex w-60 shrink-0 flex-col border-r border-cyan-500/20 bg-slate-900/50">
-          {/* 标题栏 - 固定不滚动 */}
+          {/* Title bar */}
           <div className="flex shrink-0 items-center justify-between border-b border-cyan-500/20 p-4">
             <h2 className="text-base font-medium text-cyan-200">对话列表</h2>
             <button
@@ -155,7 +168,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
             </button>
           </div>
 
-          {/* 对话列表 - 可滚动 */}
+          {/* Scrollable conversation list */}
           <div className="min-h-0 flex-1 overflow-y-auto">
             <ConversationList
               conversations={conversations}
@@ -167,14 +180,44 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
           </div>
         </div>
 
-        {/* 中间栏 - 对话视图 */}
+        {/* Middle - conversation view */}
         <div className="flex min-w-0 flex-1 flex-col">
-          {/* 顶部工具栏 - 固定不滚动 */}
+          {/* Top toolbar */}
           <div className="flex shrink-0 items-center justify-between border-b border-cyan-500/20 px-4 py-3">
             <div className="flex items-center gap-4">
               <RoleSwitcher currentRole={currentRole} onChange={handleRoleChange} />
+
+              {/* Model selector */}
+              <div className="flex items-center gap-1.5 rounded-lg border border-cyan-500/20 bg-slate-900/60 p-0.5">
+                {PROVIDER_OPTIONS.map(opt => {
+                  const isAvailable = opt.id === 'auto' || availableProviders.some(p => p.id === opt.id)
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      disabled={!isAvailable}
+                      title={opt.desc}
+                      className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+                        currentProvider === opt.id
+                          ? opt.id === 'claude'
+                            ? 'bg-orange-500/30 text-orange-200 shadow-sm'
+                            : opt.id === 'deepseek'
+                              ? 'bg-green-500/30 text-green-200 shadow-sm'
+                              : 'bg-cyan-500/30 text-cyan-200 shadow-sm'
+                          : isAvailable
+                            ? 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                            : 'cursor-not-allowed text-slate-600'
+                      }`}
+                      onClick={() => setCurrentProvider(opt.id)}
+                    >
+                      {opt.label}
+                    </button>
+                  )
+                })}
+              </div>
+
               <div className="text-sm text-slate-400">
-                {currentConversation?.title || '新对话'}
+                {currentConversation?.title || 'New conversation'}
               </div>
             </div>
 
@@ -204,7 +247,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
             </div>
           </div>
 
-          {/* 对话内容 - 可滚动 */}
+          {/* Conversation content */}
           <div className="min-h-0 flex-1">
             {currentConvId && (
               <ConversationView
@@ -212,6 +255,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                 role={currentRole}
                 pagePath={location.pathname}
                 pageContext={pageContext}
+                provider={currentProvider}
                 quickPrompt={quickPrompt}
                 onQuickPromptUsed={() => setQuickPrompt('')}
               />
@@ -219,10 +263,10 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
           </div>
         </div>
 
-        {/* 右侧栏 - 多功能面板 */}
+        {/* Right sidebar - multi-function panel */}
         {showQuickPanel && (
           <div className="flex w-72 flex-col border-l border-cyan-500/20 bg-slate-900/50">
-            {/* 面板切换按钮 */}
+            {/* Panel tab buttons */}
             <div className="flex shrink-0 border-b border-cyan-500/20">
               <button
                 type="button"
@@ -259,7 +303,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
               </button>
             </div>
 
-            {/* 面板内容 */}
+            {/* Panel content */}
             <div className="min-h-0 flex-1">
               {rightPanelMode === 'quick' && (
                 <QuickCommandPanel

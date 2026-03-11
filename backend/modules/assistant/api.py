@@ -188,25 +188,37 @@ def _call_deepseek(
 
 
 def _call_ai(
-    system_prompt: str, user_content: str, temperature: float = 0.2
+    system_prompt: str, user_content: str, temperature: float = 0.2,
+    provider: str = "auto"
 ) -> Tuple[str, str, bool]:
     """
-    Call AI with fallback: Claude first, DeepSeek as fallback.
+    Call AI with provider selection.
+    provider: "auto" (Claude first, DeepSeek fallback), "claude", "deepseek"
     Returns: (answer, model_name, is_fallback)
-    Raises Exception if both fail.
+    Raises Exception if call fails.
     """
-    # Try Claude first
+    if provider == "claude":
+        answer, model_name, err = _call_claude(system_prompt, user_content, temperature)
+        if answer:
+            return answer, model_name or "claude", False
+        raise Exception(f"Claude failed: {err}")
+
+    if provider == "deepseek":
+        answer, model_name, err = _call_deepseek(system_prompt, user_content, temperature)
+        if answer:
+            return answer, model_name or "deepseek-chat", False
+        raise Exception(f"DeepSeek failed: {err}")
+
+    # auto: Claude first, DeepSeek fallback
     answer, model_name, claude_error = _call_claude(system_prompt, user_content, temperature)
     if answer:
         return answer, model_name or "claude", False
 
-    # Claude failed, try DeepSeek as fallback
     print(f"[WARN] Claude failed: {claude_error}, falling back to DeepSeek")
     answer, model_name, deepseek_error = _call_deepseek(system_prompt, user_content, temperature)
     if answer:
         return answer, f"{model_name} (fallback)", True
 
-    # Both failed
     raise Exception(
         f"All AI providers failed. Claude: {claude_error}. DeepSeek: {deepseek_error}"
     )
@@ -285,6 +297,52 @@ def _build_user_content(question: str, page_path: str, page_context: Any) -> str
         return question
 
 
+# ==================== Provider Info API ====================
+
+
+@assistant_bp.route("/providers", methods=["GET"])
+def get_providers():
+    """Return available AI providers and their status"""
+    claude_key = (
+        os.getenv("CLAUDE_API_KEY")
+        or os.getenv("ANTHROPIC_AUTH_TOKEN")
+        or os.getenv("ANTHROPIC_API_KEY")
+        or ""
+    ).strip()
+    deepseek_key = (
+        os.getenv("DEEPSEEK_API_KEY")
+        or os.getenv("DEEPSEEK_KEY")
+        or os.getenv("DEEPSEEK_TOKEN")
+        or ""
+    ).strip()
+    claude_model = (os.getenv("CLAUDE_MODEL") or "claude-sonnet-4-20250514").strip()
+    deepseek_model = (os.getenv("DEEPSEEK_MODEL") or "deepseek-chat").strip()
+
+    providers = []
+    if claude_key:
+        providers.append({
+            "id": "claude",
+            "name": "Claude",
+            "model": claude_model,
+            "available": True,
+        })
+    if deepseek_key:
+        providers.append({
+            "id": "deepseek",
+            "name": "DeepSeek",
+            "model": deepseek_model,
+            "available": True,
+        })
+
+    return jsonify({
+        "status": "success",
+        "data": {
+            "providers": providers,
+            "default": "auto",
+        },
+    })
+
+
 # ==================== Chat API ====================
 
 
@@ -294,6 +352,7 @@ def assistant_chat():
     question = (body.get("question") or body.get("q") or "").strip()
     page_path = (body.get("pagePath") or body.get("page_path") or "").strip()
     page_context = body.get("pageContext")
+    provider = (body.get("provider") or "auto").strip()
     if not question:
         return jsonify({"status": "error", "message": "missing question"}), 400
     if not _is_meaningful_question(question):
@@ -309,7 +368,9 @@ def assistant_chat():
     user_content = _build_user_content(question, page_path, page_context)
 
     try:
-        answer, model_name, is_fallback = _call_ai(system_prompt, user_content, temperature=0.2)
+        answer, model_name, is_fallback = _call_ai(
+            system_prompt, user_content, temperature=0.2, provider=provider
+        )
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 502
 
@@ -318,6 +379,7 @@ def assistant_chat():
         "data": {
             "answerMarkdown": answer,
             "model": model_name,
+            "provider": "deepseek" if is_fallback else (provider if provider != "auto" else "claude"),
         },
     })
 
@@ -403,6 +465,7 @@ def send_message(conv_id: str):
         role = body.get("role", "researcher")
         page_path = (body.get("pagePath") or "").strip()
         page_context = body.get("pageContext")
+        provider = (body.get("provider") or "auto").strip()
 
         if not content:
             return jsonify({"status": "error", "message": "Message content cannot be empty"}), 400
@@ -425,12 +488,14 @@ def send_message(conv_id: str):
             content_type="text",
         )
 
-        # Call AI with fallback
+        # Call AI with provider selection
         system_prompt = get_role_prompt(role)
         user_content = _build_user_content(content, page_path, page_context)
 
         try:
-            answer, model_name, is_fallback = _call_ai(system_prompt, user_content, temperature=0.2)
+            answer, model_name, is_fallback = _call_ai(
+                system_prompt, user_content, temperature=0.2, provider=provider
+            )
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 502
 
@@ -447,6 +512,8 @@ def send_message(conv_id: str):
             "data": {
                 "userMessage": user_message,
                 "assistantMessage": assistant_message,
+                "model": model_name,
+                "provider": "deepseek" if is_fallback else (provider if provider != "auto" else "claude"),
             },
         })
 

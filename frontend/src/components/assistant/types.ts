@@ -14,18 +14,29 @@ export interface Conversation {
   messages?: Message[]
 }
 
+export type Provider = 'auto' | 'claude' | 'deepseek'
+
 export interface Message {
   id: string
   conversationId?: string
   role: 'user' | 'assistant'
   content: string
   contentType?: 'text' | 'markdown' | 'chart' | 'table'
+  model?: string
+  provider?: string
   metadata?: {
     charts?: any[]
     dataCards?: any[]
     tables?: any[]
   }
   createdAt: string
+}
+
+export interface ProviderInfo {
+  id: string
+  name: string
+  model: string
+  available: boolean
 }
 
 export interface QuickCommand {

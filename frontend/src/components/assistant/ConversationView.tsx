@@ -2,15 +2,31 @@ import React, { useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { assistantApi } from './api'
-import type { Conversation, Message, Role } from './types'
+import type { Conversation, Message, Provider, Role } from './types'
 
 interface ConversationViewProps {
   conversationId: string
   role: Role
   pagePath: string
   pageContext: any
+  provider: Provider
   quickPrompt?: string
   onQuickPromptUsed?: () => void
+}
+
+// Model tag color mapping
+function getModelBadge(model?: string, provider?: string): { label: string; color: string } {
+  const m = (model || provider || '').toLowerCase()
+  if (m.includes('claude')) {
+    return { label: 'Claude', color: 'bg-orange-500/20 text-orange-300 border-orange-500/30' }
+  }
+  if (m.includes('deepseek')) {
+    return { label: 'DeepSeek', color: 'bg-green-500/20 text-green-300 border-green-500/30' }
+  }
+  if (m.includes('fallback')) {
+    return { label: 'DeepSeek (fallback)', color: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' }
+  }
+  return { label: model || 'AI', color: 'bg-slate-500/20 text-slate-300 border-slate-500/30' }
 }
 
 export default function ConversationView({
@@ -18,6 +34,7 @@ export default function ConversationView({
   role,
   pagePath,
   pageContext,
+  provider,
   quickPrompt,
   onQuickPromptUsed,
 }: ConversationViewProps) {
@@ -30,7 +47,7 @@ export default function ConversationView({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // 动态加载动画
+  // Loading animation
   useEffect(() => {
     if (!loading) return
     const interval = setInterval(() => {
@@ -39,17 +56,17 @@ export default function ConversationView({
     return () => clearInterval(interval)
   }, [loading])
 
-  // 加载对话详情
+  // Load conversation details
   useEffect(() => {
     loadConversation()
   }, [conversationId])
 
-  // 自动滚动到底部
+  // Auto scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [conversation?.messages])
 
-  // 处理快捷指令
+  // Handle quick prompt
   useEffect(() => {
     if (quickPrompt) {
       setInput(quickPrompt)
@@ -63,8 +80,8 @@ export default function ConversationView({
       const conv = await assistantApi.getConversation(conversationId)
       setConversation(conv)
     } catch (err) {
-      console.error('加载对话失败:', err)
-      setError('加载对话失败')
+      console.error('Failed to load conversation:', err)
+      setError('Failed to load conversation')
     }
   }
 
@@ -75,7 +92,7 @@ export default function ConversationView({
     setLoading(true)
     setError('')
 
-    // 立即显示用户消息
+    // Show user message immediately
     const tempUserMessage: Message = {
       id: `temp-${Date.now()}`,
       role: 'user',
@@ -95,27 +112,35 @@ export default function ConversationView({
     setInput('')
 
     try {
-      const { userMessage, assistantMessage } = await assistantApi.sendMessage(
+      const result = await assistantApi.sendMessage(
         conversationId,
         content,
         role,
         pagePath,
-        pageContext
+        pageContext,
+        provider
       )
 
-      // 替换临时消息为真实消息
+      // Attach model info to assistant message
+      const assistantMsg: Message = {
+        ...result.assistantMessage,
+        model: result.model,
+        provider: result.provider,
+      }
+
+      // Replace temp message with real messages
       setConversation(prev => {
         if (!prev) return prev
         const messagesWithoutTemp = prev.messages.filter(m => m.id !== tempUserMessage.id)
         return {
           ...prev,
-          messages: [...messagesWithoutTemp, userMessage, assistantMessage],
+          messages: [...messagesWithoutTemp, result.userMessage, assistantMsg],
         }
       })
     } catch (err: any) {
-      console.error('发送消息失败:', err)
-      setError(err.message || '发送消息失败')
-      // 发送失败时移除临时消息
+      console.error('Failed to send message:', err)
+      setError(err.message || 'Failed to send message')
+      // Remove temp message on failure
       setConversation(prev => {
         if (!prev) return prev
         return {
@@ -133,7 +158,7 @@ export default function ConversationView({
 
   return (
     <div className="flex h-full flex-col">
-      {/* 消息列表 */}
+      {/* Message list */}
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
           <div className="flex h-full items-center justify-center text-slate-400">
@@ -144,70 +169,82 @@ export default function ConversationView({
           </div>
         )}
 
-        {messages.map(msg => (
-          <div
-            key={msg.id}
-            className={`mb-4 flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
+        {messages.map(msg => {
+          const badge = msg.role === 'assistant' ? getModelBadge(msg.model, msg.provider) : null
+          return (
             <div
-              className={`max-w-[80%] rounded-lg px-4 py-3 ${
-                msg.role === 'user'
-                  ? 'bg-cyan-500/20 text-cyan-100'
-                  : 'bg-slate-800/50 text-slate-100'
-              }`}
+              key={msg.id}
+              className={`mb-4 flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              {msg.role === 'user' ? (
-                <div className="whitespace-pre-wrap break-words">{msg.content}</div>
-              ) : (
-                <div className="prose prose-invert max-w-none prose-headings:text-cyan-100 prose-p:text-slate-100 prose-a:text-cyan-300 prose-code:text-slate-100">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      h1: props => <h1 className="mb-3 text-lg font-semibold text-cyan-100" {...props} />,
-                      h2: props => <h2 className="mb-3 text-lg font-semibold text-cyan-100" {...props} />,
-                      h3: props => <h3 className="mb-2 text-base font-semibold text-cyan-100" {...props} />,
-                      p: props => <p className="mb-3 leading-relaxed text-slate-100" {...props} />,
-                      ul: props => <ul className="mb-2 list-disc space-y-1 pl-5" {...props} />,
-                      ol: props => <ol className="mb-2 list-decimal space-y-1 pl-5" {...props} />,
-                      li: props => <li className="text-slate-100" {...props} />,
-                      a: props => (
-                        <a
-                          className="text-cyan-300 underline decoration-cyan-500/40 underline-offset-2 hover:text-cyan-200"
-                          target="_blank"
-                          rel="noreferrer"
-                          {...props}
-                        />
-                      ),
-                      code: props => (
-                        <code className="rounded bg-white/5 px-1.5 py-1 text-[13px] text-slate-100" {...props} />
-                      ),
-                      pre: props => (
-                        <pre
-                          className="mb-3 overflow-auto rounded border border-white/10 bg-black/40 p-3 text-[13px] text-slate-100"
-                          {...props}
-                        />
-                      ),
-                      blockquote: props => (
-                        <blockquote className="mb-2 border-l-2 border-cyan-500/40 pl-3 text-slate-200" {...props} />
-                      ),
-                      table: props => (
-                        <table className="mb-2 w-full table-auto border-collapse text-[12px]" {...props} />
-                      ),
-                      th: props => (
-                        <th className="border border-white/10 bg-white/5 px-2 py-1 text-left text-slate-100" {...props} />
-                      ),
-                      td: props => (
-                        <td className="border border-white/10 px-2 py-1 text-slate-100" {...props} />
-                      ),
-                    }}
-                  >
-                    {msg.content}
-                  </ReactMarkdown>
-                </div>
-              )}
+              <div
+                className={`max-w-[80%] rounded-lg px-4 py-3 ${
+                  msg.role === 'user'
+                    ? 'bg-cyan-500/20 text-cyan-100'
+                    : 'bg-slate-800/50 text-slate-100'
+                }`}
+              >
+                {/* Model badge for AI messages */}
+                {badge && (
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className={`inline-block rounded border px-1.5 py-0.5 text-[11px] font-medium ${badge.color}`}>
+                      {badge.label}
+                    </span>
+                  </div>
+                )}
+
+                {msg.role === 'user' ? (
+                  <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+                ) : (
+                  <div className="prose prose-invert max-w-none prose-headings:text-cyan-100 prose-p:text-slate-100 prose-a:text-cyan-300 prose-code:text-slate-100">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        h1: props => <h1 className="mb-3 text-lg font-semibold text-cyan-100" {...props} />,
+                        h2: props => <h2 className="mb-3 text-lg font-semibold text-cyan-100" {...props} />,
+                        h3: props => <h3 className="mb-2 text-base font-semibold text-cyan-100" {...props} />,
+                        p: props => <p className="mb-3 leading-relaxed text-slate-100" {...props} />,
+                        ul: props => <ul className="mb-2 list-disc space-y-1 pl-5" {...props} />,
+                        ol: props => <ol className="mb-2 list-decimal space-y-1 pl-5" {...props} />,
+                        li: props => <li className="text-slate-100" {...props} />,
+                        a: props => (
+                          <a
+                            className="text-cyan-300 underline decoration-cyan-500/40 underline-offset-2 hover:text-cyan-200"
+                            target="_blank"
+                            rel="noreferrer"
+                            {...props}
+                          />
+                        ),
+                        code: props => (
+                          <code className="rounded bg-white/5 px-1.5 py-1 text-[13px] text-slate-100" {...props} />
+                        ),
+                        pre: props => (
+                          <pre
+                            className="mb-3 overflow-auto rounded border border-white/10 bg-black/40 p-3 text-[13px] text-slate-100"
+                            {...props}
+                          />
+                        ),
+                        blockquote: props => (
+                          <blockquote className="mb-2 border-l-2 border-cyan-500/40 pl-3 text-slate-200" {...props} />
+                        ),
+                        table: props => (
+                          <table className="mb-2 w-full table-auto border-collapse text-[12px]" {...props} />
+                        ),
+                        th: props => (
+                          <th className="border border-white/10 bg-white/5 px-2 py-1 text-left text-slate-100" {...props} />
+                        ),
+                        td: props => (
+                          <td className="border border-white/10 px-2 py-1 text-slate-100" {...props} />
+                        ),
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
 
         {error && (
           <div className="mb-4 rounded-lg bg-rose-500/10 px-4 py-3 text-rose-300">
@@ -215,7 +252,7 @@ export default function ConversationView({
           </div>
         )}
 
-        {/* 加载动画 */}
+        {/* Loading animation */}
         {loading && (
           <div className="mb-4 flex justify-start">
             <div className="rounded-lg bg-slate-800/50 px-4 py-3">
@@ -232,7 +269,7 @@ export default function ConversationView({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 输入区域 */}
+      {/* Input area */}
       <div className="shrink-0 border-t border-cyan-500/20 px-4 py-3">
         <div className="flex items-center gap-3">
           <input
