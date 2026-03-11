@@ -43,6 +43,12 @@ def modules_list():
         if callable(getter):
             modules = getter()
             if isinstance(modules, list) and modules:
+                # merge: add any DEFAULT_MODULES missing from db result
+                db_keys = {m.get('module_key') for m in modules if isinstance(m, dict)}
+                for dflt in DEFAULT_MODULES:
+                    if dflt['module_key'] not in db_keys:
+                        modules.append(dflt)
+                modules.sort(key=lambda m: m.get('sort_order', 0) if isinstance(m, dict) else 0)
                 return create_response(modules, "ok", True, 200)
         return create_response(DEFAULT_MODULES, "fallback", True, 200)
     except Exception as e:
