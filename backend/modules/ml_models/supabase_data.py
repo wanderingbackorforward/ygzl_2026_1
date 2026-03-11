@@ -116,21 +116,33 @@ def fetch_monitoring_points():
     """
     Fetch monitoring point coordinates.
     Returns DataFrame with columns: point_id, x_coord, y_coord
+    Falls back gracefully if table/columns don't exist.
     """
+    # Try with x_coord, y_coord first
     url = f"{_base_url()}/rest/v1/monitoring_points"
-    params = {
-        'select': 'point_id,x_coord,y_coord',
-        'order': 'point_id.asc',
-        'limit': '1000',
-    }
-    r = requests.get(url, headers=_headers(), params=params, timeout=15)
-    r.raise_for_status()
-    data = r.json()
+    try:
+        # First try select=* to discover available columns
+        params = {'select': '*', 'limit': '1000'}
+        r = requests.get(url, headers=_headers(), params=params, timeout=15)
+        r.raise_for_status()
+        data = r.json()
 
-    if not data:
+        if not data:
+            return pd.DataFrame(columns=['point_id', 'x_coord', 'y_coord'])
+
+        df = pd.DataFrame(data)
+
+        # Ensure x_coord, y_coord exist; fill with 0 if not
+        if 'x_coord' not in df.columns:
+            df['x_coord'] = 0.0
+        if 'y_coord' not in df.columns:
+            df['y_coord'] = 0.0
+
+        return df[['point_id', 'x_coord', 'y_coord']]
+
+    except Exception as e:
+        print(f"[WARN] fetch_monitoring_points failed: {e}")
         return pd.DataFrame(columns=['point_id', 'x_coord', 'y_coord'])
-
-    return pd.DataFrame(data)
 
 
 def find_distant_points(point_id, points_df, n=3):

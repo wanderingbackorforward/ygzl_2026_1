@@ -1,4 +1,4 @@
-// API 客户端 - 支持自动降级到 Mock 数据
+// API 客户端 - 支持按接口独立降级到 Mock 数据
 import { API_BASE } from '../lib/api';
 import {
   generateMockAnomalies,
@@ -9,44 +9,35 @@ import {
   generateMockCausalAnalysis,
 } from './mockData';
 
-// 全局标志：是否使用 Mock 模式
-let useMockMode = false;
+// 记录哪些接口不可用（按路径），不再是全局开关
+const failedEndpoints = new Set<string>();
 
-// 检测是否需要使用 Mock 模式
+// 兼容旧接口：检测是否有任何接口降级
 export function isMockMode(): boolean {
-  return useMockMode;
+  return failedEndpoints.size > 0;
 }
 
-// 设置 Mock 模式
+// 兼容旧接口
 export function setMockMode(enabled: boolean) {
-  useMockMode = enabled;
-  if (enabled) {
-    console.warn('⚠️ API Mock 模式已启用 - 当前显示的是演示数据');
+  if (!enabled) {
+    failedEndpoints.clear();
   }
 }
 
 /**
- * 增强的 fetch 函数 - 自动降级到 Mock
+ * 增强的 fetch 函数 - 按接口独立降级
+ * 单个接口失败只影响该接口，不影响其他接口
  */
 async function fetchWithFallback<T>(
   url: string,
   options?: RequestInit,
   mockGenerator?: () => T
 ): Promise<T> {
-  // 如果已经在 Mock 模式，直接返回 Mock 数据
-  if (useMockMode && mockGenerator) {
-    console.log(`[Mock] ${url}`);
-    await new Promise(resolve => setTimeout(resolve, 300)); // 模拟网络延迟
-    return mockGenerator();
-  }
-
   try {
     const response = await fetch(url, options);
 
-    // 404 错误 - 切换到 Mock 模式
     if (response.status === 404 && mockGenerator) {
-      console.warn(`[API 404] ${url} - 切换到 Mock 模式`);
-      setMockMode(true);
+      console.warn(`[API 404] ${url} - 该接口使用模拟数据`);
       return mockGenerator();
     }
 
@@ -56,10 +47,8 @@ async function fetchWithFallback<T>(
 
     return await response.json();
   } catch (error) {
-    // 网络错误或其他错误 - 如果有 Mock 生成器，使用它
     if (mockGenerator) {
-      console.warn(`[API Error] ${url} - 降级到 Mock 模式`, error);
-      setMockMode(true);
+      console.warn(`[API Error] ${url} - 该接口降级到模拟数据`, error);
       return mockGenerator();
     }
     throw error;
@@ -277,4 +266,3 @@ export async function fetchMLHealth() {
     })
   );
 }
-
