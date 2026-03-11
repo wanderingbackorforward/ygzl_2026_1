@@ -431,32 +431,106 @@ def tool_query_anomalies(point_ids=None, severity_filter=None, **kwargs):
 
 
 def tool_search_academic_papers(query, limit=5, **kwargs):
-    """Search Semantic Scholar for relevant academic papers."""
+    """Search academic papers using OpenAlex API (free, no rate limit)."""
     try:
         limit = min(int(limit), 10)
+
+        # Primary: OpenAlex API (free, no API key, no rate limit)
+        papers = _search_openalex(query, limit)
+        if papers:
+            return {
+                "success": True,
+                "query": query,
+                "papers": papers,
+                "total": len(papers),
+                "source": "OpenAlex",
+            }
+
+        # Fallback: Semantic Scholar (has rate limits)
+        papers = _search_semantic_scholar(query, limit)
+        if papers is not None:
+            return {
+                "success": True,
+                "query": query,
+                "papers": papers,
+                "total": len(papers),
+                "source": "Semantic Scholar",
+            }
+
+        return {"success": False, "error": "Both OpenAlex and Semantic Scholar failed"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def _search_openalex(query, limit):
+    """Search OpenAlex API. Returns list of papers or empty list on failure."""
+    try:
+        url = "https://api.openalex.org/works"
+        params = {
+            "search": query,
+            "per_page": limit,
+            "select": "title,authorships,publication_year,cited_by_count,doi,id",
+            "mailto": "settlement-monitor@example.com",  # polite pool
+        }
+        r = requests.get(url, params=params, timeout=10)
+        if not r.ok:
+            print(f"[DEBUG] OpenAlex HTTP {r.status_code}")
+            return []
+
+        data = r.json()
+        papers = []
+        for w in data.get("results", []):
+            # Extract authors
+            authorships = w.get("authorships", [])
+            author_names = []
+            for a in authorships[:4]:
+                name = (a.get("author") or {}).get("display_name", "")
+                if name:
+                    author_names.append(name)
+            if len(authorships) > 4:
+                author_names.append("et al.")
+
+            doi = (w.get("doi") or "").replace("https://doi.org/", "")
+            paper_url = f"https://doi.org/{doi}" if doi else w.get("id", "")
+
+            papers.append({
+                "title": w.get("title", ""),
+                "authors": ", ".join(author_names),
+                "year": w.get("publication_year"),
+                "citations": w.get("cited_by_count", 0),
+                "url": paper_url,
+                "abstract": "",  # OpenAlex doesn't return abstracts in search
+                "doi": doi,
+            })
+        return papers
+    except Exception as e:
+        print(f"[DEBUG] OpenAlex exception: {e}")
+        return []
+
+
+def _search_semantic_scholar(query, limit):
+    """Search Semantic Scholar API with retry. Returns list or None on failure."""
+    try:
         url = "https://api.semanticscholar.org/graph/v1/paper/search"
         params = {
             "query": query,
             "limit": limit,
             "fields": "title,authors,year,citationCount,url,abstract,externalIds",
         }
-
-        # Retry with backoff for 429 rate limiting
         last_error = ""
-        for attempt in range(3):
+        for attempt in range(2):
             if attempt > 0:
-                time.sleep(1.5 * attempt)  # 1.5s, 3s backoff
+                time.sleep(2)
             r = requests.get(url, params=params, timeout=10)
             if r.ok:
                 break
             if r.status_code == 429:
-                last_error = f"Semantic Scholar HTTP 429 (attempt {attempt+1}/3)"
-                print(f"[DEBUG] {last_error}, retrying...")
+                last_error = f"HTTP 429 (attempt {attempt+1}/2)"
                 continue
-            return {"success": False, "error": f"Semantic Scholar HTTP {r.status_code}"}
+            return None
         else:
-            # All retries exhausted
-            return {"success": False, "error": last_error}
+            print(f"[DEBUG] Semantic Scholar {last_error}")
+            return None
 
         data = r.json()
         papers = []
@@ -465,12 +539,10 @@ def tool_search_academic_papers(query, limit=5, **kwargs):
             author_names = [a.get("name", "") for a in authors[:4]]
             if len(authors) > 4:
                 author_names.append("et al.")
-
             doi = (p.get("externalIds") or {}).get("DOI", "")
             paper_url = p.get("url", "")
             if doi:
                 paper_url = f"https://doi.org/{doi}"
-
             papers.append({
                 "title": p.get("title", ""),
                 "authors": ", ".join(author_names),
@@ -480,14 +552,10 @@ def tool_search_academic_papers(query, limit=5, **kwargs):
                 "abstract": (p.get("abstract") or "")[:200],
                 "doi": doi,
             })
-        return {
-            "success": True,
-            "query": query,
-            "papers": papers,
-            "total": data.get("total", len(papers)),
-        }
+        return papers
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        print(f"[DEBUG] Semantic Scholar exception: {e}")
+        return None
 
 
 # ==================== Tool Registry ====================
