@@ -602,6 +602,8 @@ def send_message(conv_id: str):
                 })
             except Exception as agent_exc:
                 print(f"[WARN] Agent exception: {agent_exc}, falling back to chat")
+                import traceback
+                traceback.print_exc()
                 # Fall through to normal chat mode
 
         # ==================== Normal chat mode ====================
@@ -615,12 +617,48 @@ def send_message(conv_id: str):
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 502
 
+        # Force-enrich chat mode with KG + papers too
+        chat_kg_viz = None
+        chat_papers = []
+        chat_papers_query = ""
+        if mode == "agent":
+            # Agent failed and fell back here - still try to enrich
+            print("[DEBUG] Chat fallback from Agent: force-enriching with KG + papers...")
+            try:
+                from .agent_tools import tool_build_knowledge_graph
+                kg_r = tool_build_knowledge_graph()
+                if isinstance(kg_r, dict) and kg_r.get("success"):
+                    chat_kg_viz = kg_r.get("visualization")
+                    print(f"[DEBUG] Chat fallback KG: nodes={len(chat_kg_viz.get('nodes',[])) if chat_kg_viz else 0}")
+            except Exception as ke:
+                print(f"[DEBUG] Chat fallback KG failed: {ke}")
+            try:
+                from .agent_tools import tool_search_academic_papers
+                q = "settlement monitoring geotechnical analysis"
+                pr = tool_search_academic_papers(query=q, limit=5)
+                if isinstance(pr, dict) and pr.get("success"):
+                    chat_papers = pr.get("papers", [])
+                    chat_papers_query = q
+                    print(f"[DEBUG] Chat fallback papers: {len(chat_papers)}")
+            except Exception as pe:
+                print(f"[DEBUG] Chat fallback papers failed: {pe}")
+
         # Save AI response
+        chat_metadata = {}
+        if chat_kg_viz or chat_papers:
+            chat_metadata = {
+                "mode": mode,
+                "kg_visualization": chat_kg_viz,
+                "papers": chat_papers,
+                "papers_query": chat_papers_query,
+            }
+
         assistant_message = ConversationService.add_message(
             conv_id=conv_id,
             role="assistant",
             content=answer,
             content_type="markdown",
+            metadata=chat_metadata if chat_metadata else None,
         )
 
         return jsonify({
@@ -630,6 +668,9 @@ def send_message(conv_id: str):
                 "assistantMessage": assistant_message,
                 "model": model_name,
                 "provider": "deepseek" if is_fallback else (provider if provider != "auto" else "claude"),
+                "kgVisualization": chat_kg_viz,
+                "papers": chat_papers,
+                "papersQuery": chat_papers_query,
             },
         })
 

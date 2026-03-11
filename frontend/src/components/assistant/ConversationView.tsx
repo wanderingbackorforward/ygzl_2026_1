@@ -139,6 +139,7 @@ export default function ConversationView({
         papersQuery: papersQ,
         agentSteps: result.agentSteps?.length ?? 0,
         toolNames: result.agentSteps?.map((s: any) => s.tool_name) ?? [],
+        resultKeys: Object.keys(result),
       })
 
       const assistantMsg: Message = {
@@ -146,7 +147,7 @@ export default function ConversationView({
         model: result.model,
         provider: result.provider,
         metadata: {
-          ...result.assistantMessage.metadata,
+          ...(result.assistantMessage.metadata || {}),
           mode: mode,
           tool_steps: result.agentSteps,
           total_iterations: result.agentIterations,
