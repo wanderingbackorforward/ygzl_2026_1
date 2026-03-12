@@ -152,13 +152,13 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="relative flex h-[85vh] w-[90vw] max-w-[1400px] overflow-hidden rounded-xl border border-cyan-500/30 bg-slate-950/95 shadow-2xl shadow-cyan-500/20">
+    <div className="fixed inset-0 z-[1100] bg-slate-950">
+      <div className="relative flex h-full w-full overflow-hidden bg-slate-950">
         {/* Left sidebar - conversation list */}
-        <div className="flex w-60 shrink-0 flex-col border-r border-cyan-500/20 bg-slate-900/50">
+        <div className="flex w-64 shrink-0 flex-col border-r border-slate-700 bg-slate-900">
           {/* Title bar */}
-          <div className="flex shrink-0 items-center justify-between border-b border-cyan-500/20 p-4">
-            <h2 className="text-base font-medium text-cyan-200">对话列表</h2>
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-700 p-4">
+            <h2 className="text-base font-semibold text-white">对话列表</h2>
             <button
               type="button"
               className="rounded p-2 text-cyan-400 hover:bg-white/10 active:scale-95"
@@ -184,12 +184,12 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
         {/* Middle - conversation view */}
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Top toolbar */}
-          <div className="flex shrink-0 items-center justify-between border-b border-cyan-500/20 px-4 py-3">
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-700 px-5 py-3">
             <div className="flex items-center gap-4">
               <RoleSwitcher currentRole={currentRole} onChange={handleRoleChange} />
 
               {/* Model selector */}
-              <div className="flex items-center gap-1.5 rounded-lg border border-cyan-500/20 bg-slate-900/60 p-0.5">
+              <div className="flex items-center gap-1.5 rounded-lg border border-slate-600 bg-slate-800 p-0.5">
                 {PROVIDER_OPTIONS.map(opt => {
                   const isAvailable = opt.id === 'auto' || availableProviders.some(p => p.id === opt.id)
                   return (
@@ -218,7 +218,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
               </div>
 
               {/* Mode toggle: Chat / Agent */}
-              <div className="flex items-center gap-1.5 rounded-lg border border-cyan-500/20 bg-slate-900/60 p-0.5">
+              <div className="flex items-center gap-1.5 rounded-lg border border-slate-600 bg-slate-800 p-0.5">
                 <button
                   type="button"
                   title="普通对话模式"
@@ -245,7 +245,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                 </button>
               </div>
 
-              <div className="text-sm text-slate-400">
+              <div className="text-sm text-slate-300">
                 {currentConversation?.title || 'New conversation'}
               </div>
             </div>
@@ -295,15 +295,15 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
 
         {/* Right sidebar - multi-function panel */}
         {showQuickPanel && (
-          <div className="flex w-72 flex-col border-l border-cyan-500/20 bg-slate-900/50">
+          <div className="flex w-72 flex-col border-l border-slate-700 bg-slate-900">
             {/* Panel tab buttons */}
-            <div className="flex shrink-0 border-b border-cyan-500/20">
+            <div className="flex shrink-0 border-b border-slate-700">
               <button
                 type="button"
-                className={`flex-1 px-3 py-2 text-sm transition-colors ${
+                className={`flex-1 px-3 py-2.5 text-sm font-medium transition-colors ${
                   rightPanelMode === 'quick'
-                    ? 'bg-cyan-500/20 text-cyan-300'
-                    : 'text-slate-400 hover:bg-white/5'
+                    ? 'bg-cyan-500/20 text-white'
+                    : 'text-slate-300 hover:bg-white/5'
                 }`}
                 onClick={() => setRightPanelMode('quick')}
               >
@@ -311,10 +311,10 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
               </button>
               <button
                 type="button"
-                className={`flex-1 px-3 py-2 text-sm transition-colors ${
+                className={`flex-1 px-3 py-2.5 text-sm font-medium transition-colors ${
                   rightPanelMode === 'stats'
-                    ? 'bg-cyan-500/20 text-cyan-300'
-                    : 'text-slate-400 hover:bg-white/5'
+                    ? 'bg-cyan-500/20 text-white'
+                    : 'text-slate-300 hover:bg-white/5'
                 }`}
                 onClick={() => setRightPanelMode('stats')}
               >
@@ -322,10 +322,10 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
               </button>
               <button
                 type="button"
-                className={`flex-1 px-3 py-2 text-sm transition-colors ${
+                className={`flex-1 px-3 py-2.5 text-sm font-medium transition-colors ${
                   rightPanelMode === 'export'
-                    ? 'bg-cyan-500/20 text-cyan-300'
-                    : 'text-slate-400 hover:bg-white/5'
+                    ? 'bg-cyan-500/20 text-white'
+                    : 'text-slate-300 hover:bg-white/5'
                 }`}
                 onClick={() => setRightPanelMode('export')}
               >
