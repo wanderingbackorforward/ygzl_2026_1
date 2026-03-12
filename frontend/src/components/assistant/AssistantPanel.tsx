@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { usePageContext } from '../../hooks/usePageContext'
 import { assistantApi } from './api'
+import { pathToModule } from './config'
 import type { AssistantMode, Conversation, Provider, ProviderInfo, Role } from './types'
 import ConversationList from './ConversationList'
 import ConversationView from './ConversationView'
@@ -338,6 +339,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
               {rightPanelMode === 'quick' && (
                 <QuickCommandPanel
                   currentRole={currentRole}
+                  currentModule={pathToModule(location.pathname)}
                   onCommandClick={handleQuickCommand}
                 />
               )}

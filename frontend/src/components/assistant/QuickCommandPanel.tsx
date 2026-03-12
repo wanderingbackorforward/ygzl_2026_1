@@ -1,15 +1,21 @@
 import React from 'react'
-import type { Role } from './types'
+import type { ModuleKey, Role } from './types'
 import { quickCommands } from './config'
 
 interface QuickCommandPanelProps {
   currentRole: Role
+  currentModule: ModuleKey
   onCommandClick: (prompt: string) => void
 }
 
-export default function QuickCommandPanel({ currentRole, onCommandClick }: QuickCommandPanelProps) {
-  // 筛选当前角色的快捷指令
-  const filteredCommands = quickCommands.filter(cmd => cmd.role === currentRole)
+export default function QuickCommandPanel({ currentRole, currentModule, onCommandClick }: QuickCommandPanelProps) {
+  // 筛选当前角色 + 当前模块的快捷指令
+  const filteredCommands = quickCommands.filter(cmd => {
+    if (cmd.role !== currentRole) return false
+    // modules 未定义 = 通用指令，所有模块可见
+    if (!cmd.modules) return true
+    return cmd.modules.includes(currentModule)
+  })
 
   return (
     <div className="flex h-full flex-col">
