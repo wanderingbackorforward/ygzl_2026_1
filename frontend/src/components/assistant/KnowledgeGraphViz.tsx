@@ -343,14 +343,14 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
 
         {/* Tooltip */}
         {hoveredNode && (
-          <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[260px] rounded-lg border border-cyan-500/30 bg-slate-900/95 px-3 py-2 text-xs shadow-lg shadow-cyan-500/10 backdrop-blur">
-            <div className="mb-1 font-medium text-cyan-200">{hoveredNode.label}</div>
-            <div className="text-slate-400">
+          <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[280px] rounded-lg border border-cyan-500/30 bg-slate-900/95 px-4 py-3 text-sm shadow-lg shadow-cyan-500/10 backdrop-blur">
+            <div className="mb-1 text-base font-semibold text-cyan-200">{hoveredNode.label}</div>
+            <div className="text-sm text-slate-300">
               {TYPE_LABELS[hoveredNode.type] || hoveredNode.type}
             </div>
             {hoveredNode.severity && (
-              <div className="mt-1">
-                <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${
+              <div className="mt-1.5">
+                <span className={`inline-block rounded px-2 py-0.5 text-sm font-medium ${
                   hoveredNode.severity === 'critical' ? 'bg-red-500/20 text-red-300' :
                   hoveredNode.severity === 'high' ? 'bg-orange-500/20 text-orange-300' :
                   hoveredNode.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-300' :
@@ -361,26 +361,26 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
               </div>
             )}
             {hoveredNode.attrs?.point_id && (
-              <div className="mt-1 text-slate-500">ID: {hoveredNode.attrs.point_id}</div>
+              <div className="mt-1 text-sm text-slate-300">ID: {hoveredNode.attrs.point_id}</div>
             )}
             {/* Paper-specific tooltip */}
             {hoveredNode.type === 'AcademicPaper' && hoveredNode.attrs && (
-              <div className="mt-1.5 space-y-1 border-t border-white/10 pt-1.5">
+              <div className="mt-2 space-y-1 border-t border-white/10 pt-2">
                 {hoveredNode.attrs.title && (
-                  <div className="text-[11px] font-medium leading-tight text-violet-200">{hoveredNode.attrs.title}</div>
+                  <div className="text-sm font-medium leading-snug text-violet-200">{hoveredNode.attrs.title}</div>
                 )}
                 {hoveredNode.attrs.authors && (
-                  <div className="text-[10px] text-slate-400 truncate">{hoveredNode.attrs.authors}</div>
+                  <div className="text-sm text-slate-300 truncate">{hoveredNode.attrs.authors}</div>
                 )}
-                <div className="flex items-center gap-2 text-[10px]">
+                <div className="flex items-center gap-2 text-sm">
                   {hoveredNode.attrs.year && (
-                    <span className="rounded bg-slate-800 px-1 py-0.5 text-slate-300">{hoveredNode.attrs.year}</span>
+                    <span className="rounded bg-slate-800 px-1.5 py-0.5 text-slate-200">{hoveredNode.attrs.year}</span>
                   )}
                   {hoveredNode.attrs.citations > 0 && (
-                    <span className="text-amber-400/70">{hoveredNode.attrs.citations} 引用</span>
+                    <span className="text-amber-300">{hoveredNode.attrs.citations} 引用</span>
                   )}
                   {hoveredNode.attrs.doi && (
-                    <span className="text-slate-500">DOI</span>
+                    <span className="text-slate-300">DOI</span>
                   )}
                 </div>
               </div>
@@ -390,15 +390,15 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
 
         {/* Edge tooltip */}
         {hoveredEdge && !hoveredNode && (
-          <div className="pointer-events-none absolute right-3 top-3 z-10 max-w-[180px] rounded-lg border border-purple-500/30 bg-slate-900/95 px-3 py-2 text-xs shadow-lg backdrop-blur">
-            <div className="mb-1 font-medium text-purple-200">
+          <div className="pointer-events-none absolute right-3 top-3 z-10 max-w-[200px] rounded-lg border border-purple-500/30 bg-slate-900/95 px-4 py-3 text-sm shadow-lg backdrop-blur">
+            <div className="mb-1 text-base font-semibold text-purple-200">
               {TYPE_LABELS[hoveredEdge.type] || hoveredEdge.type}
             </div>
             {hoveredEdge.attrs?.distance != null && (
-              <div className="text-slate-400">距离: {hoveredEdge.attrs.distance}m</div>
+              <div className="text-sm text-slate-300">距离: {hoveredEdge.attrs.distance}m</div>
             )}
             {hoveredEdge.attrs?.correlation != null && (
-              <div className="text-slate-400">相关系数: {hoveredEdge.attrs.correlation}</div>
+              <div className="text-sm text-slate-300">相关系数: {hoveredEdge.attrs.correlation}</div>
             )}
           </div>
         )}
@@ -406,11 +406,11 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
 
       {/* Stats bar */}
       {stats?.node_types && (
-        <div className="flex shrink-0 items-center gap-3 border-t border-cyan-500/10 px-3 py-1.5 text-[10px] text-slate-500">
+        <div className="flex shrink-0 items-center gap-3 border-t border-cyan-500/10 px-3 py-2 text-sm text-slate-300">
           {Object.entries(stats.node_types).map(([type, count]) => (
             <span key={type}>{TYPE_LABELS[type] || type}: {count}</span>
           ))}
-          <span className="text-slate-600">|</span>
+          <span className="text-slate-500">|</span>
           {Object.entries(stats.edge_types || {}).map(([type, count]) => (
             <span key={type}>{TYPE_LABELS[type] || type}: {count}</span>
           ))}
