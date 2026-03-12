@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { PredictionChart } from './PredictionChart';
 import { RiskPointList } from './RiskPointList';
 import { ModelComparisonTable } from './ModelComparisonTable';
@@ -16,39 +16,66 @@ export const PredictionDashboard: React.FC<PredictionDashboardProps> = ({
 }) => {
   const [predictions, setPredictions] = useState<PredictionResult[]>([]);
   const [selectedPoint, setSelectedPoint] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loadedCount, setLoadedCount] = useState(0);
+  const [failedPoints, setFailedPoints] = useState<string[]>([]);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showComparison, setShowComparison] = useState(false);
   const [comparisonData, setComparisonData] = useState<any>(null);
+  const abortRef = useRef(false);
+
+  const isFullyLoaded = loadedCount >= pointIds.length;
 
   useEffect(() => {
     if (pointIds.length > 0) {
-      fetchPredictions();
+      fetchProgressively();
     }
+    return () => { abortRef.current = true; };
   }, [pointIds]);
 
-  const fetchPredictions = async () => {
-    setLoading(true);
+  const fetchProgressively = useCallback(async () => {
+    abortRef.current = false;
+    setInitialLoading(true);
     setError(null);
+    setPredictions([]);
+    setLoadedCount(0);
+    setFailedPoints([]);
+    setSelectedPoint(null);
 
-    try {
-      const results: PredictionResult[] = [];
+    let firstLoaded = false;
 
-      for (const pointId of pointIds) {
+    for (let i = 0; i < pointIds.length; i++) {
+      if (abortRef.current) break;
+      const pointId = pointIds[i];
+
+      try {
         const data = await fetchAutoPrediction(pointId, 30);
-        results.push(data);
-      }
+        if (abortRef.current) break;
 
-      setPredictions(results);
-      if (results.length > 0 && !selectedPoint) {
-        setSelectedPoint(results[0].point_id);
+        setPredictions(prev => [...prev, data]);
+        setLoadedCount(i + 1);
+
+        if (!firstLoaded) {
+          firstLoaded = true;
+          setSelectedPoint(data.point_id);
+          setInitialLoading(false);
+        }
+      } catch (err) {
+        if (abortRef.current) break;
+        setLoadedCount(i + 1);
+        setFailedPoints(prev => [...prev, pointId]);
+
+        if (!firstLoaded && i === pointIds.length - 1) {
+          setError('所有点位预测均失败');
+          setInitialLoading(false);
+        }
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '加载预测数据失败');
-    } finally {
-      setLoading(false);
     }
-  };
+
+    if (!firstLoaded) {
+      setInitialLoading(false);
+    }
+  }, [pointIds]);
 
   const fetchModelComparisonData = async (pointId: string) => {
     try {
@@ -62,11 +89,25 @@ export const PredictionDashboard: React.FC<PredictionDashboardProps> = ({
 
   const selectedPrediction = predictions.find(p => p.point_id === selectedPoint);
 
-  if (loading) {
+  // ── 首个点位加载中 ──
+  if (initialLoading) {
     return (
       <div style={styles.loadingContainer}>
-        <div style={styles.spinner} />
-        <div style={styles.loadingText}>正在加载预测数据...</div>
+        <div style={styles.spinnerOuter}>
+          <div style={styles.spinner} />
+        </div>
+        <div style={styles.loadingTitle}>正在加载预测模型</div>
+        <div style={styles.loadingText}>
+          加载中: {pointIds[loadedCount] || pointIds[0]} ({loadedCount}/{pointIds.length})
+        </div>
+        <div style={styles.progressBarBg}>
+          <div
+            style={{
+              ...styles.progressBarFill,
+              width: `${Math.max(2, (loadedCount / pointIds.length) * 100)}%`,
+            }}
+          />
+        </div>
       </div>
     );
   }
@@ -79,7 +120,7 @@ export const PredictionDashboard: React.FC<PredictionDashboardProps> = ({
         </div>
         <div style={styles.errorTitle}>加载失败</div>
         <div style={styles.errorMessage}>{error}</div>
-        <button style={styles.retryButton} onClick={fetchPredictions}>
+        <button style={styles.retryButton} onClick={fetchProgressively}>
           <i className="fas fa-redo" style={{ marginRight: '6px' }} />
           重试
         </button>
@@ -103,6 +144,31 @@ export const PredictionDashboard: React.FC<PredictionDashboardProps> = ({
 
   return (
     <div style={styles.container}>
+      {/* 加载进度条 - 仅在后台加载时显示 */}
+      {!isFullyLoaded && (
+        <div style={styles.progressBanner}>
+          <div style={styles.progressInfo}>
+            <div style={styles.miniSpinner} />
+            <span>
+              正在加载: {pointIds[loadedCount] || '...'} ({loadedCount}/{pointIds.length})
+            </span>
+            {failedPoints.length > 0 && (
+              <span style={styles.failedHint}>
+                {failedPoints.length} 个失败
+              </span>
+            )}
+          </div>
+          <div style={styles.progressBarBgSmall}>
+            <div
+              style={{
+                ...styles.progressBarFillSmall,
+                width: `${(loadedCount / pointIds.length) * 100}%`,
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* 统计卡片 */}
       <div style={styles.statsGrid}>
         <div style={styles.statCard}>
@@ -110,7 +176,12 @@ export const PredictionDashboard: React.FC<PredictionDashboardProps> = ({
             <i className="fas fa-chart-line" />
           </div>
           <div style={styles.statContent}>
-            <div style={styles.statValue}>{predictions.length}</div>
+            <div style={styles.statValue}>
+              {predictions.length}
+              {!isFullyLoaded && (
+                <span style={styles.statSuffix}>/{pointIds.length}</span>
+              )}
+            </div>
             <div style={styles.statLabel}>预测点位</div>
           </div>
         </div>
@@ -146,7 +217,7 @@ export const PredictionDashboard: React.FC<PredictionDashboardProps> = ({
           </div>
           <div style={styles.statContent}>
             <div style={styles.statValue}>
-              {selectedPrediction?.selected_model.toUpperCase() || '-'}
+              {selectedPrediction?.selected_model?.toUpperCase() || '-'}
             </div>
             <div style={styles.statLabel}>当前模型</div>
           </div>
@@ -157,18 +228,25 @@ export const PredictionDashboard: React.FC<PredictionDashboardProps> = ({
       <div style={styles.selectorContainer}>
         <div style={styles.selectorLabel}>选择监测点位:</div>
         <div style={styles.pointButtons}>
-          {predictions.map(pred => (
-            <button
-              key={pred.point_id}
-              style={{
-                ...styles.pointButton,
-                ...(selectedPoint === pred.point_id ? styles.pointButtonActive : {}),
-              }}
-              onClick={() => setSelectedPoint(pred.point_id)}
-            >
-              {pred.point_id}
-            </button>
-          ))}
+          {pointIds.map(pid => {
+            const loaded = predictions.some(p => p.point_id === pid);
+            const failed = failedPoints.includes(pid);
+            return (
+              <button
+                key={pid}
+                style={{
+                  ...styles.pointButton,
+                  ...(selectedPoint === pid ? styles.pointButtonActive : {}),
+                  ...(failed ? styles.pointButtonFailed : {}),
+                  ...(!loaded && !failed ? styles.pointButtonPending : {}),
+                }}
+                onClick={() => loaded && setSelectedPoint(pid)}
+                disabled={!loaded}
+              >
+                {pid}
+              </button>
+            );
+          })}
         </div>
         {selectedPoint && (
           <button
@@ -226,6 +304,49 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '24px',
     padding: '20px',
   },
+  // ── 进度条横幅 ──
+  progressBanner: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    padding: '12px 16px',
+    backgroundColor: 'rgba(74, 158, 255, 0.1)',
+    borderRadius: '8px',
+    border: '1px solid rgba(74, 158, 255, 0.25)',
+  },
+  progressInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    fontSize: '13px',
+    color: '#aac8ff',
+  },
+  failedHint: {
+    color: '#ff7a45',
+    fontSize: '12px',
+  },
+  miniSpinner: {
+    width: '14px',
+    height: '14px',
+    border: '2px solid rgba(74, 158, 255, 0.3)',
+    borderTop: '2px solid #4a9eff',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite',
+    flexShrink: 0,
+  },
+  progressBarBgSmall: {
+    height: '4px',
+    backgroundColor: 'rgba(74, 158, 255, 0.15)',
+    borderRadius: '2px',
+    overflow: 'hidden',
+  },
+  progressBarFillSmall: {
+    height: '100%',
+    backgroundColor: '#4a9eff',
+    borderRadius: '2px',
+    transition: 'width 0.4s ease',
+  },
+  // ── 统计卡片 ──
   statsGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -253,10 +374,16 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 'bold',
     color: '#fff',
   },
+  statSuffix: {
+    fontSize: '14px',
+    fontWeight: 'normal',
+    color: '#666',
+  },
   statLabel: {
     fontSize: '13px',
     color: '#888',
   },
+  // ── 点位选择器 ──
   selectorContainer: {
     display: 'flex',
     alignItems: 'center',
@@ -294,6 +421,17 @@ const styles: Record<string, React.CSSProperties> = {
     borderColor: '#4a9eff',
     color: '#4a9eff',
   },
+  pointButtonPending: {
+    opacity: 0.35,
+    cursor: 'default',
+    borderStyle: 'dashed',
+  },
+  pointButtonFailed: {
+    opacity: 0.5,
+    borderColor: 'rgba(255, 77, 79, 0.4)',
+    color: '#ff4d4f',
+    cursor: 'default',
+  },
   compareButton: {
     padding: '8px 16px',
     backgroundColor: 'rgba(255, 169, 64, 0.2)',
@@ -307,6 +445,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
   },
+  // ── 图表/模型/风险区块 ──
   chartSection: {
     padding: '20px',
     backgroundColor: 'rgba(30, 30, 50, 0.6)',
@@ -346,26 +485,55 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '8px',
     border: '1px solid rgba(74, 158, 255, 0.2)',
   },
+  // ── 全屏加载状态 ──
   loadingContainer: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '60px 20px',
+    padding: '80px 20px',
     gap: '16px',
   },
+  spinnerOuter: {
+    width: '56px',
+    height: '56px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(74, 158, 255, 0.08)',
+    borderRadius: '50%',
+  },
   spinner: {
-    width: '40px',
-    height: '40px',
-    border: '4px solid rgba(74, 158, 255, 0.2)',
-    borderTop: '4px solid #4a9eff',
+    width: '36px',
+    height: '36px',
+    border: '3px solid rgba(74, 158, 255, 0.2)',
+    borderTop: '3px solid #4a9eff',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite',
   },
+  loadingTitle: {
+    fontSize: '16px',
+    fontWeight: 'bold',
+    color: '#ccc',
+  },
   loadingText: {
-    fontSize: '14px',
+    fontSize: '13px',
     color: '#888',
   },
+  progressBarBg: {
+    width: '240px',
+    height: '6px',
+    backgroundColor: 'rgba(74, 158, 255, 0.15)',
+    borderRadius: '3px',
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#4a9eff',
+    borderRadius: '3px',
+    transition: 'width 0.4s ease',
+  },
+  // ── 错误/空状态 ──
   errorContainer: {
     display: 'flex',
     flexDirection: 'column',
