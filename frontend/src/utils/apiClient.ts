@@ -34,28 +34,42 @@ export function setMockMode(enabled: boolean) {
 /**
  * 增强的 fetch 函数 - 按接口独立降级
  * 单个接口失败只影响该接口，不影响其他接口
+ * 降级时只记录简短日志，不打印完整 Error 堆栈以减少控制台噪音
  */
 async function fetchWithFallback<T>(
   url: string,
   options?: RequestInit,
   mockGenerator?: () => T
 ): Promise<T> {
+  // 提取短路径用于日志（去掉 API_BASE 前缀）
+  const shortPath = url.replace(API_BASE, '');
+
+  // 已知不可用的接口直接走 mock，不再重复请求
+  if (failedEndpoints.has(shortPath) && mockGenerator) {
+    return mockGenerator();
+  }
+
   try {
     const response = await fetch(url, options);
 
-    if (response.status === 404 && mockGenerator) {
-      console.warn(`[API 404] ${url} - 该接口使用模拟数据`);
-      return mockGenerator();
-    }
-
     if (!response.ok) {
+      if (mockGenerator) {
+        failedEndpoints.add(shortPath);
+        // 首次降级时只打一行简短日志，不带 Error 对象
+        console.log(`[ML Mock] ${shortPath} -> ${response.status}, using mock data`);
+        return mockGenerator();
+      }
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
+    // 如果之前失败过但现在恢复了，移除标记
+    failedEndpoints.delete(shortPath);
     return await response.json();
   } catch (error) {
     if (mockGenerator) {
-      console.warn(`[API Error] ${url} - 该接口降级到模拟数据`, error);
+      failedEndpoints.add(shortPath);
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log(`[ML Mock] ${shortPath} -> ${msg}, using mock data`);
       return mockGenerator();
     }
     throw error;
