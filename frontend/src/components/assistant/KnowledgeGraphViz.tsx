@@ -110,12 +110,12 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
         >
           <div className="flex items-center gap-2">
             <span className="text-lg">🕸</span>
-            <span className="text-sm font-medium text-cyan-200">知识图谱</span>
-            <span className="text-xs text-slate-400">
+            <span className="text-base font-medium text-cyan-200">知识图谱</span>
+            <span className="text-sm text-slate-300">
               {stats?.total_nodes ?? nodes.length} 节点 / {stats?.total_edges ?? edges.length} 边
             </span>
           </div>
-          <span className="text-xs text-slate-500">点击展开 ▼</span>
+          <span className="text-sm text-slate-300">点击展开 ▼</span>
         </button>
       </div>
     )
@@ -137,9 +137,9 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
       <div className="flex shrink-0 items-center justify-between border-b border-cyan-500/10 px-3 py-2">
         <div className="flex items-center gap-2">
           <span className="text-lg">🕸</span>
-          <span className="text-sm font-medium text-cyan-200">知识图谱</span>
+          <span className="text-base font-medium text-cyan-200">知识图谱</span>
           {stats && (
-            <span className="text-xs text-slate-400">
+            <span className="text-sm text-slate-300">
               {stats.total_nodes} 节点 / {stats.total_edges} 边
             </span>
           )}
@@ -147,54 +147,54 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
         <div className="flex items-center gap-2">
           {/* Zoom controls */}
           <button type="button" onClick={() => setTransform(p => ({ ...p, scale: Math.min(3, p.scale * 1.2) }))}
-            className="rounded px-1.5 py-0.5 text-xs text-slate-400 hover:bg-white/10 hover:text-slate-200">+</button>
+            className="rounded px-2 py-1 text-sm font-medium text-slate-200 hover:bg-white/10 hover:text-white">+</button>
           <button type="button" onClick={() => setTransform(p => ({ ...p, scale: Math.max(0.3, p.scale * 0.8) }))}
-            className="rounded px-1.5 py-0.5 text-xs text-slate-400 hover:bg-white/10 hover:text-slate-200">-</button>
+            className="rounded px-2 py-1 text-sm font-medium text-slate-200 hover:bg-white/10 hover:text-white">-</button>
           <button type="button" onClick={() => setTransform({ x: 0, y: 0, scale: 1 })}
-            className="rounded px-1.5 py-0.5 text-xs text-slate-400 hover:bg-white/10 hover:text-slate-200">Reset</button>
+            className="rounded px-2 py-1 text-sm font-medium text-slate-200 hover:bg-white/10 hover:text-white">Reset</button>
           <button type="button" onClick={() => setCollapsed(true)}
-            className="rounded px-1.5 py-0.5 text-xs text-slate-400 hover:bg-white/10 hover:text-slate-200">收起 ▲</button>
+            className="rounded px-2 py-1 text-sm font-medium text-slate-200 hover:bg-white/10 hover:text-white">收起 ▲</button>
         </div>
       </div>
 
       {/* Legend */}
-      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-cyan-500/10 px-3 py-1.5">
-        <div className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#06b6d4' }} />
-          <span className="text-[10px] text-slate-400">监测点</span>
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-cyan-500/10 px-3 py-2">
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: '#06b6d4' }} />
+          <span className="text-sm text-slate-200">监测点</span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#f59e0b' }} />
-          <span className="text-[10px] text-slate-400">施工事件</span>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: '#f59e0b' }} />
+          <span className="text-sm text-slate-200">施工事件</span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#ef4444' }} />
-          <span className="text-[10px] text-slate-400">异常</span>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: '#ef4444' }} />
+          <span className="text-sm text-slate-200">异常</span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#8b5cf6' }} />
-          <span className="text-[10px] text-slate-400">参考文献</span>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: '#8b5cf6' }} />
+          <span className="text-sm text-slate-200">参考文献</span>
         </div>
-        <span className="text-[10px] text-slate-600">|</span>
-        <div className="flex items-center gap-1">
-          <span className="inline-block h-0.5 w-3" style={{ backgroundColor: '#38bdf8' }} />
-          <span className="text-[10px] text-slate-400">空间邻近</span>
+        <span className="text-sm text-slate-500">|</span>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#38bdf8' }} />
+          <span className="text-sm text-slate-200">空间邻近</span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="inline-block h-0.5 w-3" style={{ backgroundColor: '#a78bfa' }} />
-          <span className="text-[10px] text-slate-400">关联</span>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#a78bfa' }} />
+          <span className="text-sm text-slate-200">关联</span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="inline-block h-0.5 w-3" style={{ backgroundColor: '#fb923c' }} />
-          <span className="text-[10px] text-slate-400">因果</span>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#fb923c' }} />
+          <span className="text-sm text-slate-200">因果</span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="inline-block h-0.5 w-3" style={{ backgroundColor: '#f87171' }} />
-          <span className="text-[10px] text-slate-400">检测于</span>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#f87171' }} />
+          <span className="text-sm text-slate-200">检测于</span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="inline-block h-0.5 w-3" style={{ backgroundColor: '#c084fc' }} />
-          <span className="text-[10px] text-slate-400">参考</span>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#c084fc' }} />
+          <span className="text-sm text-slate-200">参考</span>
         </div>
       </div>
 
@@ -326,11 +326,11 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
                   )}
                   {/* Node label */}
                   <text
-                    x={node.x} y={node.y + r + 12}
+                    x={node.x} y={node.y + r + 14}
                     textAnchor="middle"
-                    fill={isHovered ? '#e2e8f0' : '#94a3b8'}
-                    fontSize={isHovered ? 11 : 9}
-                    fontWeight={isHovered ? 600 : 400}
+                    fill={isHovered ? '#f1f5f9' : '#cbd5e1'}
+                    fontSize={isHovered ? 14 : 12}
+                    fontWeight={isHovered ? 700 : 500}
                     className="pointer-events-none select-none transition-all duration-200"
                   >
                     {node.label}

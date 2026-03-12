@@ -5,6 +5,7 @@ import { assistantApi } from './api'
 import AgentSteps from './AgentSteps'
 import KnowledgeGraphViz from './KnowledgeGraphViz'
 import PaperReferences from './PaperReferences'
+import StreamingProgress from './StreamingProgress'
 import type { AgentStep, AssistantMode, Conversation, Message, Provider, Role } from './types'
 
 interface ConversationViewProps {
@@ -47,19 +48,10 @@ export default function ConversationView({
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [dots, setDots] = useState('.')
+  const [loadingStartTime, setLoadingStartTime] = useState(0)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-
-  // Loading animation
-  useEffect(() => {
-    if (!loading) return
-    const interval = setInterval(() => {
-      setDots(prev => (prev.length >= 3 ? '.' : prev + '.'))
-    }, 500)
-    return () => clearInterval(interval)
-  }, [loading])
 
   // Load conversation details
   useEffect(() => {
@@ -95,6 +87,7 @@ export default function ConversationView({
     if (!content || loading) return
 
     setLoading(true)
+    setLoadingStartTime(Date.now())
     setError('')
 
     // Show user message immediately
@@ -316,18 +309,9 @@ export default function ConversationView({
           </div>
         )}
 
-        {/* Loading animation */}
+        {/* Streaming progress indicator */}
         {loading && (
-          <div className="mb-6 flex justify-start">
-            <div className="rounded-2xl bg-slate-700 px-6 py-5">
-              <div className="flex items-center gap-3 text-white">
-                <div className="h-3 w-3 animate-bounce rounded-full bg-cyan-400" style={{ animationDelay: '0ms' }} />
-                <div className="h-3 w-3 animate-bounce rounded-full bg-cyan-400" style={{ animationDelay: '150ms' }} />
-                <div className="h-3 w-3 animate-bounce rounded-full bg-cyan-400" style={{ animationDelay: '300ms' }} />
-                <span className="ml-2 text-lg">{mode === 'agent' ? 'Agent 正在分析' : 'AI 正在思考'}{dots}</span>
-              </div>
-            </div>
-          </div>
+          <StreamingProgress mode={mode} startTime={loadingStartTime} />
         )}
 
         <div ref={messagesEndRef} />
