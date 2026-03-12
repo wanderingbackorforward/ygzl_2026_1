@@ -45,76 +45,76 @@ export default function AgentSteps({ steps, totalIterations, totalDurationMs }: 
   if (!steps || steps.length === 0) return null
 
   return (
-    <div className="mb-3 rounded-lg border border-purple-500/20 bg-purple-500/5 px-3 py-2">
+    <div className="mb-4 rounded-xl border border-purple-400/40 bg-purple-900/20 px-4 py-3">
       {/* Header */}
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="inline-block rounded bg-purple-500/20 px-1.5 py-0.5 text-[11px] font-medium text-purple-300 border border-purple-500/30">
+          <span className="inline-block rounded-md bg-purple-600 px-2 py-1 text-sm font-bold text-white border border-purple-400">
             Agent
           </span>
-          <span className="text-[11px] text-slate-400">
+          <span className="text-sm font-medium text-slate-200">
             {steps.length} 步工具调用
           </span>
         </div>
         {totalDurationMs != null && (
-          <span className="text-[11px] text-slate-500">
+          <span className="text-sm font-medium text-slate-300">
             {(totalDurationMs / 1000).toFixed(1)}s
           </span>
         )}
       </div>
 
       {/* Steps */}
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         {steps.map((step, i) => {
           const isExpanded = expandedStep === i
           const toolLabel = TOOL_NAME_MAP[step.tool_name] || step.tool_name
           const toolIcon = TOOL_ICON_MAP[step.tool_name] || '🔧'
 
           return (
-            <div key={i} className="rounded border border-white/5 bg-white/[0.02]">
+            <div key={i} className="rounded-lg border border-slate-500/50 bg-slate-800/50">
               {/* Step header - clickable */}
               <button
                 type="button"
-                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12px] hover:bg-white/5 transition-colors"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/5 transition-colors"
                 onClick={() => setExpandedStep(isExpanded ? null : i)}
               >
                 {/* Status indicator */}
-                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${step.success ? 'bg-green-400' : 'bg-red-400'}`} />
+                <span className={`h-2 w-2 shrink-0 rounded-full ${step.success ? 'bg-green-400' : 'bg-red-400'}`} />
 
                 {/* Icon + tool name */}
-                <span className="shrink-0">{toolIcon}</span>
-                <span className="font-medium text-slate-200">{toolLabel}</span>
+                <span className="shrink-0 text-base">{toolIcon}</span>
+                <span className="font-semibold text-white">{toolLabel}</span>
 
                 {/* Result summary */}
-                <span className="min-w-0 flex-1 truncate text-slate-400">
+                <span className="min-w-0 flex-1 truncate text-slate-300">
                   {step.result_summary}
                 </span>
 
                 {/* Duration */}
-                <span className="shrink-0 text-[10px] text-slate-500">
+                <span className="shrink-0 text-xs font-medium text-slate-400">
                   {step.duration_ms}ms
                 </span>
 
                 {/* Expand arrow */}
-                <span className={`shrink-0 text-[10px] text-slate-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+                <span className={`shrink-0 text-xs text-slate-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
                   ▶
                 </span>
               </button>
 
               {/* Expanded details */}
               {isExpanded && (
-                <div className="border-t border-white/5 px-2.5 py-2 text-[11px]">
+                <div className="border-t border-slate-600 px-3 py-2.5 text-sm">
                   {/* Input params */}
-                  <div className="mb-1.5">
-                    <span className="font-medium text-slate-400">输入参数：</span>
-                    <pre className="mt-0.5 overflow-auto rounded bg-black/30 p-2 text-slate-300">
+                  <div className="mb-2">
+                    <span className="font-bold text-slate-200">输入参数：</span>
+                    <pre className="mt-1 overflow-auto rounded-lg bg-slate-900 p-3 text-sm text-slate-200">
                       {JSON.stringify(step.tool_input, null, 2)}
                     </pre>
                   </div>
                   {/* Result summary */}
                   <div>
-                    <span className="font-medium text-slate-400">结果摘要：</span>
-                    <span className="ml-1 text-slate-300">{step.result_summary}</span>
+                    <span className="font-bold text-slate-200">结果摘要：</span>
+                    <span className="ml-1 text-slate-200">{step.result_summary}</span>
                   </div>
                 </div>
               )}

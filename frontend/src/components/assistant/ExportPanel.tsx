@@ -179,13 +179,13 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
   if (!conversation) {
     return (
       <div className="flex h-full flex-col">
-        <div className="border-b border-cyan-500/20 px-4 py-3">
-          <h3 className="text-base font-medium text-cyan-200">导出与分享</h3>
+        <div className="border-b border-slate-600 px-4 py-3">
+          <h3 className="text-lg font-bold text-white">导出与分享</h3>
         </div>
         <div className="flex flex-1 items-center justify-center">
-          <div className="text-center text-sm text-slate-500">
-            <div className="mb-2 text-4xl">📤</div>
-            <div>请先选择一个对话</div>
+          <div className="text-center">
+            <div className="mb-3 text-5xl">📤</div>
+            <div className="text-base text-slate-300">请先选择一个对话</div>
           </div>
         </div>
       </div>
@@ -194,16 +194,16 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-cyan-500/20 px-4 py-3">
-        <h3 className="text-base font-medium text-cyan-200">导出与分享</h3>
-        <p className="mt-1 text-xs text-slate-400">保存或分享对话内容</p>
+      <div className="border-b border-slate-600 px-4 py-3">
+        <h3 className="text-lg font-bold text-white">导出与分享</h3>
+        <p className="mt-1 text-sm text-slate-300">保存或分享对话内容</p>
       </div>
 
       <div className="flex-1 overflow-auto p-4">
         {/* 对话信息 */}
-        <div className="mb-4 rounded-lg border border-cyan-500/20 bg-slate-800/30 p-3">
-          <div className="text-sm font-medium text-slate-200">{conversation.title}</div>
-          <div className="mt-2 flex items-center gap-4 text-xs text-slate-400">
+        <div className="mb-4 rounded-xl border border-slate-500 bg-slate-800 p-4">
+          <div className="text-base font-bold text-white">{conversation.title}</div>
+          <div className="mt-2 flex items-center gap-4 text-sm text-slate-300">
             <span>消息数: {conversation.messages?.length || 0}</span>
             <span>角色: {getRoleLabel(conversation.role)}</span>
           </div>
@@ -213,13 +213,13 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
         {!summary && (
           <button
             type="button"
-            className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/20 bg-cyan-500/20 px-4 py-3 text-sm font-medium text-cyan-300 transition-all hover:bg-cyan-500/30 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-600 px-4 py-3.5 text-base font-bold text-white transition-all hover:bg-cyan-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={generateSummary}
             disabled={generating}
           >
             {generating ? (
               <>
-                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-cyan-300 border-t-transparent" />
+                <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                 <span>生成总结中...</span>
               </>
             ) : (
@@ -235,18 +235,18 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
         {summary && (
           <div className="mb-4">
             <div className="mb-2 flex items-center justify-between">
-              <h4 className="text-sm font-medium text-slate-300">对话总结</h4>
+              <h4 className="text-base font-bold text-white">对话总结</h4>
               <button
                 type="button"
-                className="text-xs text-cyan-400 hover:text-cyan-300"
+                className="rounded-lg bg-slate-700 px-3 py-1 text-sm font-medium text-white hover:bg-slate-600"
                 onClick={generateSummary}
                 disabled={generating}
               >
                 重新生成
               </button>
             </div>
-            <div className="max-h-60 overflow-auto rounded-lg border border-cyan-500/20 bg-black/40 p-3">
-              <pre className="whitespace-pre-wrap text-xs text-slate-300">
+            <div className="max-h-60 overflow-auto rounded-xl border border-slate-500 bg-slate-900 p-4">
+              <pre className="whitespace-pre-wrap text-sm text-slate-200">
                 {summary}
               </pre>
             </div>
@@ -255,16 +255,16 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
 
         {/* 导出格式选择 */}
         <div className="mb-4">
-          <h4 className="mb-2 text-sm font-medium text-slate-300">导出格式</h4>
+          <h4 className="mb-2 text-base font-bold text-white">导出格式</h4>
           <div className="grid grid-cols-3 gap-2">
             {(['markdown', 'txt', 'json'] as const).map(format => (
               <button
                 key={format}
                 type="button"
-                className={`rounded-lg border px-3 py-2 text-sm transition-all ${
+                className={`rounded-xl border px-3 py-2.5 text-base font-semibold transition-all ${
                   exportFormat === format
-                    ? 'border-cyan-500 bg-cyan-500/20 text-cyan-300'
-                    : 'border-cyan-500/20 bg-slate-800/30 text-slate-300 hover:border-cyan-500/40 hover:bg-slate-800/50'
+                    ? 'border-cyan-400 bg-cyan-600 text-white'
+                    : 'border-slate-500 bg-slate-800 text-white hover:border-cyan-400 hover:bg-slate-700'
                 }`}
                 onClick={() => setExportFormat(format)}
               >
@@ -278,7 +278,7 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
         <div className="space-y-2">
           <button
             type="button"
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/20 bg-cyan-500/20 px-4 py-3 text-sm font-medium text-cyan-300 transition-all hover:bg-cyan-500/30 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-600 px-4 py-3.5 text-base font-bold text-white transition-all hover:bg-cyan-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={handleDownload}
             disabled={!summary}
           >
@@ -288,7 +288,7 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
 
           <button
             type="button"
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/20 bg-slate-800/30 px-4 py-3 text-sm font-medium text-slate-300 transition-all hover:bg-slate-800/50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-500 bg-slate-700 px-4 py-3.5 text-base font-bold text-white transition-all hover:bg-slate-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={handleCopy}
             disabled={!summary}
           >
@@ -298,7 +298,7 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
 
           <button
             type="button"
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/20 bg-slate-800/30 px-4 py-3 text-sm font-medium text-slate-300 transition-all hover:bg-slate-800/50 active:scale-95"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-500 bg-slate-700 px-4 py-3.5 text-base font-bold text-white transition-all hover:bg-slate-600 active:scale-95"
             onClick={handleShare}
           >
             <span>🔗</span>

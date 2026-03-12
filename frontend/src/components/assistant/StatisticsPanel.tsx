@@ -51,53 +51,53 @@ export default function StatisticsPanel({ conversations }: StatisticsPanelProps)
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-cyan-500/20 px-4 py-3">
-        <h3 className="text-base font-medium text-cyan-200">使用统计</h3>
-        <p className="mt-1 text-xs text-slate-400">对话数据概览</p>
+      <div className="border-b border-slate-600 px-4 py-3">
+        <h3 className="text-lg font-bold text-white">使用统计</h3>
+        <p className="mt-1 text-sm text-slate-300">对话数据概览</p>
       </div>
 
       <div className="flex-1 overflow-auto p-4">
         {/* 总体统计 */}
         <div className="mb-4">
-          <h4 className="mb-3 text-sm font-medium text-slate-300">总体数据</h4>
+          <h4 className="mb-3 text-base font-bold text-white">总体数据</h4>
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-lg border border-cyan-500/20 bg-slate-800/30 p-3">
-              <div className="text-2xl font-bold text-cyan-400">{stats.totalConversations}</div>
-              <div className="mt-1 text-xs text-slate-400">总对话数</div>
+            <div className="rounded-xl border border-slate-500 bg-slate-800 p-4">
+              <div className="text-3xl font-bold text-cyan-400">{stats.totalConversations}</div>
+              <div className="mt-1 text-sm font-medium text-slate-200">总对话数</div>
             </div>
-            <div className="rounded-lg border border-cyan-500/20 bg-slate-800/30 p-3">
-              <div className="text-2xl font-bold text-cyan-400">{stats.totalMessages}</div>
-              <div className="mt-1 text-xs text-slate-400">总消息数</div>
+            <div className="rounded-xl border border-slate-500 bg-slate-800 p-4">
+              <div className="text-3xl font-bold text-cyan-400">{stats.totalMessages}</div>
+              <div className="mt-1 text-sm font-medium text-slate-200">总消息数</div>
             </div>
-            <div className="rounded-lg border border-cyan-500/20 bg-slate-800/30 p-3">
-              <div className="text-2xl font-bold text-cyan-400">{stats.todayConversations}</div>
-              <div className="mt-1 text-xs text-slate-400">今日对话</div>
+            <div className="rounded-xl border border-slate-500 bg-slate-800 p-4">
+              <div className="text-3xl font-bold text-cyan-400">{stats.todayConversations}</div>
+              <div className="mt-1 text-sm font-medium text-slate-200">今日对话</div>
             </div>
-            <div className="rounded-lg border border-cyan-500/20 bg-slate-800/30 p-3">
-              <div className="text-2xl font-bold text-cyan-400">{stats.avgMessagesPerConv}</div>
-              <div className="mt-1 text-xs text-slate-400">平均消息数</div>
+            <div className="rounded-xl border border-slate-500 bg-slate-800 p-4">
+              <div className="text-3xl font-bold text-cyan-400">{stats.avgMessagesPerConv}</div>
+              <div className="mt-1 text-sm font-medium text-slate-200">平均消息数</div>
             </div>
           </div>
         </div>
 
         {/* 时间统计 */}
         <div className="mb-4">
-          <h4 className="mb-3 text-sm font-medium text-slate-300">时间分布</h4>
+          <h4 className="mb-3 text-base font-bold text-white">时间分布</h4>
           <div className="space-y-2">
-            <div className="flex items-center justify-between rounded-lg border border-cyan-500/20 bg-slate-800/30 p-3">
-              <span className="text-sm text-slate-300">今天</span>
-              <span className="text-lg font-bold text-cyan-400">{stats.todayConversations}</span>
+            <div className="flex items-center justify-between rounded-xl border border-slate-500 bg-slate-800 p-4">
+              <span className="text-base text-white">今天</span>
+              <span className="text-xl font-bold text-cyan-400">{stats.todayConversations}</span>
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-cyan-500/20 bg-slate-800/30 p-3">
-              <span className="text-sm text-slate-300">最近7天</span>
-              <span className="text-lg font-bold text-cyan-400">{stats.weekConversations}</span>
+            <div className="flex items-center justify-between rounded-xl border border-slate-500 bg-slate-800 p-4">
+              <span className="text-base text-white">最近7天</span>
+              <span className="text-xl font-bold text-cyan-400">{stats.weekConversations}</span>
             </div>
           </div>
         </div>
 
         {/* 角色分布 */}
         <div>
-          <h4 className="mb-3 text-sm font-medium text-slate-300">角色分布</h4>
+          <h4 className="mb-3 text-base font-bold text-white">角色分布</h4>
           <div className="space-y-2">
             {Object.entries(roleConfig).map(([role, config]) => {
               const count = stats.roleStats[role] || 0
@@ -108,20 +108,20 @@ export default function StatisticsPanel({ conversations }: StatisticsPanelProps)
               return (
                 <div
                   key={role}
-                  className="rounded-lg border border-cyan-500/20 bg-slate-800/30 p-3"
+                  className="rounded-xl border border-slate-500 bg-slate-800 p-4"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg leading-none">{config.icon}</span>
-                      <span className="text-sm text-slate-300">{config.label}</span>
+                      <span className="text-xl leading-none">{config.icon}</span>
+                      <span className="text-base font-medium text-white">{config.label}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold text-cyan-400">{count}</span>
-                      <span className="text-xs text-slate-500">({percentage}%)</span>
+                      <span className="text-xl font-bold text-cyan-400">{count}</span>
+                      <span className="text-sm text-slate-300">({percentage}%)</span>
                     </div>
                   </div>
                   {/* 进度条 */}
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-700">
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-600">
                     <div
                       className="h-full rounded-full transition-all"
                       style={{
@@ -138,7 +138,7 @@ export default function StatisticsPanel({ conversations }: StatisticsPanelProps)
 
         {/* 空状态 */}
         {stats.totalConversations === 0 && (
-          <div className="py-8 text-center text-sm text-slate-500">
+          <div className="py-8 text-center text-base text-slate-300">
             暂无对话数据
           </div>
         )}

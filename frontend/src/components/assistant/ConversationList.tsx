@@ -51,7 +51,7 @@ export default function ConversationList({
     <div className="h-full">
       {Object.entries(grouped).map(([group, convs]) => (
         <div key={group} className="mb-4">
-          <div className="px-4 py-2 text-xs font-medium text-slate-500">{group}</div>
+          <div className="px-4 py-2 text-sm font-bold text-slate-300">{group}</div>
           {convs.map(conv => {
             const isActive = conv.id === currentConvId
             const isEditing = editingId === conv.id
@@ -62,8 +62,8 @@ export default function ConversationList({
                 key={conv.id}
                 className={`group relative cursor-pointer px-4 py-3 transition-colors ${
                   isActive
-                    ? 'bg-cyan-500/10 text-cyan-200'
-                    : 'text-slate-300 hover:bg-white/5'
+                    ? 'bg-cyan-700/30 text-white'
+                    : 'text-slate-200 hover:bg-slate-700'
                 }`}
                 onClick={() => !isEditing && onSelect(conv.id)}
               >
@@ -77,19 +77,19 @@ export default function ConversationList({
                         if (e.key === 'Enter') handleSaveEdit(conv.id)
                         if (e.key === 'Escape') handleCancelEdit()
                       }}
-                      className="flex-1 rounded bg-white/10 px-2 py-1 text-sm text-slate-100 outline-none ring-1 ring-cyan-500/50"
+                      className="flex-1 rounded-lg bg-slate-700 px-3 py-1.5 text-base text-white outline-none ring-2 ring-cyan-500"
                       autoFocus
                     />
                     <button
                       type="button"
-                      className="text-xs text-cyan-400 hover:text-cyan-300"
+                      className="rounded-md bg-cyan-600 px-2 py-1 text-sm font-bold text-white hover:bg-cyan-500"
                       onClick={() => handleSaveEdit(conv.id)}
                     >
                       保存
                     </button>
                     <button
                       type="button"
-                      className="text-xs text-slate-400 hover:text-slate-300"
+                      className="rounded-md bg-slate-600 px-2 py-1 text-sm font-bold text-white hover:bg-slate-500"
                       onClick={handleCancelEdit}
                     >
                       取消
@@ -98,11 +98,11 @@ export default function ConversationList({
                 ) : (
                   <>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm leading-none">{roleInfo.icon}</span>
-                      <div className="flex-1 truncate text-sm font-medium">{conv.title}</div>
+                      <span className="text-base leading-none">{roleInfo.icon}</span>
+                      <div className="flex-1 truncate text-base font-medium">{conv.title}</div>
                     </div>
                     {conv.lastMessage && (
-                      <div className="mt-1 truncate text-xs text-slate-500">
+                      <div className="mt-1 truncate text-sm text-slate-400">
                         {conv.lastMessage}
                       </div>
                     )}
@@ -111,7 +111,7 @@ export default function ConversationList({
                     <div className="absolute right-2 top-3 hidden gap-1 group-hover:flex">
                       <button
                         type="button"
-                        className="rounded p-1 text-xs text-slate-400 hover:bg-white/10 hover:text-slate-300"
+                        className="rounded-md bg-slate-600 p-1.5 text-sm text-white hover:bg-slate-500"
                         onClick={e => {
                           e.stopPropagation()
                           handleStartEdit(conv)
@@ -122,7 +122,7 @@ export default function ConversationList({
                       </button>
                       <button
                         type="button"
-                        className="rounded p-1 text-xs text-slate-400 hover:bg-white/10 hover:text-rose-400"
+                        className="rounded-md bg-rose-700 p-1.5 text-sm text-white hover:bg-rose-600"
                         onClick={e => handleDelete(conv.id, e)}
                         title="删除"
                       >
@@ -138,7 +138,7 @@ export default function ConversationList({
       ))}
 
       {conversations.length === 0 && (
-        <div className="px-4 py-8 text-center text-sm text-slate-500">
+        <div className="px-4 py-8 text-center text-base text-slate-300">
           暂无对话，点击右上角 + 创建新对话
         </div>
       )}
