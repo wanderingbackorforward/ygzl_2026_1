@@ -1,12 +1,12 @@
 import React, { useState, useCallback } from 'react';
 import { ProfileChart, TimeSlider, JointDashboard, EventManager } from '../components/advanced';
-import { AnomalyDashboard, RecommendationDashboard, PredictionDashboard, CorrelationDashboard } from '../components/analysis';
+import { AnomalyDashboard, RecommendationDashboard, PredictionDashboard, CorrelationDashboard, DeepLearningDashboard, ExplainabilityDashboard, KnowledgeGraphDashboard } from '../components/analysis';
 import { MockModeIndicator } from '../components/common/MockModeIndicator';
 import { useProfileData, useAvailableDates, useProfileStatistics } from '../hooks/useAdvancedAnalysis';
 
 import '../styles/variables.css';
 
-type TabType = 'anomaly' | 'recommendation' | 'prediction' | 'correlation' | 'profile' | 'joint' | 'events';
+type TabType = 'anomaly' | 'recommendation' | 'prediction' | 'deeplearning' | 'correlation' | 'explainability' | 'knowledgegraph' | 'profile' | 'joint' | 'events';
 type JointMetric = 'settlement' | 'crack' | 'correlation';
 
 // 分析模块分组
@@ -22,12 +22,20 @@ const analysisGroups = [
     label: '第二阶段：趋势预测',
     items: [
       { id: 'prediction' as TabType, label: '预测分析', icon: 'chart-area' },
+      { id: 'deeplearning' as TabType, label: '深度学习预测', icon: 'brain' },
     ],
   },
   {
     label: '第三阶段：关联分析',
     items: [
       { id: 'correlation' as TabType, label: '因果与空间', icon: 'project-diagram' },
+      { id: 'explainability' as TabType, label: '可解释性分析', icon: 'chart-bar' },
+    ],
+  },
+  {
+    label: '第四阶段：知识图谱',
+    items: [
+      { id: 'knowledgegraph' as TabType, label: '知识图谱', icon: 'share-alt' },
     ],
   },
   {
@@ -112,7 +120,10 @@ const AdvancedAnalysis: React.FC = () => {
         {activeTab === 'anomaly' && <AnomalyTab />}
         {activeTab === 'recommendation' && <RecommendationTab />}
         {activeTab === 'prediction' && <PredictionTab />}
+        {activeTab === 'deeplearning' && <DeepLearningTab />}
         {activeTab === 'correlation' && <CorrelationTab />}
+        {activeTab === 'explainability' && <ExplainabilityTab />}
+        {activeTab === 'knowledgegraph' && <KnowledgeGraphTab />}
         {activeTab === 'profile' && <ProfileTab />}
         {activeTab === 'joint' && <JointTab metric={jointMetric} />}
         {activeTab === 'events' && <EventsTab />}
@@ -151,6 +162,15 @@ const PredictionTab: React.FC = () => {
   );
 };
 
+// Deep Learning Tab
+const DeepLearningTab: React.FC = () => {
+  return (
+    <div style={styles.tabContent}>
+      <DeepLearningDashboard />
+    </div>
+  );
+};
+
 // Correlation Tab
 const CorrelationTab: React.FC = () => {
   // 全部25个监测点位
@@ -159,6 +179,24 @@ const CorrelationTab: React.FC = () => {
   return (
     <div style={styles.tabContent}>
       <CorrelationDashboard pointIds={pointIds} />
+    </div>
+  );
+};
+
+// Explainability Tab
+const ExplainabilityTab: React.FC = () => {
+  return (
+    <div style={styles.tabContent}>
+      <ExplainabilityDashboard />
+    </div>
+  );
+};
+
+// Knowledge Graph Tab
+const KnowledgeGraphTab: React.FC = () => {
+  return (
+    <div style={styles.tabContent}>
+      <KnowledgeGraphDashboard />
     </div>
   );
 };
