@@ -53,7 +53,7 @@ export default function StatisticsPanel({ conversations }: StatisticsPanelProps)
     <div className="flex h-full flex-col">
       <div className="border-b border-slate-600 px-4 py-3">
         <h3 className="text-lg font-bold text-white">使用统计</h3>
-        <p className="mt-1 text-sm text-slate-300">对话数据概览</p>
+        <p className="mt-1 text-sm text-white">对话数据概览</p>
       </div>
 
       <div className="flex-1 overflow-auto p-4">
@@ -63,19 +63,19 @@ export default function StatisticsPanel({ conversations }: StatisticsPanelProps)
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-slate-500 bg-slate-800 p-4">
               <div className="text-3xl font-bold text-cyan-400">{stats.totalConversations}</div>
-              <div className="mt-1 text-sm font-medium text-slate-200">总对话数</div>
+              <div className="mt-1 text-sm font-medium text-white">总对话数</div>
             </div>
             <div className="rounded-xl border border-slate-500 bg-slate-800 p-4">
               <div className="text-3xl font-bold text-cyan-400">{stats.totalMessages}</div>
-              <div className="mt-1 text-sm font-medium text-slate-200">总消息数</div>
+              <div className="mt-1 text-sm font-medium text-white">总消息数</div>
             </div>
             <div className="rounded-xl border border-slate-500 bg-slate-800 p-4">
               <div className="text-3xl font-bold text-cyan-400">{stats.todayConversations}</div>
-              <div className="mt-1 text-sm font-medium text-slate-200">今日对话</div>
+              <div className="mt-1 text-sm font-medium text-white">今日对话</div>
             </div>
             <div className="rounded-xl border border-slate-500 bg-slate-800 p-4">
               <div className="text-3xl font-bold text-cyan-400">{stats.avgMessagesPerConv}</div>
-              <div className="mt-1 text-sm font-medium text-slate-200">平均消息数</div>
+              <div className="mt-1 text-sm font-medium text-white">平均消息数</div>
             </div>
           </div>
         </div>
@@ -117,7 +117,7 @@ export default function StatisticsPanel({ conversations }: StatisticsPanelProps)
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xl font-bold text-cyan-400">{count}</span>
-                      <span className="text-sm text-slate-300">({percentage}%)</span>
+                      <span className="text-sm text-white">({percentage}%)</span>
                     </div>
                   </div>
                   {/* 进度条 */}
@@ -138,7 +138,7 @@ export default function StatisticsPanel({ conversations }: StatisticsPanelProps)
 
         {/* 空状态 */}
         {stats.totalConversations === 0 && (
-          <div className="py-8 text-center text-base text-slate-300">
+          <div className="py-8 text-center text-base text-white">
             暂无对话数据
           </div>
         )}

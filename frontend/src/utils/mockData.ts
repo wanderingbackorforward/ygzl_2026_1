@@ -333,6 +333,211 @@ export function generateMockSpatialCorrelation(distanceThreshold: number = 50) {
 /**
  * 生成因果分析数据
  */
+/**
+ * 生成 Informer 预测 mock 数据
+ */
+export function generateMockInformerPrediction(
+  pointId: string,
+  steps: number = 30,
+  seqLen: number = 96
+) {
+  const base = generateMockPrediction(pointId, steps);
+  return {
+    ...base,
+    selected_model: 'informer',
+    model_info: {
+      model_type: 'informer',
+      seq_len: seqLen,
+      label_len: 48,
+      pred_len: steps,
+      d_model: 512,
+      n_heads: 8,
+      e_layers: 2,
+      d_layers: 1,
+      features: ['settlement', 'temperature', 'crack_width'],
+    },
+  };
+}
+
+/**
+ * 生成 STGCN 预测 mock 数据
+ */
+export function generateMockSTGCNPrediction(steps: number = 30) {
+  const pointIds = Array.from({ length: 10 }, (_, i) => `S${i + 1}`);
+  const predictions: Record<string, any> = {};
+
+  pointIds.forEach(pid => {
+    const pred = generateMockPrediction(pid, steps);
+    predictions[pid] = {
+      forecast: pred.forecast,
+      historical: pred.historical,
+    };
+  });
+
+  return {
+    success: true,
+    model_type: 'stgcn',
+    steps,
+    predictions,
+    spatial_info: {
+      num_nodes: pointIds.length,
+      adjacency_type: 'distance',
+      threshold: 50,
+    },
+  };
+}
+
+/**
+ * 生成因果发现 mock 数据
+ */
+export function generateMockCausalDiscover(
+  pointIds: string[],
+  maxLag: number = 5
+) {
+  const relations: any[] = [];
+  for (let i = 0; i < pointIds.length; i++) {
+    for (let j = i + 1; j < pointIds.length; j++) {
+      const pVal = Math.random();
+      if (pVal < 0.3) {
+        relations.push({
+          cause: pointIds[i],
+          effect: pointIds[j],
+          p_value: parseFloat(pVal.toFixed(4)),
+          f_statistic: parseFloat((3 + Math.random() * 7).toFixed(2)),
+          optimal_lag: Math.floor(Math.random() * maxLag) + 1,
+          significant: true,
+        });
+      }
+    }
+  }
+
+  return {
+    success: true,
+    method: 'granger',
+    max_lag: maxLag,
+    relations,
+    summary: {
+      total_tested: (pointIds.length * (pointIds.length - 1)) / 2,
+      significant_count: relations.length,
+    },
+  };
+}
+
+/**
+ * 生成知识图谱统计 mock 数据
+ */
+export function generateMockKGStats() {
+  return {
+    success: true,
+    total_nodes: 87,
+    total_edges: 142,
+    node_types: {
+      MonitoringPoint: 25,
+      ConstructionEvent: 12,
+      Anomaly: 38,
+      AcademicPaper: 12,
+    },
+    edge_types: {
+      SPATIAL_NEAR: 45,
+      CORRELATES_WITH: 32,
+      CAUSES: 18,
+      DETECTED_AT: 38,
+      REFERENCES: 9,
+    },
+  };
+}
+
+/**
+ * 生成知识图谱邻居查询 mock 数据
+ */
+export function generateMockKGNeighbors(pointId: string) {
+  const nodeIndex = parseInt(pointId.replace(/\D/g, '')) || 1;
+  const cx = 400, cy = 300;
+  const nodes: any[] = [
+    { id: pointId, label: pointId, type: 'MonitoringPoint', color: '#06b6d4', size: 20, x: cx, y: cy },
+  ];
+  const edges: any[] = [];
+
+  // Add neighbor monitoring points
+  const neighborCount = 2 + (nodeIndex % 3);
+  for (let i = 0; i < neighborCount; i++) {
+    const nid = `S${((nodeIndex + i) % 25) + 1}`;
+    if (nid === pointId) continue;
+    const angle = (i / neighborCount) * Math.PI * 2;
+    nodes.push({
+      id: nid, label: nid, type: 'MonitoringPoint', color: '#06b6d4', size: 16,
+      x: cx + Math.cos(angle) * 120, y: cy + Math.sin(angle) * 120,
+    });
+    edges.push({
+      source: pointId, target: nid, type: 'SPATIAL_NEAR', color: '#38bdf8',
+      label: '', attrs: { distance: parseFloat((10 + Math.random() * 40).toFixed(1)) },
+    });
+  }
+
+  // Add anomaly node
+  const anomalyId = `anomaly_${pointId}_1`;
+  nodes.push({
+    id: anomalyId, label: `${pointId} abnormal`, type: 'Anomaly', color: '#ef4444', size: 14,
+    x: cx + 80, y: cy - 100, severity: 'high',
+  });
+  edges.push({
+    source: anomalyId, target: pointId, type: 'DETECTED_AT', color: '#f87171', label: '',
+  });
+
+  // Add construction event
+  const eventId = `event_${nodeIndex}`;
+  nodes.push({
+    id: eventId, label: 'construction activity', type: 'ConstructionEvent', color: '#f59e0b', size: 14,
+    x: cx - 100, y: cy - 80,
+  });
+  edges.push({
+    source: eventId, target: anomalyId, type: 'CAUSES', color: '#fb923c', label: '',
+  });
+
+  return { success: true, center: pointId, nodes, edges };
+}
+
+/**
+ * 生成知识图谱风险点 mock 数据
+ */
+export function generateMockKGRiskPoints(minSeverity: string = 'high') {
+  const allPoints = [
+    { point_id: 'S3', severity: 'critical', anomaly_count: 5, latest_anomaly_date: '2026-03-10', description: 'S3 settlement rate accelerating rapidly, exceeds safety threshold' },
+    { point_id: 'S7', severity: 'critical', anomaly_count: 4, latest_anomaly_date: '2026-03-09', description: 'S7 continuous anomalous settlement detected, requires immediate attention' },
+    { point_id: 'S12', severity: 'high', anomaly_count: 3, latest_anomaly_date: '2026-03-08', description: 'S12 settlement shows fluctuation anomaly, monitoring intensified' },
+    { point_id: 'S18', severity: 'high', anomaly_count: 2, latest_anomaly_date: '2026-03-07', description: 'S18 trend anomaly, correlated with nearby construction events' },
+    { point_id: 'S5', severity: 'medium', anomaly_count: 2, latest_anomaly_date: '2026-03-06', description: 'S5 slight anomaly, continue observation' },
+  ];
+
+  const filtered = minSeverity === 'critical'
+    ? allPoints.filter(p => p.severity === 'critical')
+    : minSeverity === 'high'
+    ? allPoints.filter(p => ['critical', 'high'].includes(p.severity))
+    : allPoints;
+
+  return { success: true, risk_points: filtered, total: filtered.length };
+}
+
+/**
+ * 生成知识图谱问答 mock 数据
+ */
+export function generateMockKGQA(question: string) {
+  const answers: Record<string, string> = {
+    default: `Based on knowledge graph analysis: The system currently monitors 25 settlement points, with 2 at critical risk level. Main anomaly types include sudden changes, accelerated trends, and fluctuations. Nearby construction events strongly correlate with anomalous settlement.\n\nRecommendation: Focus on monitoring S3, S7 and nearby points, increase monitoring frequency.`,
+  };
+
+  return {
+    success: true,
+    question,
+    answer: answers.default,
+    sources: ['knowledge_graph', 'anomaly_detection', 'spatial_correlation'],
+    confidence: 0.82,
+  };
+}
+
+/**
+ * 生成因果分析数据
+ */
 export function generateMockCausalAnalysis(
   pointId: string,
   eventDate: string,

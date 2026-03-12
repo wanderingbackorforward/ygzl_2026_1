@@ -140,3 +140,122 @@ export interface AnomalyFilter {
  */
 export type AnomalySortBy = 'date' | 'severity' | 'score' | 'point_id';
 export type SortOrder = 'asc' | 'desc';
+
+/**
+ * SHAP 特征重要性
+ */
+export interface SHAPFeature {
+  feature: string;
+  importance: number;
+  rank: number;
+}
+
+export interface SHAPSummary {
+  feature: string;
+  mean_shap: number;
+  mean_abs_shap: number;
+  std_shap: number;
+  min_shap: number;
+  max_shap: number;
+  median_shap: number;
+}
+
+export interface SHAPResult {
+  success: boolean;
+  point_id: string;
+  feature_importance: SHAPFeature[];
+  summary: SHAPSummary[];
+}
+
+/**
+ * 因果发现结果 (Granger)
+ */
+export interface CausalRelation {
+  cause: string;
+  effect: string;
+  p_value: number;
+  f_statistic: number;
+  optimal_lag: number;
+  significant: boolean;
+}
+
+export interface CausalDiscoverResult {
+  success: boolean;
+  method: string;
+  max_lag: number;
+  relations: CausalRelation[];
+  summary: {
+    total_tested: number;
+    significant_count: number;
+  };
+}
+
+/**
+ * 知识图谱统计
+ */
+export interface KGStats {
+  success: boolean;
+  total_nodes: number;
+  total_edges: number;
+  node_types: Record<string, number>;
+  edge_types: Record<string, number>;
+}
+
+/**
+ * 知识图谱邻居查询结果
+ */
+export interface KGNode {
+  id: string;
+  label: string;
+  type: string;
+  color: string;
+  size: number;
+  x: number;
+  y: number;
+  severity?: string;
+  attrs?: Record<string, any>;
+}
+
+export interface KGEdge {
+  source: string;
+  target: string;
+  type: string;
+  color: string;
+  label: string;
+  attrs?: Record<string, any>;
+}
+
+export interface KGNeighborsResult {
+  success: boolean;
+  center: string;
+  nodes: KGNode[];
+  edges: KGEdge[];
+}
+
+/**
+ * 知识图谱风险点
+ */
+export interface KGRiskPoint {
+  point_id: string;
+  severity: string;
+  anomaly_count: number;
+  latest_anomaly_date: string;
+  description: string;
+}
+
+export interface KGRiskPointsResult {
+  success: boolean;
+  risk_points: KGRiskPoint[];
+  total: number;
+}
+
+/**
+ * 知识图谱问答
+ */
+export interface KGQAResult {
+  success: boolean;
+  question: string;
+  answer: string;
+  sources?: string[];
+  confidence?: number;
+}

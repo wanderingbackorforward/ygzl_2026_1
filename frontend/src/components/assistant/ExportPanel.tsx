@@ -185,7 +185,7 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
         <div className="flex flex-1 items-center justify-center">
           <div className="text-center">
             <div className="mb-3 text-5xl">📤</div>
-            <div className="text-base text-slate-300">请先选择一个对话</div>
+            <div className="text-base text-white">请先选择一个对话</div>
           </div>
         </div>
       </div>
@@ -196,14 +196,14 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
     <div className="flex h-full flex-col">
       <div className="border-b border-slate-600 px-4 py-3">
         <h3 className="text-lg font-bold text-white">导出与分享</h3>
-        <p className="mt-1 text-sm text-slate-300">保存或分享对话内容</p>
+        <p className="mt-1 text-sm text-white">保存或分享对话内容</p>
       </div>
 
       <div className="flex-1 overflow-auto p-4">
         {/* 对话信息 */}
         <div className="mb-4 rounded-xl border border-slate-500 bg-slate-800 p-4">
           <div className="text-base font-bold text-white">{conversation.title}</div>
-          <div className="mt-2 flex items-center gap-4 text-sm text-slate-300">
+          <div className="mt-2 flex items-center gap-4 text-sm text-white">
             <span>消息数: {conversation.messages?.length || 0}</span>
             <span>角色: {getRoleLabel(conversation.role)}</span>
           </div>
@@ -246,7 +246,7 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
               </button>
             </div>
             <div className="max-h-60 overflow-auto rounded-xl border border-slate-500 bg-slate-900 p-4">
-              <pre className="whitespace-pre-wrap text-sm text-slate-200">
+              <pre className="whitespace-pre-wrap text-sm text-white">
                 {summary}
               </pre>
             </div>

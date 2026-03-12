@@ -15,7 +15,7 @@ export default function QuickCommandPanel({ currentRole, onCommandClick }: Quick
     <div className="flex h-full flex-col">
       <div className="border-b border-slate-600 px-4 py-3">
         <h3 className="text-lg font-bold text-white">快捷指令</h3>
-        <p className="mt-1 text-sm text-slate-300">点击快速填充问题</p>
+        <p className="mt-1 text-sm text-white">点击快速填充问题</p>
       </div>
 
       <div className="flex-1 overflow-auto p-4">
@@ -36,7 +36,7 @@ export default function QuickCommandPanel({ currentRole, onCommandClick }: Quick
         </div>
 
         {filteredCommands.length === 0 && (
-          <div className="py-8 text-center text-base text-slate-300">
+          <div className="py-8 text-center text-base text-white">
             当前角色暂无快捷指令
           </div>
         )}
@@ -44,8 +44,8 @@ export default function QuickCommandPanel({ currentRole, onCommandClick }: Quick
 
       {/* 页面上下文信息 */}
       <div className="border-t border-slate-600 p-4">
-        <h4 className="mb-2 text-sm font-bold text-slate-200">页面上下文</h4>
-        <div className="rounded-lg bg-slate-800 p-3 text-sm text-slate-300">
+        <h4 className="mb-2 text-sm font-bold text-white">页面上下文</h4>
+        <div className="rounded-lg bg-slate-800 p-3 text-sm text-white">
           当前页面的数据会自动传递给 AI
         </div>
       </div>

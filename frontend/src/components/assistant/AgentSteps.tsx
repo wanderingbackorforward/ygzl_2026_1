@@ -52,12 +52,12 @@ export default function AgentSteps({ steps, totalIterations, totalDurationMs }: 
           <span className="inline-block rounded-md bg-purple-600 px-2 py-1 text-sm font-bold text-white border border-purple-400">
             Agent
           </span>
-          <span className="text-sm font-medium text-slate-200">
+          <span className="text-sm font-medium text-white">
             {steps.length} 步工具调用
           </span>
         </div>
         {totalDurationMs != null && (
-          <span className="text-sm font-medium text-slate-300">
+          <span className="text-sm font-medium text-white">
             {(totalDurationMs / 1000).toFixed(1)}s
           </span>
         )}
@@ -86,17 +86,17 @@ export default function AgentSteps({ steps, totalIterations, totalDurationMs }: 
                 <span className="font-semibold text-white">{toolLabel}</span>
 
                 {/* Result summary */}
-                <span className="min-w-0 flex-1 truncate text-slate-300">
+                <span className="min-w-0 flex-1 truncate text-white">
                   {step.result_summary}
                 </span>
 
                 {/* Duration */}
-                <span className="shrink-0 text-xs font-medium text-slate-400">
+                <span className="shrink-0 text-xs font-medium text-white">
                   {step.duration_ms}ms
                 </span>
 
                 {/* Expand arrow */}
-                <span className={`shrink-0 text-xs text-slate-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+                <span className={`shrink-0 text-xs text-white transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
                   ▶
                 </span>
               </button>
@@ -106,15 +106,15 @@ export default function AgentSteps({ steps, totalIterations, totalDurationMs }: 
                 <div className="border-t border-slate-600 px-3 py-2.5 text-sm">
                   {/* Input params */}
                   <div className="mb-2">
-                    <span className="font-bold text-slate-200">输入参数：</span>
-                    <pre className="mt-1 overflow-auto rounded-lg bg-slate-900 p-3 text-sm text-slate-200">
+                    <span className="font-bold text-white">输入参数：</span>
+                    <pre className="mt-1 overflow-auto rounded-lg bg-slate-900 p-3 text-sm text-white">
                       {JSON.stringify(step.tool_input, null, 2)}
                     </pre>
                   </div>
                   {/* Result summary */}
                   <div>
-                    <span className="font-bold text-slate-200">结果摘要：</span>
-                    <span className="ml-1 text-slate-200">{step.result_summary}</span>
+                    <span className="font-bold text-white">结果摘要：</span>
+                    <span className="ml-1 text-white">{step.result_summary}</span>
                   </div>
                 </div>
               )}

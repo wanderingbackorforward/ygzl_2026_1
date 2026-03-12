@@ -7,6 +7,13 @@ import {
   generateMockModelComparison,
   generateMockSpatialCorrelation,
   generateMockCausalAnalysis,
+  generateMockInformerPrediction,
+  generateMockSTGCNPrediction,
+  generateMockCausalDiscover,
+  generateMockKGStats,
+  generateMockKGNeighbors,
+  generateMockKGRiskPoints,
+  generateMockKGQA,
 } from './mockData';
 
 // 记录哪些接口不可用（按路径），不再是全局开关
@@ -264,5 +271,98 @@ export async function fetchMLHealth() {
       },
       message: 'ML模块运行正常',
     })
+  );
+}
+
+/**
+ * Informer 长序列预测
+ */
+export async function fetchInformerPrediction(
+  pointId: string,
+  steps: number = 30,
+  seqLen: number = 96
+) {
+  return fetchWithFallback(
+    `${API_BASE}/ml/predict/informer/${pointId}?steps=${steps}&seq_len=${seqLen}`,
+    undefined,
+    () => generateMockInformerPrediction(pointId, steps, seqLen)
+  );
+}
+
+/**
+ * STGCN 多点联合预测
+ */
+export async function fetchSTGCNPrediction(steps: number = 30) {
+  return fetchWithFallback(
+    `${API_BASE}/ml/predict/stgcn?steps=${steps}`,
+    undefined,
+    () => generateMockSTGCNPrediction(steps)
+  );
+}
+
+/**
+ * 因果发现 (Granger)
+ */
+export async function fetchCausalDiscover(
+  pointIds: string[],
+  maxLag: number = 5,
+  method: string = 'granger'
+) {
+  return fetchWithFallback(
+    `${API_BASE}/ml/causal/discover`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ point_ids: pointIds, max_lag: maxLag, method }),
+    },
+    () => generateMockCausalDiscover(pointIds, maxLag)
+  );
+}
+
+/**
+ * 知识图谱统计
+ */
+export async function fetchKGStats() {
+  return fetchWithFallback(
+    `${API_BASE}/ml/kg/stats`,
+    undefined,
+    () => generateMockKGStats()
+  );
+}
+
+/**
+ * 知识图谱邻居查询
+ */
+export async function fetchKGNeighbors(pointId: string) {
+  return fetchWithFallback(
+    `${API_BASE}/ml/kg/query/neighbors/${pointId}`,
+    undefined,
+    () => generateMockKGNeighbors(pointId)
+  );
+}
+
+/**
+ * 知识图谱高风险点
+ */
+export async function fetchKGRiskPoints(minSeverity: string = 'high') {
+  return fetchWithFallback(
+    `${API_BASE}/ml/kg/query/risk-points?min_severity=${minSeverity}`,
+    undefined,
+    () => generateMockKGRiskPoints(minSeverity)
+  );
+}
+
+/**
+ * 知识图谱问答 (KGQA)
+ */
+export async function fetchKGQA(question: string) {
+  return fetchWithFallback(
+    `${API_BASE}/ml/kgqa/ask`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+    },
+    () => generateMockKGQA(question)
   );
 }
