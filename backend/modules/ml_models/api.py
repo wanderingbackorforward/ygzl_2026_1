@@ -117,7 +117,8 @@ def api_auto_predict(point_id):
         metric: 评估指标（mae/rmse/mape，默认mae）
     """
     try:
-        steps = int(request.args.get('steps', 30))
+        # 兼容前端 forecast_days 和 steps 两种参数名
+        steps = int(request.args.get('steps', request.args.get('forecast_days', 30)))
         metric = request.args.get('metric', 'mae')
 
         df = fetch_point_settlement(point_id)
@@ -143,7 +144,8 @@ def api_predict(point_id):
     """
     try:
         model_type = request.args.get('model', 'arima')
-        steps = int(request.args.get('steps', 30))
+        # 兼容前端 forecast_days 和 steps 两种参数名
+        steps = int(request.args.get('steps', request.args.get('forecast_days', 30)))
 
         df = fetch_point_settlement(point_id)
 

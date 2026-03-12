@@ -22,15 +22,15 @@ interface ConversationViewProps {
 function getModelBadge(model?: string, provider?: string): { label: string; color: string } {
   const m = (model || provider || '').toLowerCase()
   if (m.includes('claude')) {
-    return { label: 'Claude', color: 'bg-orange-500/20 text-orange-300 border-orange-500/30' }
+    return { label: 'Claude', color: 'bg-orange-600 text-white border-orange-500' }
   }
   if (m.includes('deepseek')) {
-    return { label: 'DeepSeek', color: 'bg-green-500/20 text-green-300 border-green-500/30' }
+    return { label: 'DeepSeek', color: 'bg-green-600 text-white border-green-500' }
   }
   if (m.includes('fallback')) {
-    return { label: 'DeepSeek (fallback)', color: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' }
+    return { label: 'DeepSeek (fallback)', color: 'bg-yellow-600 text-white border-yellow-500' }
   }
-  return { label: model || 'AI', color: 'bg-slate-500/20 text-slate-300 border-slate-500/30' }
+  return { label: model || 'AI', color: 'bg-slate-600 text-white border-slate-500' }
 }
 
 export default function ConversationView({
@@ -191,12 +191,12 @@ export default function ConversationView({
   return (
     <div className="flex h-full flex-col">
       {/* Message list */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+      <div className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
         {messages.length === 0 && (
-          <div className="flex h-full items-center justify-center text-slate-300">
+          <div className="flex h-full items-center justify-center">
             <div className="text-center">
-              <div className="mb-3 text-5xl">💬</div>
-              <div className="text-base">开始对话吧！输入问题后回车或点击发送</div>
+              <div className="mb-4 text-6xl">💬</div>
+              <div className="text-xl text-white">开始对话吧！输入问题后回车或点击发送</div>
             </div>
           </div>
         )}
@@ -206,23 +206,23 @@ export default function ConversationView({
           return (
             <div
               key={msg.id}
-              className={`mb-5 flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`mb-6 flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[75%] rounded-2xl px-5 py-4 ${
+                className={`max-w-[75%] rounded-2xl px-6 py-5 ${
                   msg.role === 'user'
-                    ? 'bg-cyan-600/30 text-white'
-                    : 'bg-slate-800 text-gray-100'
+                    ? 'bg-cyan-700 text-white'
+                    : 'bg-slate-700 text-white'
                 }`}
               >
                 {/* Model badge for AI messages */}
                 {badge && (
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className={`inline-block rounded border px-1.5 py-0.5 text-[11px] font-medium ${badge.color}`}>
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className={`inline-block rounded-md border px-2 py-1 text-sm font-bold ${badge.color}`}>
                       {badge.label}
                     </span>
                     {msg.metadata?.mode === 'agent' && (
-                      <span className="inline-block rounded border border-purple-500/30 bg-purple-500/20 px-1.5 py-0.5 text-[11px] font-medium text-purple-300">
+                      <span className="inline-block rounded-md border border-purple-400 bg-purple-600 px-2 py-1 text-sm font-bold text-white">
                         Agent
                       </span>
                     )}
@@ -248,47 +248,48 @@ export default function ConversationView({
                 )}
 
                 {msg.role === 'user' ? (
-                  <div className="whitespace-pre-wrap break-words text-base leading-relaxed">{msg.content}</div>
+                  <div className="whitespace-pre-wrap break-words text-lg leading-8">{msg.content}</div>
                 ) : (
-                  <div className="prose prose-invert prose-base max-w-none prose-headings:text-white prose-p:text-gray-100 prose-a:text-cyan-300 prose-code:text-gray-100">
+                  <div className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-p:text-white prose-a:text-cyan-300 prose-code:text-white prose-strong:text-white">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
-                        h1: props => <h1 className="mb-4 text-xl font-bold text-white" {...props} />,
-                        h2: props => <h2 className="mb-3 text-lg font-bold text-white" {...props} />,
-                        h3: props => <h3 className="mb-2 text-base font-semibold text-white" {...props} />,
-                        p: props => <p className="mb-3 text-base leading-7 text-gray-100" {...props} />,
-                        ul: props => <ul className="mb-3 list-disc space-y-1.5 pl-5 text-base" {...props} />,
-                        ol: props => <ol className="mb-3 list-decimal space-y-1.5 pl-5 text-base" {...props} />,
-                        li: props => <li className="text-base leading-7 text-gray-100" {...props} />,
+                        h1: props => <h1 className="mb-4 text-2xl font-bold text-white" {...props} />,
+                        h2: props => <h2 className="mb-4 text-xl font-bold text-white" {...props} />,
+                        h3: props => <h3 className="mb-3 text-lg font-bold text-white" {...props} />,
+                        p: props => <p className="mb-4 text-lg leading-8 text-white" {...props} />,
+                        ul: props => <ul className="mb-4 list-disc space-y-2 pl-6 text-lg" {...props} />,
+                        ol: props => <ol className="mb-4 list-decimal space-y-2 pl-6 text-lg" {...props} />,
+                        li: props => <li className="text-lg leading-8 text-white" {...props} />,
+                        strong: props => <strong className="font-bold text-white" {...props} />,
                         a: props => (
                           <a
-                            className="text-cyan-300 underline decoration-cyan-400/50 underline-offset-2 hover:text-cyan-200"
+                            className="font-medium text-cyan-300 underline decoration-cyan-400 underline-offset-2 hover:text-cyan-200"
                             target="_blank"
                             rel="noreferrer"
                             {...props}
                           />
                         ),
                         code: props => (
-                          <code className="rounded bg-slate-700 px-1.5 py-0.5 text-sm text-gray-100" {...props} />
+                          <code className="rounded-md bg-slate-900 px-2 py-1 text-base font-mono text-emerald-300" {...props} />
                         ),
                         pre: props => (
                           <pre
-                            className="mb-4 overflow-auto rounded-lg border border-slate-600 bg-slate-900 p-4 text-sm text-gray-100"
+                            className="mb-4 overflow-auto rounded-xl border border-slate-500 bg-slate-900 p-5 text-base text-emerald-300"
                             {...props}
                           />
                         ),
                         blockquote: props => (
-                          <blockquote className="mb-3 border-l-3 border-cyan-400 pl-4 text-base text-gray-200" {...props} />
+                          <blockquote className="mb-4 border-l-4 border-cyan-400 pl-5 text-lg text-slate-200" {...props} />
                         ),
                         table: props => (
-                          <table className="mb-3 w-full table-auto border-collapse text-sm" {...props} />
+                          <table className="mb-4 w-full table-auto border-collapse text-base" {...props} />
                         ),
                         th: props => (
-                          <th className="border border-slate-600 bg-slate-700 px-3 py-2 text-left text-sm font-semibold text-white" {...props} />
+                          <th className="border border-slate-500 bg-slate-600 px-4 py-2.5 text-left text-base font-bold text-white" {...props} />
                         ),
                         td: props => (
-                          <td className="border border-slate-600 px-3 py-2 text-sm text-gray-100" {...props} />
+                          <td className="border border-slate-500 px-4 py-2.5 text-base text-white" {...props} />
                         ),
                       }}
                     >
@@ -310,20 +311,20 @@ export default function ConversationView({
         })}
 
         {error && (
-          <div className="mb-5 rounded-lg bg-rose-500/20 px-5 py-4 text-base text-rose-200">
+          <div className="mb-6 rounded-xl bg-rose-700 px-6 py-4 text-lg font-medium text-white">
             {error}
           </div>
         )}
 
         {/* Loading animation */}
         {loading && (
-          <div className="mb-5 flex justify-start">
-            <div className="rounded-2xl bg-slate-800 px-5 py-4">
-              <div className="flex items-center gap-2 text-slate-300">
-                <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-cyan-400" style={{ animationDelay: '0ms' }} />
-                <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-cyan-400" style={{ animationDelay: '150ms' }} />
-                <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-cyan-400" style={{ animationDelay: '300ms' }} />
-                <span className="ml-1 text-base">{mode === 'agent' ? 'Agent 正在分析' : 'AI 正在思考'}{dots}</span>
+          <div className="mb-6 flex justify-start">
+            <div className="rounded-2xl bg-slate-700 px-6 py-5">
+              <div className="flex items-center gap-3 text-white">
+                <div className="h-3 w-3 animate-bounce rounded-full bg-cyan-400" style={{ animationDelay: '0ms' }} />
+                <div className="h-3 w-3 animate-bounce rounded-full bg-cyan-400" style={{ animationDelay: '150ms' }} />
+                <div className="h-3 w-3 animate-bounce rounded-full bg-cyan-400" style={{ animationDelay: '300ms' }} />
+                <span className="ml-2 text-lg">{mode === 'agent' ? 'Agent 正在分析' : 'AI 正在思考'}{dots}</span>
               </div>
             </div>
           </div>
@@ -333,8 +334,8 @@ export default function ConversationView({
       </div>
 
       {/* Input area */}
-      <div className="shrink-0 border-t border-slate-700 px-6 py-4">
-        <div className="flex items-center gap-3">
+      <div className="shrink-0 border-t border-slate-600 px-8 py-5">
+        <div className="flex items-center gap-4">
           <input
             ref={inputRef}
             value={input}
@@ -345,19 +346,19 @@ export default function ConversationView({
                 handleSend()
               }
             }}
-            className="h-12 flex-1 rounded-xl bg-slate-800 px-5 text-base text-white placeholder:text-slate-400 outline-none ring-1 ring-slate-600 focus:ring-cyan-500"
+            className="h-14 flex-1 rounded-xl bg-slate-800 px-6 text-lg text-white placeholder:text-slate-400 outline-none ring-2 ring-slate-500 focus:ring-cyan-500"
             placeholder="输入问题..."
             disabled={loading}
           />
           <button
             type="button"
-            className="h-12 rounded bg-cyan-500 px-6 text-base font-medium text-slate-950 hover:bg-cyan-400 active:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-60"
+            className="h-14 rounded-xl bg-cyan-600 px-8 text-lg font-bold text-white hover:bg-cyan-500 active:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={handleSend}
             disabled={loading || !input.trim()}
           >
             {loading ? (
               <span className="flex items-center gap-2">
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>

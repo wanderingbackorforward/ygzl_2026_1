@@ -113,7 +113,7 @@ export async function fetchAutoPrediction(
  */
 export async function fetchModelComparison(pointId: string) {
   return fetchWithFallback(
-    `${API_BASE}/ml/model-comparison/${pointId}`,
+    `${API_BASE}/ml/compare-models/${pointId}`,
     undefined,
     () => generateMockModelComparison(pointId)
   );

@@ -145,8 +145,8 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-        <div className="text-lg text-cyan-200">加载中...</div>
+      <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-slate-950">
+        <div className="text-2xl font-medium text-white">加载中...</div>
       </div>
     )
   }
@@ -155,17 +155,17 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
     <div className="fixed inset-0 z-[1100] bg-slate-950">
       <div className="relative flex h-full w-full overflow-hidden bg-slate-950">
         {/* Left sidebar - conversation list */}
-        <div className="flex w-64 shrink-0 flex-col border-r border-slate-700 bg-slate-900">
+        <div className="flex w-72 shrink-0 flex-col border-r border-slate-600 bg-slate-900">
           {/* Title bar */}
-          <div className="flex shrink-0 items-center justify-between border-b border-slate-700 p-4">
-            <h2 className="text-base font-semibold text-white">对话列表</h2>
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-600 p-4">
+            <h2 className="text-lg font-bold text-white">对话列表</h2>
             <button
               type="button"
-              className="rounded p-2 text-cyan-400 hover:bg-white/10 active:scale-95"
+              className="rounded-lg bg-cyan-600 px-3 py-1.5 text-lg font-bold text-white hover:bg-cyan-500 active:scale-95"
               onClick={handleCreateConversation}
               title="新建对话"
             >
-              <span className="text-xl leading-none">+</span>
+              +
             </button>
           </div>
 
@@ -184,12 +184,12 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
         {/* Middle - conversation view */}
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Top toolbar */}
-          <div className="flex shrink-0 items-center justify-between border-b border-slate-700 px-5 py-3">
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-600 px-5 py-3">
             <div className="flex items-center gap-4">
               <RoleSwitcher currentRole={currentRole} onChange={handleRoleChange} />
 
               {/* Model selector */}
-              <div className="flex items-center gap-1.5 rounded-lg border border-slate-600 bg-slate-800 p-0.5">
+              <div className="flex items-center gap-1 rounded-lg border border-slate-500 bg-slate-800 p-1">
                 {PROVIDER_OPTIONS.map(opt => {
                   const isAvailable = opt.id === 'auto' || availableProviders.some(p => p.id === opt.id)
                   return (
@@ -198,15 +198,15 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                       type="button"
                       disabled={!isAvailable}
                       title={opt.desc}
-                      className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+                      className={`rounded-md px-3 py-1.5 text-base font-semibold transition-all ${
                         currentProvider === opt.id
                           ? opt.id === 'claude'
-                            ? 'bg-orange-500/30 text-orange-200 shadow-sm'
+                            ? 'bg-orange-600 text-white shadow-sm'
                             : opt.id === 'deepseek'
-                              ? 'bg-green-500/30 text-green-200 shadow-sm'
-                              : 'bg-cyan-500/30 text-cyan-200 shadow-sm'
+                              ? 'bg-green-600 text-white shadow-sm'
+                              : 'bg-cyan-600 text-white shadow-sm'
                           : isAvailable
-                            ? 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                            ? 'text-slate-200 hover:bg-slate-700 hover:text-white'
                             : 'cursor-not-allowed text-slate-600'
                       }`}
                       onClick={() => setCurrentProvider(opt.id)}
@@ -218,14 +218,14 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
               </div>
 
               {/* Mode toggle: Chat / Agent */}
-              <div className="flex items-center gap-1.5 rounded-lg border border-slate-600 bg-slate-800 p-0.5">
+              <div className="flex items-center gap-1 rounded-lg border border-slate-500 bg-slate-800 p-1">
                 <button
                   type="button"
                   title="普通对话模式"
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+                  className={`rounded-md px-3 py-1.5 text-base font-semibold transition-all ${
                     currentMode === 'chat'
-                      ? 'bg-cyan-500/30 text-cyan-200 shadow-sm'
-                      : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                      ? 'bg-cyan-600 text-white shadow-sm'
+                      : 'text-slate-200 hover:bg-slate-700 hover:text-white'
                   }`}
                   onClick={() => setCurrentMode('chat')}
                 >
@@ -234,10 +234,10 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                 <button
                   type="button"
                   title="Agent 模式：自主调用工具查询真实数据"
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+                  className={`rounded-md px-3 py-1.5 text-base font-semibold transition-all ${
                     currentMode === 'agent'
-                      ? 'bg-purple-500/30 text-purple-200 shadow-sm'
-                      : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'text-slate-200 hover:bg-slate-700 hover:text-white'
                   }`}
                   onClick={() => setCurrentMode('agent')}
                 >
@@ -245,7 +245,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                 </button>
               </div>
 
-              <div className="text-sm text-slate-300">
+              <div className="text-base font-medium text-white">
                 {currentConversation?.title || 'New conversation'}
               </div>
             </div>
@@ -253,7 +253,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="rounded bg-cyan-500/20 px-3 py-2 text-sm font-medium text-cyan-300 hover:bg-cyan-500/30 active:scale-95"
+                className="rounded-lg bg-cyan-600 px-4 py-2 text-base font-semibold text-white hover:bg-cyan-500 active:scale-95"
                 onClick={handleCreateConversation}
                 title="新建对话"
               >
@@ -261,14 +261,14 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
               </button>
               <button
                 type="button"
-                className="rounded px-3 py-2 text-sm text-slate-300 hover:bg-white/10"
+                className="rounded-lg bg-slate-700 px-4 py-2 text-base font-medium text-white hover:bg-slate-600"
                 onClick={() => setShowQuickPanel(!showQuickPanel)}
               >
                 {showQuickPanel ? '隐藏侧边栏' : '显示侧边栏'}
               </button>
               <button
                 type="button"
-                className="rounded px-3 py-2 text-sm text-slate-300 hover:bg-white/10"
+                className="rounded-lg bg-slate-700 px-4 py-2 text-base font-medium text-white hover:bg-slate-600"
                 onClick={onClose}
               >
                 关闭
@@ -295,15 +295,15 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
 
         {/* Right sidebar - multi-function panel */}
         {showQuickPanel && (
-          <div className="flex w-72 flex-col border-l border-slate-700 bg-slate-900">
+          <div className="flex w-80 flex-col border-l border-slate-600 bg-slate-900">
             {/* Panel tab buttons */}
-            <div className="flex shrink-0 border-b border-slate-700">
+            <div className="flex shrink-0 border-b border-slate-600">
               <button
                 type="button"
-                className={`flex-1 px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex-1 px-4 py-3 text-base font-semibold transition-colors ${
                   rightPanelMode === 'quick'
-                    ? 'bg-cyan-500/20 text-white'
-                    : 'text-slate-300 hover:bg-white/5'
+                    ? 'bg-cyan-600 text-white'
+                    : 'text-slate-200 hover:bg-slate-700 hover:text-white'
                 }`}
                 onClick={() => setRightPanelMode('quick')}
               >
@@ -311,10 +311,10 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
               </button>
               <button
                 type="button"
-                className={`flex-1 px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex-1 px-4 py-3 text-base font-semibold transition-colors ${
                   rightPanelMode === 'stats'
-                    ? 'bg-cyan-500/20 text-white'
-                    : 'text-slate-300 hover:bg-white/5'
+                    ? 'bg-cyan-600 text-white'
+                    : 'text-slate-200 hover:bg-slate-700 hover:text-white'
                 }`}
                 onClick={() => setRightPanelMode('stats')}
               >
@@ -322,10 +322,10 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
               </button>
               <button
                 type="button"
-                className={`flex-1 px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex-1 px-4 py-3 text-base font-semibold transition-colors ${
                   rightPanelMode === 'export'
-                    ? 'bg-cyan-500/20 text-white'
-                    : 'text-slate-300 hover:bg-white/5'
+                    ? 'bg-cyan-600 text-white'
+                    : 'text-slate-200 hover:bg-slate-700 hover:text-white'
                 }`}
                 onClick={() => setRightPanelMode('export')}
               >
