@@ -31,6 +31,20 @@ def _url(path):
     return f'{base}{path}'
 
 
+def _safe_supabase_get(path, params=None):
+    """Supabase GET with graceful error handling. Returns list/dict or None on failure."""
+    try:
+        r = requests.get(_url(path), headers=_headers(), params=params, timeout=15)
+        if r.status_code in (404, 400, 406):
+            print(f"[DEBUG] Supabase {r.status_code} for {path} - table may not exist")
+            return None
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        print(f"[DEBUG] Supabase request failed for {path}: {e}")
+        return None
+
+
 # ==================== Tool implementations ====================
 
 
@@ -93,84 +107,186 @@ def tool_query_settlement_data(point_id, limit=200, **kwargs):
 
 
 def tool_query_temperature_data(point_id=None, limit=200, **kwargs):
-    """Query temperature data."""
+    """Query temperature data from processed_temperature_data table.
+    Columns: measurement_date, SID (sensor_id), avg_temp, min_temp, max_temp.
+    Also tries temperature_analysis for summary stats.
+    """
     try:
+        # Primary: processed_temperature_data (actual table name)
         params = {
-            'select': '*',
+            'select': 'measurement_date,SID,avg_temp,min_temp,max_temp',
             'order': 'measurement_date.desc',
             'limit': str(limit),
         }
         if point_id:
-            params['point_id'] = f'eq.{point_id}'
-        r = requests.get(
-            _url('/rest/v1/temperature_data'),
-            headers=_headers(), params=params, timeout=15,
-        )
-        r.raise_for_status()
-        data = r.json()
-        summary = {}
+            # SID is the sensor/point column in this table
+            params['SID'] = f'eq.{point_id}'
+
+        data = _safe_supabase_get('/rest/v1/processed_temperature_data', params)
+
+        # Normalize column names for AI readability
         if data:
-            temps = [row.get('temperature', 0) for row in data if row.get('temperature') is not None]
-            if temps:
-                summary = {
-                    "latest": temps[0],
-                    "min": round(min(temps), 1),
-                    "max": round(max(temps), 1),
-                    "mean": round(sum(temps) / len(temps), 1),
-                    "record_count": len(temps),
-                }
+            for row in data:
+                row['sensor_id'] = row.pop('SID', row.get('sensor_id', ''))
+                row['avg_temperature'] = row.pop('avg_temp', None)
+                row['min_temperature'] = row.pop('min_temp', None)
+                row['max_temperature'] = row.pop('max_temp', None)
+
+        if not data:
+            # Fallback: temperature_analysis table (summary stats)
+            params2 = {'select': '*', 'limit': str(limit)}
+            if point_id:
+                params2['sensor_id'] = f'eq.{point_id}'
+            data = _safe_supabase_get('/rest/v1/temperature_analysis', params2)
+            if data:
+                for row in data:
+                    if 'avg_temp' in row:
+                        row['avg_temperature'] = row.pop('avg_temp', None)
+                    if 'min_temp' in row:
+                        row['min_temperature'] = row.pop('min_temp', None)
+                    if 'max_temp' in row:
+                        row['max_temperature'] = row.pop('max_temp', None)
+
+        if not data:
+            return {"success": True, "data": [], "summary": {}, "total_records": 0,
+                    "note": "No temperature data found"}
+
+        summary = {}
+        temps = [row.get('avg_temperature') for row in data if row.get('avg_temperature') is not None]
+        if temps:
+            summary = {
+                "latest": round(float(temps[0]), 1),
+                "min": round(float(min(temps)), 1),
+                "max": round(float(max(temps)), 1),
+                "mean": round(sum(float(t) for t in temps) / len(temps), 1),
+                "record_count": len(temps),
+            }
         return {"success": True, "data": data[:30], "summary": summary, "total_records": len(data)}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 
 def tool_query_crack_data(point_id=None, limit=200, **kwargs):
-    """Query crack monitoring data."""
+    """Query crack monitoring data from raw_crack_data + crack_analysis_results.
+    raw_crack_data is a PIVOT table: rows=measurement_date, columns=point_ids (e.g. JC-01).
+    crack_analysis_results has per-point analysis (avg_value, trend_type, etc).
+    crack_monitoring_points has point metadata.
+    """
     try:
-        params = {
-            'select': '*',
-            'order': 'measurement_date.desc',
-            'limit': str(limit),
-        }
-        if point_id:
-            params['point_id'] = f'eq.{point_id}'
-        r = requests.get(
-            _url('/rest/v1/crack_data'),
-            headers=_headers(), params=params, timeout=15,
+        results = []
+
+        # Source 1: crack_analysis_results (per-point summary, always available)
+        analysis = _safe_supabase_get('/rest/v1/crack_analysis_results', {'select': '*'})
+        points_meta = _safe_supabase_get(
+            '/rest/v1/crack_monitoring_points',
+            {'select': 'point_id,trend_type,change_type,total_change,average_change_rate,trend_slope,status'}
         )
-        r.raise_for_status()
-        data = r.json()
-        summary = {}
-        if data:
-            widths = [row.get('crack_width', 0) for row in data if row.get('crack_width') is not None]
-            if widths:
-                summary = {
-                    "latest": widths[0],
-                    "min": round(min(widths), 2),
-                    "max": round(max(widths), 2),
-                    "mean": round(sum(widths) / len(widths), 2),
-                    "record_count": len(widths),
+        meta_map = {}
+        if points_meta:
+            meta_map = {r.get('point_id'): r for r in points_meta}
+
+        # Source 2: raw_crack_data (pivot table with time series)
+        raw_data = _safe_supabase_get(
+            '/rest/v1/raw_crack_data',
+            {'select': '*', 'order': 'measurement_date.desc', 'limit': str(limit)}
+        )
+
+        # If point_id specified, extract that column from the pivot
+        point_series = []
+        if raw_data and point_id:
+            for row in raw_data:
+                val = row.get(point_id)
+                if val is not None:
+                    point_series.append({
+                        "measurement_date": row.get("measurement_date"),
+                        "point_id": point_id,
+                        "crack_width": val,
+                    })
+
+        # Build per-point summary from analysis results
+        summary_list = []
+        if analysis:
+            for row in analysis:
+                pid = row.get('point_id', '')
+                if point_id and pid != point_id:
+                    continue
+                entry = {
+                    "point_id": pid,
+                    "avg_value": row.get('avg_value') or row.get('mean_value'),
+                    "analysis_date": row.get('analysis_date'),
                 }
-        return {"success": True, "data": data[:30], "summary": summary, "total_records": len(data)}
+                # Merge monitoring point metadata
+                m = meta_map.get(pid, {})
+                entry["trend_type"] = m.get('trend_type', '')
+                entry["change_type"] = m.get('change_type', '')
+                entry["total_change"] = m.get('total_change')
+                entry["average_change_rate"] = m.get('average_change_rate')
+                entry["status"] = m.get('status', '')
+                summary_list.append(entry)
+
+        # If no analysis data, try to build summary from raw pivot
+        if not summary_list and raw_data and not point_id:
+            # Discover point columns (all columns except measurement_date)
+            all_cols = set()
+            for row in raw_data:
+                all_cols.update(row.keys())
+            point_cols = [c for c in all_cols if c != 'measurement_date']
+            for pc in sorted(point_cols):
+                vals = [row.get(pc) for row in raw_data if row.get(pc) is not None]
+                if vals:
+                    fvals = [float(v) for v in vals]
+                    summary_list.append({
+                        "point_id": pc,
+                        "latest": round(fvals[0], 3),
+                        "min": round(min(fvals), 3),
+                        "max": round(max(fvals), 3),
+                        "mean": round(sum(fvals) / len(fvals), 3),
+                        "record_count": len(fvals),
+                    })
+
+        # Build overall summary
+        summary = {"total_points": len(summary_list)}
+        if point_series:
+            widths = [float(r['crack_width']) for r in point_series if r.get('crack_width') is not None]
+            if widths:
+                summary.update({
+                    "point_id": point_id,
+                    "latest": round(widths[0], 3),
+                    "min": round(min(widths), 3),
+                    "max": round(max(widths), 3),
+                    "mean": round(sum(widths) / len(widths), 3),
+                    "record_count": len(widths),
+                })
+
+        return {
+            "success": True,
+            "point_summaries": summary_list[:30],
+            "time_series": point_series[:50] if point_series else [],
+            "summary": summary,
+            "total_records": len(point_series) if point_series else len(summary_list),
+        }
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 
 def tool_query_construction_events(limit=50, **kwargs):
-    """Query construction events."""
+    """Query construction events. Table may not exist - graceful fallback."""
     try:
-        params = {
-            'select': '*',
-            'order': 'start_date.desc',
-            'limit': str(limit),
-        }
-        r = requests.get(
-            _url('/rest/v1/construction_events'),
-            headers=_headers(), params=params, timeout=15,
+        # Try construction_events table
+        data = _safe_supabase_get(
+            '/rest/v1/construction_events',
+            {'select': '*', 'order': 'start_date.desc', 'limit': str(limit)}
         )
-        r.raise_for_status()
-        data = r.json()
-        return {"success": True, "events": data, "count": len(data)}
+        if data is not None:
+            return {"success": True, "events": data, "count": len(data)}
+
+        # Table doesn't exist - return empty with note
+        return {
+            "success": True,
+            "events": [],
+            "count": 0,
+            "note": "Construction events table not available. No event data recorded yet.",
+        }
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -558,6 +674,103 @@ def _search_semantic_scholar(query, limit):
         return None
 
 
+# ==================== Analysis Summary Tool ====================
+
+
+def tool_query_analysis_summary(module="settlement", **kwargs):
+    """Query pre-computed analysis summary - the SAME data source that powers ECharts.
+    This is the most reliable data tool: if the frontend chart shows data, this returns it.
+    Modules: settlement, temperature, cracks.
+    """
+    try:
+        if module == "settlement":
+            # settlement_analysis table: alert_level, trend_type, stats per point
+            analysis = _safe_supabase_get('/rest/v1/settlement_analysis', {'select': '*'})
+            if not analysis:
+                return {"success": True, "data": [], "count": 0,
+                        "note": "No settlement analysis data"}
+            # Sort by point_id
+            import re
+            analysis.sort(key=lambda x: (
+                int(re.sub(r'[^0-9]', '', str(x.get('point_id', '0'))) or '0'),
+                str(x.get('point_id', ''))
+            ))
+            # Compute stats
+            alert_counts = {}
+            trend_counts = {}
+            for row in analysis:
+                al = row.get('alert_level', 'unknown')
+                alert_counts[al] = alert_counts.get(al, 0) + 1
+                tt = row.get('trend_type', 'unknown')
+                trend_counts[tt] = trend_counts.get(tt, 0) + 1
+            return {
+                "success": True,
+                "module": "settlement",
+                "data": analysis,
+                "count": len(analysis),
+                "alert_summary": alert_counts,
+                "trend_summary": trend_counts,
+            }
+
+        elif module == "temperature":
+            analysis = _safe_supabase_get('/rest/v1/temperature_analysis', {'select': '*'})
+            if not analysis:
+                return {"success": True, "data": [], "count": 0,
+                        "note": "No temperature analysis data"}
+            # Normalize column names
+            for row in analysis:
+                if 'avg_temp' in row:
+                    row['avg_temperature'] = row.pop('avg_temp', None)
+                if 'min_temp' in row:
+                    row['min_temperature'] = row.pop('min_temp', None)
+                if 'max_temp' in row:
+                    row['max_temperature'] = row.pop('max_temp', None)
+            alert_counts = {}
+            for row in analysis:
+                al = row.get('alert_level', 'normal')
+                alert_counts[al] = alert_counts.get(al, 0) + 1
+            return {
+                "success": True,
+                "module": "temperature",
+                "data": analysis,
+                "count": len(analysis),
+                "alert_summary": alert_counts,
+            }
+
+        elif module == "cracks":
+            analysis = _safe_supabase_get('/rest/v1/crack_analysis_results', {'select': '*'})
+            points = _safe_supabase_get(
+                '/rest/v1/crack_monitoring_points',
+                {'select': 'point_id,status,trend_type,change_type,total_change,average_change_rate'}
+            )
+            if not analysis and not points:
+                return {"success": True, "data": [], "count": 0,
+                        "note": "No crack analysis data"}
+            # Merge
+            meta_map = {r.get('point_id'): r for r in (points or [])}
+            merged = []
+            for row in (analysis or []):
+                pid = row.get('point_id', '')
+                entry = dict(row)
+                m = meta_map.get(pid, {})
+                entry['trend_type'] = m.get('trend_type', '')
+                entry['change_type'] = m.get('change_type', '')
+                entry['total_change'] = m.get('total_change')
+                entry['average_change_rate'] = m.get('average_change_rate')
+                merged.append(entry)
+            return {
+                "success": True,
+                "module": "cracks",
+                "data": merged if merged else (points or []),
+                "count": len(merged) if merged else len(points or []),
+            }
+
+        else:
+            return {"success": False, "error": f"Unknown module: {module}. Use: settlement, temperature, cracks"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 # ==================== Tool Registry ====================
 
 TOOL_REGISTRY = {
@@ -573,4 +786,5 @@ TOOL_REGISTRY = {
     "analyze_correlation": tool_analyze_correlation,
     "query_anomalies": tool_query_anomalies,
     "search_academic_papers": tool_search_academic_papers,
+    "query_analysis_summary": tool_query_analysis_summary,
 }

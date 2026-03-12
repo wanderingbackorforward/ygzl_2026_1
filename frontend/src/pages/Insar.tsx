@@ -1554,7 +1554,7 @@ export default function Insar() {
   }
 
   return (
-    <div style={{ padding: 16, color: '#aaddff' }}>
+    <div style={{ padding: 16, color: '#aaddff', background: '#03060a', minHeight: '100vh' }}>
       <h2 style={{ marginBottom: 10 }}><i className="fas fa-satellite" /> InSAR监测系统</h2>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>

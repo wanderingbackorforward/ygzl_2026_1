@@ -47,12 +47,12 @@ function App() {
             )}
             <Suspense
               fallback={
-                <div className="px-6 py-6 text-sm text-slate-400">
+                <div className="px-6 py-6 text-sm text-white">
                   加载中...
                 </div>
               }
             >
-              <div style={IS_MOBILE ? { paddingBottom: 64 } : undefined}>
+              <div style={IS_MOBILE ? { paddingBottom: 64, background: '#03060a', minHeight: '100vh' } : { background: '#03060a', minHeight: '100vh' }}>
                 <Routes>
                   <Route path="/" element={<Navigate to="/cover" replace />} />
                   <Route path="/cover" element={<Cover />} />
