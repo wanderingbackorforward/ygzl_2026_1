@@ -14,36 +14,36 @@ const analysisGroups = [
   {
     label: '第一阶段：智能诊断',
     items: [
-      { id: 'anomaly' as TabType, label: '异常检测', icon: 'exclamation-triangle' },
-      { id: 'recommendation' as TabType, label: '处置建议', icon: 'clipboard-list' },
+      { id: 'anomaly' as TabType, label: '异常检测', icon: 'exclamation-triangle', desc: '自动识别所有监测点异常，按严重程度分级（严重/高/中/低）' },
+      { id: 'recommendation' as TabType, label: '处置建议', icon: 'clipboard-list', desc: '根据异常自动生成处置建议，按优先级排序（紧急巡检/加密监测/持续关注）' },
     ],
   },
   {
     label: '第二阶段：趋势预测',
     items: [
-      { id: 'prediction' as TabType, label: '预测分析', icon: 'chart-area' },
-      { id: 'deeplearning' as TabType, label: '深度学习预测', icon: 'brain' },
+      { id: 'prediction' as TabType, label: '预测分析', icon: 'chart-area', desc: 'ARIMA/SARIMA/Prophet 经典时序模型预测未来沉降趋势，含置信区间' },
+      { id: 'deeplearning' as TabType, label: '深度学习预测', icon: 'brain', desc: 'Informer 长序列预测 / STGCN 多点联合预测 / PINN 物理约束预测 / Ensemble 集成预测' },
     ],
   },
   {
     label: '第三阶段：关联分析',
     items: [
-      { id: 'correlation' as TabType, label: '因果与空间', icon: 'project-diagram' },
-      { id: 'explainability' as TabType, label: '可解释性分析', icon: 'chart-bar' },
+      { id: 'correlation' as TabType, label: '因果与空间', icon: 'project-diagram', desc: '施工事件因果影响分析（DID/SCM）+ 监测点空间关联热力图' },
+      { id: 'explainability' as TabType, label: '可解释性分析', icon: 'chart-bar', desc: 'SHAP 特征重要性排序 + Granger 因果发现（点位间因果关系检验）' },
     ],
   },
   {
     label: '第四阶段：知识图谱',
     items: [
-      { id: 'knowledgegraph' as TabType, label: '知识图谱', icon: 'share-alt' },
+      { id: 'knowledgegraph' as TabType, label: '知识图谱', icon: 'share-alt', desc: '图谱探索（邻居查询）/ 高风险点查询 / 知识问答（KGQA 自然语言提问）' },
     ],
   },
   {
     label: '额外功能',
     items: [
-      { id: 'profile' as TabType, label: '纵断面', icon: 'chart-line' },
-      { id: 'joint' as TabType, label: '沉降+裂缝', icon: 'link' },
-      { id: 'events' as TabType, label: '施工事件', icon: 'calendar-alt' },
+      { id: 'profile' as TabType, label: '纵断面', icon: 'chart-line', desc: '沉降纵断面图，支持时间滑块动画播放' },
+      { id: 'joint' as TabType, label: '沉降+裂缝', icon: 'link', desc: '沉降与裂缝联合展示，查看相关性和联动分析' },
+      { id: 'events' as TabType, label: '施工事件', icon: 'calendar-alt', desc: '施工事件管理与记录' },
     ],
   },
 ];
@@ -99,6 +99,14 @@ const AdvancedAnalysis: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* 当前模块功能描述 */}
+        {activeInfo && activeInfo.item.desc && (
+          <div style={styles.descBar}>
+            <i className="fas fa-info-circle" style={styles.descIcon} />
+            <span style={styles.descText}>{activeInfo.item.desc}</span>
+          </div>
+        )}
         {activeTab === 'joint' && (
           <div style={styles.headerSub}>
             <span style={styles.subLabel}>指标</span>
@@ -446,6 +454,25 @@ const styles: Record<string, React.CSSProperties> = {
   activeGroup: {
     fontSize: '12px',
     color: '#888',
+  },
+  descBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '10px 16px',
+    backgroundColor: 'rgba(74, 158, 255, 0.08)',
+    borderRadius: '8px',
+    border: '1px solid rgba(74, 158, 255, 0.15)',
+  },
+  descIcon: {
+    fontSize: '14px',
+    color: '#4a9eff',
+    flexShrink: 0,
+  },
+  descText: {
+    fontSize: '13px',
+    color: '#fff',
+    lineHeight: '1.5',
   },
   content: {
     flex: 1,
