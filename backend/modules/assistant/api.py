@@ -591,7 +591,6 @@ def send_message(conv_id: str):
                 _agent_elapsed = _time.time() - _agent_start
 
                 if not answer and agent_error:
-                    # Check if it's a timeout error - don't retry if so
                     is_timeout = ("timed out" in str(agent_error).lower()
                                   or "timeout" in str(agent_error).lower()
                                   or "read timed" in str(agent_error).lower())
@@ -611,65 +610,20 @@ def send_message(conv_id: str):
                     )
                     agent_result = {"tool_steps": [], "total_iterations": 0, "total_duration_ms": 0}
 
-                # Save AI response with agent metadata
+                # Return immediately - NO force-enrich here.
+                # KG and papers are loaded async by frontend via /enrich/kg and /enrich/papers
                 kg_viz = agent_result.get("kg_visualization")
                 papers_data = agent_result.get("papers", [])
                 papers_query_str = agent_result.get("papers_query", "")
                 tool_steps_list = agent_result.get("tool_steps", [])
 
-                _time_left = 55 - (_time.time() - _agent_start)
-                print(f"[DEBUG] Agent result: kg_viz={'YES' if kg_viz else 'NO'}, "
-                      f"papers={len(papers_data)}, time_left={_time_left:.1f}s")
-
-                # ---- Force-enrich only if enough time left ----
-                if not kg_viz and _time_left > 18:
-                    print("[DEBUG] api.py: Force-building knowledge graph...")
-                    try:
-                        from .agent_tools import tool_build_knowledge_graph
-                        kg_result = tool_build_knowledge_graph()
-                        if isinstance(kg_result, dict) and kg_result.get("success"):
-                            kg_viz = kg_result.get("visualization")
-                            print(f"[DEBUG] api.py: KG built OK, "
-                                  f"nodes={len(kg_viz.get('nodes',[])) if kg_viz else 0}")
-                        else:
-                            print(f"[DEBUG] api.py: KG build failed: {kg_result.get('error','?')}")
-                    except Exception as kg_exc:
-                        print(f"[DEBUG] api.py: KG build exception: {kg_exc}")
-                elif not kg_viz:
-                    print(f"[DEBUG] api.py: Skipping KG build, only {_time_left:.1f}s left")
-
-                _time_left = 55 - (_time.time() - _agent_start)
-                if not papers_data and _time_left > 12:
-                    print("[DEBUG] api.py: Force-searching academic papers...")
-                    try:
-                        from .agent_tools import tool_search_academic_papers
-                        q = "settlement monitoring geotechnical analysis"
-                        cl = (content or "").lower()
-                        if any(k in cl for k in ["anomal", "\u5f02\u5e38"]):
-                            q = "settlement anomaly detection monitoring"
-                        elif any(k in cl for k in ["predict", "\u9884\u6d4b", "\u8d8b\u52bf"]):
-                            q = "settlement prediction time series forecasting"
-                        elif any(k in cl for k in ["spatial", "\u7a7a\u95f4", "\u5173\u8054", "correlat"]):
-                            q = "spatial correlation settlement monitoring"
-                        elif any(k in cl for k in ["risk", "\u98ce\u9669"]):
-                            q = "geotechnical risk assessment settlement"
-                        elif any(k in cl for k in ["crack", "\u88c2\u7f1d"]):
-                            q = "structural crack monitoring settlement"
-                        paper_result = tool_search_academic_papers(query=q, limit=5)
-                        if isinstance(paper_result, dict) and paper_result.get("success"):
-                            papers_data = paper_result.get("papers", [])
-                            papers_query_str = q
-                            print(f"[DEBUG] api.py: Found {len(papers_data)} papers for '{q}'")
-                        else:
-                            print(f"[DEBUG] api.py: Paper search failed: {paper_result.get('error','?')}")
-                    except Exception as paper_exc:
-                        print(f"[DEBUG] api.py: Paper search exception: {paper_exc}")
-                elif not papers_data:
-                    print(f"[DEBUG] api.py: Skipping paper search, only {_time_left:.1f}s left")
-
-                # Merge papers into KG as nodes
+                # Merge papers into KG if both came from agent tool_use
                 if kg_viz and papers_data:
                     kg_viz = _merge_papers_into_kg(kg_viz, papers_data)
+
+                print(f"[DEBUG] Agent done in {_agent_elapsed:.1f}s: "
+                      f"kg={'YES' if kg_viz else 'NO(async)'}, "
+                      f"papers={len(papers_data) if papers_data else '0(async)'}")
 
                 metadata = {
                     "mode": "agent",
@@ -720,80 +674,13 @@ def send_message(conv_id: str):
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 502
 
-        # Force-enrich with KG + papers (only if time permits)
-        import time as _chat_time
-        _chat_start = _chat_time.time()
-        chat_kg_viz = None
-        chat_papers = []
-        chat_papers_query = ""
-        _debug_errors = []
-
-        # Only enrich if we have enough time left (Vercel 60s limit)
-        # AI call already took some time, check remaining budget
-        _chat_elapsed = _chat_time.time() - _chat_start
-        _chat_time_left = 25  # generous budget for enrichment
-
-        if _chat_time_left > 10:
-            print(f"[DEBUG] Chat path: enriching with KG (time_left={_chat_time_left:.1f}s)...")
-            try:
-                from .agent_tools import tool_build_knowledge_graph
-                kg_r = tool_build_knowledge_graph()
-                if isinstance(kg_r, dict) and kg_r.get("success"):
-                    chat_kg_viz = kg_r.get("visualization")
-                    print(f"[DEBUG] Chat KG: nodes={len(chat_kg_viz.get('nodes',[])) if chat_kg_viz else 0}")
-                else:
-                    err_msg = f"KG build returned success=False: {kg_r.get('error','?') if isinstance(kg_r, dict) else str(kg_r)}"
-                    print(f"[DEBUG] {err_msg}")
-                    _debug_errors.append(err_msg)
-            except Exception as ke:
-                err_msg = f"KG build exception: {type(ke).__name__}: {ke}"
-                print(f"[DEBUG] {err_msg}")
-                _debug_errors.append(err_msg)
-        else:
-            print(f"[DEBUG] Chat path: skipping KG, only {_chat_time_left:.1f}s left")
-
-        _chat_time_left2 = 25 - (_chat_time.time() - _chat_start)
-        if _chat_time_left2 > 5:
-            print(f"[DEBUG] Chat path: searching papers (time_left={_chat_time_left2:.1f}s)...")
-            try:
-                from .agent_tools import tool_search_academic_papers
-                q = "settlement monitoring geotechnical analysis"
-                pr = tool_search_academic_papers(query=q, limit=5)
-                if isinstance(pr, dict) and pr.get("success"):
-                    chat_papers = pr.get("papers", [])
-                    chat_papers_query = q
-                    print(f"[DEBUG] Chat papers: {len(chat_papers)}")
-                else:
-                    err_msg = f"Paper search returned success=False: {pr.get('error','?') if isinstance(pr, dict) else str(pr)}"
-                    print(f"[DEBUG] {err_msg}")
-                    _debug_errors.append(err_msg)
-            except Exception as pe:
-                err_msg = f"Paper search exception: {type(pe).__name__}: {pe}"
-                print(f"[DEBUG] {err_msg}")
-                _debug_errors.append(err_msg)
-        else:
-            print(f"[DEBUG] Chat path: skipping papers, only {_chat_time_left2:.1f}s left")
-
-        # Save AI response
-        # Merge papers into KG as nodes before saving
-        if chat_kg_viz and chat_papers:
-            chat_kg_viz = _merge_papers_into_kg(chat_kg_viz, chat_papers)
-
-        chat_metadata = {}
-        if chat_kg_viz or chat_papers:
-            chat_metadata = {
-                "mode": mode,
-                "kg_visualization": chat_kg_viz,
-                "papers": chat_papers,
-                "papers_query": chat_papers_query,
-            }
-
+        # NO force-enrich here - KG and papers loaded async by frontend
         assistant_message = ConversationService.add_message(
             conv_id=conv_id,
             role="assistant",
             content=answer,
             content_type="markdown",
-            metadata=chat_metadata if chat_metadata else None,
+            metadata={"mode": mode} if mode else None,
         )
 
         return jsonify({
@@ -803,13 +690,76 @@ def send_message(conv_id: str):
                 "assistantMessage": assistant_message,
                 "model": model_name,
                 "provider": "deepseek" if is_fallback else (provider if provider != "auto" else "claude"),
-                "kgVisualization": chat_kg_viz,
-                "papers": chat_papers,
-                "papersQuery": chat_papers_query,
-                "_debugErrors": _debug_errors if _debug_errors else None,
             },
         })
 
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ==================== Async Enrichment Endpoints ====================
+# These are called by the frontend AFTER the main AI response is returned.
+# This way the main response is fast, and KG/papers load asynchronously.
+
+
+@assistant_bp.route("/enrich/kg", methods=["POST"])
+def enrich_knowledge_graph():
+    """Build knowledge graph independently - called async by frontend."""
+    try:
+        from .agent_tools import tool_build_knowledge_graph
+        result = tool_build_knowledge_graph()
+        if isinstance(result, dict) and result.get("success"):
+            viz = result.get("visualization")
+            return jsonify({
+                "status": "success",
+                "data": {"visualization": viz},
+            })
+        else:
+            err = result.get("error", "unknown") if isinstance(result, dict) else str(result)
+            return jsonify({"status": "error", "message": f"KG build failed: {err}"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@assistant_bp.route("/enrich/papers", methods=["POST"])
+def enrich_papers():
+    """Search academic papers independently - called async by frontend."""
+    try:
+        body = request.get_json(silent=True) or {}
+        user_query = (body.get("query") or "").strip()
+
+        # Build search query from user question
+        q = "settlement monitoring geotechnical analysis"
+        cl = user_query.lower() if user_query else ""
+        if any(k in cl for k in ["anomal", "\u5f02\u5e38"]):
+            q = "settlement anomaly detection monitoring"
+        elif any(k in cl for k in ["predict", "\u9884\u6d4b", "\u8d8b\u52bf"]):
+            q = "settlement prediction time series forecasting"
+        elif any(k in cl for k in ["spatial", "\u7a7a\u95f4", "\u5173\u8054", "correlat"]):
+            q = "spatial correlation settlement monitoring"
+        elif any(k in cl for k in ["risk", "\u98ce\u9669"]):
+            q = "geotechnical risk assessment settlement"
+        elif any(k in cl for k in ["crack", "\u88c2\u7f1d"]):
+            q = "structural crack monitoring settlement"
+        elif any(k in cl for k in ["\u6e29\u5ea6", "temperature"]):
+            q = "temperature effect ground settlement"
+        elif any(k in cl for k in ["\u77e5\u8bc6\u56fe\u8c31", "knowledge graph"]):
+            q = "knowledge graph structural health monitoring"
+
+        from .agent_tools import tool_search_academic_papers
+        result = tool_search_academic_papers(query=q, limit=5)
+        if isinstance(result, dict) and result.get("success"):
+            papers = result.get("papers", [])
+            return jsonify({
+                "status": "success",
+                "data": {
+                    "papers": papers,
+                    "query": q,
+                },
+            })
+        else:
+            err = result.get("error", "unknown") if isinstance(result, dict) else str(result)
+            return jsonify({"status": "error", "message": f"Paper search failed: {err}"}), 500
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 

@@ -83,6 +83,7 @@ export const assistantApi = {
   },
 
   // 发送消息（支持选择 AI 模型和 Agent 模式）
+  // 主请求只返回 AI 回答，KG 和论文通过 enrichKG/enrichPapers 异步加载
   async sendMessage(
     convId: string,
     content: string,
@@ -103,8 +104,9 @@ export const assistantApi = {
     papers?: AcademicPaper[]
     papersQuery?: string
   }> {
-    // Agent mode needs longer timeout (90s), chat mode 55s (includes KG+papers enrichment)
-    const timeoutMs = mode === 'agent' ? 90000 : 55000
+    // No more force-enrich in backend, so timeouts can be shorter
+    // Agent: 65s (Claude proxy slow), Chat: 35s
+    const timeoutMs = mode === 'agent' ? 65000 : 35000
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeoutMs)
 
@@ -135,7 +137,7 @@ export const assistantApi = {
       if (res.status === 502 || res.status === 504) {
         throw new Error(
           mode === 'agent'
-            ? 'AI response timed out (502/504). Agent mode requires more processing time. Try a simpler question or switch to normal chat mode.'
+            ? 'AI response timed out (502/504). Try a simpler question or switch to normal chat mode.'
             : 'Server response timed out (502/504). Please try again.'
         )
       }
@@ -158,5 +160,42 @@ export const assistantApi = {
       throw new Error(json.message || 'Failed to send message')
     }
     return json.data!
+  },
+
+  // 异步加载知识图谱（主请求返回后调用，不阻塞 AI 回答）
+  async enrichKG(): Promise<KGVisualization | null> {
+    try {
+      const res = await fetch(`${API_BASE}/assistant/enrich/kg`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(30000), // 30s独立超时
+      })
+      if (!res.ok) return null
+      const json: ApiResponse<{ visualization: KGVisualization }> = await res.json()
+      if (json.status !== 'success') return null
+      return json.data?.visualization || null
+    } catch {
+      console.warn('[enrichKG] Failed (non-blocking)')
+      return null
+    }
+  },
+
+  // 异步加载论文（主请求返回后调用，不阻塞 AI 回答）
+  async enrichPapers(userQuery?: string): Promise<{ papers: AcademicPaper[]; query: string } | null> {
+    try {
+      const res = await fetch(`${API_BASE}/assistant/enrich/papers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: userQuery || '' }),
+        signal: AbortSignal.timeout(20000), // 20s独立超时
+      })
+      if (!res.ok) return null
+      const json: ApiResponse<{ papers: AcademicPaper[]; query: string }> = await res.json()
+      if (json.status !== 'success') return null
+      return json.data || null
+    } catch {
+      console.warn('[enrichPapers] Failed (non-blocking)')
+      return null
+    }
   },
 }

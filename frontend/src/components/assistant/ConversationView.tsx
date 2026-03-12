@@ -49,6 +49,8 @@ export default function ConversationView({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [loadingStartTime, setLoadingStartTime] = useState(0)
+  // Track which message is currently loading enrichment data
+  const [enrichingMsgId, setEnrichingMsgId] = useState<string | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -80,6 +82,67 @@ export default function ConversationView({
       console.error('Failed to load conversation:', err)
       setError('Failed to load conversation')
     }
+  }
+
+  // Helper: update a specific message's metadata in conversation state
+  function updateMessageMetadata(msgId: string, patch: Record<string, any>) {
+    setConversation(prev => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        messages: prev.messages.map(m =>
+          m.id === msgId
+            ? { ...m, metadata: { ...(m.metadata || {}), ...patch } }
+            : m
+        ),
+      }
+    })
+  }
+
+  // Async enrichment: load KG and papers AFTER main response, in parallel
+  async function asyncEnrich(msgId: string, userContent: string, existingKg: any, existingPapers: any[]) {
+    setEnrichingMsgId(msgId)
+    const needKg = !existingKg
+    const needPapers = !existingPapers || existingPapers.length === 0
+
+    if (!needKg && !needPapers) {
+      setEnrichingMsgId(null)
+      return
+    }
+
+    console.log('[asyncEnrich] Starting:', { needKg, needPapers, msgId })
+
+    // Fire both requests in parallel
+    const promises: Promise<void>[] = []
+
+    if (needKg) {
+      promises.push(
+        assistantApi.enrichKG().then(kgViz => {
+          if (kgViz) {
+            console.log('[asyncEnrich] KG loaded:', kgViz.nodes?.length, 'nodes')
+            updateMessageMetadata(msgId, { kg_visualization: kgViz })
+          }
+        })
+      )
+    }
+
+    if (needPapers) {
+      promises.push(
+        assistantApi.enrichPapers(userContent).then(result => {
+          if (result && result.papers.length > 0) {
+            console.log('[asyncEnrich] Papers loaded:', result.papers.length)
+            updateMessageMetadata(msgId, {
+              papers: result.papers,
+              papers_query: result.query,
+            })
+          }
+        })
+      )
+    }
+
+    await Promise.allSettled(promises)
+    setEnrichingMsgId(null)
+    console.log('[asyncEnrich] Complete')
   }
 
   async function handleSend() {
@@ -124,17 +187,11 @@ export default function ConversationView({
       const kgViz = result.kgVisualization || undefined
       const papersData = result.papers || undefined
       const papersQ = result.papersQuery || undefined
-      console.log('[DEBUG] Agent response:', {
+      console.log('[DEBUG] AI response received:', {
         sentMode: mode,
         hasKgViz: !!kgViz,
-        kgNodes: kgViz?.nodes?.length ?? 0,
-        kgEdges: kgViz?.edges?.length ?? 0,
         papersCount: papersData?.length ?? 0,
-        papersQuery: papersQ,
         agentSteps: result.agentSteps?.length ?? 0,
-        toolNames: result.agentSteps?.map((s: any) => s.tool_name) ?? [],
-        resultKeys: Object.keys(result),
-        _debugErrors: (result as any)._debugErrors,
       })
 
       const assistantMsg: Message = {
@@ -162,6 +219,16 @@ export default function ConversationView({
           messages: [...messagesWithoutTemp, result.userMessage, assistantMsg],
         }
       })
+
+      // ASYNC ENRICHMENT: load KG and papers in background if not already present
+      // This runs AFTER the AI answer is displayed, so user sees the answer immediately
+      asyncEnrich(
+        assistantMsg.id,
+        content,
+        kgViz,
+        papersData || []
+      )
+
     } catch (err: any) {
       console.error('Failed to send message:', err)
       setError(err.message || 'Failed to send message')
@@ -196,6 +263,7 @@ export default function ConversationView({
 
         {messages.map(msg => {
           const badge = msg.role === 'assistant' ? getModelBadge(msg.model, msg.provider) : null
+          const isEnriching = msg.id === enrichingMsgId
           return (
             <div
               key={msg.id}
@@ -246,6 +314,17 @@ export default function ConversationView({
                     papers={msg.metadata.papers}
                     query={msg.metadata.papers_query}
                   />
+                )}
+
+                {/* Async enrichment loading indicator */}
+                {msg.role === 'assistant' && isEnriching && (
+                  <div className="mb-4 flex items-center gap-2 rounded-lg bg-slate-600/50 px-4 py-2 text-sm text-white">
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    正在加载知识图谱和学术论文...
+                  </div>
                 )}
 
                 {/* Answer text (last) */}
