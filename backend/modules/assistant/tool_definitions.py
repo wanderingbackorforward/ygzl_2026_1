@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Claude tool_use JSON Schema definitions for Agent mode.
-11 tools for querying data, anomaly detection, prediction, and knowledge graph.
+13 tools for querying data, anomaly detection, prediction, and knowledge graph.
 """
 
 AGENT_TOOLS = [
@@ -35,13 +35,13 @@ AGENT_TOOLS = [
     },
     {
         "name": "query_temperature_data",
-        "description": "Query temperature data for a monitoring point or all points. Returns date and temperature values.",
+        "description": "Query temperature data from processed_temperature_data table. Columns: sensor_id (SID), avg_temperature, min_temperature, max_temperature. Also falls back to temperature_analysis for summary stats.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "point_id": {
                     "type": "string",
-                    "description": "Monitoring point ID. If omitted, returns data for all points.",
+                    "description": "Sensor/point ID (SID column). If omitted, returns data for all sensors.",
                 },
                 "limit": {
                     "type": "integer",
@@ -54,17 +54,17 @@ AGENT_TOOLS = [
     },
     {
         "name": "query_crack_data",
-        "description": "Query crack monitoring data. Returns crack width measurements over time.",
+        "description": "Query crack monitoring data from raw_crack_data (pivot table with point IDs as columns) and crack_analysis_results (per-point analysis summary). Returns point summaries with trend_type, total_change, average_change_rate, and time series if point_id specified.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "point_id": {
                     "type": "string",
-                    "description": "Crack monitoring point ID. If omitted, returns all.",
+                    "description": "Crack monitoring point ID (e.g. 'JC-01'). If omitted, returns summary for all points.",
                 },
                 "limit": {
                     "type": "integer",
-                    "description": "Max number of records (default 200)",
+                    "description": "Max number of time series records (default 200)",
                     "default": 200,
                 },
             },
@@ -73,7 +73,7 @@ AGENT_TOOLS = [
     },
     {
         "name": "query_construction_events",
-        "description": "Query construction events (e.g. excavation, piling). Returns event type, date range, description and affected area.",
+        "description": "Query construction events (e.g. excavation, piling). Returns event type, date range, description and affected area. Returns empty list if table not available.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -227,6 +227,21 @@ AGENT_TOOLS = [
                 },
             },
             "required": ["query"],
+        },
+    },
+    {
+        "name": "query_analysis_summary",
+        "description": "Query pre-computed analysis summary - the SAME data that powers the frontend ECharts charts. This is the most reliable data source: if the chart shows data, this tool returns it. Use this FIRST before other data tools. Modules: settlement (alert_level, trend_type per point), temperature (avg/min/max temperature per sensor), cracks (trend_type, total_change, change_rate per point).",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "module": {
+                    "type": "string",
+                    "enum": ["settlement", "temperature", "cracks"],
+                    "description": "Which module's analysis summary to query",
+                },
+            },
+            "required": ["module"],
         },
     },
 ]

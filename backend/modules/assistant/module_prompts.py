@@ -28,6 +28,7 @@ MODULE_CONFIGS = {
             "rate threshold: 2mm/day is concerning, 5mm/day is critical",
         ],
         "primary_tools": [
+            "query_analysis_summary",
             "query_settlement_data",
             "detect_anomalies",
             "predict_settlement",
@@ -81,6 +82,7 @@ MODULE_CONFIGS = {
             "alert threshold: varies by season, typically above 35C or below -5C",
         ],
         "primary_tools": [
+            "query_analysis_summary",
             "query_temperature_data",
             "analyze_correlation",
         ],
@@ -129,6 +131,7 @@ MODULE_CONFIGS = {
             "critical threshold: width > 1.0mm or growth_rate > 0.1mm/day",
         ],
         "primary_tools": [
+            "query_analysis_summary",
             "query_crack_data",
             "detect_anomalies",
         ],
@@ -175,6 +178,7 @@ MODULE_CONFIGS = {
             "model_accuracy - prediction model accuracy metrics (MAE, RMSE, MAPE)",
         ],
         "primary_tools": [
+            "query_analysis_summary",
             "detect_anomalies",
             "predict_settlement",
             "analyze_correlation",

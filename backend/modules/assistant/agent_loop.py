@@ -24,10 +24,10 @@ from .agent_tools import TOOL_REGISTRY
 from .tool_definitions import AGENT_TOOLS
 
 
-MAX_ITERATIONS = 5
-AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "55"))
+MAX_ITERATIONS = 3
+AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "50"))
 TOOL_RESULT_MAX_CHARS = 3000
-CLAUDE_CALL_TIMEOUT = 45
+CLAUDE_CALL_TIMEOUT = 30
 
 
 def _claude_settings():
@@ -155,14 +155,45 @@ def run_agent(user_content, page_path="", page_context=None):
     module_key = extract_module_key(page_path)
     agent_prompt = build_agent_system_prompt(module_key)
 
-    # Build initial user message with context
+    # Build initial user message with full context (same data powering ECharts)
     user_msg_text = user_content
     if page_path:
         user_msg_text = f"[Current page: {page_path}]\n\n{user_content}"
     if page_context and isinstance(page_context, dict):
-        ctx_summary = page_context.get("pageTitle", "")
-        if ctx_summary:
-            user_msg_text = f"[Page: {ctx_summary}]\n\n{user_content}"
+        ctx_parts = []
+        page_title = page_context.get("pageTitle", "")
+        if page_title:
+            ctx_parts.append(f"Page: {page_title}")
+
+        # Include dataSnapshot - this is the SAME data the ECharts see
+        snapshot = page_context.get("dataSnapshot") or {}
+        summary = snapshot.get("summary") or {}
+        statistics = snapshot.get("statistics") or {}
+
+        if summary:
+            ctx_parts.append("Data summary:")
+            for k, v in summary.items():
+                if v is not None:
+                    ctx_parts.append(f"  {k}: {v}")
+
+        if statistics:
+            ctx_parts.append("Statistics:")
+            for k in ("totalCount", "anomalyCount", "normalCount",
+                       "warningCount", "criticalCount"):
+                v = statistics.get(k)
+                if v is not None:
+                    ctx_parts.append(f"  {k}: {v}")
+
+        metadata = page_context.get("metadata") or {}
+        if metadata.get("hasAnomalies") is not None:
+            status = "has anomalies" if metadata["hasAnomalies"] else "all normal"
+            ctx_parts.append(f"Status: {status}")
+        if metadata.get("selectedPoint"):
+            ctx_parts.append(f"Selected point: {metadata['selectedPoint']}")
+
+        if ctx_parts:
+            ctx_block = "\n".join(ctx_parts)
+            user_msg_text = f"[{ctx_block}]\n\n{user_content}"
 
     messages = [{"role": "user", "content": user_msg_text}]
 
@@ -462,6 +493,10 @@ def _make_summary(tool_name, result):
         ),
         "search_academic_papers": lambda r: (
             f"Found {len(r.get('papers',[]))} papers for '{r.get('query','?')}'"
+        ),
+        "query_analysis_summary": lambda r: (
+            f"Module {r.get('module','?')}: {r.get('count',0)} records, "
+            f"alerts={r.get('alert_summary',{})}"
         ),
     }
 
