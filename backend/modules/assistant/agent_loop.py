@@ -24,10 +24,10 @@ from .agent_tools import TOOL_REGISTRY
 from .tool_definitions import AGENT_TOOLS
 
 
-MAX_ITERATIONS = 8
+MAX_ITERATIONS = 5
 AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "55"))
 TOOL_RESULT_MAX_CHARS = 3000
-CLAUDE_CALL_TIMEOUT = 25
+CLAUDE_CALL_TIMEOUT = 45
 
 
 def _claude_settings():

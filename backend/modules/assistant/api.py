@@ -576,6 +576,9 @@ def send_message(conv_id: str):
         # ==================== Agent mode ====================
         if mode == "agent":
             try:
+                import time as _time
+                _agent_start = _time.time()
+
                 from .agent_loop import run_agent
                 agent_result = run_agent(
                     user_content=content,
@@ -585,10 +588,22 @@ def send_message(conv_id: str):
                 answer = agent_result.get("answer")
                 model_name = agent_result.get("model", "claude")
                 agent_error = agent_result.get("error")
+                _agent_elapsed = _time.time() - _agent_start
 
                 if not answer and agent_error:
-                    # Agent failed, fallback to normal chat
-                    print(f"[WARN] Agent failed: {agent_error}, falling back to chat")
+                    # Check if it's a timeout error - don't retry if so
+                    is_timeout = ("timed out" in str(agent_error).lower()
+                                  or "timeout" in str(agent_error).lower()
+                                  or "read timed" in str(agent_error).lower())
+                    if is_timeout or _agent_elapsed > 40:
+                        print(f"[WARN] Agent timeout after {_agent_elapsed:.1f}s: {agent_error}")
+                        return jsonify({
+                            "status": "error",
+                            "message": "AI response timed out. Please try a shorter/simpler question, or switch to normal chat mode.",
+                        }), 504
+
+                    # Non-timeout failure, try fallback to normal chat
+                    print(f"[WARN] Agent failed ({_agent_elapsed:.1f}s): {agent_error}, falling back to chat")
                     system_prompt = get_role_prompt(role)
                     user_content_str = _build_user_content(content, page_path, page_context)
                     answer, model_name, _ = _call_ai(
@@ -602,12 +617,12 @@ def send_message(conv_id: str):
                 papers_query_str = agent_result.get("papers_query", "")
                 tool_steps_list = agent_result.get("tool_steps", [])
 
-                print(f"[DEBUG] Agent result BEFORE enrich: kg_viz={'YES' if kg_viz else 'NO'}, "
-                      f"papers={len(papers_data)}, "
-                      f"tool_steps={len(tool_steps_list)}")
+                _time_left = 55 - (_time.time() - _agent_start)
+                print(f"[DEBUG] Agent result: kg_viz={'YES' if kg_viz else 'NO'}, "
+                      f"papers={len(papers_data)}, time_left={_time_left:.1f}s")
 
-                # ---- Force-enrich: always build KG if agent didn't ----
-                if not kg_viz:
+                # ---- Force-enrich only if enough time left ----
+                if not kg_viz and _time_left > 18:
                     print("[DEBUG] api.py: Force-building knowledge graph...")
                     try:
                         from .agent_tools import tool_build_knowledge_graph
@@ -615,15 +630,16 @@ def send_message(conv_id: str):
                         if isinstance(kg_result, dict) and kg_result.get("success"):
                             kg_viz = kg_result.get("visualization")
                             print(f"[DEBUG] api.py: KG built OK, "
-                                  f"nodes={len(kg_viz.get('nodes',[])) if kg_viz else 0}, "
-                                  f"edges={len(kg_viz.get('edges',[])) if kg_viz else 0}")
+                                  f"nodes={len(kg_viz.get('nodes',[])) if kg_viz else 0}")
                         else:
                             print(f"[DEBUG] api.py: KG build failed: {kg_result.get('error','?')}")
                     except Exception as kg_exc:
                         print(f"[DEBUG] api.py: KG build exception: {kg_exc}")
+                elif not kg_viz:
+                    print(f"[DEBUG] api.py: Skipping KG build, only {_time_left:.1f}s left")
 
-                # ---- Force-enrich: always search papers if agent didn't ----
-                if not papers_data:
+                _time_left = 55 - (_time.time() - _agent_start)
+                if not papers_data and _time_left > 12:
                     print("[DEBUG] api.py: Force-searching academic papers...")
                     try:
                         from .agent_tools import tool_search_academic_papers
@@ -648,9 +664,8 @@ def send_message(conv_id: str):
                             print(f"[DEBUG] api.py: Paper search failed: {paper_result.get('error','?')}")
                     except Exception as paper_exc:
                         print(f"[DEBUG] api.py: Paper search exception: {paper_exc}")
-
-                print(f"[DEBUG] Agent result AFTER enrich: kg_viz={'YES' if kg_viz else 'NO'}, "
-                      f"papers={len(papers_data)}")
+                elif not papers_data:
+                    print(f"[DEBUG] api.py: Skipping paper search, only {_time_left:.1f}s left")
 
                 # Merge papers into KG as nodes
                 if kg_viz and papers_data:

@@ -103,11 +103,45 @@ export const assistantApi = {
     papers?: AcademicPaper[]
     papersQuery?: string
   }> {
-    const res = await fetch(`${API_BASE}/assistant/conversations/${convId}/messages`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, role, pagePath, pageContext, provider, mode }),
-    })
+    // Agent mode needs longer timeout (65s), chat mode 30s
+    const timeoutMs = mode === 'agent' ? 65000 : 30000
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+    let res: Response
+    try {
+      res = await fetch(`${API_BASE}/assistant/conversations/${convId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, role, pagePath, pageContext, provider, mode }),
+        signal: controller.signal,
+      })
+    } catch (fetchErr: any) {
+      clearTimeout(timer)
+      if (fetchErr.name === 'AbortError') {
+        throw new Error(
+          mode === 'agent'
+            ? 'Agent mode response timed out. Try a simpler question or switch to normal chat mode.'
+            : 'Request timed out. Please try again.'
+        )
+      }
+      throw new Error(`Network error: ${fetchErr.message || 'Connection failed'}`)
+    }
+    clearTimeout(timer)
+
+    // Handle non-JSON responses (e.g. Vercel 502/504 HTML error pages)
+    const contentType = res.headers.get('content-type') || ''
+    if (!contentType.includes('application/json')) {
+      if (res.status === 502 || res.status === 504) {
+        throw new Error(
+          mode === 'agent'
+            ? 'AI response timed out (502/504). Agent mode requires more processing time. Try a simpler question or switch to normal chat mode.'
+            : 'Server response timed out (502/504). Please try again.'
+        )
+      }
+      throw new Error(`Server error (HTTP ${res.status}). Please try again later.`)
+    }
+
     const json: ApiResponse<{
       userMessage: Message
       assistantMessage: Message
