@@ -141,8 +141,8 @@ const RecommendationTab: React.FC = () => {
 
 // Prediction Tab
 const PredictionTab: React.FC = () => {
-  // 获取所有监测点位ID，这里使用示例数据，实际应该从API获取
-  const pointIds = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10'];
+  // 全部25个训练好的监测点位
+  const pointIds = Array.from({ length: 25 }, (_, i) => `S${i + 1}`);
 
   return (
     <div style={styles.tabContent}>
@@ -153,8 +153,8 @@ const PredictionTab: React.FC = () => {
 
 // Correlation Tab
 const CorrelationTab: React.FC = () => {
-  // 获取所有监测点位ID
-  const pointIds = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10'];
+  // 全部25个监测点位
+  const pointIds = Array.from({ length: 25 }, (_, i) => `S${i + 1}`);
 
   return (
     <div style={styles.tabContent}>
@@ -411,7 +411,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   content: {
     flex: 1,
-    overflow: 'hidden',
+    minHeight: 0,
+    overflowY: 'auto',
     padding: '20px',
   },
   tabContent: {
