@@ -70,7 +70,8 @@ def _truncate_result(result_str, max_chars=TOOL_RESULT_MAX_CHARS):
     return result_str[:max_chars] + "\n...[truncated]"
 
 
-def _call_claude_with_tools(messages, api_key, api_base, model, max_tokens):
+def _call_claude_with_tools(messages, api_key, api_base, model, max_tokens,
+                             system_prompt=None):
     """Single Claude API call with tools parameter."""
     url = f"{api_base}/v1/messages"
     headers = {
@@ -81,7 +82,7 @@ def _call_claude_with_tools(messages, api_key, api_base, model, max_tokens):
     payload = {
         "model": model,
         "max_tokens": max_tokens,
-        "system": AGENT_SYSTEM_PROMPT,
+        "system": system_prompt or AGENT_SYSTEM_PROMPT,
         "messages": messages,
         "tools": AGENT_TOOLS,
         "temperature": 0.2,
@@ -148,6 +149,12 @@ def run_agent(user_content, page_path="", page_context=None):
     papers = []              # Captured from search_academic_papers
     papers_query = ""
 
+    # Build module-aware agent prompt
+    from .module_prompts import extract_module_key
+    from .agent_prompts import build_agent_system_prompt
+    module_key = extract_module_key(page_path)
+    agent_prompt = build_agent_system_prompt(module_key)
+
     # Build initial user message with context
     user_msg_text = user_content
     if page_path:
@@ -167,11 +174,13 @@ def run_agent(user_content, page_path="", page_context=None):
                 messages, tool_steps, iteration, start_time,
                 api_key, api_base, model, max_tokens,
                 kg_visualization=kg_visualization, papers=papers, papers_query=papers_query,
+                system_prompt=agent_prompt,
             )
 
         try:
             response_data = _call_claude_with_tools(
                 messages, api_key, api_base, model, max_tokens,
+                system_prompt=agent_prompt,
             )
         except Exception as e:
             return {
@@ -280,6 +289,7 @@ def run_agent(user_content, page_path="", page_context=None):
         messages, tool_steps, MAX_ITERATIONS, start_time,
         api_key, api_base, model, max_tokens,
         kg_visualization=kg_visualization, papers=papers, papers_query=papers_query,
+        system_prompt=agent_prompt,
     )
 
 
@@ -375,7 +385,8 @@ def _auto_enrich(kg_visualization, papers, papers_query, tool_steps,
 
 def _force_finish(messages, tool_steps, iterations, start_time,
                    api_key, api_base, model, max_tokens,
-                   kg_visualization=None, papers=None, papers_query=""):
+                   kg_visualization=None, papers=None, papers_query="",
+                   system_prompt=None):
     """Force a final text response when timeout/max iterations reached."""
     try:
         # Add a user message asking for summary
@@ -390,6 +401,7 @@ def _force_finish(messages, tool_steps, iterations, start_time,
         })
         response_data = _call_claude_with_tools(
             messages, api_key, api_base, model, max_tokens,
+            system_prompt=system_prompt,
         )
         answer = _extract_text(response_data)
         actual_model = response_data.get("model", model)

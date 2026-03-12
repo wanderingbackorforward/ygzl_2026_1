@@ -6,7 +6,7 @@ import requests
 from flask import Blueprint, jsonify, request
 
 from .db_service import ConversationService
-from .prompts import get_role_prompt
+from .prompts import get_role_prompt, build_full_system_prompt
 
 
 assistant_bp = Blueprint("assistant", __name__, url_prefix="/api/assistant")
@@ -448,7 +448,7 @@ def assistant_chat():
             "message": "No AI provider configured. Set CLAUDE_API_KEY or DEEPSEEK_API_KEY in environment.",
         }), 400
 
-    system_prompt = get_role_prompt("researcher")
+    system_prompt = build_full_system_prompt("researcher", page_path, question)
     user_content = _build_user_content(question, page_path, page_context)
 
     try:
@@ -604,7 +604,7 @@ def send_message(conv_id: str):
 
                     # Non-timeout failure, try fallback to normal chat
                     print(f"[WARN] Agent failed ({_agent_elapsed:.1f}s): {agent_error}, falling back to chat")
-                    system_prompt = get_role_prompt(role)
+                    system_prompt = build_full_system_prompt(role, page_path, content)
                     user_content_str = _build_user_content(content, page_path, page_context)
                     answer, model_name, _ = _call_ai(
                         system_prompt, user_content_str, temperature=0.2, provider=provider
@@ -710,7 +710,7 @@ def send_message(conv_id: str):
                 # Fall through to normal chat mode
 
         # ==================== Normal chat mode ====================
-        system_prompt = get_role_prompt(role)
+        system_prompt = build_full_system_prompt(role, page_path, content)
         user_content_str = _build_user_content(content, page_path, page_context)
 
         try:

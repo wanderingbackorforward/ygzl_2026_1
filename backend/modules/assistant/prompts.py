@@ -138,3 +138,47 @@ def get_role_prompt(role: str) -> str:
         System prompt string
     """
     return ROLE_PROMPTS.get(role, ROLE_PROMPTS["researcher"])
+
+
+def build_full_system_prompt(role, page_path="", question=""):
+    """
+    Build complete system prompt: role + module + intent layers.
+    Backward compatible: if page_path/question empty, returns role-only prompt.
+
+    Args:
+        role: Role name (researcher/worker/reporter)
+        page_path: Current page path (e.g., '/settlement')
+        question: User question text (for intent classification)
+
+    Returns:
+        Combined system prompt string
+    """
+    from .module_prompts import get_module_prompt, extract_module_key
+    from .intent_classifier import classify_intent
+    from .prompt_templates import get_intent_template
+
+    # Layer 1: Role prompt (always present)
+    base = get_role_prompt(role)
+
+    # Layer 2: Module prompt (if page_path provided)
+    module_key = extract_module_key(page_path)
+    module_section = get_module_prompt(module_key) if module_key else ""
+
+    # Layer 3: Intent template (if question provided)
+    intent_section = ""
+    if question:
+        intent, confidence = classify_intent(question, page_path)
+        if confidence > 0.3:
+            intent_section = (
+                "---\n"
+                "INTENT-SPECIFIC INSTRUCTIONS:\n"
+                + get_intent_template(intent)
+            )
+
+    parts = [base]
+    if module_section:
+        parts.append(module_section)
+    if intent_section:
+        parts.append(intent_section)
+
+    return "\n\n".join(parts)

@@ -74,6 +74,38 @@ def classify_intent(question: str, page_path: str = "") -> Tuple[str, float]:
         if score > 0:
             intent_scores[intent] = score
 
+    # Module-based intent boosting using page_path
+    if page_path:
+        from .module_prompts import extract_module_key
+        module_key = extract_module_key(page_path)
+        module_boosts = {
+            "settlement": {
+                INTENT_DATA_QUERY: 1,
+                INTENT_ANOMALY_CHECK: 1,
+                INTENT_TREND_ANALYSIS: 1,
+                INTENT_PREDICTION: 1,
+            },
+            "temperature": {
+                INTENT_DATA_QUERY: 1,
+                INTENT_COMPARISON: 1,
+                INTENT_TREND_ANALYSIS: 1,
+            },
+            "cracks": {
+                INTENT_ANOMALY_CHECK: 2,
+                INTENT_DATA_QUERY: 1,
+                INTENT_TREND_ANALYSIS: 1,
+            },
+            "advanced": {
+                INTENT_ANOMALY_CHECK: 1,
+                INTENT_PREDICTION: 1,
+                INTENT_TREND_ANALYSIS: 1,
+                INTENT_COMPARISON: 1,
+            },
+        }
+        boosts = module_boosts.get(module_key, {})
+        for intent, boost in boosts.items():
+            intent_scores[intent] = intent_scores.get(intent, 0) + boost
+
     # If no matches, return general intent
     if not intent_scores:
         return INTENT_GENERAL, 0.5

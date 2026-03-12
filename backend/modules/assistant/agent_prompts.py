@@ -54,3 +54,38 @@ AGENT_SYSTEM_PROMPT = (
     "- Typical queries: 'settlement monitoring anomaly detection', "
     "'geotechnical foundation subsidence prediction', 'structural health monitoring IoT'.\n"
 )
+
+
+def build_agent_system_prompt(module_key=""):
+    """
+    Build module-aware agent system prompt.
+    Base AGENT_SYSTEM_PROMPT + module-specific tool strategy + module context.
+    Returns original AGENT_SYSTEM_PROMPT when module_key is empty (backward compatible).
+    """
+    from .module_prompts import get_module_prompt, get_module_tools
+
+    base = AGENT_SYSTEM_PROMPT
+
+    if not module_key:
+        return base
+
+    # Add module-specific tool strategy
+    recommended_tools = get_module_tools(module_key)
+    tool_strategy = ""
+    if recommended_tools:
+        tool_strategy = (
+            "\n\n## Module-Specific Tool Strategy\n"
+            "You are on the [" + module_key + "] module page. "
+            "Prioritize these tools in order:\n"
+        )
+        for i, tool in enumerate(recommended_tools, 1):
+            tool_strategy += str(i) + ". " + tool + "\n"
+        tool_strategy += (
+            "\nOther tools are still available but use the above first "
+            "as they are most relevant to the current module.\n"
+        )
+
+    # Add module context
+    module_section = get_module_prompt(module_key)
+
+    return base + tool_strategy + "\n\n" + module_section
