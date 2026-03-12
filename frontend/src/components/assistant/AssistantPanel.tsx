@@ -206,7 +206,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                               ? 'bg-green-600 text-white shadow-sm'
                               : 'bg-cyan-600 text-white shadow-sm'
                           : isAvailable
-                            ? 'text-slate-200 hover:bg-slate-700 hover:text-white'
+                            ? 'text-white hover:bg-slate-600'
                             : 'cursor-not-allowed text-slate-600'
                       }`}
                       onClick={() => setCurrentProvider(opt.id)}
@@ -225,7 +225,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                   className={`rounded-md px-3 py-1.5 text-base font-semibold transition-all ${
                     currentMode === 'chat'
                       ? 'bg-cyan-600 text-white shadow-sm'
-                      : 'text-slate-200 hover:bg-slate-700 hover:text-white'
+                      : 'text-white hover:bg-slate-600'
                   }`}
                   onClick={() => setCurrentMode('chat')}
                 >
@@ -237,7 +237,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                   className={`rounded-md px-3 py-1.5 text-base font-semibold transition-all ${
                     currentMode === 'agent'
                       ? 'bg-purple-600 text-white shadow-sm'
-                      : 'text-slate-200 hover:bg-slate-700 hover:text-white'
+                      : 'text-white hover:bg-slate-600'
                   }`}
                   onClick={() => setCurrentMode('agent')}
                 >
@@ -303,7 +303,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                 className={`flex-1 px-4 py-3 text-base font-semibold transition-colors ${
                   rightPanelMode === 'quick'
                     ? 'bg-cyan-600 text-white'
-                    : 'text-slate-200 hover:bg-slate-700 hover:text-white'
+                    : 'text-white hover:bg-slate-700'
                 }`}
                 onClick={() => setRightPanelMode('quick')}
               >
@@ -314,7 +314,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                 className={`flex-1 px-4 py-3 text-base font-semibold transition-colors ${
                   rightPanelMode === 'stats'
                     ? 'bg-cyan-600 text-white'
-                    : 'text-slate-200 hover:bg-slate-700 hover:text-white'
+                    : 'text-white hover:bg-slate-700'
                 }`}
                 onClick={() => setRightPanelMode('stats')}
               >
@@ -325,7 +325,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                 className={`flex-1 px-4 py-3 text-base font-semibold transition-colors ${
                   rightPanelMode === 'export'
                     ? 'bg-cyan-600 text-white'
-                    : 'text-slate-200 hover:bg-slate-700 hover:text-white'
+                    : 'text-white hover:bg-slate-700'
                 }`}
                 onClick={() => setRightPanelMode('export')}
               >

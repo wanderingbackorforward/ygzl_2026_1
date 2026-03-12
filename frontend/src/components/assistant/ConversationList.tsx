@@ -51,7 +51,7 @@ export default function ConversationList({
     <div className="h-full">
       {Object.entries(grouped).map(([group, convs]) => (
         <div key={group} className="mb-4">
-          <div className="px-4 py-2 text-sm font-bold text-slate-300">{group}</div>
+          <div className="px-4 py-2 text-sm font-bold text-white">{group}</div>
           {convs.map(conv => {
             const isActive = conv.id === currentConvId
             const isEditing = editingId === conv.id
@@ -63,7 +63,7 @@ export default function ConversationList({
                 className={`group relative cursor-pointer px-4 py-3 transition-colors ${
                   isActive
                     ? 'bg-cyan-700/30 text-white'
-                    : 'text-slate-200 hover:bg-slate-700'
+                    : 'text-white hover:bg-slate-700'
                 }`}
                 onClick={() => !isEditing && onSelect(conv.id)}
               >
@@ -102,7 +102,7 @@ export default function ConversationList({
                       <div className="flex-1 truncate text-base font-medium">{conv.title}</div>
                     </div>
                     {conv.lastMessage && (
-                      <div className="mt-1 truncate text-sm text-slate-400">
+                      <div className="mt-1 truncate text-sm text-slate-200">
                         {conv.lastMessage}
                       </div>
                     )}
@@ -138,7 +138,7 @@ export default function ConversationList({
       ))}
 
       {conversations.length === 0 && (
-        <div className="px-4 py-8 text-center text-base text-slate-300">
+        <div className="px-4 py-8 text-center text-base text-white">
           暂无对话，点击右上角 + 创建新对话
         </div>
       )}
