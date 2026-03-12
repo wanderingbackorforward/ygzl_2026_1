@@ -613,22 +613,30 @@ def get_crack_stats_overview():
     print("[API] GET /api/crack/stats_overview")
     """获取裂缝监测点统计概况"""
     try:
-        conn = mysql.connector.connect(**db_config)
-        query = "SELECT * FROM crack_monitoring_points WHERE status = 'active'"
-        df = pd.read_sql(query, conn)
-        if df.empty: return jsonify({'status': 'warning','message': '没有找到裂缝监测点数据'})
+        points = repo.crack_get_monitoring_points()
+        if not points:
+            return jsonify({'status': 'warning', 'message': '没有找到裂缝监测点数据'})
+        expanding = sum(1 for p in points if p.get('change_type') == '扩展')
+        shrinking = sum(1 for p in points if p.get('change_type') == '收缩')
+        stable = sum(1 for p in points if p.get('change_type') == '稳定')
+        slopes = [p.get('trend_slope') for p in points if p.get('trend_slope') is not None]
+        rates = [abs(p.get('average_change_rate', 0)) for p in points if p.get('average_change_rate') is not None]
+        trend_types = {}
+        for p in points:
+            tt = p.get('trend_type', 'unknown')
+            trend_types[tt] = trend_types.get(tt, 0) + 1
         overview = {
-            'total_points': len(df),
-            'expanding_points': len(df[df['change_type'] == '扩展']),
-            'shrinking_points': len(df[df['change_type'] == '收缩']),
-            'stable_points': len(df[df['change_type'] == '稳定']),
-            'avg_slope': float(df['trend_slope'].mean()) if not pd.isna(df['trend_slope'].mean()) else None,
-            'max_change_rate': float(df['average_change_rate'].abs().max()) if not pd.isna(df['average_change_rate'].abs().max()) else None,
-            'trend_types': df['trend_type'].value_counts().to_dict()
+            'total_points': len(points),
+            'expanding_points': expanding,
+            'shrinking_points': shrinking,
+            'stable_points': stable,
+            'avg_slope': sum(slopes) / len(slopes) if slopes else None,
+            'max_change_rate': max(rates) if rates else None,
+            'trend_types': trend_types
         }
-        return jsonify({'status': 'success','data': overview,'message': '成功获取裂缝统计概况'})
+        return jsonify({'status': 'success', 'data': overview, 'message': '成功获取裂缝统计概况'})
     except Exception as e:
-        return jsonify({'status': 'error','message': f'获取裂缝统计概况失败: {str(e)}'}), 500
+        return jsonify({'status': 'error', 'message': f'获取裂缝统计概况失败: {str(e)}'}), 500
 
 # =========================================================
 # 温度监测API路由 (保持不变)
