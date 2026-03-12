@@ -231,7 +231,7 @@ export default function ConversationView({
                   />
                 )}
 
-                {/* Knowledge Graph visualization */}
+                {/* Knowledge Graph visualization (before answer) */}
                 {msg.role === 'assistant' && msg.metadata?.kg_visualization && (
                   <KnowledgeGraphViz
                     nodes={msg.metadata.kg_visualization.nodes}
@@ -240,6 +240,15 @@ export default function ConversationView({
                   />
                 )}
 
+                {/* Paper references (before answer) */}
+                {msg.role === 'assistant' && msg.metadata?.papers && msg.metadata.papers.length > 0 && (
+                  <PaperReferences
+                    papers={msg.metadata.papers}
+                    query={msg.metadata.papers_query}
+                  />
+                )}
+
+                {/* Answer text (last) */}
                 {msg.role === 'user' ? (
                   <div className="whitespace-pre-wrap break-words text-lg leading-8">{msg.content}</div>
                 ) : (
@@ -289,14 +298,6 @@ export default function ConversationView({
                       {msg.content}
                     </ReactMarkdown>
                   </div>
-                )}
-
-                {/* Paper references (after answer) */}
-                {msg.role === 'assistant' && msg.metadata?.papers && msg.metadata.papers.length > 0 && (
-                  <PaperReferences
-                    papers={msg.metadata.papers}
-                    query={msg.metadata.papers_query}
-                  />
                 )}
               </div>
             </div>
