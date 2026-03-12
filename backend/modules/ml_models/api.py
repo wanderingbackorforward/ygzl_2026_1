@@ -1063,13 +1063,10 @@ def api_kg_query_risk_points():
         severity: 严重程度（默认high）
     """
     try:
-        if not NEO4J_AVAILABLE:
-            return jsonify({
-                'success': False,
-                'message': 'Neo4j未安装'
-            }), 400
-
         severity = request.args.get('severity', 'high')
+
+        if not NEO4J_AVAILABLE:
+            return jsonify(_mock_kg_risk_points(severity))
 
         kg = KnowledgeGraphBuilder()
         points = kg.query_high_risk_points(severity)
@@ -1092,10 +1089,7 @@ def api_kg_stats():
     """查询知识图谱统计信息"""
     try:
         if not NEO4J_AVAILABLE:
-            return jsonify({
-                'success': False,
-                'message': 'Neo4j未安装'
-            }), 400
+            return jsonify(_mock_kg_stats())
 
         kg = KnowledgeGraphBuilder()
         stats = kg.query_graph_statistics()
@@ -1127,14 +1121,13 @@ def api_kgqa_ask():
         }
     """
     try:
-        if not KGQA_AVAILABLE or not NEO4J_AVAILABLE:
-            return jsonify({
-                'success': False,
-                'message': 'KGQA或Neo4j未安装'
-            }), 400
-
         data = request.get_json()
         question = data.get('question')
+
+        if not KGQA_AVAILABLE or not NEO4J_AVAILABLE:
+            if not question:
+                return jsonify({'success': False, 'message': 'Missing question'}), 400
+            return jsonify(_mock_kgqa(question))
 
         if not question:
             return jsonify({
@@ -1176,12 +1169,6 @@ def api_causal_discover():
         }
     """
     try:
-        if not CAUSAL_REASONING_AVAILABLE:
-            return jsonify({
-                'success': False,
-                'message': 'CausalReasoning模块未安装'
-            }), 400
-
         data = request.get_json()
         point_ids = data.get('point_ids', [])
         method = data.get('method', 'granger')
@@ -1192,6 +1179,9 @@ def api_causal_discover():
                 'success': False,
                 'message': '缺少监测点ID'
             }), 400
+
+        if not CAUSAL_REASONING_AVAILABLE:
+            return jsonify(_mock_causal_discover(point_ids, max_lag))
 
         # 从Supabase获取各点数据
         frames = []
