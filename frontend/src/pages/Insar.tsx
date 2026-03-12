@@ -622,7 +622,7 @@ function InsarNativeMap(
         }
         const layer = L.geoJSON(feat as any, {
           pane: 'tunnelAlignment',
-          style: { color: '#f97316', weight: 4, opacity: 0.95 },
+          style: { color: '#f97316', weight: 4, opacity: 15 },
         })
         layer.addTo(map)
         tunnelLayerRef.current = layer
@@ -867,7 +867,7 @@ function InsarNativeMap(
             : (level === 'danger' ? '#ff3e5f' : '#ff9e0d')
         const zid = String(p.zone_id ?? feature?.id ?? '')
         const active = selectedZoneId && zid === selectedZoneId
-        return { color: baseColor, weight: active ? 3 : 2, opacity: 0.95, fillColor: baseColor, fillOpacity: active ? 0.20 : 0.12 }
+        return { color: baseColor, weight: active ? 3 : 2, opacity: 15, fillColor: baseColor, fillOpacity: active ? 0.20 : 0.12 }
       },
       onEachFeature: (feature: any, l: any) => {
         const p: any = feature?.properties || {}
@@ -971,7 +971,7 @@ function InsarNativeMap(
         radius: base,
         color,
         weight: 2,
-        opacity: 0.9,
+        opacity: 1,
         fillOpacity: 0,
         interactive: false,
       })
@@ -988,7 +988,7 @@ function InsarNativeMap(
       const k = 1 - t
       for (const x of list) {
         x.marker.setRadius(x.base + x.amp * t)
-        x.marker.setStyle({ opacity: 0.75 * k, fillOpacity: 0 })
+        x.marker.setStyle({ opacity: 15 * k, fillOpacity: 0 })
       }
     }, 60)
   }, [riskSummary.top])
@@ -1041,7 +1041,7 @@ function InsarNativeMap(
       <div ref={mapContainerRef} style={{ position: 'absolute', inset: 0, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(64,174,255,.3)' }} />
       <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 500, padding: 10, borderRadius: 8, background: 'rgba(10,25,47,.78)', border: '1px solid rgba(64,174,255,.25)', color: '#aaddff', width: 280, maxWidth: 'calc(100% - 24px)' }}>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>原生图层</div>
-        <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 10 }}>
+        <div style={{ fontSize: 12, opacity: 1, marginBottom: 10 }}>
           <div style={{ marginBottom: 6 }}>底图/影像</div>
           <select
             value={baseLayerName}
@@ -1052,18 +1052,18 @@ function InsarNativeMap(
               <option key={x.name} value={x.name}>{x.name}</option>
             ))}
           </select>
-          <div style={{ marginTop: 6, opacity: 0.8 }}>光学配置：{opticalCount} 层（来自 /static/data/optical/layers.json）</div>
-          {baseLayerError ? <div style={{ marginTop: 6, color: '#ff8b8b', opacity: 0.95, whiteSpace: 'pre-wrap' }}>{baseLayerError}</div> : null}
+          <div style={{ marginTop: 6, opacity: 1 }}>光学配置：{opticalCount} 层（来自 /static/data/optical/layers.json）</div>
+          {baseLayerError ? <div style={{ marginTop: 6, color: '#ff8b8b', opacity: 15, whiteSpace: 'pre-wrap' }}>{baseLayerError}</div> : null}
         </div>
-        <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>点数：{featureCount}{meta?.total_feature_count ? ` / ${meta.total_feature_count}` : ''}{meta?.cached ? '（缓存）' : ''}</div>
-          <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>字段：{resolvedValueField}{unit ? `（${unit}）` : ''}</div>
+        <div style={{ fontSize: 12, opacity: 1, marginBottom: 6 }}>点数：{featureCount}{meta?.total_feature_count ? ` / ${meta.total_feature_count}` : ''}{meta?.cached ? '（缓存）' : ''}</div>
+          <div style={{ fontSize: 12, opacity: 1, marginBottom: 6 }}>字段：{resolvedValueField}{unit ? `（${unit}）` : ''}</div>
         <div style={{ fontSize: 12, fontWeight: 700, marginTop: 4, marginBottom: 6 }}>图例（颜色点含义）</div>
         {indicator !== 'threshold' ? (
           <>
-            <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 8 }}>色标范围：±{maxAbs}</div>
-            <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>左红=沉降（负），中白=0，右蓝=抬升（正）</div>
+            <div style={{ fontSize: 12, opacity: 1, marginBottom: 8 }}>色标范围：±{maxAbs}</div>
+            <div style={{ fontSize: 12, opacity: 1, marginBottom: 6 }}>左红=沉降（负），中白=0，右蓝=抬升（正）</div>
             <div style={{ height: 10, borderRadius: 6, border: '1px solid rgba(64,174,255,.25)', background: `linear-gradient(90deg, ${legendLeft || '#7c8a9a'} 0%, #ffffff 50%, ${legendRight || '#7c8a9a'} 100%)` }} />
-            <div style={{ display: 'flex', alignItems: 'center', marginTop: 6, fontSize: 12, opacity: 0.9 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 6, fontSize: 12, opacity: 1 }}>
               <span>-{maxAbs}</span>
               <span style={{ flex: 1, textAlign: 'center' }}>0</span>
               <span>{maxAbs}</span>
@@ -1071,12 +1071,12 @@ function InsarNativeMap(
           </>
         ) : (
           <>
-            <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 8 }}>阈值分级（单位：mm/年，负=沉降）</div>
+            <div style={{ fontSize: 12, opacity: 1, marginBottom: 8 }}>阈值分级（单位：mm/年，负=沉降）</div>
             <div style={{ display: 'grid', gap: 6 }}>
               {thresholdLegendItems.map((x) => (
                 <div key={`${x.label}-${x.color}`} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ width: 14, height: 14, borderRadius: 3, background: x.color, border: '1px solid rgba(255,255,255,.15)' }} />
-                  <span style={{ fontSize: 12, opacity: 0.95 }}>{x.label}</span>
+                  <span style={{ fontSize: 12, opacity: 15 }}>{x.label}</span>
                 </div>
               ))}
             </div>
@@ -1103,7 +1103,7 @@ function InsarNativeMap(
         >
           定位到数据范围
         </button>
-        {loading ? <div style={{ marginTop: 8, fontSize: 12, opacity: 0.8 }}>加载中…</div> : null}
+        {loading ? <div style={{ marginTop: 8, fontSize: 12, opacity: 1 }}>加载中…</div> : null}
         {error ? <div style={{ marginTop: 8, fontSize: 12, color: '#ff8b8b', whiteSpace: 'pre-wrap' }}>{error}</div> : null}
       </div>
 
@@ -1111,7 +1111,7 @@ function InsarNativeMap(
         <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 550, width: 360, maxWidth: 'calc(100% - 24px)', maxHeight: 'calc(100% - 24px)', overflow: 'auto', padding: 12, borderRadius: 10, background: 'rgba(10,25,47,.86)', border: '1px solid rgba(64,174,255,.25)', color: '#aaddff' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
             <div style={{ fontWeight: 800, flex: 1 }}>点位详情</div>
-            <button type="button" onClick={() => setSelected(null)} style={{ border: '1px solid rgba(64,174,255,.35)', background: 'rgba(255,255,255,.05)', color: '#aaddff', borderRadius: 8, padding: '6px 10px', cursor: 'pointer' }}>关闭</button>
+            <button type="button" onClick={() => setSelected(null)} style={{ border: '1px solid rgba(64,174,255,.35)', background: 'rgba(64,174,255,.15)', color: '#aaddff', borderRadius: 8, padding: '6px 10px', cursor: 'pointer' }}>关闭</button>
           </div>
           {(() => {
             const lat = toNumberOrNull(selected.props?.lat ?? selected.props?.latitude) ?? selected.lat
@@ -1119,7 +1119,7 @@ function InsarNativeMap(
             const coordText = Number.isFinite(lat) && Number.isFinite(lng) ? `${lat.toFixed(7)}, ${lng.toFixed(7)}` : '—'
             return (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <div style={{ fontSize: 12, opacity: 0.95, flex: 1 }}>WGS-84：<span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace' }}>{coordText}</span></div>
+                <div style={{ fontSize: 12, opacity: 15, flex: 1 }}>WGS-84：<span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace' }}>{coordText}</span></div>
                 <button
                   type="button"
                   disabled={coordText === '—'}
@@ -1146,10 +1146,10 @@ function InsarNativeMap(
               </div>
             )
           })()}
-          <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>ID：{selected.id}</div>
-          <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>速度：{String(selected.props?.velocity ?? selected.props?.vel ?? selected.props?.rate ?? '—')} mm/年</div>
-          <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 10 }}>分级：<span style={{ color: classifyVelocity(toNumberOrNull(selected.props?.velocity ?? selected.props?.vel ?? selected.props?.rate), thresholds).color }}>{classifyVelocity(toNumberOrNull(selected.props?.velocity ?? selected.props?.vel ?? selected.props?.rate), thresholds).label}</span></div>
-          <div style={{ height: 220, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(64,174,255,.2)', background: 'rgba(255,255,255,.03)' }}>
+          <div style={{ fontSize: 12, opacity: 15, marginBottom: 6 }}>ID：{selected.id}</div>
+          <div style={{ fontSize: 12, opacity: 15, marginBottom: 6 }}>速度：{String(selected.props?.velocity ?? selected.props?.vel ?? selected.props?.rate ?? '—')} mm/年</div>
+          <div style={{ fontSize: 12, opacity: 15, marginBottom: 10 }}>分级：<span style={{ color: classifyVelocity(toNumberOrNull(selected.props?.velocity ?? selected.props?.vel ?? selected.props?.rate), thresholds).color }}>{classifyVelocity(toNumberOrNull(selected.props?.velocity ?? selected.props?.vel ?? selected.props?.rate), thresholds).label}</span></div>
+          <div style={{ height: 220, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(64,174,255,.2)', background: 'rgba(255,255,255,.08)' }}>
             <EChartsWrapper option={seriesOption} loading={seriesLoading} />
           </div>
           {seriesError ? <div style={{ marginTop: 8, fontSize: 12, color: '#ff8b8b', whiteSpace: 'pre-wrap' }}>{seriesError}</div> : null}
@@ -1160,14 +1160,14 @@ function InsarNativeMap(
         <div style={{ position: 'absolute', bottom: 12, left: 12, zIndex: 540, width: 360, maxWidth: 'calc(100% - 24px)', maxHeight: '40%', overflow: 'auto', padding: 12, borderRadius: 10, background: 'rgba(10,25,47,.86)', border: '1px solid rgba(64,174,255,.25)', color: '#aaddff' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
             <div style={{ fontWeight: 800, flex: 1 }}>危险区详情</div>
-            <button type="button" onClick={() => setSelectedZone(null)} style={{ border: '1px solid rgba(64,174,255,.35)', background: 'rgba(255,255,255,.05)', color: '#aaddff', borderRadius: 8, padding: '6px 10px', cursor: 'pointer' }}>关闭</button>
+            <button type="button" onClick={() => setSelectedZone(null)} style={{ border: '1px solid rgba(64,174,255,.35)', background: 'rgba(64,174,255,.15)', color: '#aaddff', borderRadius: 8, padding: '6px 10px', cursor: 'pointer' }}>关闭</button>
           </div>
-          <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>ID：{selectedZone.id}</div>
-          <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>方向：<span style={{ color: selectedZone.direction === 'uplift' ? '#a855f7' : '#ff3e5f', fontWeight: 900 }}>{selectedZone.direction === 'uplift' ? '抬升' : '沉降'}</span></div>
-          <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>等级：<span style={{ color: selectedZone.direction === 'uplift' ? (selectedZone.level === 'danger' ? '#a855f7' : '#3b82f6') : (selectedZone.level === 'danger' ? '#ff3e5f' : '#ff9e0d'), fontWeight: 900 }}>{selectedZone.level === 'danger' ? '显著' : '轻微'}</span></div>
-          <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>点数：{selectedZone.point_count}</div>
-          <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>min速度：{selectedZone.min_velocity === null ? '—' : String(selectedZone.min_velocity)} mm/年</div>
-          <div style={{ fontSize: 12, opacity: 0.95, marginBottom: 6 }}>p95速度：{selectedZone.p95_velocity === null ? '—' : String(selectedZone.p95_velocity)} mm/年</div>
+          <div style={{ fontSize: 12, opacity: 15, marginBottom: 6 }}>ID：{selectedZone.id}</div>
+          <div style={{ fontSize: 12, opacity: 15, marginBottom: 6 }}>方向：<span style={{ color: selectedZone.direction === 'uplift' ? '#a855f7' : '#ff3e5f', fontWeight: 900 }}>{selectedZone.direction === 'uplift' ? '抬升' : '沉降'}</span></div>
+          <div style={{ fontSize: 12, opacity: 15, marginBottom: 6 }}>等级：<span style={{ color: selectedZone.direction === 'uplift' ? (selectedZone.level === 'danger' ? '#a855f7' : '#3b82f6') : (selectedZone.level === 'danger' ? '#ff3e5f' : '#ff9e0d'), fontWeight: 900 }}>{selectedZone.level === 'danger' ? '显著' : '轻微'}</span></div>
+          <div style={{ fontSize: 12, opacity: 15, marginBottom: 6 }}>点数：{selectedZone.point_count}</div>
+          <div style={{ fontSize: 12, opacity: 15, marginBottom: 6 }}>min速度：{selectedZone.min_velocity === null ? '—' : String(selectedZone.min_velocity)} mm/年</div>
+          <div style={{ fontSize: 12, opacity: 15, marginBottom: 6 }}>p95速度：{selectedZone.p95_velocity === null ? '—' : String(selectedZone.p95_velocity)} mm/年</div>
           <button
             type="button"
             onClick={() => {
@@ -1196,7 +1196,7 @@ function InsarNativeMap(
         </div>
       ) : null}
 
-      {showZones && zonesLoading ? <div style={{ position: 'absolute', bottom: 12, right: 12, zIndex: 560, fontSize: 12, opacity: 0.85, padding: '6px 10px', borderRadius: 8, background: 'rgba(10,25,47,.78)', border: '1px solid rgba(64,174,255,.25)', color: '#aaddff' }}>危险区计算中…</div> : null}
+      {showZones && zonesLoading ? <div style={{ position: 'absolute', bottom: 12, right: 12, zIndex: 560, fontSize: 12, opacity: 15, padding: '6px 10px', borderRadius: 8, background: 'rgba(10,25,47,.78)', border: '1px solid rgba(64,174,255,.25)', color: '#aaddff' }}>危险区计算中…</div> : null}
       {showZones && zonesError ? <div style={{ position: 'absolute', bottom: 12, right: 12, zIndex: 560, fontSize: 12, padding: '6px 10px', borderRadius: 8, background: 'rgba(10,25,47,.78)', border: '1px solid rgba(255,139,139,.35)', color: '#ff8b8b', whiteSpace: 'pre-wrap', maxWidth: 360 }}>{zonesError}</div> : null}
     </div>
   )
@@ -1578,15 +1578,15 @@ export default function Insar() {
         {mode === 'native' ? (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, opacity: 0.9 }}>数据集</span>
+              <span style={{ fontSize: 14 }}>数据集</span>
               <select value={dataset} onChange={(e) => setDataset(e.target.value)} style={{ width: 160, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }}>
                 {datasets.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
-              <span style={{ fontSize: 12, opacity: 0.8 }}>仓库路径：static/data/insar/raw/{safeDatasetName(dataset)}/</span>
+              <span style={{ fontSize: 12, opacity: 1 }}>仓库路径：static/data/insar/raw/{safeDatasetName(dataset)}/</span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, opacity: 0.9 }}>指标</span>
+              <span style={{ fontSize: 12, opacity: 1 }}>指标</span>
               <div style={{ display: 'flex', border: '1px solid rgba(64,174,255,.35)', borderRadius: 10, overflow: 'hidden' }}>
                 <button type="button" onClick={() => setIndicator('velocity')} style={{ padding: '8px 10px', border: 'none', background: indicator === 'velocity' ? 'rgba(64,174,255,.25)' : 'transparent', color: '#aaddff', cursor: 'pointer' }}>
                   速度
@@ -1602,40 +1602,40 @@ export default function Insar() {
 
             {indicator === 'keyDate' ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 12, opacity: 0.9 }}>日期</span>
+                <span style={{ fontSize: 12, opacity: 1 }}>日期</span>
                 <select value={keyDateField} onChange={(e) => setKeyDateField(e.target.value)} style={{ width: 180, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }}>
                   {(fieldsInfo?.d_fields || []).map((f) => <option key={f} value={f}>{formatKeyDateField(f)}</option>)}
                 </select>
-                <span style={{ fontSize: 12, opacity: 0.8 }}>负数=沉降</span>
+                <span style={{ fontSize: 12, opacity: 1 }}>负数=沉降</span>
               </div>
             ) : null}
 
             {indicator === 'threshold' ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12, opacity: 0.9 }}>阈值</span>
-                <span style={{ fontSize: 12, opacity: 0.8 }}>显著</span>
+                <span style={{ fontSize: 12, opacity: 1 }}>阈值</span>
+                <span style={{ fontSize: 12, opacity: 1 }}>显著</span>
                 <input value={thresholds.strong} onChange={(e) => setThresholds((t) => ({ ...t, strong: Number(e.target.value) || 0 }))} style={{ width: 70, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }} />
-                <span style={{ fontSize: 12, opacity: 0.8 }}>轻微</span>
+                <span style={{ fontSize: 12, opacity: 1 }}>轻微</span>
                 <input value={thresholds.mild} onChange={(e) => setThresholds((t) => ({ ...t, mild: Number(e.target.value) || 0 }))} style={{ width: 70, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }} />
-                <span style={{ fontSize: 12, opacity: 0.8 }}>mm/年</span>
+                <span style={{ fontSize: 12, opacity: 1 }}>mm/年</span>
               </div>
             ) : null}
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 0.9, cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 1, cursor: 'pointer' }}>
               <input type="checkbox" checked={useBbox} onChange={(e) => setUseBbox(e.target.checked)} />
               视窗裁剪（范围）
             </label>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 0.9, cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 1, cursor: 'pointer' }}>
               <input type="checkbox" checked={showZones} onChange={(e) => setShowZones(e.target.checked)} />
               危险区
             </label>
             {showZones ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12, opacity: 0.85 }}>eps</span>
+                <span style={{ fontSize: 12, opacity: 15 }}>eps</span>
                 <input value={zoneEpsM} onChange={(e) => setZoneEpsM(Number(e.target.value) || 0)} style={{ width: 70, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }} />
-                <span style={{ fontSize: 12, opacity: 0.85 }}>m</span>
-                <span style={{ fontSize: 12, opacity: 0.85 }}>minPts</span>
+                <span style={{ fontSize: 12, opacity: 15 }}>m</span>
+                <span style={{ fontSize: 12, opacity: 15 }}>minPts</span>
                 <input value={zoneMinPts} onChange={(e) => setZoneMinPts(Math.max(1, Math.round(Number(e.target.value) || 0)))} style={{ width: 70, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }} />
               </div>
             ) : null}
@@ -1660,17 +1660,17 @@ export default function Insar() {
             <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(10,25,47,.55)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <div style={{ fontWeight: 900, letterSpacing: 0.2 }}>施工危险预警</div>
-              <div style={{ fontSize: 12, opacity: 0.9 }}>总点数：{riskSummary.total}</div>
+              <div style={{ fontSize: 12, opacity: 1 }}>总点数：{riskSummary.total}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto', flexWrap: 'wrap' }}>
                 <button type="button" onClick={() => { setTab('map'); setMode('native'); setIndicator('threshold') }} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(64,174,255,.12)', color: '#aaddff', cursor: 'pointer' }}>
                   一键切到阈值分级
                 </button>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 0.95 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 15 }}>
                   <span>阈值：</span>
                   <span style={{ color: '#ff3e5f' }}>危险 ≤ -{thresholds.strong}</span>
-                  <span style={{ opacity: 0.7 }}>/</span>
+                  <span style={{ opacity: 1 }}>/</span>
                   <span style={{ color: '#ff9e0d' }}>预警 ≤ -{thresholds.mild}</span>
-                  <span style={{ opacity: 0.85 }}>（mm/年，负数=沉降）</span>
+                  <span style={{ opacity: 15 }}>（mm/年，负数=沉降）</span>
                 </div>
               </div>
             </div>
@@ -1678,66 +1678,66 @@ export default function Insar() {
             <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(10,25,47,.55)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
                 <div style={{ fontWeight: 900 }}>风险分布与结构</div>
-                <div style={{ fontSize: 12, opacity: 0.85 }}>基于当前数据集自动统计</div>
-                <div style={{ marginLeft: 'auto', fontSize: 12, opacity: 0.85 }}>有效速度点数：{riskStats?.velocityTotal || 0}</div>
+                <div style={{ fontSize: 12, opacity: 15 }}>基于当前数据集自动统计</div>
+                <div style={{ marginLeft: 'auto', fontSize: 12, opacity: 15 }}>有效速度点数：{riskStats?.velocityTotal || 0}</div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
-                <div style={{ fontSize: 12, opacity: 0.85 }}>里程分箱</div>
+                <div style={{ fontSize: 12, opacity: 15 }}>里程分箱</div>
                 <input
                   value={chainageBinSize}
                   onChange={(e) => setChainageBinSize(Math.max(10, Math.round(Number(e.target.value) || 0)))}
                   style={{ width: 80, padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }}
                 />
-                <div style={{ fontSize: 12, opacity: 0.85 }}>m</div>
-                <div style={{ fontSize: 12, opacity: 0.85 }}>距离缓冲</div>
+                <div style={{ fontSize: 12, opacity: 15 }}>m</div>
+                <div style={{ fontSize: 12, opacity: 15 }}>距离缓冲</div>
                 <input
                   value={chainageMaxDistance}
                   onChange={(e) => setChainageMaxDistance(Math.max(10, Math.round(Number(e.target.value) || 0)))}
                   style={{ width: 80, padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }}
                 />
-                <div style={{ fontSize: 12, opacity: 0.85 }}>m</div>
+                <div style={{ fontSize: 12, opacity: 15 }}>m</div>
               </div>
               <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-                <div style={{ height: 220, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)' }}>
+                <div style={{ height: 220, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.08)' }}>
                   <EChartsWrapper option={riskDistributionOption} />
                 </div>
-                <div style={{ height: 220, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)' }}>
+                <div style={{ height: 220, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.08)' }}>
                   <EChartsWrapper option={velocitySplitOption} />
                 </div>
-                <div style={{ height: 220, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)' }}>
+                <div style={{ height: 220, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.08)' }}>
                   <EChartsWrapper option={velocityHistOption} />
                 </div>
-                <div style={{ height: 240, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)' }}>
+                <div style={{ height: 240, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.08)' }}>
                   <EChartsWrapper option={chainageOption} />
                 </div>
               </div>
-              <div style={{ marginTop: 8, fontSize: 12, opacity: 0.85, lineHeight: 1.6 }}>
+              <div style={{ marginTop: 8, fontSize: 12, opacity: 15, lineHeight: 1.6 }}>
                 说明：沉降/抬升结构以阈值轻微档作为稳定区间边界，速度分布按对称区间统计。里程分布采用 {chainageBinSize}m 分箱、{chainageMaxDistance}m 缓冲范围。
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
               <div style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(255,62,95,.10)', border: '1px solid rgba(255,62,95,.25)' }}>
-                <div style={{ fontSize: 12, opacity: 0.9 }}>危险</div>
+                <div style={{ fontSize: 12, opacity: 1 }}>危险</div>
                 <div style={{ fontSize: 18, fontWeight: 900, color: '#ff3e5f' }}>{riskSummary.danger}</div>
               </div>
               <div style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(255,158,13,.10)', border: '1px solid rgba(255,158,13,.25)' }}>
-                <div style={{ fontSize: 12, opacity: 0.9 }}>预警</div>
+                <div style={{ fontSize: 12, opacity: 1 }}>预警</div>
                 <div style={{ fontSize: 18, fontWeight: 900, color: '#ff9e0d' }}>{riskSummary.warning}</div>
               </div>
               <div style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(0,230,118,.10)', border: '1px solid rgba(0,230,118,.22)' }}>
-                <div style={{ fontSize: 12, opacity: 0.9 }}>正常</div>
+                <div style={{ fontSize: 12, opacity: 1 }}>正常</div>
                 <div style={{ fontSize: 18, fontWeight: 900, color: '#00e676' }}>{riskSummary.normal}</div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12, opacity: 0.85 }}>推荐预设</span>
-                <button type="button" onClick={() => setThresholds({ strong: 6, mild: 1.5 })} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer' }}>保守</button>
-                <button type="button" onClick={() => setThresholds({ strong: 10, mild: 2 })} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer' }}>标准</button>
-                <button type="button" onClick={() => setThresholds({ strong: 15, mild: 3 })} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer' }}>宽松</button>
+                <span style={{ fontSize: 12, opacity: 15 }}>推荐预设</span>
+                <button type="button" onClick={() => setThresholds({ strong: 6, mild: 1.5 })} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(64,174,255,.15)', color: '#aaddff', cursor: 'pointer' }}>保守</button>
+                <button type="button" onClick={() => setThresholds({ strong: 10, mild: 2 })} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(64,174,255,.15)', color: '#aaddff', cursor: 'pointer' }}>标准</button>
+                <button type="button" onClick={() => setThresholds({ strong: 15, mild: 3 })} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(64,174,255,.15)', color: '#aaddff', cursor: 'pointer' }}>宽松</button>
               </div>
             </div>
 
-            <div style={{ marginTop: 10, fontSize: 12, opacity: 0.95, lineHeight: 1.7 }}>
+            <div style={{ marginTop: 10, fontSize: 12, opacity: 15, lineHeight: 1.7 }}>
               {riskSummary.danger > 0 ? (
                 <div style={{ color: '#ff8b8b' }}>提示：当前存在危险点。建议优先定位红色点位，查看时序并立即制定干预措施。</div>
               ) : riskSummary.warning > 0 ? (
@@ -1745,7 +1745,7 @@ export default function Insar() {
               ) : (
                 <div style={{ color: '#8ef5c7' }}>提示：当前未识别出危险/预警点，可保持常规监测与巡检。</div>
               )}
-              <div style={{ opacity: 0.9 }}>操作：点击高风险点 → 切到地图定位 → 左侧看坐标与时序 → 下方按清单填写施工建议。</div>
+              <div style={{ opacity: 1 }}>操作：点击高风险点 → 切到地图定位 → 左侧看坐标与时序 → 下方按清单填写施工建议。</div>
             </div>
 
             {riskSummary.top.length ? (
@@ -1774,7 +1774,7 @@ export default function Insar() {
                           padding: '8px 10px',
                           borderRadius: 10,
                           border: `1px solid ${p.risk === 'danger' ? 'rgba(255,62,95,.28)' : 'rgba(255,158,13,.28)'}`,
-                          background: 'rgba(255,255,255,.04)',
+                          background: 'rgba(255,255,255,.08)',
                           color: '#aaddff',
                           cursor: 'pointer',
                           textAlign: 'left',
@@ -1782,7 +1782,7 @@ export default function Insar() {
                       >
                         <span style={{ minWidth: 44, fontWeight: 900, color }}>{label}</span>
                         <span style={{ flex: 1, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.id || '未命名'}</span>
-                        <span style={{ fontSize: 12, opacity: 0.95, color }}>{p.velocity.toFixed(2)} mm/年</span>
+                        <span style={{ fontSize: 12, opacity: 15, color }}>{p.velocity.toFixed(2)} mm/年</span>
                       </button>
                     )
                   })}
@@ -1794,7 +1794,7 @@ export default function Insar() {
               <div style={{ marginTop: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
                   <div style={{ fontWeight: 800 }}>高风险区（Top {Math.min(10, zonesPanel.top.length)}）</div>
-                  <div style={{ fontSize: 12, opacity: 0.85 }}>
+                  <div style={{ fontSize: 12, opacity: 15 }}>
                     {(() => {
                       const z = (zonesPanel.meta as any)?.zones || {}
                       const dz = typeof z.danger_zone_count === 'number' ? z.danger_zone_count : null
@@ -1835,7 +1835,7 @@ export default function Insar() {
                           padding: '8px 10px',
                           borderRadius: 10,
                           border: `1px solid ${z.level === 'danger' ? 'rgba(255,62,95,.28)' : 'rgba(255,158,13,.28)'}`,
-                          background: 'rgba(255,255,255,.04)',
+                          background: 'rgba(255,255,255,.08)',
                           color: '#aaddff',
                           cursor: 'pointer',
                           textAlign: 'left',
@@ -1843,7 +1843,7 @@ export default function Insar() {
                       >
                         <span style={{ minWidth: 56, fontWeight: 900, color }}>{label}</span>
                         <span style={{ flex: 1, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.id}</span>
-                        <span style={{ fontSize: 12, opacity: 0.95, color }}>{z.min_velocity === null ? '—' : `${z.min_velocity.toFixed(2)} mm/年`}</span>
+                        <span style={{ fontSize: 12, opacity: 15, color }}>{z.min_velocity === null ? '—' : `${z.min_velocity.toFixed(2)} mm/年`}</span>
                       </button>
                     )
                   })}
@@ -1860,20 +1860,20 @@ export default function Insar() {
               <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(10,25,47,.55)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
                   <div style={{ fontWeight: 900 }}>智能处置清单</div>
-                  <div style={{ fontSize: 12, opacity: 0.9 }}>{title}</div>
+                  <div style={{ fontSize: 12, opacity: 1 }}>{title}</div>
                   <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 12, fontWeight: 900, color: badge.color, border: `1px solid ${badge.color}55`, padding: '4px 10px', borderRadius: 999, background: `${badge.color}14` }}>{badge.label}</span>
-                    <button type="button" onClick={applyTemplate} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>套用模板</button>
+                    <button type="button" onClick={applyTemplate} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(64,174,255,.15)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>套用模板</button>
                   </div>
                 </div>
                 <div style={{ display: 'grid', gap: 8 }}>
                   {measures.map((m) => (
-                    <div key={m.key} style={{ padding: 10, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)' }}>
+                    <div key={m.key} style={{ padding: 10, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.08)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                         <div style={{ fontWeight: 900, flex: 1 }}>{m.title}</div>
                         <button type="button" onClick={() => appendMeasureToAdvice(m)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(64,174,255,.10)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>加入建议</button>
                       </div>
-                      <div style={{ fontSize: 12, opacity: 0.92, lineHeight: 1.7 }}>{m.detail}</div>
+                      <div style={{ fontSize: 12, opacity: 12, lineHeight: 1.7 }}>{m.detail}</div>
                     </div>
                   ))}
                 </div>
@@ -1884,19 +1884,19 @@ export default function Insar() {
           <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(10,25,47,.55)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
               <div style={{ fontWeight: 900 }}>施工建议</div>
-              <div style={{ fontSize: 12, opacity: 0.9 }}>输入内容会自动保存到本机浏览器</div>
+              <div style={{ fontSize: 12, opacity: 1 }}>输入内容会自动保存到本机浏览器</div>
               <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <button type="button" onClick={exportAdvice} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(64,174,255,.12)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>导出（复制JSON）</button>
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 280, padding: 10, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)' }}>
+              <div style={{ flex: 1, minWidth: 280, padding: 10, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.08)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                   <div style={{ fontWeight: 900 }}>全局建议（{dataset}）</div>
                   <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button type="button" onClick={() => applyTemplate('global')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>按等级生成</button>
-                    <button type="button" onClick={() => setGlobalAdvice('')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>清空</button>
+                    <button type="button" onClick={() => applyTemplate('global')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(64,174,255,.15)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>按等级生成</button>
+                    <button type="button" onClick={() => setGlobalAdvice('')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(64,174,255,.15)', color: '#aaddff', cursor: 'pointer', fontSize: 12 }}>清空</button>
                   </div>
                 </div>
                 <textarea
@@ -1907,12 +1907,12 @@ export default function Insar() {
                 />
               </div>
 
-              <div style={{ flex: 1, minWidth: 280, padding: 10, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.03)', opacity: selectedPoint?.id ? 1 : 0.65 }}>
+              <div style={{ flex: 1, minWidth: 280, padding: 10, borderRadius: 10, border: '1px solid rgba(255,255,255,.10)', background: 'rgba(255,255,255,.08)', opacity: selectedPoint?.id ? 1 : 0.65 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                   <div style={{ fontWeight: 900 }}>点位建议{selectedPoint?.id ? `（${selectedPoint.id}）` : ''}</div>
                   <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button type="button" disabled={!selectedPoint?.id} onClick={() => applyTemplate('point')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: selectedPoint?.id ? 'pointer' : 'not-allowed', fontSize: 12 }}>按等级生成</button>
-                    <button type="button" disabled={!selectedPoint?.id} onClick={() => setPointAdvice('')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(255,255,255,.05)', color: '#aaddff', cursor: selectedPoint?.id ? 'pointer' : 'not-allowed', fontSize: 12 }}>清空</button>
+                    <button type="button" disabled={!selectedPoint?.id} onClick={() => applyTemplate('point')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(64,174,255,.15)', color: '#aaddff', cursor: selectedPoint?.id ? 'pointer' : 'not-allowed', fontSize: 12 }}>按等级生成</button>
+                    <button type="button" disabled={!selectedPoint?.id} onClick={() => setPointAdvice('')} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(64,174,255,.15)', color: '#aaddff', cursor: selectedPoint?.id ? 'pointer' : 'not-allowed', fontSize: 12 }}>清空</button>
                   </div>
                 </div>
                 <textarea
@@ -1930,7 +1930,7 @@ export default function Insar() {
 
       {mode === 'native' ? (
         <>
-          {fieldsLoading ? <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 8 }}>加载字段信息…</div> : null}
+          {fieldsLoading ? <div style={{ fontSize: 12, opacity: 15, marginBottom: 8 }}>加载字段信息…</div> : null}
           {fieldsError ? <div style={{ fontSize: 12, color: '#ff8b8b', whiteSpace: 'pre-wrap', marginBottom: 8 }}>{fieldsError}</div> : null}
           {indicator === 'keyDate' && fieldsInfo && (!fieldsInfo.d_fields || fieldsInfo.d_fields.length === 0) ? (
             <div style={{ fontSize: 12, color: '#ffb86b', whiteSpace: 'pre-wrap', marginBottom: 8 }}>当前数据集未发现 D_YYYYMMDD 字段，无法显示关键日期位移。</div>
