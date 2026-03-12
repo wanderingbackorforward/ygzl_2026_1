@@ -103,8 +103,8 @@ export const assistantApi = {
     papers?: AcademicPaper[]
     papersQuery?: string
   }> {
-    // Agent mode needs longer timeout (65s), chat mode 30s
-    const timeoutMs = mode === 'agent' ? 65000 : 30000
+    // Agent mode needs longer timeout (90s), chat mode 55s (includes KG+papers enrichment)
+    const timeoutMs = mode === 'agent' ? 90000 : 55000
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeoutMs)
 

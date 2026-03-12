@@ -720,19 +720,27 @@ def send_message(conv_id: str):
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 502
 
-        # Force-enrich with KG + papers (always, regardless of mode)
+        # Force-enrich with KG + papers (only if time permits)
+        import time as _chat_time
+        _chat_start = _chat_time.time()
         chat_kg_viz = None
         chat_papers = []
         chat_papers_query = ""
         _debug_errors = []
-        if True:  # Always enrich - mode guard removed for reliability
-            print(f"[DEBUG] Chat path: force-enriching with KG + papers (mode={mode})...")
+
+        # Only enrich if we have enough time left (Vercel 60s limit)
+        # AI call already took some time, check remaining budget
+        _chat_elapsed = _chat_time.time() - _chat_start
+        _chat_time_left = 25  # generous budget for enrichment
+
+        if _chat_time_left > 10:
+            print(f"[DEBUG] Chat path: enriching with KG (time_left={_chat_time_left:.1f}s)...")
             try:
                 from .agent_tools import tool_build_knowledge_graph
                 kg_r = tool_build_knowledge_graph()
                 if isinstance(kg_r, dict) and kg_r.get("success"):
                     chat_kg_viz = kg_r.get("visualization")
-                    print(f"[DEBUG] Chat fallback KG: nodes={len(chat_kg_viz.get('nodes',[])) if chat_kg_viz else 0}")
+                    print(f"[DEBUG] Chat KG: nodes={len(chat_kg_viz.get('nodes',[])) if chat_kg_viz else 0}")
                 else:
                     err_msg = f"KG build returned success=False: {kg_r.get('error','?') if isinstance(kg_r, dict) else str(kg_r)}"
                     print(f"[DEBUG] {err_msg}")
@@ -741,6 +749,12 @@ def send_message(conv_id: str):
                 err_msg = f"KG build exception: {type(ke).__name__}: {ke}"
                 print(f"[DEBUG] {err_msg}")
                 _debug_errors.append(err_msg)
+        else:
+            print(f"[DEBUG] Chat path: skipping KG, only {_chat_time_left:.1f}s left")
+
+        _chat_time_left2 = 25 - (_chat_time.time() - _chat_start)
+        if _chat_time_left2 > 5:
+            print(f"[DEBUG] Chat path: searching papers (time_left={_chat_time_left2:.1f}s)...")
             try:
                 from .agent_tools import tool_search_academic_papers
                 q = "settlement monitoring geotechnical analysis"
@@ -748,7 +762,7 @@ def send_message(conv_id: str):
                 if isinstance(pr, dict) and pr.get("success"):
                     chat_papers = pr.get("papers", [])
                     chat_papers_query = q
-                    print(f"[DEBUG] Chat fallback papers: {len(chat_papers)}")
+                    print(f"[DEBUG] Chat papers: {len(chat_papers)}")
                 else:
                     err_msg = f"Paper search returned success=False: {pr.get('error','?') if isinstance(pr, dict) else str(pr)}"
                     print(f"[DEBUG] {err_msg}")
@@ -757,6 +771,8 @@ def send_message(conv_id: str):
                 err_msg = f"Paper search exception: {type(pe).__name__}: {pe}"
                 print(f"[DEBUG] {err_msg}")
                 _debug_errors.append(err_msg)
+        else:
+            print(f"[DEBUG] Chat path: skipping papers, only {_chat_time_left2:.1f}s left")
 
         # Save AI response
         # Merge papers into KG as nodes before saving
