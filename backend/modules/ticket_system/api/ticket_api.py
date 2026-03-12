@@ -650,6 +650,45 @@ def delete_ticket(ticket_id):
         return create_response(None, f"删除工单失败: {str(e)}", False, 500)
 
 
+@ticket_bp.route('/batch', methods=['DELETE'])
+def delete_tickets_batch():
+    """批量删除工单"""
+    try:
+        data = request.get_json()
+        if not data:
+            return create_response(None, "请求数据不能为空", False, 400)
+
+        ticket_ids = data.get('ticket_ids', [])
+        if not ticket_ids or not isinstance(ticket_ids, list):
+            return create_response(None, "缺少 ticket_ids 列表", False, 400)
+
+        if len(ticket_ids) > 100:
+            return create_response(None, "单次最多删除100条工单", False, 400)
+
+        # 过滤无效 ID
+        valid_ids = []
+        for tid in ticket_ids:
+            try:
+                valid_ids.append(int(tid))
+            except (ValueError, TypeError):
+                pass
+
+        if not valid_ids:
+            return create_response(None, "没有有效的工单ID", False, 400)
+
+        deleted_count = ticket_model.delete_tickets_batch(valid_ids)
+
+        return create_response({
+            'deleted_count': deleted_count,
+            'requested_ids': valid_ids
+        }, f"成功删除 {deleted_count} 条工单")
+
+    except Exception as e:
+        print(f"[ERROR] 批量删除工单失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"批量删除工单失败: {str(e)}", False, 500)
+
+
 # =========================================================================
 # Archive and Reminder API Endpoints
 # =========================================================================

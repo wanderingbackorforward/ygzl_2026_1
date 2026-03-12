@@ -98,10 +98,16 @@ export interface ProviderInfo {
   available: boolean
 }
 
+export type ModuleKey =
+  | 'settlement' | 'temperature' | 'cracks' | 'vibration'
+  | 'insar' | 'advanced' | 'overview' | 'tickets'
+  | 'shield-trajectory' | 'three' | 'cover' | 'general'
+
 export interface QuickCommand {
   id: string
   title: string
   icon: string
   prompt: string
   role: Role
+  modules?: ModuleKey[]  // if undefined, show on all modules
 }

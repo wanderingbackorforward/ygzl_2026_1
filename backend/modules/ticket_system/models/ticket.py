@@ -211,3 +211,14 @@ class TicketModel:
         except Exception as e:
             print(f" 删除工单失败: {e}")
             return False
+
+    def delete_tickets_batch(self, ticket_ids: List[int]) -> int:
+        try:
+            if not ticket_ids:
+                return 0
+            repo = get_repo()
+            count = repo.tickets_delete_batch(ticket_ids)
+            return count
+        except Exception as e:
+            print(f"批量删除工单失败: {e}")
+            return 0

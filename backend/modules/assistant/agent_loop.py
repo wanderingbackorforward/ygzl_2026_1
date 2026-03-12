@@ -8,10 +8,11 @@ Flow:
     if stop_reason == "end_turn": extract final text -> return
 
 Constraints:
-  - Max 8 iterations
-  - 55s total timeout (Vercel 60s limit minus 5s buffer)
+  - Max 3 iterations (reduced for proxy latency)
+  - 50s total timeout (Vercel 60s limit minus 10s buffer)
   - Tool results truncated to 3000 chars
   - Timeout/over-iteration forces a summary response
+  - KG/papers enrichment delegated to api.py force-enrich (no redundant calls here)
 """
 import json
 import os
@@ -233,11 +234,8 @@ def run_agent(user_content, page_path="", page_context=None):
             # Final answer
             answer = _extract_text(response_data)
 
-            # Auto-enrich: build KG and search papers if not already done
-            kg_visualization, papers, papers_query, tool_steps = _auto_enrich(
-                kg_visualization, papers, papers_query, tool_steps,
-                user_content, start_time,
-            )
+            # NOTE: KG and papers enrichment is handled by api.py force-enrich
+            # with time budget checks. No redundant calls here.
 
             return {
                 "answer": answer,

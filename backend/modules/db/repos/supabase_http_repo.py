@@ -347,6 +347,17 @@ class SupabaseHttpRepo:
         r.raise_for_status()
         return True
 
+    def tickets_delete_batch(self, ticket_ids):
+        if not ticket_ids:
+            return 0
+        ids_csv = ",".join(str(tid) for tid in ticket_ids)
+        r = requests.delete(
+            _url(f'/rest/v1/tickets?id=in.({ids_csv})'),
+            headers=_headers()
+        )
+        r.raise_for_status()
+        return len(ticket_ids)
+
     def tickets_statistics(self):
         r = requests.get(_url('/rest/v1/tickets?select=status,ticket_type,priority,created_at'), headers=_headers())
         r.raise_for_status()
