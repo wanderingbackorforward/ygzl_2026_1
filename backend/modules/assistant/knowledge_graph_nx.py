@@ -85,7 +85,7 @@ class KnowledgeGraphNX:
                 hdr['Authorization'] = f'Bearer {anon}'
             r = requests.get(
                 f"{base}/rest/v1/construction_events?select=*&limit=100",
-                headers=hdr, timeout=15,
+                headers=hdr, timeout=8,
             )
             if r.ok:
                 events = r.json()

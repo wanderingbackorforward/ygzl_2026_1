@@ -148,9 +148,11 @@ def _deepseek_settings() -> Tuple[str, str, str, float]:
     api_base = (os.getenv("DEEPSEEK_API_BASE") or "https://api.deepseek.com").strip().rstrip("/")
     model = (os.getenv("DEEPSEEK_MODEL") or "deepseek-chat").strip()
     try:
-        timeout_s = float((os.getenv("DEEPSEEK_TIMEOUT_SECONDS") or "30").strip())
+        timeout_s = float((os.getenv("DEEPSEEK_TIMEOUT_SECONDS") or "12").strip())
     except Exception:
-        timeout_s = 30.0
+        timeout_s = 12.0
+    # Safety cap: DeepSeek is fallback after Claude fails, so budget is tight
+    timeout_s = min(timeout_s, 12.0)
     return api_key, api_base, model, timeout_s
 
 

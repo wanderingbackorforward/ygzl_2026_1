@@ -288,6 +288,17 @@ def run_agent(user_content, page_path="", page_context=None):
 
         tool_results = []
         for tool_use in tool_uses:
+            # Time check BEFORE each tool execution
+            tool_elapsed = time.time() - start_time
+            if tool_elapsed > AGENT_TIMEOUT - 8:
+                print(f"[WARN] Skipping remaining tools, {tool_elapsed:.1f}s elapsed, budget={AGENT_TIMEOUT}s")
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": tool_use.get("id", ""),
+                    "content": '{"success": false, "error": "Skipped: time budget exhausted"}',
+                })
+                continue
+
             tool_name = tool_use.get("name", "")
             tool_id = tool_use.get("id", "")
             tool_input = tool_use.get("input", {})

@@ -34,7 +34,7 @@ def _url(path):
 def _safe_supabase_get(path, params=None):
     """Supabase GET with graceful error handling. Returns list/dict or None on failure."""
     try:
-        r = requests.get(_url(path), headers=_headers(), params=params, timeout=15)
+        r = requests.get(_url(path), headers=_headers(), params=params, timeout=8)
         if r.status_code in (404, 400, 406):
             print(f"[DEBUG] Supabase {r.status_code} for {path} - table may not exist")
             return None
@@ -53,7 +53,7 @@ def tool_list_monitoring_points(**kwargs):
     try:
         r = requests.get(
             _url('/rest/v1/monitoring_points?select=*&limit=500'),
-            headers=_headers(), timeout=15,
+            headers=_headers(), timeout=8,
         )
         r.raise_for_status()
         data = r.json()
@@ -85,7 +85,7 @@ def tool_query_settlement_data(point_id, limit=200, **kwargs):
         }
         r = requests.get(
             _url('/rest/v1/processed_settlement_data'),
-            headers=_headers(), params=params, timeout=15,
+            headers=_headers(), params=params, timeout=8,
         )
         r.raise_for_status()
         data = r.json()
@@ -491,8 +491,8 @@ def tool_query_anomalies(point_ids=None, severity_filter=None, **kwargs):
         if not use_points:
             return {"success": False, "error": "No monitoring points found"}
 
-        # Limit to 15 points for performance
-        use_points = use_points[:15]
+        # Limit to 5 points for performance (each point = Supabase + ML, ~3s each)
+        use_points = use_points[:5]
 
         results = []
         total_anomalies = 0
@@ -588,7 +588,7 @@ def _search_openalex(query, limit):
             "select": "title,authorships,publication_year,cited_by_count,doi,id",
             "mailto": "settlement-monitor@example.com",  # polite pool
         }
-        r = requests.get(url, params=params, timeout=10)
+        r = requests.get(url, params=params, timeout=5)
         if not r.ok:
             print(f"[DEBUG] OpenAlex HTTP {r.status_code}")
             return []
@@ -625,7 +625,7 @@ def _search_openalex(query, limit):
 
 
 def _search_semantic_scholar(query, limit):
-    """Search Semantic Scholar API with retry. Returns list or None on failure."""
+    """Search Semantic Scholar API. Single attempt, no retry. Returns list or None on failure."""
     try:
         url = "https://api.semanticscholar.org/graph/v1/paper/search"
         params = {
@@ -633,19 +633,9 @@ def _search_semantic_scholar(query, limit):
             "limit": limit,
             "fields": "title,authors,year,citationCount,url,abstract,externalIds",
         }
-        last_error = ""
-        for attempt in range(2):
-            if attempt > 0:
-                time.sleep(2)
-            r = requests.get(url, params=params, timeout=10)
-            if r.ok:
-                break
-            if r.status_code == 429:
-                last_error = f"HTTP 429 (attempt {attempt+1}/2)"
-                continue
-            return None
-        else:
-            print(f"[DEBUG] Semantic Scholar {last_error}")
+        r = requests.get(url, params=params, timeout=5)
+        if not r.ok:
+            print(f"[DEBUG] Semantic Scholar HTTP {r.status_code}")
             return None
 
         data = r.json()
