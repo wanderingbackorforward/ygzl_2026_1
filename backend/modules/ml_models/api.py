@@ -1205,10 +1205,31 @@ def api_causal_discover():
         engine = CausalReasoningEngine()
         causal_pairs = engine.discover_causal_relationships(pivot_df, method, max_lag)
 
+        # Normalize output to match frontend expected format (relations + summary)
+        relations = []
+        for pair in causal_pairs:
+            relations.append({
+                'cause': pair.get('cause', pair.get('source', '')),
+                'effect': pair.get('effect', pair.get('target', '')),
+                'p_value': pair.get('p_value', 1.0),
+                'f_statistic': pair.get('f_statistic', pair.get('f_stat', 0.0)),
+                'optimal_lag': pair.get('optimal_lag', pair.get('lag', 1)),
+                'significant': pair.get('significant', pair.get('p_value', 1.0) < 0.05),
+            })
+
+        n = len(point_ids)
+        total_tested = n * (n - 1) // 2
+        significant_count = sum(1 for r in relations if r.get('significant', False))
+
         return jsonify({
             'success': True,
             'method': method,
-            'causal_pairs': causal_pairs
+            'max_lag': max_lag,
+            'relations': relations,
+            'summary': {
+                'total_tested': total_tested,
+                'significant_count': significant_count,
+            },
         })
 
     except Exception as e:
