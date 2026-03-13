@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { assistantApi } from './api'
@@ -17,6 +17,7 @@ interface ConversationViewProps {
   mode: AssistantMode
   quickPrompt?: string
   onQuickPromptUsed?: () => void
+  onLoadingChange?: (loading: boolean) => void
 }
 
 // Model tag color mapping
@@ -43,6 +44,7 @@ export default function ConversationView({
   mode,
   quickPrompt,
   onQuickPromptUsed,
+  onLoadingChange,
 }: ConversationViewProps) {
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [input, setInput] = useState('')
@@ -65,14 +67,105 @@ export default function ConversationView({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [conversation?.messages])
 
-  // Handle quick prompt
+  // Notify parent of loading state changes
+  useEffect(() => {
+    onLoadingChange?.(loading)
+  }, [loading])
+
+  // Handle quick prompt - auto send
+  const sendMessage = useCallback(async (content: string) => {
+    if (!content.trim() || loading) return
+
+    setLoading(true)
+    setLoadingStartTime(Date.now())
+    setError('')
+
+    const tempUserMessage: Message = {
+      id: `temp-${Date.now()}`,
+      role: 'user',
+      content: content.trim(),
+      contentType: 'text',
+      createdAt: new Date().toISOString()
+    }
+
+    setConversation(prev => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        messages: [...(prev.messages || []), tempUserMessage],
+      }
+    })
+
+    setInput('')
+
+    try {
+      const result = await assistantApi.sendMessage(
+        conversationId,
+        content.trim(),
+        role,
+        pagePath,
+        pageContext,
+        provider,
+        mode
+      )
+
+      const kgViz = result.kgVisualization || undefined
+      const papersData = result.papers || undefined
+      const papersQ = result.papersQuery || undefined
+
+      const assistantMsg: Message = {
+        ...result.assistantMessage,
+        model: result.model,
+        provider: result.provider,
+        metadata: {
+          ...(result.assistantMessage.metadata || {}),
+          mode: mode,
+          tool_steps: result.agentSteps,
+          total_iterations: result.agentIterations,
+          total_duration_ms: result.agentDurationMs,
+          kg_visualization: kgViz,
+          papers: papersData,
+          papers_query: papersQ,
+        },
+      }
+
+      setConversation(prev => {
+        if (!prev) return prev
+        const messagesWithoutTemp = prev.messages.filter(m => m.id !== tempUserMessage.id)
+        return {
+          ...prev,
+          messages: [...messagesWithoutTemp, result.userMessage, assistantMsg],
+        }
+      })
+
+      asyncEnrich(
+        assistantMsg.id,
+        content.trim(),
+        kgViz,
+        papersData || []
+      )
+    } catch (err: any) {
+      console.error('Failed to send message:', err)
+      setError(err.message || 'Failed to send message')
+      setConversation(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          messages: prev.messages.filter(m => m.id !== tempUserMessage.id),
+        }
+      })
+    } finally {
+      setLoading(false)
+      inputRef.current?.focus()
+    }
+  }, [conversationId, role, pagePath, pageContext, provider, mode, loading])
+
   useEffect(() => {
     if (quickPrompt) {
-      setInput(quickPrompt)
-      inputRef.current?.focus()
+      sendMessage(quickPrompt)
       onQuickPromptUsed?.()
     }
-  }, [quickPrompt, onQuickPromptUsed])
+  }, [quickPrompt])
 
   async function loadConversation() {
     try {
@@ -145,105 +238,10 @@ export default function ConversationView({
     console.log('[asyncEnrich] Complete')
   }
 
-  async function handleSend() {
+  function handleSend() {
     const content = input.trim()
-    if (!content || loading) return
-
-    setLoading(true)
-    setLoadingStartTime(Date.now())
-    setError('')
-
-    // Show user message immediately
-    const tempUserMessage: Message = {
-      id: `temp-${Date.now()}`,
-      role: 'user',
-      content: content,
-      contentType: 'text',
-      createdAt: new Date().toISOString()
-    }
-
-    setConversation(prev => {
-      if (!prev) return prev
-      return {
-        ...prev,
-        messages: [...(prev.messages || []), tempUserMessage],
-      }
-    })
-
-    setInput('')
-
-    try {
-      const result = await assistantApi.sendMessage(
-        conversationId,
-        content,
-        role,
-        pagePath,
-        pageContext,
-        provider,
-        mode
-      )
-
-      // Attach model info and agent metadata to assistant message
-      const kgViz = result.kgVisualization || undefined
-      const papersData = result.papers || undefined
-      const papersQ = result.papersQuery || undefined
-      console.log('[DEBUG] AI response received:', {
-        sentMode: mode,
-        hasKgViz: !!kgViz,
-        papersCount: papersData?.length ?? 0,
-        agentSteps: result.agentSteps?.length ?? 0,
-      })
-
-      const assistantMsg: Message = {
-        ...result.assistantMessage,
-        model: result.model,
-        provider: result.provider,
-        metadata: {
-          ...(result.assistantMessage.metadata || {}),
-          mode: mode,
-          tool_steps: result.agentSteps,
-          total_iterations: result.agentIterations,
-          total_duration_ms: result.agentDurationMs,
-          kg_visualization: kgViz,
-          papers: papersData,
-          papers_query: papersQ,
-        },
-      }
-
-      // Replace temp message with real messages
-      setConversation(prev => {
-        if (!prev) return prev
-        const messagesWithoutTemp = prev.messages.filter(m => m.id !== tempUserMessage.id)
-        return {
-          ...prev,
-          messages: [...messagesWithoutTemp, result.userMessage, assistantMsg],
-        }
-      })
-
-      // ASYNC ENRICHMENT: load KG and papers in background if not already present
-      // This runs AFTER the AI answer is displayed, so user sees the answer immediately
-      asyncEnrich(
-        assistantMsg.id,
-        content,
-        kgViz,
-        papersData || []
-      )
-
-    } catch (err: any) {
-      console.error('Failed to send message:', err)
-      setError(err.message || 'Failed to send message')
-      // Remove temp message on failure
-      setConversation(prev => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          messages: prev.messages.filter(m => m.id !== tempUserMessage.id),
-        }
-      })
-    } finally {
-      setLoading(false)
-      inputRef.current?.focus()
-    }
+    if (!content) return
+    sendMessage(content)
   }
 
   const messages = conversation?.messages || []

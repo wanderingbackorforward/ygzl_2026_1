@@ -6,9 +6,10 @@ interface QuickCommandPanelProps {
   currentRole: Role
   currentModule: ModuleKey
   onCommandClick: (prompt: string) => void
+  disabled?: boolean
 }
 
-export default function QuickCommandPanel({ currentRole, currentModule, onCommandClick }: QuickCommandPanelProps) {
+export default function QuickCommandPanel({ currentRole, currentModule, onCommandClick, disabled }: QuickCommandPanelProps) {
   // 筛选当前角色 + 当前模块的快捷指令
   const filteredCommands = quickCommands.filter(cmd => {
     if (cmd.role !== currentRole) return false
@@ -21,7 +22,9 @@ export default function QuickCommandPanel({ currentRole, currentModule, onComman
     <div className="flex h-full flex-col">
       <div className="border-b border-slate-600 px-4 py-3">
         <h3 className="text-lg font-bold text-white">快捷指令</h3>
-        <p className="mt-1 text-sm text-white">点击快速填充问题</p>
+        <p className="mt-1 text-sm text-white">
+          {disabled ? 'AI 回复中，请稍候...' : '点击自动发送给 AI'}
+        </p>
       </div>
 
       <div className="flex-1 overflow-auto p-4">
@@ -30,8 +33,13 @@ export default function QuickCommandPanel({ currentRole, currentModule, onComman
             <button
               key={cmd.id}
               type="button"
-              className="w-full rounded-xl border border-slate-500 bg-slate-800 p-4 text-left transition-all hover:border-cyan-400 hover:bg-slate-700"
-              onClick={() => onCommandClick(cmd.prompt)}
+              disabled={disabled}
+              className={`w-full rounded-xl border p-4 text-left transition-all ${
+                disabled
+                  ? 'border-slate-600 bg-slate-800 opacity-50 cursor-not-allowed'
+                  : 'border-slate-500 bg-slate-800 hover:border-cyan-400 hover:bg-slate-700'
+              }`}
+              onClick={() => !disabled && onCommandClick(cmd.prompt)}
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl leading-none">{cmd.icon}</span>

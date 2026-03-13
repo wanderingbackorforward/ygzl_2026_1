@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { usePageContext } from '../../hooks/usePageContext'
 import { assistantApi } from './api'
@@ -36,6 +36,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
   const [rightPanelMode, setRightPanelMode] = useState<'quick' | 'stats' | 'export'>('quick')
   const [fullConversation, setFullConversation] = useState<Conversation | null>(null)
   const [availableProviders, setAvailableProviders] = useState<ProviderInfo[]>([])
+  const [chatLoading, setChatLoading] = useState(false)
 
   // Load conversation list
   useEffect(() => {
@@ -138,9 +139,13 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
     }
   }
 
-  function handleQuickCommand(prompt: string) {
+  const handleQuickCommand = useCallback((prompt: string) => {
     setQuickPrompt(prompt)
-  }
+  }, [])
+
+  const handleQuickPromptUsed = useCallback(() => {
+    setQuickPrompt('')
+  }, [])
 
   const currentConversation = conversations.find(c => c.id === currentConvId)
 
@@ -288,7 +293,8 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                 provider={currentProvider}
                 mode={currentMode}
                 quickPrompt={quickPrompt}
-                onQuickPromptUsed={() => setQuickPrompt('')}
+                onQuickPromptUsed={handleQuickPromptUsed}
+                onLoadingChange={setChatLoading}
               />
             )}
           </div>
@@ -341,6 +347,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                   currentRole={currentRole}
                   currentModule={pathToModule(location.pathname)}
                   onCommandClick={handleQuickCommand}
+                  disabled={chatLoading}
                 />
               )}
               {rightPanelMode === 'stats' && (
