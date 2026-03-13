@@ -104,9 +104,9 @@ export const assistantApi = {
     papers?: AcademicPaper[]
     papersQuery?: string
   }> {
-    // Agent: 35s (backend has 30s budget), Chat: 28s (backend has 25s budget)
+    // Agent: 50s (backend has 45s budget + network), Chat: 28s (backend has 25s budget)
     // Must be LESS than Vercel 60s to avoid HTML error pages
-    const timeoutMs = mode === 'agent' ? 35000 : 28000
+    const timeoutMs = mode === 'agent' ? 50000 : 28000
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeoutMs)
 

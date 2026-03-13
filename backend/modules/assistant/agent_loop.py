@@ -4,16 +4,19 @@ Core Agent execution loop using Claude tool_use protocol.
 
 Flow:
   user message -> Claude (with tools) ->
-    if stop_reason == "tool_use": execute tools -> collect results -> force_finish
+    if stop_reason == "tool_use": execute tools -> collect results -> Claude again -> answer
     if stop_reason == "end_turn": extract final text -> return
 
 Constraints:
-  - Max 1 iteration (strict for Vercel 60s limit)
-  - 30s total timeout (Vercel 60s limit minus 30s buffer)
-  - First Claude call capped at 12s (leave room for tools + summary)
-  - Summary call uses NO tools (lightweight, fast)
+  - Max 2 iterations:
+    - Iteration 0: Claude picks tools -> execute -> results added to messages
+    - Iteration 1: Claude sees tool results -> generates final answer
+  - 45s total timeout (Vercel 60s - 15s buffer)
+  - First Claude call capped at 10s (just pick tools)
+  - Second Claude call capped at 12s (read results + write answer)
+  - Summary fallback uses NO tools (lightweight, fast) if iteration 1 times out
   - Tool results truncated to 2000 chars
-  - KG/papers enrichment loaded async by frontend (no blocking here)
+  - KG/papers captured and merged in api.py
 """
 import json
 import os
@@ -26,10 +29,10 @@ from .agent_tools import TOOL_REGISTRY
 from .tool_definitions import AGENT_TOOLS
 
 
-MAX_ITERATIONS = 1  # 1 iteration only: call tools once, then answer. Vercel 60s is hard.
-AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "30"))  # 30s total, 30s buffer for Vercel
+MAX_ITERATIONS = 2  # Iteration 0: pick tools. Iteration 1: read results + answer.
+AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "45"))  # 45s total, 15s buffer for Vercel
 TOOL_RESULT_MAX_CHARS = 2000
-CLAUDE_CALL_TIMEOUT = 15  # Base timeout per Claude call (dynamic calc overrides this)
+CLAUDE_CALL_TIMEOUT = 10  # Base timeout for first call (just pick tools)
 
 
 def _claude_settings():
@@ -80,7 +83,7 @@ def _call_claude_with_tools(messages, api_key, api_base, model, max_tokens,
         timeout_override: Dynamic timeout in seconds. If None, uses CLAUDE_CALL_TIMEOUT.
     """
     call_timeout = timeout_override if timeout_override else CLAUDE_CALL_TIMEOUT
-    # Safety: never allow a single call to exceed 12s (leave room for tools + summary)
+    # Safety: cap single call. Iteration 0 (pick tools) = 10s, iteration 1 (answer) = 12s
     call_timeout = min(call_timeout, 12)
 
     url = f"{api_base}/v1/messages"
@@ -397,96 +400,6 @@ def run_agent(user_content, page_path="", page_context=None):
         kg_visualization=kg_visualization, papers=papers, papers_query=papers_query,
         system_prompt=agent_prompt,
     )
-
-
-def _auto_enrich(kg_visualization, papers, papers_query, tool_steps,
-                  user_content, start_time):
-    """Auto-call build_knowledge_graph and search_academic_papers if Agent didn't."""
-    from .agent_tools import TOOL_REGISTRY
-
-    # Check remaining time budget
-    elapsed = time.time() - start_time
-    time_left = AGENT_TIMEOUT - elapsed
-
-    # 1. Auto-build knowledge graph if not already done
-    if kg_visualization is None and time_left > 15:
-        print("[DEBUG] _auto_enrich: Agent did NOT call build_knowledge_graph, calling now...")
-        try:
-            step_start = time.time()
-            func = TOOL_REGISTRY.get("build_knowledge_graph")
-            if func:
-                result = func()
-                step_duration = int((time.time() - step_start) * 1000)
-                if isinstance(result, dict) and result.get("success"):
-                    viz = result.get("visualization")
-                    if viz:
-                        kg_visualization = viz
-                        print(f"[DEBUG] _auto_enrich: KG built OK, "
-                              f"nodes={len(viz.get('nodes',[]))}, "
-                              f"edges={len(viz.get('edges',[]))}")
-                    tool_steps.append({
-                        "iteration": 0,
-                        "tool_name": "build_knowledge_graph",
-                        "tool_input": {},
-                        "result_summary": _make_summary("build_knowledge_graph", result),
-                        "duration_ms": step_duration,
-                        "success": True,
-                    })
-                else:
-                    print(f"[DEBUG] _auto_enrich: KG build failed: {result.get('error','?')}")
-        except Exception as e:
-            print(f"[DEBUG] _auto_enrich: KG build exception: {e}")
-
-    # 2. Auto-search papers if not already done
-    elapsed = time.time() - start_time
-    time_left = AGENT_TIMEOUT - elapsed
-    if not papers and time_left > 8:
-        # Extract a search query from user content (use first 60 chars as base)
-        search_q = "settlement monitoring geotechnical analysis"
-        content_lower = user_content.lower() if user_content else ""
-        if any(kw in content_lower for kw in ["anomal", "异常"]):
-            search_q = "settlement anomaly detection monitoring"
-        elif any(kw in content_lower for kw in ["predict", "预测", "趋势"]):
-            search_q = "settlement prediction time series forecasting"
-        elif any(kw in content_lower for kw in ["spatial", "空间", "关联", "correlat"]):
-            search_q = "spatial correlation settlement monitoring"
-        elif any(kw in content_lower for kw in ["risk", "风险"]):
-            search_q = "geotechnical risk assessment settlement"
-        elif any(kw in content_lower for kw in ["crack", "裂缝"]):
-            search_q = "structural crack monitoring settlement"
-        elif any(kw in content_lower for kw in ["温度", "temperature"]):
-            search_q = "temperature effect ground settlement"
-        elif any(kw in content_lower for kw in ["知识图谱", "knowledge graph"]):
-            search_q = "knowledge graph structural health monitoring"
-
-        print(f"[DEBUG] _auto_enrich: Agent did NOT call search_academic_papers, "
-              f"searching for: {search_q}")
-        try:
-            step_start = time.time()
-            func = TOOL_REGISTRY.get("search_academic_papers")
-            if func:
-                result = func(query=search_q, limit=5)
-                step_duration = int((time.time() - step_start) * 1000)
-                if isinstance(result, dict) and result.get("success"):
-                    found = result.get("papers", [])
-                    if found:
-                        papers = found
-                        papers_query = search_q
-                        print(f"[DEBUG] _auto_enrich: Found {len(found)} papers")
-                    tool_steps.append({
-                        "iteration": 0,
-                        "tool_name": "search_academic_papers",
-                        "tool_input": {"query": search_q, "limit": 5},
-                        "result_summary": _make_summary("search_academic_papers", result),
-                        "duration_ms": step_duration,
-                        "success": True,
-                    })
-                else:
-                    print(f"[DEBUG] _auto_enrich: Paper search failed: {result.get('error','?')}")
-        except Exception as e:
-            print(f"[DEBUG] _auto_enrich: Paper search exception: {e}")
-
-    return kg_visualization, papers, papers_query, tool_steps
 
 
 def _force_finish(messages, tool_steps, iterations, start_time,

@@ -83,8 +83,9 @@ AGENT_SYSTEM_PROMPT = (
     "- Recommended actions (2-3 bullets)\n"
     "- Data sources used (mention: monitoring data, knowledge graph, academic papers)\n\n"
     "## Academic Reference Strategy\n"
-    "- Only call search_academic_papers when user explicitly asks about research or papers.\n"
-    "- Do NOT call it for simple data queries - it wastes time.\n"
+    "- Call search_academic_papers for technical/analysis questions to provide academic context.\n"
+    "- Use the user's actual question keywords as search query (translate to English).\n"
+    "- For simple data queries (e.g. 'show me S1 data'), skip paper search to save time.\n"
     "- Search queries should be in English for best Semantic Scholar results.\n"
 )
 
