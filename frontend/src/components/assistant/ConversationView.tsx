@@ -51,8 +51,7 @@ export default function ConversationView({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [loadingStartTime, setLoadingStartTime] = useState(0)
-  // Track which message is currently loading enrichment data
-  const [enrichingMsgId, setEnrichingMsgId] = useState<string | null>(null)
+  // enrichingMsgId removed - no longer auto-enriching with generic data
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -138,12 +137,8 @@ export default function ConversationView({
         }
       })
 
-      asyncEnrich(
-        assistantMsg.id,
-        content.trim(),
-        kgViz,
-        papersData || []
-      )
+      // Only show KG/papers if Agent actually called those tools
+      // Do NOT auto-enrich with generic static data - it's useless decoration
     } catch (err: any) {
       console.error('Failed to send message:', err)
       setError(err.message || 'Failed to send message')
@@ -192,52 +187,6 @@ export default function ConversationView({
     })
   }
 
-  // Async enrichment: load KG and papers AFTER main response, in parallel
-  async function asyncEnrich(msgId: string, userContent: string, existingKg: any, existingPapers: any[]) {
-    setEnrichingMsgId(msgId)
-    const needKg = !existingKg
-    const needPapers = !existingPapers || existingPapers.length === 0
-
-    if (!needKg && !needPapers) {
-      setEnrichingMsgId(null)
-      return
-    }
-
-    console.log('[asyncEnrich] Starting:', { needKg, needPapers, msgId })
-
-    // Fire both requests in parallel
-    const promises: Promise<void>[] = []
-
-    if (needKg) {
-      promises.push(
-        assistantApi.enrichKG().then(kgViz => {
-          if (kgViz) {
-            console.log('[asyncEnrich] KG loaded:', kgViz.nodes?.length, 'nodes')
-            updateMessageMetadata(msgId, { kg_visualization: kgViz })
-          }
-        })
-      )
-    }
-
-    if (needPapers) {
-      promises.push(
-        assistantApi.enrichPapers(userContent).then(result => {
-          if (result && result.papers.length > 0) {
-            console.log('[asyncEnrich] Papers loaded:', result.papers.length)
-            updateMessageMetadata(msgId, {
-              papers: result.papers,
-              papers_query: result.query,
-            })
-          }
-        })
-      )
-    }
-
-    await Promise.allSettled(promises)
-    setEnrichingMsgId(null)
-    console.log('[asyncEnrich] Complete')
-  }
-
   function handleSend() {
     const content = input.trim()
     if (!content) return
@@ -261,7 +210,6 @@ export default function ConversationView({
 
         {messages.map(msg => {
           const badge = msg.role === 'assistant' ? getModelBadge(msg.model, msg.provider) : null
-          const isEnriching = msg.id === enrichingMsgId
           return (
             <div
               key={msg.id}
@@ -312,17 +260,6 @@ export default function ConversationView({
                     papers={msg.metadata.papers}
                     query={msg.metadata.papers_query}
                   />
-                )}
-
-                {/* Async enrichment loading indicator */}
-                {msg.role === 'assistant' && isEnriching && (
-                  <div className="mb-4 flex items-center gap-2 rounded-lg bg-slate-600/50 px-4 py-2 text-sm text-white">
-                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    正在加载知识图谱和学术论文...
-                  </div>
                 )}
 
                 {/* Answer text (last) */}
