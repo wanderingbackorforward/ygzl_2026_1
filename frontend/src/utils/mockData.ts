@@ -640,7 +640,7 @@ export function generateMockMultiFactorCorrelation() {
         correlation: 0.62,
         p_value: 0.0003,
         sample_size: 120,
-        interpretation: 'Settlement shows moderate positive correlation with temperature (r=0.620, p=0.0003).',
+        interpretation: 'chenjiang yu wendu cheng zhongdeng zheng xiangguan (r=0.620, p=0.0003).',
       },
       {
         factor_x: 'settlement',
@@ -648,7 +648,7 @@ export function generateMockMultiFactorCorrelation() {
         correlation: 0.45,
         p_value: 0.0150,
         sample_size: 95,
-        interpretation: 'Settlement shows moderate positive correlation with crack width (r=0.450, p=0.0150).',
+        interpretation: 'chenjiang yu liefeng kuandu cheng zhongdeng zheng xiangguan (r=0.450, p=0.0150).',
       },
       {
         factor_x: 'temperature',
@@ -656,7 +656,7 @@ export function generateMockMultiFactorCorrelation() {
         correlation: 0.31,
         p_value: 0.0420,
         sample_size: 85,
-        interpretation: 'Temperature shows weak positive correlation with crack width (r=0.310, p=0.0420).',
+        interpretation: 'wendu yu liefeng kuandu cheng ruo zheng xiangguan (r=0.310, p=0.0420).',
       },
     ],
     data_summary: {

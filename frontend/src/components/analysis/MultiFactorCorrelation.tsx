@@ -90,7 +90,7 @@ export const MultiFactorCorrelation: React.FC = () => {
         textStyle: { color: '#fff' },
         formatter: (params: any) => {
           const [x, y, value] = params.data;
-          return `${labels[y]} - ${labels[x]}<br/>Pearson r = ${value.toFixed(4)}`;
+          return `${labels[y]} - ${labels[x]}<br/>相关系数 r = ${value.toFixed(4)}`;
         },
       },
       grid: { left: '15%', right: '12%', bottom: '18%', top: 80, containLabel: true },
@@ -170,10 +170,10 @@ export const MultiFactorCorrelation: React.FC = () => {
   };
 
   const getSignificanceLabel = (p: number) => {
-    if (p < 0.001) return '***';
-    if (p < 0.01) return '**';
-    if (p < 0.05) return '*';
-    return 'n.s.';
+    if (p < 0.001) return '极显著***';
+    if (p < 0.01) return '显著**';
+    if (p < 0.05) return '显著*';
+    return '不显著';
   };
 
   if (loading) {
@@ -272,13 +272,13 @@ export const MultiFactorCorrelation: React.FC = () => {
 
               <div style={styles.pairMetrics}>
                 <div style={styles.metric}>
-                  <div style={styles.metricLabel}>Pearson r</div>
+                  <div style={styles.metricLabel}>相关系数 r</div>
                   <div style={{ ...styles.metricValue, color: getStrengthColor(pair.correlation) }}>
                     {pair.correlation >= 0 ? '+' : ''}{pair.correlation.toFixed(4)}
                   </div>
                 </div>
                 <div style={styles.metric}>
-                  <div style={styles.metricLabel}>P 值</div>
+                  <div style={styles.metricLabel}>显著性 P</div>
                   <div style={styles.metricValue}>
                     {pair.p_value < 0.001 ? '<0.001' : pair.p_value.toFixed(4)}
                     <span style={{ marginLeft: '4px', color: pair.p_value < 0.05 ? '#52c41a' : '#ff4d4f' }}>

@@ -1267,13 +1267,13 @@ def _mock_multi_factor_correlation():
     pairs = [
         {'factor_x': 'temperature', 'factor_y': 'settlement',
          'correlation': matrix[0][1], 'p_value': 0.003, 'sample_size': 120,
-         'interpretation': 'Temperature shows moderate positive correlation with settlement.'},
+         'interpretation': 'wendu yu chenjiang cheng zhongdeng zheng xiangguan.'},
         {'factor_x': 'crack_width', 'factor_y': 'settlement',
          'correlation': matrix[0][2], 'p_value': 0.015, 'sample_size': 95,
-         'interpretation': 'Crack width shows weak positive correlation with settlement.'},
+         'interpretation': 'liefeng kuandu yu chenjiang cheng ruo zheng xiangguan.'},
         {'factor_x': 'temperature', 'factor_y': 'crack_width',
          'correlation': matrix[1][2], 'p_value': 0.042, 'sample_size': 85,
-         'interpretation': 'Temperature shows weak correlation with crack width.'},
+         'interpretation': 'wendu yu liefeng kuandu cheng ruo xiangguan.'},
     ]
     return {
         'success': True, 'mock': True,
@@ -1375,16 +1375,16 @@ def api_multi_factor_correlation():
                 r_val, p_val = sp_stats.pearsonr(x.loc[common], y.loc[common])
                 abs_r = abs(r_val)
                 if abs_r >= 0.7:
-                    strength = 'strong'
+                    strength = 'qiang'
                 elif abs_r >= 0.4:
-                    strength = 'moderate'
+                    strength = 'zhongdeng'
                 elif abs_r >= 0.2:
-                    strength = 'weak'
+                    strength = 'ruo'
                 else:
-                    strength = 'very weak'
-                direction = 'positive' if r_val > 0 else 'negative'
-                cn = {'settlement': 'settlement', 'temperature': 'temperature', 'crack_width': 'crack width'}
-                interp = f"{cn.get(factor_cols[i], factor_cols[i]).capitalize()} shows {strength} {direction} correlation with {cn.get(factor_cols[j], factor_cols[j])} (r={r_val:.3f}, p={p_val:.4f})."
+                    strength = 'ji ruo'
+                direction = 'zheng' if r_val > 0 else 'fu'
+                cn = {'settlement': 'chenjiang', 'temperature': 'wendu', 'crack_width': 'liefeng kuandu'}
+                interp = f"{cn.get(factor_cols[i], factor_cols[i])} yu {cn.get(factor_cols[j], factor_cols[j])} cheng {strength} {direction} xiangguan (r={r_val:.3f}, p={p_val:.4f})."
                 pairs.append({
                     'factor_x': factor_cols[i],
                     'factor_y': factor_cols[j],
