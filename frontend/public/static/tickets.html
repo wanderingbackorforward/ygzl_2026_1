@@ -111,6 +111,74 @@
             border-radius: 3px;
             font-size: 11px;
         }
+
+        /* Batch Selection */
+        .batch-bar {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            margin-bottom: 10px;
+            background: rgba(64, 174, 255, 0.12);
+            border: 1px solid rgba(64, 174, 255, 0.3);
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 14px;
+        }
+        .batch-bar.visible {
+            display: flex;
+        }
+        .batch-bar .batch-info {
+            flex: 1;
+            color: #ffffff;
+        }
+        .batch-bar .batch-btn {
+            padding: 6px 14px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .batch-bar .batch-btn.delete {
+            background: rgba(255, 77, 79, 0.85);
+            color: #ffffff;
+        }
+        .batch-bar .batch-btn.delete:hover {
+            background: #ff4d4f;
+        }
+        .batch-bar .batch-btn.cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .batch-bar .batch-btn.cancel:hover {
+            background: rgba(255, 255, 255, 0.18);
+        }
+        .ticket-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #40aeff;
+            flex-shrink: 0;
+        }
+        .ticket-item-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .ticket-item-content {
+            flex: 1;
+            min-width: 0;
+        }
+        .select-all-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ffffff;
+            font-size: 13px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body class="ticket-page">
@@ -159,6 +227,16 @@
             <div class="stat-item"><span class="label">已解决</span><span id="resolvedTickets" class="value">--</span></div>
             <div class="stat-item"><span class="label">今日新增</span><span id="todayTickets" class="value">--</span></div>
             <div class="stat-item"><span class="label">已超期</span><span id="overdueTickets" class="value">--</span></div>
+        </div>
+        <!-- Batch Action Bar -->
+        <div id="batchBar" class="batch-bar">
+            <label class="select-all-wrap">
+                <input type="checkbox" id="selectAllCheckbox" class="ticket-checkbox" onchange="toggleSelectAll(this.checked)">
+                全选
+            </label>
+            <span class="batch-info">已选择 <strong id="selectedCount">0</strong> 条工单</span>
+            <button class="batch-btn delete" onclick="batchDeleteTickets()"><i class="fas fa-trash-alt"></i> 批量删除</button>
+            <button class="batch-btn cancel" onclick="clearSelection()"><i class="fas fa-times"></i> 取消选择</button>
         </div>
         <div id="messageArea" class="message-bar"></div>
         <div id="ticketList" class="ticket-list"></div>

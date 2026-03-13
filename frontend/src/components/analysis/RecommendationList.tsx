@@ -150,6 +150,6 @@ const styles: Record<string, React.CSSProperties> = {
   },
   emptyText: {
     fontSize: '16px',
-    color: '#888',
+    color: '#fff',
   },
 };

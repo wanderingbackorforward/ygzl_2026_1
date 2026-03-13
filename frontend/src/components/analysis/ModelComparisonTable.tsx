@@ -159,7 +159,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   subtitle: {
     fontSize: '13px',
-    color: '#888',
+    color: '#fff',
   },
   tableWrapper: {
     overflowX: 'auto',
@@ -204,7 +204,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '2px 8px',
     backgroundColor: 'rgba(74, 158, 255, 0.3)',
     borderRadius: '10px',
-    fontSize: '11px',
+    fontSize: '13px',
     fontWeight: 'bold',
     color: '#4a9eff',
   },
@@ -235,7 +235,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   legendText: {
     fontSize: '12px',
-    color: '#888',
+    color: '#fff',
   },
   emptyContainer: {
     display: 'flex',
@@ -245,6 +245,6 @@ const styles: Record<string, React.CSSProperties> = {
   },
   emptyMessage: {
     fontSize: '14px',
-    color: '#888',
+    color: '#fff',
   },
 };

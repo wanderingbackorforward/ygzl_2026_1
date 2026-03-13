@@ -125,9 +125,11 @@ def _claude_settings() -> Tuple[str, str, str, float, int]:
     ).strip().rstrip("/")
     model = (os.getenv("CLAUDE_MODEL") or "claude-sonnet-4-20250514").strip()
     try:
-        timeout_s = float((os.getenv("CLAUDE_TIMEOUT_SECONDS") or "60").strip())
+        timeout_s = float((os.getenv("CLAUDE_TIMEOUT_SECONDS") or "50").strip())
     except Exception:
-        timeout_s = 60.0
+        timeout_s = 50.0
+    # Safety cap: never exceed Vercel 60s limit minus buffer
+    timeout_s = min(timeout_s, 50.0)
     try:
         max_tokens = int((os.getenv("CLAUDE_MAX_TOKENS") or "4096").strip())
     except Exception:
@@ -594,15 +596,25 @@ def send_message(conv_id: str):
                     is_timeout = ("timed out" in str(agent_error).lower()
                                   or "timeout" in str(agent_error).lower()
                                   or "read timed" in str(agent_error).lower())
-                    if is_timeout or _agent_elapsed > 40:
+                    # If agent took >30s OR it's a timeout error, don't try chat fallback
+                    if is_timeout or _agent_elapsed > 30:
                         print(f"[WARN] Agent timeout after {_agent_elapsed:.1f}s: {agent_error}")
                         return jsonify({
                             "status": "error",
                             "message": "AI response timed out. Please try a shorter/simpler question, or switch to normal chat mode.",
                         }), 504
 
-                    # Non-timeout failure, try fallback to normal chat
-                    print(f"[WARN] Agent failed ({_agent_elapsed:.1f}s): {agent_error}, falling back to chat")
+                    # Non-timeout failure with time remaining - try fallback to chat
+                    # But only if we have enough time left (need at least 15s for chat)
+                    _time_left = 55 - _agent_elapsed  # 55s = Vercel 60s - 5s safety
+                    if _time_left < 15:
+                        print(f"[WARN] Agent failed ({_agent_elapsed:.1f}s), only {_time_left:.0f}s left, no chat fallback")
+                        return jsonify({
+                            "status": "error",
+                            "message": "AI response timed out. Please try a shorter/simpler question, or switch to normal chat mode.",
+                        }), 504
+
+                    print(f"[WARN] Agent failed ({_agent_elapsed:.1f}s): {agent_error}, falling back to chat (budget={_time_left:.0f}s)")
                     system_prompt = build_full_system_prompt(role, page_path, content)
                     user_content_str = _build_user_content(content, page_path, page_context)
                     answer, model_name, _ = _call_ai(

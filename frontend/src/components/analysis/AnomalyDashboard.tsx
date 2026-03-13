@@ -243,7 +243,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   subtitle: {
     fontSize: '13px',
-    color: '#888',
+    color: '#fff',
   },
   refreshButton: {
     padding: '8px 16px',
@@ -289,7 +289,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   loadingHint: {
     fontSize: '13px',
-    color: '#888',
+    color: '#fff',
   },
   errorContainer: {
     display: 'flex',
@@ -310,7 +310,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   errorMessage: {
     fontSize: '14px',
-    color: '#888',
+    color: '#fff',
   },
   retryButton: {
     padding: '10px 20px',
@@ -343,7 +343,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   emptyMessage: {
     fontSize: '14px',
-    color: '#888',
+    color: '#fff',
   },
   modalOverlay: {
     position: 'fixed',
@@ -387,7 +387,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'transparent',
     border: 'none',
     borderRadius: '6px',
-    color: '#888',
+    color: '#fff',
     fontSize: '16px',
     cursor: 'pointer',
     transition: 'all 0.2s',
@@ -407,7 +407,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   detailLabel: {
     fontSize: '14px',
-    color: '#888',
+    color: '#fff',
   },
   detailValue: {
     fontSize: '14px',

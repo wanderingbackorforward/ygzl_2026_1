@@ -136,17 +136,17 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '4px',
   },
   actionIcon: {
-    fontSize: '11px',
+    fontSize: '13px',
   },
   time: {
     display: 'flex',
     alignItems: 'center',
     gap: '4px',
     fontSize: '12px',
-    color: '#888',
+    color: '#fff',
   },
   timeIcon: {
-    fontSize: '11px',
+    fontSize: '13px',
   },
   content: {
     marginBottom: '16px',
@@ -178,10 +178,10 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: '4px',
     fontSize: '13px',
-    color: '#888',
+    color: '#fff',
   },
   detailIcon: {
-    fontSize: '11px',
+    fontSize: '13px',
     color: '#4a9eff',
   },
   detailValue: {
@@ -206,7 +206,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'rgba(74, 158, 255, 0.1)',
     borderRadius: '4px',
     fontSize: '12px',
-    color: '#888',
+    color: '#fff',
   },
   footer: {
     display: 'flex',
@@ -234,7 +234,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'transparent',
     border: '1px solid rgba(74, 158, 255, 0.3)',
     borderRadius: '6px',
-    color: '#888',
+    color: '#fff',
     fontSize: '13px',
     cursor: 'pointer',
     transition: 'all 0.2s',

@@ -198,7 +198,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   filterLabel: {
     fontSize: '12px',
-    color: '#888',
+    color: '#fff',
     whiteSpace: 'nowrap',
   },
   filterButton: {
@@ -206,7 +206,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'transparent',
     border: '1px solid rgba(74, 158, 255, 0.3)',
     borderRadius: '6px',
-    color: '#888',
+    color: '#fff',
     fontSize: '12px',
     cursor: 'pointer',
     transition: 'all 0.2s',
@@ -218,7 +218,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   sortLabel: {
     fontSize: '12px',
-    color: '#888',
+    color: '#fff',
   },
   sortSelect: {
     padding: '6px 10px',
@@ -241,7 +241,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   resultInfo: {
     fontSize: '13px',
-    color: '#888',
+    color: '#fff',
     padding: '0 4px',
   },
   list: {
@@ -267,6 +267,6 @@ const styles: Record<string, React.CSSProperties> = {
   },
   emptyText: {
     fontSize: '16px',
-    color: '#888',
+    color: '#fff',
   },
 };

@@ -50,7 +50,7 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
           fontWeight: 'bold',
         },
         subtextStyle: {
-          color: '#888',
+          color: '#fff',
           fontSize: 12,
         },
       },
@@ -72,7 +72,7 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
         data: ['历史数据', '预测值', '置信区间'],
         top: 40,
         textStyle: {
-          color: '#888',
+          color: '#fff',
         },
       },
       grid: {
@@ -92,7 +92,7 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
           },
         },
         axisLabel: {
-          color: '#888',
+          color: '#fff',
           rotate: 45,
         },
         splitLine: {
@@ -106,7 +106,7 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
         type: 'value',
         name: '沉降 (mm)',
         nameTextStyle: {
-          color: '#888',
+          color: '#fff',
         },
         axisLine: {
           lineStyle: {
@@ -114,7 +114,7 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
           },
         },
         axisLabel: {
-          color: '#888',
+          color: '#fff',
         },
         splitLine: {
           lineStyle: {
@@ -295,7 +295,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   infoLabel: {
     fontSize: '12px',
-    color: '#888',
+    color: '#fff',
   },
   infoValue: {
     fontSize: '16px',

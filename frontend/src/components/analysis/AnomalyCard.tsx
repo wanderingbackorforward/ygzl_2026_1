@@ -105,7 +105,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   date: {
     fontSize: '12px',
-    color: '#888',
+    color: '#fff',
   },
   severityBadge: {
     padding: '4px 12px',

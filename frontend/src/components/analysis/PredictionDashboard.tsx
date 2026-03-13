@@ -377,11 +377,11 @@ const styles: Record<string, React.CSSProperties> = {
   statSuffix: {
     fontSize: '14px',
     fontWeight: 'normal',
-    color: '#666',
+    color: '#ccc',
   },
   statLabel: {
     fontSize: '13px',
-    color: '#888',
+    color: '#fff',
   },
   // ── 点位选择器 ──
   selectorContainer: {
@@ -410,7 +410,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'rgba(74, 158, 255, 0.1)',
     border: '1px solid rgba(74, 158, 255, 0.3)',
     borderRadius: '6px',
-    color: '#888',
+    color: '#fff',
     fontSize: '13px',
     fontWeight: '500',
     cursor: 'pointer',
@@ -474,7 +474,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '8px',
     backgroundColor: 'transparent',
     border: 'none',
-    color: '#888',
+    color: '#fff',
     fontSize: '16px',
     cursor: 'pointer',
     transition: 'color 0.2s',
@@ -518,7 +518,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   loadingText: {
     fontSize: '13px',
-    color: '#888',
+    color: '#fff',
   },
   progressBarBg: {
     width: '240px',
@@ -553,7 +553,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   errorMessage: {
     fontSize: '14px',
-    color: '#888',
+    color: '#fff',
   },
   retryButton: {
     marginTop: '8px',
@@ -579,7 +579,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   emptyIcon: {
     fontSize: '48px',
-    color: '#888',
+    color: '#fff',
   },
   emptyTitle: {
     fontSize: '18px',
@@ -588,6 +588,6 @@ const styles: Record<string, React.CSSProperties> = {
   },
   emptyMessage: {
     fontSize: '14px',
-    color: '#888',
+    color: '#fff',
   },
 };

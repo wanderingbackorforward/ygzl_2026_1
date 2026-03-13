@@ -8,11 +8,14 @@ Flow:
     if stop_reason == "end_turn": extract final text -> return
 
 Constraints:
-  - Max 3 iterations (reduced for proxy latency)
-  - 50s total timeout (Vercel 60s limit minus 10s buffer)
+  - Max 2 iterations (strict for Vercel 60s limit)
+  - 40s total timeout (Vercel 60s limit minus 20s buffer)
+  - Dynamic per-call timeout: min(time_left - 8s, 20s)
+  - Single Claude call never exceeds 20s
   - Tool results truncated to 3000 chars
-  - Timeout/over-iteration forces a summary response
-  - KG/papers enrichment delegated to api.py force-enrich (no redundant calls here)
+  - Timeout/over-iteration forces a summary response (with time check)
+  - _force_finish skips Claude call if <5s remaining
+  - KG/papers enrichment loaded async by frontend (no blocking here)
 """
 import json
 import os
@@ -25,10 +28,10 @@ from .agent_tools import TOOL_REGISTRY
 from .tool_definitions import AGENT_TOOLS
 
 
-MAX_ITERATIONS = 3
-AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "50"))
+MAX_ITERATIONS = 2  # Reduced: 2 iterations max to stay within Vercel 60s
+AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "40"))  # 40s total, 20s buffer for Vercel
 TOOL_RESULT_MAX_CHARS = 3000
-CLAUDE_CALL_TIMEOUT = 30
+CLAUDE_CALL_TIMEOUT = 18  # Base timeout per Claude call (dynamic calc overrides this)
 
 
 def _claude_settings():
@@ -72,8 +75,16 @@ def _truncate_result(result_str, max_chars=TOOL_RESULT_MAX_CHARS):
 
 
 def _call_claude_with_tools(messages, api_key, api_base, model, max_tokens,
-                             system_prompt=None):
-    """Single Claude API call with tools parameter."""
+                             system_prompt=None, timeout_override=None):
+    """Single Claude API call with tools parameter.
+
+    Args:
+        timeout_override: Dynamic timeout in seconds. If None, uses CLAUDE_CALL_TIMEOUT.
+    """
+    call_timeout = timeout_override if timeout_override else CLAUDE_CALL_TIMEOUT
+    # Safety: never allow a single call to exceed 20s
+    call_timeout = min(call_timeout, 20)
+
     url = f"{api_base}/v1/messages"
     headers = {
         "x-api-key": api_key,
@@ -89,7 +100,8 @@ def _call_claude_with_tools(messages, api_key, api_base, model, max_tokens,
         "temperature": 0.2,
     }
 
-    resp = requests.post(url, headers=headers, json=payload, timeout=CLAUDE_CALL_TIMEOUT)
+    print(f"[DEBUG] Claude call timeout={call_timeout:.0f}s")
+    resp = requests.post(url, headers=headers, json=payload, timeout=call_timeout)
     if not resp.ok:
         detail = ""
         try:
@@ -200,8 +212,25 @@ def run_agent(user_content, page_path="", page_context=None):
 
     for iteration in range(MAX_ITERATIONS):
         elapsed = time.time() - start_time
-        if elapsed > AGENT_TIMEOUT:
-            # Timeout - force finish
+        time_left = AGENT_TIMEOUT - elapsed
+
+        if time_left < 5:
+            # Less than 5s left - force finish immediately (no extra Claude call)
+            print(f"[WARN] Agent timeout at iteration {iteration}, elapsed={elapsed:.1f}s, skipping force_finish")
+            return {
+                "answer": None,
+                "model": model,
+                "tool_steps": tool_steps,
+                "total_iterations": iteration,
+                "total_duration_ms": int(elapsed * 1000),
+                "error": "Agent timeout - not enough time for final summary",
+                "kg_visualization": kg_visualization,
+                "papers": papers or [],
+                "papers_query": papers_query,
+            }
+
+        if time_left < 15:
+            # 5-15s left - force finish with short timeout
             return _force_finish(
                 messages, tool_steps, iteration, start_time,
                 api_key, api_base, model, max_tokens,
@@ -209,10 +238,14 @@ def run_agent(user_content, page_path="", page_context=None):
                 system_prompt=agent_prompt,
             )
 
+        # Dynamic timeout: use remaining time minus 8s buffer for tools/finish
+        dynamic_timeout = min(time_left - 8, 20)
+
         try:
             response_data = _call_claude_with_tools(
                 messages, api_key, api_base, model, max_tokens,
                 system_prompt=agent_prompt,
+                timeout_override=dynamic_timeout,
             )
         except Exception as e:
             return {
@@ -417,8 +450,42 @@ def _force_finish(messages, tool_steps, iterations, start_time,
                    kg_visualization=None, papers=None, papers_query="",
                    system_prompt=None):
     """Force a final text response when timeout/max iterations reached."""
+    elapsed = time.time() - start_time
+    time_left = AGENT_TIMEOUT - elapsed
+
+    # If less than 5s left, skip the final Claude call entirely
+    if time_left < 5:
+        print(f"[WARN] _force_finish: only {time_left:.1f}s left, skipping final Claude call")
+        # Try to extract answer from last assistant response in messages
+        answer = ""
+        for msg in reversed(messages):
+            if msg.get("role") == "assistant":
+                content = msg.get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            answer += block.get("text", "")
+                break
+        if not answer:
+            answer = "[Agent] I have gathered data but ran out of time for a full summary. Please try a simpler question or switch to chat mode."
+
+        return {
+            "answer": answer,
+            "model": model,
+            "tool_steps": tool_steps,
+            "total_iterations": iterations,
+            "total_duration_ms": int(elapsed * 1000),
+            "error": None,
+            "kg_visualization": kg_visualization,
+            "papers": papers or [],
+            "papers_query": papers_query,
+        }
+
+    # Use remaining time minus 2s buffer for the final call
+    finish_timeout = min(time_left - 2, 15)
+    print(f"[DEBUG] _force_finish: {time_left:.1f}s left, calling Claude with timeout={finish_timeout:.0f}s")
+
     try:
-        # Add a user message asking for summary
         messages.append({
             "role": "user",
             "content": (
@@ -431,10 +498,12 @@ def _force_finish(messages, tool_steps, iterations, start_time,
         response_data = _call_claude_with_tools(
             messages, api_key, api_base, model, max_tokens,
             system_prompt=system_prompt,
+            timeout_override=finish_timeout,
         )
         answer = _extract_text(response_data)
         actual_model = response_data.get("model", model)
     except Exception as e:
+        print(f"[WARN] _force_finish Claude call failed: {e}")
         answer = "[Agent timeout] Unable to generate final summary."
         actual_model = model
 

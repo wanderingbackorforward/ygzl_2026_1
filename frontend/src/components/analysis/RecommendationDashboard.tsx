@@ -225,7 +225,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   subtitle: {
     fontSize: '13px',
-    color: '#888',
+    color: '#fff',
   },
   refreshButton: {
     padding: '8px 16px',
@@ -280,7 +280,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   statLabel: {
     fontSize: '12px',
-    color: '#888',
+    color: '#fff',
     marginTop: '2px',
   },
   listContainer: {
@@ -315,7 +315,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   loadingHint: {
     fontSize: '13px',
-    color: '#888',
+    color: '#fff',
   },
   errorContainer: {
     display: 'flex',
@@ -336,7 +336,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   errorMessage: {
     fontSize: '14px',
-    color: '#888',
+    color: '#fff',
   },
   retryButton: {
     padding: '10px 20px',
@@ -369,6 +369,6 @@ const styles: Record<string, React.CSSProperties> = {
   },
   emptyMessage: {
     fontSize: '14px',
-    color: '#888',
+    color: '#fff',
   },
 };

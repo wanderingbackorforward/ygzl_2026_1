@@ -6,7 +6,9 @@
       "Skill(claude-scientific-writer:scientific-writing)",
       "Skill(ralph-loop:cancel-ralph)",
       "WebSearch",
-      "mcp__web-search-prime__web_search_prime"
+      "mcp__web-search-prime__web_search_prime",
+      "mcp__chrome-devtools__navigate_page",
+      "mcp__chrome-devtools__take_screenshot"
     ]
   }
 }

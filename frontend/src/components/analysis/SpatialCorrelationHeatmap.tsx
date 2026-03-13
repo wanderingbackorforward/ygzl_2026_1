@@ -57,7 +57,7 @@ export const SpatialCorrelationHeatmap: React.FC<SpatialCorrelationHeatmapProps>
           fontWeight: 'bold',
         },
         subtextStyle: {
-          color: '#888',
+          color: '#fff',
           fontSize: 12,
         },
       },
@@ -87,7 +87,7 @@ export const SpatialCorrelationHeatmap: React.FC<SpatialCorrelationHeatmapProps>
           show: true,
         },
         axisLabel: {
-          color: '#888',
+          color: '#fff',
           rotate: 45,
         },
       },
@@ -98,7 +98,7 @@ export const SpatialCorrelationHeatmap: React.FC<SpatialCorrelationHeatmapProps>
           show: true,
         },
         axisLabel: {
-          color: '#888',
+          color: '#fff',
         },
       },
       visualMap: {
@@ -112,7 +112,7 @@ export const SpatialCorrelationHeatmap: React.FC<SpatialCorrelationHeatmapProps>
           color: ['#313695', '#4575b4', '#74add1', '#abd9e9', '#e0f3f8', '#ffffbf', '#fee090', '#fdae61', '#f46d43', '#d73027', '#a50026'],
         },
         textStyle: {
-          color: '#888',
+          color: '#fff',
         },
       },
       series: [
@@ -238,7 +238,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   clustersSubtitle: {
     fontSize: '12px',
-    color: '#888',
+    color: '#fff',
     marginTop: '4px',
   },
   clustersList: {
@@ -268,7 +268,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   clusterCount: {
     fontSize: '12px',
-    color: '#888',
+    color: '#fff',
   },
   clusterPoints: {
     display: 'flex',
@@ -279,7 +279,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '4px 8px',
     backgroundColor: 'rgba(74, 158, 255, 0.1)',
     borderRadius: '4px',
-    fontSize: '11px',
+    fontSize: '13px',
     color: '#fff',
     border: '1px solid rgba(74, 158, 255, 0.2)',
   },
@@ -305,7 +305,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   legendText: {
     fontSize: '12px',
-    color: '#888',
+    color: '#fff',
   },
   emptyContainer: {
     display: 'flex',
@@ -315,6 +315,6 @@ const styles: Record<string, React.CSSProperties> = {
   },
   emptyMessage: {
     fontSize: '14px',
-    color: '#888',
+    color: '#fff',
   },
 };

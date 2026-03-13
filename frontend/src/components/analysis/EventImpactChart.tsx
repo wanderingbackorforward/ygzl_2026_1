@@ -83,7 +83,7 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
           fontWeight: 'bold',
         },
         subtextStyle: {
-          color: '#888',
+          color: '#fff',
           fontSize: 12,
         },
       },
@@ -105,7 +105,7 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
         data: ['处理组（受影响点位）', '对照组（未受影响点位）', '反事实预测'],
         top: 40,
         textStyle: {
-          color: '#888',
+          color: '#fff',
         },
       },
       grid: {
@@ -125,7 +125,7 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
           },
         },
         axisLabel: {
-          color: '#888',
+          color: '#fff',
           rotate: 45,
         },
         splitLine: {
@@ -139,7 +139,7 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
         type: 'value',
         name: '沉降 (mm)',
         nameTextStyle: {
-          color: '#888',
+          color: '#fff',
         },
         axisLine: {
           lineStyle: {
@@ -147,7 +147,7 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
           },
         },
         axisLabel: {
-          color: '#888',
+          color: '#fff',
         },
         splitLine: {
           lineStyle: {
@@ -331,7 +331,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   resultLabel: {
     fontSize: '12px',
-    color: '#888',
+    color: '#fff',
   },
   resultValue: {
     fontSize: '20px',
@@ -339,8 +339,8 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#fff',
   },
   resultHint: {
-    fontSize: '11px',
-    color: '#666',
+    fontSize: '13px',
+    color: '#ccc',
   },
   interpretation: {
     display: 'flex',

@@ -119,7 +119,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   label: {
     fontSize: '12px',
-    color: '#888',
+    color: '#fff',
     marginTop: '2px',
   },
 };

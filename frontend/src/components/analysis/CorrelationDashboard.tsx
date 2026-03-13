@@ -219,7 +219,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   statLabel: {
     fontSize: '13px',
-    color: '#888',
+    color: '#fff',
   },
   typeSelector: {
     display: 'flex',
@@ -246,7 +246,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'rgba(74, 158, 255, 0.1)',
     border: '1px solid rgba(74, 158, 255, 0.3)',
     borderRadius: '6px',
-    color: '#888',
+    color: '#fff',
     fontSize: '14px',
     fontWeight: '500',
     cursor: 'pointer',
@@ -267,7 +267,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   configLabel: {
     fontSize: '13px',
-    color: '#888',
+    color: '#fff',
     whiteSpace: 'nowrap',
   },
   configInput: {
@@ -320,7 +320,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   loadingText: {
     fontSize: '14px',
-    color: '#888',
+    color: '#fff',
   },
   errorContainer: {
     display: 'flex',
@@ -336,7 +336,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   errorText: {
     fontSize: '14px',
-    color: '#888',
+    color: '#fff',
   },
   retryButton: {
     marginTop: '8px',

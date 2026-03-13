@@ -274,7 +274,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   configSubtitle: {
     fontSize: '13px',
-    color: '#888',
+    color: '#fff',
     marginTop: '4px',
   },
   configGrid: {
@@ -291,7 +291,7 @@ const styles: Record<string, React.CSSProperties> = {
   label: {
     fontSize: '13px',
     fontWeight: '500',
-    color: '#888',
+    color: '#fff',
   },
   select: {
     padding: '10px 12px',
@@ -327,7 +327,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'rgba(74, 158, 255, 0.1)',
     border: '1px solid rgba(74, 158, 255, 0.3)',
     borderRadius: '6px',
-    color: '#888',
+    color: '#fff',
     fontSize: '13px',
     fontWeight: '500',
     cursor: 'pointer',
@@ -340,7 +340,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   hint: {
     fontSize: '12px',
-    color: '#666',
+    color: '#ccc',
   },
   buttonGroup: {
     display: 'flex',
@@ -403,7 +403,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   emptyIcon: {
     fontSize: '48px',
-    color: '#888',
+    color: '#fff',
   },
   emptyTitle: {
     fontSize: '18px',
@@ -412,7 +412,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   emptyMessage: {
     fontSize: '14px',
-    color: '#888',
+    color: '#fff',
     textAlign: 'center',
     maxWidth: '400px',
   },

@@ -202,7 +202,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   subtitle: {
     fontSize: '13px',
-    color: '#888',
+    color: '#fff',
   },
   list: {
     display: 'grid',
@@ -237,7 +237,7 @@ const styles: Record<string, React.CSSProperties> = {
   riskBadge: {
     padding: '4px 10px',
     borderRadius: '12px',
-    fontSize: '11px',
+    fontSize: '13px',
     fontWeight: 'bold',
     color: '#fff',
   },
@@ -253,8 +253,8 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#ff7a45',
   },
   predictedLabel: {
-    fontSize: '11px',
-    color: '#888',
+    fontSize: '13px',
+    color: '#fff',
   },
   cardBody: {
     display: 'flex',
@@ -272,7 +272,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: '6px',
     fontSize: '13px',
-    color: '#888',
+    color: '#fff',
   },
   infoIcon: {
     fontSize: '12px',
@@ -309,7 +309,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'transparent',
     border: '1px solid rgba(74, 158, 255, 0.3)',
     borderRadius: '6px',
-    color: '#888',
+    color: '#fff',
     fontSize: '12px',
     cursor: 'pointer',
     transition: 'all 0.2s',
@@ -335,6 +335,6 @@ const styles: Record<string, React.CSSProperties> = {
   },
   emptyMessage: {
     fontSize: '14px',
-    color: '#888',
+    color: '#fff',
   },
 };

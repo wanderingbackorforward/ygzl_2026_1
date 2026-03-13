@@ -220,7 +220,7 @@ export const DeepLearningDashboard: React.FC = () => {
       {!prediction && !loading && !error && (
         <div style={styles.emptyState}>
           <i className="fas fa-robot" style={{ fontSize: '48px', color: 'rgba(74,158,255,0.3)' }} />
-          <div style={{ fontSize: '16px', color: '#888', marginTop: '12px' }}>
+          <div style={{ fontSize: '16px', color: '#fff', marginTop: '12px' }}>
             选择模型和点位，点击"运行预测"开始
           </div>
         </div>
@@ -235,7 +235,7 @@ const styles: Record<string, React.CSSProperties> = {
   modelButton: {
     display: 'flex', alignItems: 'center', gap: '4px', padding: '16px',
     backgroundColor: 'rgba(30,30,50,0.8)', border: '1px solid rgba(74,158,255,0.2)',
-    borderRadius: '8px', color: '#888', cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left',
+    borderRadius: '8px', color: '#fff', cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left',
   },
   modelButtonActive: {
     backgroundColor: 'rgba(74,158,255,0.15)', borderColor: '#4a9eff', color: '#4a9eff',
@@ -299,7 +299,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex', justifyContent: 'space-between', padding: '8px 12px',
     backgroundColor: 'rgba(20,20,40,0.5)', borderRadius: '4px',
   },
-  metaKey: { fontSize: '13px', color: '#888' },
+  metaKey: { fontSize: '13px', color: '#fff' },
   metaVal: { fontSize: '13px', color: '#ddd', fontWeight: '500' },
   emptyState: {
     display: 'flex', flexDirection: 'column', alignItems: 'center',

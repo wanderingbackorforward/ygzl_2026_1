@@ -321,12 +321,12 @@ const styles: Record<string, React.CSSProperties> = {
   },
   statIcon: { fontSize: '24px' },
   statValue: { fontSize: '22px', fontWeight: 'bold', color: '#fff' },
-  statLabel: { fontSize: '12px', color: '#888', marginTop: '2px' },
+  statLabel: { fontSize: '12px', color: '#fff', marginTop: '2px' },
   subTabs: { display: 'flex', gap: '8px' },
   subTab: {
     padding: '10px 20px', backgroundColor: 'rgba(30,30,50,0.8)',
     border: '1px solid rgba(74,158,255,0.2)', borderRadius: '8px',
-    color: '#888', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s',
+    color: '#fff', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s',
   },
   subTabActive: {
     backgroundColor: 'rgba(74,158,255,0.15)', borderColor: '#4a9eff', color: '#4a9eff',
@@ -353,7 +353,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'rgba(30,30,50,0.6)', borderRadius: '8px',
     border: '1px solid rgba(74,158,255,0.2)', overflow: 'hidden',
   },
-  emptyHint: { padding: '40px', textAlign: 'center', color: '#666', fontSize: '14px' },
+  emptyHint: { padding: '40px', textAlign: 'center', color: '#ccc', fontSize: '14px' },
   // Risk panel
   riskList: { display: 'flex', flexDirection: 'column', gap: '12px' },
   riskCard: {
@@ -366,7 +366,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '600',
   },
   riskDesc: { fontSize: '13px', color: '#bbb', lineHeight: '1.5', marginBottom: '8px' },
-  riskMeta: { display: 'flex', gap: '16px', fontSize: '12px', color: '#666' },
+  riskMeta: { display: 'flex', gap: '16px', fontSize: '12px', color: '#ccc' },
   // QA panel
   presetRow: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
   presetButton: {
@@ -388,7 +388,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '8px', color: '#ccc', fontSize: '13px', lineHeight: '1.6',
   },
   qaConfidence: { marginTop: '8px', fontSize: '12px', color: '#52c41a' },
-  qaSources: { marginTop: '4px', fontSize: '12px', color: '#666' },
+  qaSources: { marginTop: '4px', fontSize: '12px', color: '#ccc' },
   inputRow: {
     display: 'flex', gap: '8px', padding: '12px 16px',
     backgroundColor: 'rgba(30,30,50,0.6)', borderRadius: '8px',

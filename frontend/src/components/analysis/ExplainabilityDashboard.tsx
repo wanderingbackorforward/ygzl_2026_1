@@ -306,7 +306,7 @@ const styles: Record<string, React.CSSProperties> = {
   subTab: {
     padding: '10px 20px', backgroundColor: 'rgba(30,30,50,0.8)',
     border: '1px solid rgba(74,158,255,0.2)', borderRadius: '8px',
-    color: '#888', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s',
+    color: '#fff', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s',
   },
   subTabActive: {
     backgroundColor: 'rgba(74,158,255,0.15)', borderColor: '#4a9eff', color: '#4a9eff',
@@ -330,7 +330,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '6px', color: '#4a9eff', fontSize: '14px', fontWeight: '500',
     cursor: 'pointer', transition: 'all 0.2s', marginLeft: 'auto',
   },
-  hintText: { fontSize: '12px', color: '#666' },
+  hintText: { fontSize: '12px', color: '#ccc' },
   section: {
     padding: '20px', backgroundColor: 'rgba(30,30,50,0.6)', borderRadius: '8px',
     border: '1px solid rgba(74,158,255,0.2)',
@@ -355,7 +355,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid rgba(74,158,255,0.2)',
   },
   summaryValue: { fontSize: '28px', fontWeight: 'bold', color: '#4a9eff' },
-  summaryLabel: { fontSize: '13px', color: '#888', marginTop: '4px' },
+  summaryLabel: { fontSize: '13px', color: '#fff', marginTop: '4px' },
   tableSection: {
     padding: '20px', backgroundColor: 'rgba(30,30,50,0.6)', borderRadius: '8px',
     border: '1px solid rgba(74,158,255,0.2)',
@@ -364,7 +364,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%', borderCollapse: 'collapse', fontSize: '13px',
   },
   th: {
-    padding: '10px 12px', textAlign: 'left', color: '#888',
+    padding: '10px 12px', textAlign: 'left', color: '#fff',
     borderBottom: '1px solid rgba(74,158,255,0.2)', fontWeight: '500',
   },
   td: {
@@ -376,7 +376,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: '1px solid rgba(74,158,255,0.08)', textAlign: 'right',
   },
   emptyHint: {
-    padding: '40px', textAlign: 'center', color: '#666', fontSize: '14px',
+    padding: '40px', textAlign: 'center', color: '#ccc', fontSize: '14px',
   },
 };
 
