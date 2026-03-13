@@ -12,38 +12,38 @@ type JointMetric = 'settlement' | 'crack' | 'correlation';
 // 分析模块分组
 const analysisGroups = [
   {
-    label: '第一阶段：智能诊断',
+    label: '发现问题',
     items: [
-      { id: 'anomaly' as TabType, label: '异常检测', icon: 'exclamation-triangle', desc: '自动识别所有监测点异常，按严重程度分级（严重/高/中/低）' },
-      { id: 'recommendation' as TabType, label: '处置建议', icon: 'clipboard-list', desc: '根据异常自动生成处置建议，按优先级排序（紧急巡检/加密监测/持续关注）' },
+      { id: 'anomaly' as TabType, label: '异常检测', icon: 'exclamation-triangle', desc: '哪些监测点有问题？ —— 自动扫描全部25个点位，找出沉降异常的点，按严重程度标红/橙/黄/绿' },
+      { id: 'recommendation' as TabType, label: '处置建议', icon: 'clipboard-list', desc: '发现问题后该怎么办？ —— 根据异常等级自动生成处置方案：紧急巡检 / 加密监测 / 持续跟踪' },
     ],
   },
   {
-    label: '第二阶段：趋势预测',
+    label: '预测未来',
     items: [
-      { id: 'prediction' as TabType, label: '预测分析', icon: 'chart-area', desc: 'ARIMA/SARIMA/Prophet 经典时序模型预测未来沉降趋势，含置信区间' },
-      { id: 'deeplearning' as TabType, label: '深度学习预测', icon: 'brain', desc: 'Informer 长序列预测 / STGCN 多点联合预测 / PINN 物理约束预测 / Ensemble 集成预测' },
+      { id: 'prediction' as TabType, label: '趋势预测', icon: 'chart-area', desc: '未来会怎样？ —— 预测每个点位未来7~30天的沉降趋势，提前发现可能超限的风险点' },
+      { id: 'deeplearning' as TabType, label: '深度学习预测', icon: 'brain', desc: '更高精度预测 —— 用深度学习模型做更精准的预测，适合复杂地质条件下的长期预测' },
     ],
   },
   {
-    label: '第三阶段：关联分析',
+    label: '追溯原因',
     items: [
-      { id: 'correlation' as TabType, label: '因果与空间', icon: 'project-diagram', desc: '施工事件因果影响分析（DID/SCM）+ 监测点空间关联热力图' },
-      { id: 'explainability' as TabType, label: '可解释性分析', icon: 'chart-bar', desc: 'SHAP 特征重要性排序 + Granger 因果发现（点位间因果关系检验）' },
+      { id: 'correlation' as TabType, label: '因果与空间', icon: 'project-diagram', desc: '施工导致了哪些影响？ —— 量化某次施工事件对沉降的真实影响，以及哪些点位之间会互相影响' },
+      { id: 'explainability' as TabType, label: '影响因素分析', icon: 'chart-bar', desc: '什么因素影响最大？ —— 找出影响沉降的关键因素排序，以及哪个点位的变化会引起另一个点位变化' },
     ],
   },
   {
-    label: '第四阶段：知识图谱',
+    label: '综合分析',
     items: [
-      { id: 'knowledgegraph' as TabType, label: '知识图谱', icon: 'share-alt', desc: '图谱探索（邻居查询）/ 高风险点查询 / 知识问答（KGQA 自然语言提问）' },
+      { id: 'knowledgegraph' as TabType, label: '知识图谱', icon: 'share-alt', desc: '用自然语言提问 —— 直接输入问题（如"S1附近有哪些风险点？"），系统自动从知识库中查找答案' },
     ],
   },
   {
-    label: '额外功能',
+    label: '基础图表',
     items: [
-      { id: 'profile' as TabType, label: '纵断面', icon: 'chart-line', desc: '沉降纵断面图，支持时间滑块动画播放' },
-      { id: 'joint' as TabType, label: '沉降+裂缝', icon: 'link', desc: '沉降与裂缝联合展示，查看相关性和联动分析' },
-      { id: 'events' as TabType, label: '施工事件', icon: 'calendar-alt', desc: '施工事件管理与记录' },
+      { id: 'profile' as TabType, label: '纵断面', icon: 'chart-line', desc: '查看沉降剖面 —— 沿线路方向展示所有点位的沉降分布，支持按时间回放动画' },
+      { id: 'joint' as TabType, label: '沉降+裂缝', icon: 'link', desc: '多指标联合查看 —— 同时展示沉降和裂缝数据，观察两者之间是否存在联动关系' },
+      { id: 'events' as TabType, label: '施工事件', icon: 'calendar-alt', desc: '管理施工记录 —— 记录和管理施工事件（如爆破、开挖），为因果分析提供数据支撑' },
     ],
   },
 ];
