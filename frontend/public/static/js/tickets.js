@@ -12,6 +12,8 @@ let systemUsers = [];
 let currentTab = 'active';
 let emailOptionModalInitialized = false;
 let emailOptionModalResolver = null;
+let selectedTicketIds = new Set();
+let currentTicketList = [];
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -300,6 +302,12 @@ async function loadTickets() {
             pagination = null;
         }
 
+        // 保存当前列表用于批量操作
+        currentTicketList = tickets;
+
+        // 切换Tab时清除选择
+        clearSelection();
+
         // 渲染工单列表
         renderTicketList(tickets, currentTab === 'archive');
 
@@ -336,9 +344,16 @@ function renderTicketList(tickets, isArchive = false) {
     const ticketsHtml = tickets.map(ticket => {
         const dueInfo = getDueInfo(ticket);
         const ticketId = isArchive ? ticket.original_id : ticket.id;
+        const isChecked = selectedTicketIds.has(ticketId);
 
         return `
-        <div class="ticket-item" onclick="showTicketDetail(${ticketId}, ${isArchive})">
+        <div class="ticket-item" style="cursor:pointer;">
+          <div class="ticket-item-row">
+            <input type="checkbox" class="ticket-checkbox"
+                   data-ticket-id="${ticketId}"
+                   ${isChecked ? 'checked' : ''}
+                   onclick="event.stopPropagation(); toggleTicketSelection(${ticketId}, this.checked)">
+            <div class="ticket-item-content" onclick="showTicketDetail(${ticketId}, ${isArchive})">
             <div class="ticket-meta">
                 <div class="ticket-number">${ticket.ticket_number}</div>
                 <div class="ticket-status status-${ticket.status.toLowerCase()}">
@@ -367,6 +382,8 @@ function renderTicketList(tickets, isArchive = false) {
                 ${(ticket.status === 'CLOSED' || ticket.status === 'REJECTED') ? `<button class="action-btn archive" onclick="archiveTicket(${ticket.id})"><i class="fas fa-archive"></i> 归档</button>` : ''}
             </div>
             ` : ''}
+            </div>
+          </div>
         </div>
     `}).join('');
 
@@ -1130,6 +1147,139 @@ function formatDate(dateString) {
     return date.toLocaleDateString('zh-CN');
 }
 
+/**
+ * 切换单个工单选择
+ */
+function toggleTicketSelection(ticketId, checked) {
+    if (checked) {
+        selectedTicketIds.add(ticketId);
+    } else {
+        selectedTicketIds.delete(ticketId);
+    }
+    updateBatchBar();
+    updateSelectAllCheckbox();
+}
+
+/**
+ * 全选/取消全选
+ */
+function toggleSelectAll(checked) {
+    if (!currentTicketList || currentTicketList.length === 0) return;
+
+    selectedTicketIds.clear();
+    if (checked) {
+        currentTicketList.forEach(ticket => {
+            const ticketId = (currentTab === 'archive') ? ticket.original_id : ticket.id;
+            selectedTicketIds.add(ticketId);
+        });
+    }
+
+    // 更新所有勾选框
+    document.querySelectorAll('.ticket-checkbox[data-ticket-id]').forEach(cb => {
+        cb.checked = checked;
+    });
+    updateBatchBar();
+}
+
+/**
+ * 更新全选勾选框状态
+ */
+function updateSelectAllCheckbox() {
+    const selectAllCb = document.getElementById('selectAllCheckbox');
+    if (!selectAllCb) return;
+
+    const allCheckboxes = document.querySelectorAll('.ticket-checkbox[data-ticket-id]');
+    if (allCheckboxes.length === 0) {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = false;
+        return;
+    }
+
+    const checkedCount = selectedTicketIds.size;
+    if (checkedCount === 0) {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = false;
+    } else if (checkedCount >= allCheckboxes.length) {
+        selectAllCb.checked = true;
+        selectAllCb.indeterminate = false;
+    } else {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = true;
+    }
+}
+
+/**
+ * 更新批量操作栏显示
+ */
+function updateBatchBar() {
+    const batchBar = document.getElementById('batchBar');
+    const selectedCountEl = document.getElementById('selectedCount');
+
+    if (selectedTicketIds.size > 0) {
+        batchBar.classList.add('visible');
+        selectedCountEl.textContent = selectedTicketIds.size;
+    } else {
+        batchBar.classList.remove('visible');
+        selectedCountEl.textContent = '0';
+    }
+}
+
+/**
+ * 清除所有选择
+ */
+function clearSelection() {
+    selectedTicketIds.clear();
+    document.querySelectorAll('.ticket-checkbox').forEach(cb => {
+        cb.checked = false;
+        cb.indeterminate = false;
+    });
+    updateBatchBar();
+}
+
+/**
+ * 批量删除工单
+ */
+async function batchDeleteTickets() {
+    const count = selectedTicketIds.size;
+    if (count === 0) {
+        showMessage('请先选择要删除的工单', 'error');
+        return;
+    }
+
+    if (!confirm(`确定要删除选中的 ${count} 条工单吗？此操作不可撤销！`)) {
+        return;
+    }
+
+    try {
+        const ids = Array.from(selectedTicketIds);
+
+        const response = await fetch('/api/tickets/batch', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket_ids: ids })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || '批量删除失败');
+        }
+
+        const result = await response.json();
+        const deletedCount = result.data?.deleted_count || count;
+
+        showMessage(`成功删除 ${deletedCount} 条工单`, 'success');
+        clearSelection();
+
+        // 重新加载工单列表和统计信息
+        await loadTickets();
+        await loadTicketStatistics();
+
+    } catch (error) {
+        console.error('[ERROR] 批量删除工单失败:', error);
+        showMessage('批量删除失败：' + error.message, 'error');
+    }
+}
+
 // 暴露全局函数
 window.showCreateModal = showCreateModal;
 window.closeModal = closeModal;
@@ -1143,3 +1293,7 @@ window.showAssignModal = showAssignModal;
 window.closeAssignModal = closeAssignModal;
 window.confirmAssign = confirmAssign;
 window.archiveTicket = archiveTicket;
+window.toggleTicketSelection = toggleTicketSelection;
+window.toggleSelectAll = toggleSelectAll;
+window.clearSelection = clearSelection;
+window.batchDeleteTickets = batchDeleteTickets;
