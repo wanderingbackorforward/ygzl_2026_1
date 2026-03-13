@@ -14,6 +14,7 @@ import {
   generateMockKGNeighbors,
   generateMockKGRiskPoints,
   generateMockKGQA,
+  generateMockMultiFactorCorrelation,
 } from './mockData';
 
 // 记录哪些接口不可用（按路径），不再是全局开关
@@ -378,5 +379,16 @@ export async function fetchKGQA(question: string) {
       body: JSON.stringify({ question }),
     },
     () => generateMockKGQA(question)
+  );
+}
+
+/**
+ * 多因素关联分析（温度-沉降-裂缝）
+ */
+export async function fetchMultiFactorCorrelation() {
+  return fetchWithFallback(
+    `${API_BASE}/ml/correlation/multi-factor`,
+    undefined,
+    () => generateMockMultiFactorCorrelation()
   );
 }

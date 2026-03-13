@@ -191,3 +191,83 @@ def find_distant_points(point_id, points_df, n=3):
     )
     others = others.sort_values('distance', ascending=False)
     return others.head(n)['point_id'].tolist()
+
+
+def fetch_all_temperature():
+    """
+    Fetch all processed temperature data.
+    Returns DataFrame with columns: sensor_id, measurement_date, avg_temperature
+    """
+    url = f"{_base_url()}/rest/v1/processed_temperature_data"
+    all_rows = []
+    offset = 0
+    page_size = 1000
+
+    while True:
+        params = {
+            'select': 'SID,measurement_date,avg_temperature',
+            'order': 'SID.asc,measurement_date.asc',
+            'offset': str(offset),
+            'limit': str(page_size),
+        }
+        try:
+            r = requests.get(url, headers=_headers(), params=params, timeout=15)
+            r.raise_for_status()
+            batch = r.json()
+        except Exception as e:
+            print(f"[WARN] fetch_all_temperature failed: {e}")
+            break
+        if not batch:
+            break
+        all_rows.extend(batch)
+        if len(batch) < page_size:
+            break
+        offset += page_size
+
+    if not all_rows:
+        return pd.DataFrame(columns=['sensor_id', 'measurement_date', 'avg_temperature'])
+
+    df = pd.DataFrame(all_rows)
+    df = df.rename(columns={'SID': 'sensor_id'})
+    df['measurement_date'] = pd.to_datetime(df['measurement_date'])
+    return df
+
+
+def fetch_all_crack():
+    """
+    Fetch all raw crack data.
+    Returns DataFrame with measurement_date + crack point columns.
+    """
+    url = f"{_base_url()}/rest/v1/raw_crack_data"
+    all_rows = []
+    offset = 0
+    page_size = 1000
+
+    while True:
+        params = {
+            'select': '*',
+            'order': 'measurement_date.asc',
+            'offset': str(offset),
+            'limit': str(page_size),
+        }
+        try:
+            r = requests.get(url, headers=_headers(), params=params, timeout=15)
+            r.raise_for_status()
+            batch = r.json()
+        except Exception as e:
+            print(f"[WARN] fetch_all_crack failed: {e}")
+            break
+        if not batch:
+            break
+        all_rows.extend(batch)
+        if len(batch) < page_size:
+            break
+        offset += page_size
+
+    if not all_rows:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(all_rows)
+    if 'measurement_date' in df.columns:
+        df['measurement_date'] = pd.to_datetime(df['measurement_date'])
+    return df

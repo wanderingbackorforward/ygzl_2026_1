@@ -616,3 +616,55 @@ export function generateMockCausalAnalysis(
     },
   };
 }
+
+
+/**
+ * Generate mock multi-factor correlation data
+ */
+export function generateMockMultiFactorCorrelation() {
+  const factors = ['settlement', 'temperature', 'crack_width'];
+  const matrix = [
+    [1.0, 0.62, 0.45],
+    [0.62, 1.0, 0.31],
+    [0.45, 0.31, 1.0],
+  ];
+  return {
+    success: true,
+    mock: true,
+    factors,
+    correlation_matrix: matrix,
+    factor_pairs: [
+      {
+        factor_x: 'settlement',
+        factor_y: 'temperature',
+        correlation: 0.62,
+        p_value: 0.0003,
+        sample_size: 120,
+        interpretation: 'Settlement shows moderate positive correlation with temperature (r=0.620, p=0.0003).',
+      },
+      {
+        factor_x: 'settlement',
+        factor_y: 'crack_width',
+        correlation: 0.45,
+        p_value: 0.0150,
+        sample_size: 95,
+        interpretation: 'Settlement shows moderate positive correlation with crack width (r=0.450, p=0.0150).',
+      },
+      {
+        factor_x: 'temperature',
+        factor_y: 'crack_width',
+        correlation: 0.31,
+        p_value: 0.0420,
+        sample_size: 85,
+        interpretation: 'Temperature shows weak positive correlation with crack width (r=0.310, p=0.0420).',
+      },
+    ],
+    data_summary: {
+      settlement_points: 25,
+      temperature_sensors: 10,
+      crack_points: 8,
+      date_range: ['2021-01-01', '2021-12-31'],
+      merged_records: 120,
+    },
+  };
+}
