@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { CausalAnalysis } from './CausalAnalysis';
 import { SpatialCorrelationHeatmap } from './SpatialCorrelationHeatmap';
+import { MultiFactorCorrelation } from './MultiFactorCorrelation';
 import { fetchSpatialCorrelation } from '../../utils/apiClient';
 
 interface CorrelationDashboardProps {
   pointIds?: string[];
 }
 
-type AnalysisType = 'causal' | 'spatial';
+type AnalysisType = 'causal' | 'spatial' | 'multifactor';
 
 interface SpatialCorrelationData {
   success: boolean;
@@ -122,6 +123,16 @@ export const CorrelationDashboard: React.FC<CorrelationDashboardProps> = ({
             <i className="fas fa-th" style={{ marginRight: '6px' }} />
             空间关联
           </button>
+          <button
+            style={{
+              ...styles.typeButton,
+              ...(analysisType === 'multifactor' ? styles.typeButtonActive : {}),
+            }}
+            onClick={() => setAnalysisType('multifactor')}
+          >
+            <i className="fas fa-layer-group" style={{ marginRight: '6px' }} />
+            多因素关联
+          </button>
         </div>
 
         {/* 空间关联配置 */}
@@ -177,6 +188,10 @@ export const CorrelationDashboard: React.FC<CorrelationDashboardProps> = ({
               </div>
             )}
           </>
+        )}
+
+        {analysisType === 'multifactor' && (
+          <MultiFactorCorrelation />
         )}
       </div>
     </div>

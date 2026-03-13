@@ -14,6 +14,7 @@ export { CorrelationDashboard } from './CorrelationDashboard';
 export { CausalAnalysis } from './CausalAnalysis';
 export { EventImpactChart } from './EventImpactChart';
 export { SpatialCorrelationHeatmap } from './SpatialCorrelationHeatmap';
+export { MultiFactorCorrelation } from './MultiFactorCorrelation';
 export { DeepLearningDashboard } from './DeepLearningDashboard';
 export { ExplainabilityDashboard } from './ExplainabilityDashboard';
 export { KnowledgeGraphDashboard } from './KnowledgeGraphDashboard';
