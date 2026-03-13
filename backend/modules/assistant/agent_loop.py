@@ -4,17 +4,15 @@ Core Agent execution loop using Claude tool_use protocol.
 
 Flow:
   user message -> Claude (with tools) ->
-    if stop_reason == "tool_use": execute tools -> collect results -> call Claude again -> loop
+    if stop_reason == "tool_use": execute tools -> collect results -> force_finish
     if stop_reason == "end_turn": extract final text -> return
 
 Constraints:
-  - Max 2 iterations (strict for Vercel 60s limit)
-  - 40s total timeout (Vercel 60s limit minus 20s buffer)
-  - Dynamic per-call timeout: min(time_left - 8s, 20s)
-  - Single Claude call never exceeds 20s
-  - Tool results truncated to 3000 chars
-  - Timeout/over-iteration forces a summary response (with time check)
-  - _force_finish skips Claude call if <5s remaining
+  - Max 1 iteration (strict for Vercel 60s limit)
+  - 30s total timeout (Vercel 60s limit minus 30s buffer)
+  - First Claude call capped at 12s (leave room for tools + summary)
+  - Summary call uses NO tools (lightweight, fast)
+  - Tool results truncated to 2000 chars
   - KG/papers enrichment loaded async by frontend (no blocking here)
 """
 import json
@@ -82,8 +80,8 @@ def _call_claude_with_tools(messages, api_key, api_base, model, max_tokens,
         timeout_override: Dynamic timeout in seconds. If None, uses CLAUDE_CALL_TIMEOUT.
     """
     call_timeout = timeout_override if timeout_override else CLAUDE_CALL_TIMEOUT
-    # Safety: never allow a single call to exceed 15s
-    call_timeout = min(call_timeout, 15)
+    # Safety: never allow a single call to exceed 12s (leave room for tools + summary)
+    call_timeout = min(call_timeout, 12)
 
     url = f"{api_base}/v1/messages"
     headers = {
@@ -100,7 +98,42 @@ def _call_claude_with_tools(messages, api_key, api_base, model, max_tokens,
         "temperature": 0.2,
     }
 
-    print(f"[DEBUG] Claude call timeout={call_timeout:.0f}s")
+    print(f"[DEBUG] Claude call (with tools) timeout={call_timeout:.0f}s")
+    resp = requests.post(url, headers=headers, json=payload, timeout=call_timeout)
+    if not resp.ok:
+        detail = ""
+        try:
+            detail = resp.text[:500]
+        except Exception:
+            pass
+        raise Exception(f"Claude HTTP {resp.status_code}: {detail}")
+
+    return resp.json()
+
+
+def _call_claude_summary(messages_summary, api_key, api_base, model, max_tokens,
+                          system_prompt=None, timeout_override=None):
+    """Lightweight Claude call WITHOUT tools - for generating final summary only.
+    Much faster because payload is smaller (no 13 tool definitions).
+    """
+    call_timeout = timeout_override if timeout_override else 10
+    call_timeout = min(call_timeout, 12)
+
+    url = f"{api_base}/v1/messages"
+    headers = {
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+    }
+    payload = {
+        "model": model,
+        "max_tokens": min(max_tokens, 2048),  # Summary doesn't need 4096 tokens
+        "system": system_prompt or "You are a helpful assistant. Respond in Chinese.",
+        "messages": messages_summary,
+        "temperature": 0.2,
+    }
+
+    print(f"[DEBUG] Claude summary call (NO tools) timeout={call_timeout:.0f}s")
     resp = requests.post(url, headers=headers, json=payload, timeout=call_timeout)
     if not resp.ok:
         detail = ""
@@ -460,12 +493,14 @@ def _force_finish(messages, tool_steps, iterations, start_time,
                    api_key, api_base, model, max_tokens,
                    kg_visualization=None, papers=None, papers_query="",
                    system_prompt=None):
-    """Force a final text response when timeout/max iterations reached."""
+    """Force a final text response when timeout/max iterations reached.
+    Uses lightweight Claude call WITHOUT tools for speed.
+    """
     elapsed = time.time() - start_time
     time_left = AGENT_TIMEOUT - elapsed
 
-    # If less than 5s left, skip the final Claude call entirely
-    if time_left < 5:
+    # If less than 3s left, skip the final Claude call entirely
+    if time_left < 3:
         print(f"[WARN] _force_finish: only {time_left:.1f}s left, skipping final Claude call")
         # Try to extract answer from last assistant response in messages
         answer = ""
@@ -478,7 +513,14 @@ def _force_finish(messages, tool_steps, iterations, start_time,
                             answer += block.get("text", "")
                 break
         if not answer:
-            answer = "[Agent] I have gathered data but ran out of time for a full summary. Please try a simpler question or switch to chat mode."
+            # Build a minimal summary from tool_steps
+            step_summaries = []
+            for step in tool_steps:
+                step_summaries.append(f"- {step.get('tool_name', '?')}: {step.get('result_summary', '')}")
+            if step_summaries:
+                answer = "## Agent Data Summary\n\n" + "\n".join(step_summaries)
+            else:
+                answer = "[Agent] Ran out of time. Please try a simpler question or switch to chat mode."
 
         return {
             "answer": answer,
@@ -492,30 +534,51 @@ def _force_finish(messages, tool_steps, iterations, start_time,
             "papers_query": papers_query,
         }
 
-    # Use remaining time minus 2s buffer for the final call
-    finish_timeout = min(time_left - 2, 15)
-    print(f"[DEBUG] _force_finish: {time_left:.1f}s left, calling Claude with timeout={finish_timeout:.0f}s")
+    # Build a CONDENSED summary message for the lightweight call
+    # Instead of full message history (huge), just send tool results summary
+    summary_parts = []
+    for step in tool_steps:
+        summary_parts.append(f"Tool: {step.get('tool_name', '?')} -> {step.get('result_summary', 'completed')}")
+
+    condensed_content = (
+        "Based on the following data gathered by tools, "
+        "provide a concise analysis and answer the user's question. "
+        "Respond in Chinese with Markdown format.\n\n"
+        "Tool results:\n" + "\n".join(summary_parts)
+    )
+
+    # Extract the original user question from messages
+    user_question = ""
+    for msg in messages:
+        if msg.get("role") == "user":
+            content = msg.get("content", "")
+            if isinstance(content, str):
+                user_question = content
+                break
+
+    if user_question:
+        condensed_content += f"\n\nOriginal question: {user_question}"
+
+    # Use remaining time minus 1s buffer
+    finish_timeout = min(time_left - 1, 12)
+    print(f"[DEBUG] _force_finish: {time_left:.1f}s left, lightweight summary call timeout={finish_timeout:.0f}s")
 
     try:
-        messages.append({
-            "role": "user",
-            "content": (
-                "You have reached the maximum number of tool calls. "
-                "Please summarize your findings so far and provide "
-                "the best answer you can based on the data gathered. "
-                "Respond in Chinese."
-            ),
-        })
-        response_data = _call_claude_with_tools(
-            messages, api_key, api_base, model, max_tokens,
-            system_prompt=system_prompt,
+        summary_messages = [{"role": "user", "content": condensed_content}]
+        response_data = _call_claude_summary(
+            summary_messages, api_key, api_base, model, max_tokens,
+            system_prompt="You are a monitoring data analyst. Summarize tool results into a clear answer. Use Chinese. Use Markdown.",
             timeout_override=finish_timeout,
         )
         answer = _extract_text(response_data)
         actual_model = response_data.get("model", model)
     except Exception as e:
-        print(f"[WARN] _force_finish Claude call failed: {e}")
-        answer = "[Agent timeout] Unable to generate final summary."
+        print(f"[WARN] _force_finish summary call failed: {e}")
+        # Fallback: build answer from tool_steps directly
+        step_summaries = []
+        for step in tool_steps:
+            step_summaries.append(f"- **{step.get('tool_name', '?')}**: {step.get('result_summary', '')}")
+        answer = "## Agent Data Summary\n\n" + "\n".join(step_summaries) if step_summaries else "[Agent timeout]"
         actual_model = model
 
     return {
