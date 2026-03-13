@@ -104,9 +104,9 @@ export const assistantApi = {
     papers?: AcademicPaper[]
     papersQuery?: string
   }> {
-    // No more force-enrich in backend, so timeouts can be shorter
-    // Agent: 65s (Claude proxy slow), Chat: 35s
-    const timeoutMs = mode === 'agent' ? 65000 : 35000
+    // Agent: 35s (backend has 30s budget), Chat: 28s (backend has 25s budget)
+    // Must be LESS than Vercel 60s to avoid HTML error pages
+    const timeoutMs = mode === 'agent' ? 35000 : 28000
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeoutMs)
 

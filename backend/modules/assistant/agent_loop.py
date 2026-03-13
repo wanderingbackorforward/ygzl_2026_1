@@ -28,10 +28,10 @@ from .agent_tools import TOOL_REGISTRY
 from .tool_definitions import AGENT_TOOLS
 
 
-MAX_ITERATIONS = 2  # Reduced: 2 iterations max to stay within Vercel 60s
-AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "40"))  # 40s total, 20s buffer for Vercel
-TOOL_RESULT_MAX_CHARS = 3000
-CLAUDE_CALL_TIMEOUT = 18  # Base timeout per Claude call (dynamic calc overrides this)
+MAX_ITERATIONS = 1  # 1 iteration only: call tools once, then answer. Vercel 60s is hard.
+AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "30"))  # 30s total, 30s buffer for Vercel
+TOOL_RESULT_MAX_CHARS = 2000
+CLAUDE_CALL_TIMEOUT = 15  # Base timeout per Claude call (dynamic calc overrides this)
 
 
 def _claude_settings():
@@ -82,8 +82,8 @@ def _call_claude_with_tools(messages, api_key, api_base, model, max_tokens,
         timeout_override: Dynamic timeout in seconds. If None, uses CLAUDE_CALL_TIMEOUT.
     """
     call_timeout = timeout_override if timeout_override else CLAUDE_CALL_TIMEOUT
-    # Safety: never allow a single call to exceed 20s
-    call_timeout = min(call_timeout, 20)
+    # Safety: never allow a single call to exceed 15s
+    call_timeout = min(call_timeout, 15)
 
     url = f"{api_base}/v1/messages"
     headers = {
