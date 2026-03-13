@@ -1284,13 +1284,20 @@ def api_multi_factor_correlation():
         has_temp = len(temp_df) > 0
         has_crack = len(crack_df) > 0
 
+        print(f"[DEBUG multi-factor] settlement={len(settlement_df)}, temp={len(temp_df)}, crack={len(crack_df)}")
+
         if not has_settlement:
+            print("[DEBUG multi-factor] No settlement data, returning mock")
             return jsonify(_mock_multi_factor_correlation())
 
         # --- Build daily averages ---
         # Settlement: average across all points per date
         settle_daily = settlement_df.groupby('measurement_date')['cumulative_change'].mean().reset_index()
         settle_daily.columns = ['date', 'settlement']
+        # Normalize date to date-only (no time/tz)
+        settle_daily['date'] = pd.to_datetime(settle_daily['date']).dt.date
+
+        print(f"[DEBUG multi-factor] settle_daily: {len(settle_daily)} rows, date dtype={settle_daily['date'].dtype}, sample={settle_daily['date'].iloc[:3].tolist()}")
 
         merged = settle_daily.copy()
 
@@ -1298,11 +1305,15 @@ def api_multi_factor_correlation():
         if has_temp:
             temp_daily = temp_df.groupby('measurement_date')['avg_temperature'].mean().reset_index()
             temp_daily.columns = ['date', 'temperature']
+            temp_daily['date'] = pd.to_datetime(temp_daily['date']).dt.date
+            print(f"[DEBUG multi-factor] temp_daily: {len(temp_daily)} rows, date dtype={temp_daily['date'].dtype}, sample={temp_daily['date'].iloc[:3].tolist()}")
             merged = merged.merge(temp_daily, on='date', how='inner')
+            print(f"[DEBUG multi-factor] after merge temp: {len(merged)} rows")
 
         # Crack: melt to long format, average per date
         if has_crack and 'measurement_date' in crack_df.columns:
             crack_cols = [c for c in crack_df.columns if c not in ('id', 'measurement_date', 'created_at')]
+            print(f"[DEBUG multi-factor] crack_cols={crack_cols[:5]}")
             if crack_cols:
                 crack_long = crack_df.melt(
                     id_vars=['measurement_date'], value_vars=crack_cols,
@@ -1312,12 +1323,18 @@ def api_multi_factor_correlation():
                 crack_long = crack_long.dropna(subset=['crack_width'])
                 crack_daily = crack_long.groupby('measurement_date')['crack_width'].mean().reset_index()
                 crack_daily.columns = ['date', 'crack_width']
+                crack_daily['date'] = pd.to_datetime(crack_daily['date']).dt.date
+                print(f"[DEBUG multi-factor] crack_daily: {len(crack_daily)} rows, sample={crack_daily['date'].iloc[:3].tolist()}")
                 merged = merged.merge(crack_daily, on='date', how='inner')
+                print(f"[DEBUG multi-factor] after merge crack: {len(merged)} rows")
 
         # Available factor columns
         factor_cols = [c for c in ['settlement', 'temperature', 'crack_width'] if c in merged.columns]
 
+        print(f"[DEBUG multi-factor] factor_cols={factor_cols}, merged={len(merged)} rows")
+
         if len(factor_cols) < 2 or len(merged) < 10:
+            print(f"[DEBUG multi-factor] Insufficient: factors={len(factor_cols)}, rows={len(merged)}, returning mock")
             return jsonify(_mock_multi_factor_correlation())
 
         # --- Compute correlation matrix ---
