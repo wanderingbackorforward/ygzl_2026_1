@@ -62,7 +62,11 @@ export const CausalAnalysis: React.FC<CausalAnalysisProps> = ({
       if (data && (data as any).success === false) {
         setError((data as any).message || '分析失败，请检查参数');
         setResult(null);
-      } else if (data && typeof data.treatment_effect === 'number') {
+      } else if (data && (typeof data.treatment_effect === 'number' || typeof (data as any).post_event_effect === 'number')) {
+        // DID returns treatment_effect, SCM returns post_event_effect
+        if (typeof data.treatment_effect !== 'number' && typeof (data as any).post_event_effect === 'number') {
+          data.treatment_effect = (data as any).post_event_effect;
+        }
         setResult(data);
       } else {
         setError('返回数据格式异常，请检查参数后重试');

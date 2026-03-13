@@ -373,6 +373,42 @@ def analyze_event_impact(point_id, event_date, conn=None, control_point_ids=None
         # 执行SCM分析
         result = causal.synthetic_control(treated_full, control_matrix, scm_event_idx)
 
+        # ---- Normalize SCM output to match DID format for frontend ----
+        result['treatment_effect'] = result['post_event_effect']
+        result['treated_change'] = float(np.mean(treated_after) - np.mean(treated_before)) if len(treated_before) > 0 and len(treated_after) > 0 else 0.0
+        result['control_change'] = 0.0
+        result['confidence_interval'] = [
+            result['post_event_effect'] - 1.96 * result.get('pre_event_rmse', 1.0),
+            result['post_event_effect'] + 1.96 * result.get('pre_event_rmse', 1.0),
+        ]
+
+        # Build before/after period data for chart rendering
+        cf = result.get('counterfactual', [])
+        td = treated_df.reset_index(drop=True)
+        mask_b = (td['measurement_date'] >= window_start_date) & (td['measurement_date'] < event_date_ts)
+        mask_a = (td['measurement_date'] >= event_date_ts) & (td['measurement_date'] <= window_end_date)
+
+        b_dates = td.loc[mask_b, 'measurement_date'].dt.strftime('%Y-%m-%d').tolist()
+        a_dates = td.loc[mask_a, 'measurement_date'].dt.strftime('%Y-%m-%d').tolist()
+
+        b_pos = td.index[mask_b].tolist()
+        a_pos = td.index[mask_a].tolist()
+
+        cf_b = [float(cf[p]) for p in b_pos if p < len(cf)] if cf else [0.0] * len(b_dates)
+        cf_a = [float(cf[p]) for p in a_pos if p < len(cf)] if cf else [0.0] * len(a_dates)
+
+        result['before_period'] = {
+            'dates': b_dates,
+            'treated_values': treated_before.tolist(),
+            'control_values': cf_b,
+        }
+        result['after_period'] = {
+            'dates': a_dates,
+            'treated_values': treated_after.tolist(),
+            'control_values': cf_a,
+            'counterfactual': cf_a,
+        }
+
     else:
         raise ValueError("method必须是'DID'或'SCM'")
 
