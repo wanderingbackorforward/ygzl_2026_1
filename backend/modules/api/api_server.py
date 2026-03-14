@@ -77,7 +77,7 @@ from modules.module_registry.api.module_api import module_bp
 ml_api = None
 try:
     from modules.ml_models.api import ml_api
-except ImportError as e:
+except Exception as e:
     print(f"Warning: ML modules not available: {e}")
     print("ML API endpoints will not be registered.")
 
