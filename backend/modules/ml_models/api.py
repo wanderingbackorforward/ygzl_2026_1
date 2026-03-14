@@ -1267,13 +1267,13 @@ def _mock_multi_factor_correlation():
     pairs = [
         {'factor_x': 'temperature', 'factor_y': 'settlement',
          'correlation': matrix[0][1], 'p_value': 0.003, 'sample_size': 120,
-         'interpretation': 'wendu yu chenjiang cheng zhongdeng zheng xiangguan.'},
+         'interpretation': 'Settlement vs Temperature: moderate positive'},
         {'factor_x': 'crack_width', 'factor_y': 'settlement',
          'correlation': matrix[0][2], 'p_value': 0.015, 'sample_size': 95,
-         'interpretation': 'liefeng kuandu yu chenjiang cheng ruo zheng xiangguan.'},
+         'interpretation': 'Crack width vs Settlement: weak positive'},
         {'factor_x': 'temperature', 'factor_y': 'crack_width',
          'correlation': matrix[1][2], 'p_value': 0.042, 'sample_size': 85,
-         'interpretation': 'wendu yu liefeng kuandu cheng ruo xiangguan.'},
+         'interpretation': 'Temperature vs Crack width: weak'},
     ]
     return {
         'success': True, 'mock': True,
@@ -1375,16 +1375,16 @@ def api_multi_factor_correlation():
                 r_val, p_val = sp_stats.pearsonr(x.loc[common], y.loc[common])
                 abs_r = abs(r_val)
                 if abs_r >= 0.7:
-                    strength = 'qiang'
+                    strength = 'strong'
                 elif abs_r >= 0.4:
-                    strength = 'zhongdeng'
+                    strength = 'moderate'
                 elif abs_r >= 0.2:
-                    strength = 'ruo'
+                    strength = 'weak'
                 else:
-                    strength = 'ji ruo'
-                direction = 'zheng' if r_val > 0 else 'fu'
-                cn = {'settlement': 'chenjiang', 'temperature': 'wendu', 'crack_width': 'liefeng kuandu'}
-                interp = f"{cn.get(factor_cols[i], factor_cols[i])} yu {cn.get(factor_cols[j], factor_cols[j])} cheng {strength} {direction} xiangguan (r={r_val:.3f}, p={p_val:.4f})."
+                    strength = 'very weak'
+                direction = 'positive' if r_val > 0 else 'negative'
+                cn = {'settlement': 'Settlement', 'temperature': 'Temperature', 'crack_width': 'Crack width'}
+                interp = f"{cn.get(factor_cols[i], factor_cols[i])} vs {cn.get(factor_cols[j], factor_cols[j])}: {strength} {direction}"
                 pairs.append({
                     'factor_x': factor_cols[i],
                     'factor_y': factor_cols[j],

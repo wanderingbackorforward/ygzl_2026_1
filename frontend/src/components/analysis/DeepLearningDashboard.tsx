@@ -77,6 +77,32 @@ export const DeepLearningDashboard: React.FC = () => {
 
   return (
     <div style={styles.container}>
+      {/* 实验性功能提示横幅 */}
+      <div style={{
+        display: 'flex', alignItems: 'flex-start', gap: '12px',
+        padding: '14px 18px', marginBottom: '16px',
+        backgroundColor: 'rgba(255, 169, 64, 0.12)',
+        border: '1px solid rgba(255, 169, 64, 0.4)',
+        borderRadius: '8px', color: '#ffa940', fontSize: '13px', lineHeight: '1.6',
+      }}>
+        <i className="fas fa-flask" style={{ fontSize: '18px', marginTop: '2px', flexShrink: 0 }} />
+        <div>
+          <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '4px', color: '#fff' }}>
+            <i className="fas fa-info-circle" style={{ marginRight: '6px', color: '#ffa940' }} />
+            实验性功能
+          </div>
+          <div style={{ color: '#e2e8f0' }}>
+            深度学习模型（Informer / STGCN / PINN / Ensemble）需要 GPU 算力，当前云端环境暂未部署。
+            显示的是基于算法逻辑的模拟演算结果，仅供功能预览和界面体验。
+          </div>
+          <div style={{ marginTop: '6px', color: '#e2e8f0' }}>
+            如需基于真实数据的预测分析，请使用
+            <span style={{ color: '#4a9eff', fontWeight: 'bold' }}> "趋势预测" </span>
+            模块（ARIMA/SARIMA 模型已在云端部署并使用真实监测数据）。
+          </div>
+        </div>
+      </div>
+
       {/* Model selector */}
       <div style={styles.modelSelector}>
         {(Object.keys(MODEL_INFO) as ModelType[]).map(key => (

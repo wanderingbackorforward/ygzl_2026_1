@@ -176,6 +176,32 @@ export const MultiFactorCorrelation: React.FC = () => {
     return '不显著';
   };
 
+  // 将后端英文解读翻译为中文
+  const translateInterpretation = (text: string, r: number, p: number) => {
+    const nameMap: Record<string, string> = {
+      'Settlement': '沉降', 'Temperature': '温度', 'Crack width': '裂缝宽度',
+      'settlement': '沉降', 'temperature': '温度', 'crack_width': '裂缝宽度',
+    };
+    const strengthMap: Record<string, string> = {
+      'strong': '强', 'moderate': '中等', 'weak': '弱', 'very weak': '极弱',
+    };
+    const dirMap: Record<string, string> = {
+      'positive': '正', 'negative': '负',
+    };
+
+    // Parse "X vs Y: strength direction"
+    const match = text.match(/^(.+?)\s+vs\s+(.+?):\s*(\w+)\s*(\w+)?/);
+    if (match) {
+      const factorA = nameMap[match[1].trim()] || match[1].trim();
+      const factorB = nameMap[match[2].trim()] || match[2].trim();
+      const strength = strengthMap[match[3]] || match[3];
+      const direction = match[4] ? (dirMap[match[4]] || match[4]) : '';
+      return `${factorA}与${factorB}呈${strength}${direction}相关 (r=${r.toFixed(3)}, p=${p.toFixed(4)})`;
+    }
+
+    return text;
+  };
+
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
@@ -294,7 +320,7 @@ export const MultiFactorCorrelation: React.FC = () => {
 
               <div style={styles.pairInterpretation}>
                 <i className="fas fa-lightbulb" style={{ color: '#ffa940', marginRight: '8px', flexShrink: 0 }} />
-                {pair.interpretation}
+                {translateInterpretation(pair.interpretation, pair.correlation, pair.p_value)}
               </div>
             </div>
           ))}

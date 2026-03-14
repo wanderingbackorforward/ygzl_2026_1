@@ -108,6 +108,24 @@ const SHAPPanel: React.FC = () => {
 
   return (
     <div style={styles.panelContent}>
+      {/* SHAP 演示模式提示 */}
+      {data?.mock && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: '10px',
+          padding: '12px 16px', marginBottom: '14px',
+          backgroundColor: 'rgba(255, 169, 64, 0.12)',
+          border: '1px solid rgba(255, 169, 64, 0.4)',
+          borderRadius: '8px', fontSize: '13px', lineHeight: '1.5',
+        }}>
+          <i className="fas fa-info-circle" style={{ color: '#ffa940', fontSize: '16px', marginTop: '2px', flexShrink: 0 }} />
+          <div style={{ color: '#e2e8f0' }}>
+            <span style={{ fontWeight: 'bold', color: '#fff' }}>演示模式：</span>
+            SHAP 可解释性分析需要较大算力（依赖 shap 库），当前云端环境暂未部署，显示的是模拟数据。
+            Granger 因果检验使用真实监测数据，请切换到"因果发现"标签页查看。
+          </div>
+        </div>
+      )}
+
       <div style={styles.paramRow}>
         <label style={styles.paramLabel}>监测点位:</label>
         <select value={selectedPoint} onChange={e => setSelectedPoint(e.target.value)} style={styles.select}>

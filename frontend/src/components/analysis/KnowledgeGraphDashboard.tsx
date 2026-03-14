@@ -23,6 +23,24 @@ export const KnowledgeGraphDashboard: React.FC = () => {
 
   return (
     <div style={styles.container}>
+      {/* 演示模式提示 */}
+      {stats?.mock && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: '10px',
+          padding: '12px 16px', marginBottom: '14px',
+          backgroundColor: 'rgba(255, 169, 64, 0.12)',
+          border: '1px solid rgba(255, 169, 64, 0.4)',
+          borderRadius: '8px', fontSize: '13px', lineHeight: '1.5',
+        }}>
+          <i className="fas fa-info-circle" style={{ color: '#ffa940', fontSize: '16px', marginTop: '2px', flexShrink: 0 }} />
+          <div style={{ color: '#e2e8f0' }}>
+            <span style={{ fontWeight: 'bold', color: '#fff' }}>演示模式：</span>
+            知识图谱需要 Neo4j 图数据库支持，当前云端环境暂未连接，显示的是模拟数据。
+            图谱探索、高风险点查询和知识问答功能均为功能预览。
+          </div>
+        </div>
+      )}
+
       {/* Stats cards */}
       <div style={styles.statsGrid}>
         <StatCard label="节点总数" value={statsLoading ? '...' : String(stats?.total_nodes ?? 0)} icon="circle" color="#06b6d4" />
