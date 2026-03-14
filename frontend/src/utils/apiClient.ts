@@ -17,72 +17,104 @@ import {
   generateMockMultiFactorCorrelation,
 } from './mockData';
 
-// 记录哪些接口不可用（按路径+失败时间），支持定时重试
-const failedEndpoints = new Map<string, number>();
+// 记录哪些接口连续失败次数（按路径），达到阈值才降级
+const failureCount = new Map<string, number>();
+// 降级后的冷却时间戳
+const cooldownUntil = new Map<string, number>();
 
-// 失败后多久重试真实 API（毫秒）：2分钟
-const RETRY_INTERVAL_MS = 2 * 60 * 1000;
+// 连续失败几次才降级到 mock（容忍冷启动）
+const FALLBACK_THRESHOLD = 2;
+// 降级后冷却时间（毫秒）：30秒后自动重试真实 API
+const COOLDOWN_MS = 30 * 1000;
+// 重试间隔（毫秒）：首次失败后等1.5秒重试，给冷启动时间
+const RETRY_DELAY_MS = 1500;
 
 // 兼容旧接口：检测是否有任何接口降级
 export function isMockMode(): boolean {
-  return failedEndpoints.size > 0;
+  return cooldownUntil.size > 0;
 }
 
 // 退出演示模式：清除所有失败标记，下次请求会重试真实 API
 export function setMockMode(enabled: boolean) {
   if (!enabled) {
-    failedEndpoints.clear();
+    failureCount.clear();
+    cooldownUntil.clear();
   }
 }
 
 // 获取失败端点数量（供 UI 显示）
 export function getFailedEndpointCount(): number {
-  return failedEndpoints.size;
+  return cooldownUntil.size;
 }
+
+const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 /**
  * 增强的 fetch 函数 - 按接口独立降级
- * 单个接口失败只影响该接口，不影响其他接口
- * 失败后 RETRY_INTERVAL_MS 内走 mock，之后自动重试真实 API
+ * 单个 500 不会立即降级（可能是冷启动），会自动重试一次
+ * 连续失败 FALLBACK_THRESHOLD 次才降级到 mock
+ * 降级后 COOLDOWN_MS 后自动重试真实 API
  */
 async function fetchWithFallback<T>(
   url: string,
   options?: RequestInit,
   mockGenerator?: () => T
 ): Promise<T> {
-  // 提取短路径用于日志（去掉 API_BASE 前缀）
   const shortPath = url.replace(API_BASE, '');
 
-  // 已知不可用的接口：检查是否超过重试间隔
-  const failedAt = failedEndpoints.get(shortPath);
-  if (failedAt && mockGenerator) {
-    if (Date.now() - failedAt < RETRY_INTERVAL_MS) {
+  // 在冷却期内直接走 mock
+  const cd = cooldownUntil.get(shortPath);
+  if (cd && mockGenerator) {
+    if (Date.now() < cd) {
       return mockGenerator();
     }
-    // 超过重试间隔，移除标记，尝试真实 API
-    failedEndpoints.delete(shortPath);
+    // 冷却结束，清除标记重试
+    cooldownUntil.delete(shortPath);
+    failureCount.delete(shortPath);
   }
 
   try {
     const response = await fetch(url, options);
 
     if (!response.ok) {
+      const count = (failureCount.get(shortPath) || 0) + 1;
+      failureCount.set(shortPath, count);
+
+      // 未达阈值：等一下重试（给冷启动时间）
+      if (count < FALLBACK_THRESHOLD && mockGenerator) {
+        console.log(`[ML] ${shortPath} -> ${response.status}, retrying in ${RETRY_DELAY_MS}ms (${count}/${FALLBACK_THRESHOLD})`);
+        await delay(RETRY_DELAY_MS);
+        // 递归重试，不带 await 以复用同一逻辑
+        return fetchWithFallback(url, options, mockGenerator);
+      }
+
+      // 达到阈值：降级到 mock，启动冷却
       if (mockGenerator) {
-        failedEndpoints.set(shortPath, Date.now());
-        console.log(`[ML Mock] ${shortPath} -> ${response.status}, using mock data`);
+        cooldownUntil.set(shortPath, Date.now() + COOLDOWN_MS);
+        console.log(`[ML Mock] ${shortPath} -> ${response.status}, using mock data (${COOLDOWN_MS / 1000}s cooldown)`);
         return mockGenerator();
       }
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    // 如果之前失败过但现在恢复了，移除标记
-    failedEndpoints.delete(shortPath);
+    // 成功：清除失败计数
+    failureCount.delete(shortPath);
+    cooldownUntil.delete(shortPath);
     return await response.json();
   } catch (error) {
+    const count = (failureCount.get(shortPath) || 0) + 1;
+    failureCount.set(shortPath, count);
+
+    if (count < FALLBACK_THRESHOLD && mockGenerator) {
+      console.log(`[ML] ${shortPath} -> network error, retrying (${count}/${FALLBACK_THRESHOLD})`);
+      await delay(RETRY_DELAY_MS);
+      return fetchWithFallback(url, options, mockGenerator);
+    }
+
     if (mockGenerator) {
-      failedEndpoints.set(shortPath, Date.now());
+      cooldownUntil.set(shortPath, Date.now() + COOLDOWN_MS);
       const msg = error instanceof Error ? error.message : String(error);
-      console.log(`[ML Mock] ${shortPath} -> ${msg}, using mock data`);
+      console.log(`[ML Mock] ${shortPath} -> ${msg}, using mock data (${COOLDOWN_MS / 1000}s cooldown)`);
       return mockGenerator();
     }
     throw error;
