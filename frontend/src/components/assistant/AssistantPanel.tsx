@@ -346,6 +346,7 @@ export default function AssistantPanel({ onClose }: AssistantPanelProps) {
                 <QuickCommandPanel
                   currentRole={currentRole}
                   currentModule={pathToModule(location.pathname)}
+                  currentMode={currentMode}
                   onCommandClick={handleQuickCommand}
                   disabled={chatLoading}
                 />

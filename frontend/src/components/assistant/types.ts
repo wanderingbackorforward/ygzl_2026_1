@@ -110,4 +110,8 @@ export interface QuickCommand {
   prompt: string
   role: Role
   modules?: ModuleKey[]  // if undefined, show on all modules
+  mode?: AssistantMode | 'both'  // 'chat', 'agent', or 'both' (default)
+  category?: string  // 分类标签
+  description?: string  // 详细描述
+  tags?: string[]  // 搜索标签
 }
