@@ -37,11 +37,15 @@ const TYPE_LABELS: Record<string, string> = {
   ConstructionEvent: '施工事件',
   Anomaly: '异常',
   AcademicPaper: '参考文献',
+  Document: '文献',
+  Concept: '概念',
   SPATIAL_NEAR: '空间邻近',
   CORRELATES_WITH: '关联',
   CAUSES: '因果',
   DETECTED_AT: '检测于',
   REFERENCES: '参考',
+  MENTIONS: '引用',
+  RELATED_TO: '关联',
 }
 
 export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGraphVizProps) {
@@ -175,6 +179,14 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
           <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: '#8b5cf6' }} />
           <span className="text-sm text-slate-200">参考文献</span>
         </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: '#3b82f6' }} />
+          <span className="text-sm text-slate-200">文献</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: '#10b981' }} />
+          <span className="text-sm text-slate-200">概念</span>
+        </div>
         <span className="text-sm text-slate-500">|</span>
         <div className="flex items-center gap-1.5">
           <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#38bdf8' }} />
@@ -191,6 +203,14 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
         <div className="flex items-center gap-1.5">
           <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#f87171' }} />
           <span className="text-sm text-slate-200">检测于</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#3b82f6' }} />
+          <span className="text-sm text-slate-200">引用</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#10b981' }} />
+          <span className="text-sm text-slate-200">关联</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#c084fc' }} />

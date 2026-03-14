@@ -257,6 +257,8 @@ class SupabaseKnowledgeGraph:
             'ConstructionEvent': '#f59e0b',
             'Anomaly': '#ef4444',
             'GeologicalStructure': '#a78bfa',
+            'Document': '#3b82f6',
+            'Concept': '#10b981',
         }
         i = 0
         for nid in list(neighbor_ids)[:12]:
@@ -273,16 +275,28 @@ class SupabaseKnowledgeGraph:
                 'y': cy + math.sin(angle) * 120,
             })
             # Determine edge direction and type
+            edge_color_map = {
+                'SPATIAL_NEAR': '#38bdf8',
+                'DETECTED_AT': '#f87171',
+                'MENTIONS': '#3b82f6',
+                'RELATED_TO': '#10b981',
+                'CORRELATES_WITH': '#a78bfa',
+                'CAUSES': '#fb923c',
+            }
             if self.G.has_edge(point_id, nid):
                 edata = self.G.edges[point_id, nid]
+                etype = edata.get('edge_type', '')
                 edges_out.append({'source': point_id, 'target': nid,
-                                   'type': edata.get('edge_type', ''),
-                                   'color': '#38bdf8', 'label': edata.get('edge_type', '')})
+                                   'type': etype,
+                                   'color': edge_color_map.get(etype, '#38bdf8'),
+                                   'label': etype})
             elif self.G.has_edge(nid, point_id):
                 edata = self.G.edges[nid, point_id]
+                etype = edata.get('edge_type', '')
                 edges_out.append({'source': nid, 'target': point_id,
-                                   'type': edata.get('edge_type', ''),
-                                   'color': '#f87171', 'label': edata.get('edge_type', '')})
+                                   'type': etype,
+                                   'color': edge_color_map.get(etype, '#f87171'),
+                                   'label': etype})
             i += 1
 
         return {'success': True, 'center': point_id, 'nodes': nodes_out, 'edges': edges_out}
