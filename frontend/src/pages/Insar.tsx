@@ -741,13 +741,14 @@ function InsarNativeMap(
   }, [baseLayerName, baseLayers])
 
   useEffect(() => {
-    if (!selected?.id) return
+    const pointId = selectedPoint?.id || selected?.id
+    if (!pointId) return
     let mounted = true
     const controller = new AbortController()
     setSeriesLoading(true)
     setSeriesError(null)
     const safeDataset = safeDatasetName(dataset)
-    const url = `${API_BASE}/insar/series?dataset=${encodeURIComponent(safeDataset)}&id=${encodeURIComponent(selected.id)}`
+    const url = `${API_BASE}/insar/series?dataset=${encodeURIComponent(safeDataset)}&id=${encodeURIComponent(pointId)}`
     ;(async () => {
       try {
         const res = await fetch(url, { signal: controller.signal })
@@ -773,7 +774,7 @@ function InsarNativeMap(
       mounted = false
       controller.abort()
     }
-  }, [dataset, selected?.id])
+  }, [dataset, selected?.id, selectedPoint?.id])
 
   useEffect(() => {
     const map = mapRef.current
@@ -1884,10 +1885,74 @@ export default function Insar() {
                 </div>
               )}
 
-              {/* 占位：时序图和施工建议将在下一步添加 */}
-              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-center">
-                <p className="text-sm text-slate-400">时序图和施工建议将在下一步实现</p>
+              {/* 时序图 */}
+              <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+                <h4 className="mb-3 text-sm font-semibold text-white">
+                  <i className="fas fa-chart-line mr-2 text-cyan-400" />
+                  时序变化
+                </h4>
+                {seriesLoading ? (
+                  <div className="flex h-48 items-center justify-center">
+                    <div className="text-sm text-slate-400">
+                      <i className="fas fa-spinner fa-spin mr-2" />
+                      加载中...
+                    </div>
+                  </div>
+                ) : seriesError ? (
+                  <div className="flex h-48 items-center justify-center">
+                    <div className="text-sm text-red-400">
+                      <i className="fas fa-exclamation-circle mr-2" />
+                      {seriesError}
+                    </div>
+                  </div>
+                ) : series?.series && series.series.length > 0 ? (
+                  <div className="h-48">
+                    <EChartsWrapper option={seriesOption} />
+                  </div>
+                ) : (
+                  <div className="flex h-48 items-center justify-center">
+                    <div className="text-sm text-slate-400">暂无时序数据</div>
+                  </div>
+                )}
               </div>
+
+              {/* 施工建议 */}
+              {(() => {
+                const velocity = getVelocityFromProps(selectedPoint.props, velocityField)
+                if (velocity === null) return null
+                const risk = riskFromVelocity(velocity, thresholds)
+                const measures = expertMeasuresForRisk(risk)
+                if (measures.length === 0) return null
+
+                const { label: riskLabel, color: riskColor } = (() => {
+                  if (risk === 'danger') return { label: '危险', color: 'text-red-400' }
+                  if (risk === 'warning') return { label: '预警', color: 'text-orange-400' }
+                  return { label: '正常', color: 'text-green-400' }
+                })()
+
+                return (
+                  <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+                    <h4 className="mb-3 text-sm font-semibold text-white">
+                      <i className="fas fa-clipboard-list mr-2 text-cyan-400" />
+                      施工建议
+                      <span className={`ml-2 text-xs ${riskColor}`}>({riskLabel})</span>
+                    </h4>
+                    <div className="space-y-3">
+                      {measures.map((m, idx) => (
+                        <div key={m.key} className="rounded-lg border border-slate-600 bg-slate-900/50 p-3">
+                          <div className="mb-1 flex items-start gap-2">
+                            <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-cyan-500/20 text-xs font-bold text-cyan-400">
+                              {idx + 1}
+                            </span>
+                            <span className="flex-1 text-sm font-medium text-white">{m.title}</span>
+                          </div>
+                          <p className="ml-7 text-xs leading-relaxed text-slate-300">{m.detail}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           </div>
         </div>
