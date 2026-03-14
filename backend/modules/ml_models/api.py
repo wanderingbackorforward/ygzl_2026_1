@@ -73,9 +73,9 @@ except Exception as e:
     ENSEMBLE_AVAILABLE = False
 
 try:
-    from modules.ml_models.explainability import ExplainabilityAnalyzer, SHAP_AVAILABLE
+    from modules.ml_models.explainability import ExplainabilityAnalyzer, SHAP_AVAILABLE, LightweightExplainer, build_settlement_features
 except Exception as e:
-    print(f"[警告] Explainability模块加载失败: {e}")
+    print(f"[Info] Explainability module: {e}")
     SHAP_AVAILABLE = False
 
 try:
@@ -919,7 +919,18 @@ def api_explain_model(point_id):
     """
     try:
         if not SHAP_AVAILABLE:
-            return jsonify(_mock_shap(point_id))
+            # Fallback: use permutation_importance with real data
+            df = fetch_point_settlement(point_id)
+            if len(df) < 20:
+                return jsonify(_mock_shap(point_id))
+
+            settlement = df['settlement'].values
+            X, y, feature_names = build_settlement_features(settlement)
+
+            explainer = LightweightExplainer()
+            result = explainer.explain(X, y, feature_names)
+            result['point_id'] = point_id
+            return jsonify(result)
 
         model_type = request.args.get('model_type', 'tree')
 

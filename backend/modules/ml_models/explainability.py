@@ -1,15 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-SHAP: SHapley Additive exPlanations (可解释性分析模块)
-论文: "A Unified Approach to Interpreting Model Predictions" (NeurIPS 2017)
+Explainability module - Feature importance analysis
 
-核心功能:
-1. SHAP值计算 - 量化每个特征对预测的贡献
-2. 特征重要性排序 - 识别关键影响因素
-3. 依赖图 - 分析特征与预测的关系
-4. 力图 - 可视化单个预测的解释
-
-应用场景: 解释沉降预测模型,识别关键影响因素
+Supports two backends:
+1. SHAP (if installed) - SHapley Additive exPlanations
+2. Lightweight (sklearn) - permutation_importance fallback
 """
 
 import numpy as np
@@ -23,7 +18,153 @@ try:
     SHAP_AVAILABLE = True
 except ImportError:
     SHAP_AVAILABLE = False
-    print("[警告] SHAP未安装,请运行: pip install shap")
+    print("[Info] SHAP not installed, using permutation_importance fallback")
+
+
+class LightweightExplainer:
+    """
+    Lightweight feature importance using sklearn permutation_importance.
+    No external dependencies beyond sklearn (already available on Vercel).
+    """
+
+    def __init__(self):
+        self.model = None
+        self.feature_names = None
+        self.importance_result = None
+
+    def explain(self, X: np.ndarray, y: np.ndarray,
+                feature_names: List[str] = None,
+                n_repeats: int = 10) -> Dict:
+        """
+        Train a GradientBoostingRegressor and compute permutation importance.
+
+        Args:
+            X: feature matrix (n_samples, n_features)
+            y: target values (n_samples,)
+            feature_names: list of feature names
+            n_repeats: number of permutation repeats
+
+        Returns:
+            dict with feature_importance and summary
+        """
+        from sklearn.ensemble import GradientBoostingRegressor
+        from sklearn.inspection import permutation_importance
+        from sklearn.model_selection import train_test_split
+
+        self.feature_names = feature_names or [f"feature_{i}" for i in range(X.shape[1])]
+
+        # Split data
+        if len(X) > 30:
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=0.3, random_state=42
+            )
+        else:
+            X_train, X_test, y_train, y_test = X, X, y, y
+
+        # Train model
+        self.model = GradientBoostingRegressor(
+            n_estimators=100, max_depth=4, learning_rate=0.1, random_state=42
+        )
+        self.model.fit(X_train, y_train)
+
+        train_score = self.model.score(X_train, y_train)
+        test_score = self.model.score(X_test, y_test)
+
+        # Permutation importance on test set
+        perm_result = permutation_importance(
+            self.model, X_test, y_test,
+            n_repeats=n_repeats, random_state=42
+        )
+
+        # Build feature_importance list (sorted by importance descending)
+        importances = perm_result.importances_mean
+        sorted_idx = np.argsort(importances)[::-1]
+
+        feature_importance = []
+        for rank, idx in enumerate(sorted_idx):
+            feature_importance.append({
+                'feature': self.feature_names[idx],
+                'importance': float(importances[idx]),
+                'std': float(perm_result.importances_std[idx]),
+                'rank': rank + 1,
+            })
+
+        # Build summary statistics
+        summary = []
+        for idx in sorted_idx:
+            vals = perm_result.importances[idx]
+            summary.append({
+                'feature': self.feature_names[idx],
+                'mean_shap': float(np.mean(vals)),
+                'mean_abs_shap': float(np.mean(np.abs(vals))),
+                'std_shap': float(np.std(vals)),
+                'min_shap': float(np.min(vals)),
+                'max_shap': float(np.max(vals)),
+                'median_shap': float(np.median(vals)),
+            })
+
+        return {
+            'success': True,
+            'method': 'permutation_importance',
+            'feature_importance': feature_importance,
+            'summary': summary,
+            'model_performance': {
+                'train_r2': round(train_score, 4),
+                'test_r2': round(test_score, 4),
+            },
+        }
+
+
+def build_settlement_features(settlement_values: np.ndarray) -> Tuple[np.ndarray, np.ndarray, List[str]]:
+    """
+    Build time-series features from raw settlement data.
+
+    Returns: (X, y, feature_names)
+    """
+    n = len(settlement_values)
+    if n < 10:
+        raise ValueError("Need at least 10 data points")
+
+    # Feature engineering
+    lag_1 = np.roll(settlement_values, 1); lag_1[0] = settlement_values[0]
+    lag_2 = np.roll(settlement_values, 2); lag_2[:2] = settlement_values[0]
+    lag_3 = np.roll(settlement_values, 3); lag_3[:3] = settlement_values[0]
+    lag_7 = np.roll(settlement_values, 7); lag_7[:7] = settlement_values[0]
+
+    # Rolling statistics
+    s = pd.Series(settlement_values)
+    roll_mean_3 = s.rolling(3, min_periods=1).mean().values
+    roll_std_3 = s.rolling(3, min_periods=1).std().fillna(0).values
+    roll_mean_7 = s.rolling(7, min_periods=1).mean().values
+    roll_std_7 = s.rolling(7, min_periods=1).std().fillna(0).values
+
+    # Rate of change
+    diff_1 = np.diff(settlement_values, prepend=settlement_values[0])
+
+    # Time index (normalized)
+    time_idx = np.arange(n) / max(n - 1, 1)
+
+    feature_names = [
+        'lag_1 (1-day lag)',
+        'lag_2 (2-day lag)',
+        'lag_3 (3-day lag)',
+        'lag_7 (7-day lag)',
+        'roll_mean_3 (3-day avg)',
+        'roll_std_3 (3-day volatility)',
+        'roll_mean_7 (7-day avg)',
+        'roll_std_7 (7-day volatility)',
+        'rate_of_change (daily delta)',
+        'time_progression',
+    ]
+
+    X = np.column_stack([
+        lag_1, lag_2, lag_3, lag_7,
+        roll_mean_3, roll_std_3,
+        roll_mean_7, roll_std_7,
+        diff_1, time_idx,
+    ])
+
+    return X, settlement_values, feature_names
 
 
 class ExplainabilityAnalyzer:
