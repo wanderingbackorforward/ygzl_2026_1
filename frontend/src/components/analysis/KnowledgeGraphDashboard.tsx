@@ -43,8 +43,13 @@ export const KnowledgeGraphDashboard: React.FC = () => {
 
     const autoQuestions = [
       { q: '哪些点位风险最高？', icon: 'exclamation-triangle', color: '#ef4444' },
+      { q: 'S3附近有哪些风险？', icon: 'map-marker-alt', color: '#fb923c' },
       { q: '沉降控制措施有哪些？', icon: 'shield-alt', color: '#10b981' },
       { q: '施工事件对沉降有什么影响？', icon: 'hard-hat', color: '#f59e0b' },
+      { q: '裂缝和沉降有什么关系？', icon: 'compress-alt', color: '#a78bfa' },
+      { q: '地下水对沉降有什么影响？', icon: 'water', color: '#38bdf8' },
+      { q: '哪些点位沉降超过预警阈值？', icon: 'bell', color: '#f87171' },
+      { q: '盾构施工如何影响地表沉降？', icon: 'cogs', color: '#06b6d4' },
     ];
 
     setInsights(autoQuestions.map(aq => ({ q: aq.q, a: null, loading: true })));
@@ -155,15 +160,24 @@ export const KnowledgeGraphDashboard: React.FC = () => {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
             {insights.map((insight, idx) => {
-              const icons = ['exclamation-triangle', 'shield-alt', 'hard-hat'];
-              const colors = ['#ef4444', '#10b981', '#f59e0b'];
+              const autoQ = [
+                { icon: 'exclamation-triangle', color: '#ef4444' },
+                { icon: 'map-marker-alt', color: '#fb923c' },
+                { icon: 'shield-alt', color: '#10b981' },
+                { icon: 'hard-hat', color: '#f59e0b' },
+                { icon: 'compress-alt', color: '#a78bfa' },
+                { icon: 'water', color: '#38bdf8' },
+                { icon: 'bell', color: '#f87171' },
+                { icon: 'cogs', color: '#06b6d4' },
+              ];
+              const ic = autoQ[idx] || { icon: 'info-circle', color: '#4a9eff' };
               return (
                 <div key={idx} style={{
                   padding: '14px 16px', backgroundColor: 'rgba(30,30,50,0.8)', borderRadius: '8px',
-                  border: `1px solid ${colors[idx]}33`, display: 'flex', flexDirection: 'column', gap: '8px',
+                  border: `1px solid ${ic.color}33`, display: 'flex', flexDirection: 'column', gap: '8px',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <i className={`fas fa-${icons[idx]}`} style={{ color: colors[idx], fontSize: '14px' }} />
+                    <i className={`fas fa-${ic.icon}`} style={{ color: ic.color, fontSize: '14px' }} />
                     <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff' }}>{insight.q}</span>
                   </div>
                   {insight.loading ? (
