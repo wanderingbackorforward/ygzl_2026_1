@@ -3,12 +3,6 @@
   "installCommand": "npm ci --prefix frontend",
   "buildCommand": "npm run build --prefix frontend",
   "outputDirectory": "frontend/dist",
-  "functions": {
-    "api/index.py": {
-      "maxDuration": 60,
-      "includeFiles": "backend/**/*.py,frontend/public/static/data/insar/**"
-    }
-  },
   "headers": [
     {
       "source": "/api/(.*)",
