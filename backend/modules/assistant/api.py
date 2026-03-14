@@ -23,6 +23,30 @@ def _sse_event(event_type, data):
     return f"event: {event_type}\ndata: {payload}\n\n"
 
 
+def _decode_utf8_text(value):
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (bytes, bytearray)):
+        try:
+            return value.decode("utf-8")
+        except Exception:
+            try:
+                return value.decode("utf-8", errors="replace")
+            except Exception:
+                return ""
+    return ""
+
+
+def _response_json_utf8(resp):
+    try:
+        raw = resp.content
+        if isinstance(raw, (bytes, bytearray)):
+            return json.loads(raw.decode("utf-8"))
+    except Exception:
+        pass
+    return resp.json()
+
+
 def _merge_papers_into_kg(kg_viz, papers):
     """Merge academic papers into the knowledge graph as nodes + edges."""
     import math
@@ -211,7 +235,7 @@ def _call_claude(
         return None, None, f"Claude HTTP {resp.status_code}: {detail}"
 
     try:
-        data = resp.json()
+        data = _response_json_utf8(resp)
         content_list = data.get("content") or []
         if not content_list:
             return None, None, "Claude response missing content"
@@ -267,7 +291,7 @@ def _call_deepseek(
         return None, None, f"DeepSeek HTTP {resp.status_code}: {detail}"
 
     try:
-        data = resp.json()
+        data = _response_json_utf8(resp)
         choices = data.get("choices") or []
         if not isinstance(choices, list) or not choices:
             return None, None, "DeepSeek response missing choices"
@@ -750,7 +774,8 @@ def _stream_chat(content, role, page_path, page_context, provider, conv_id, user
             )
             if resp.ok:
                 yield _sse_event("thinking", {"status": "generating"})
-                for line in resp.iter_lines(decode_unicode=True):
+                for raw_line in resp.iter_lines(decode_unicode=False):
+                    line = _decode_utf8_text(raw_line)
                     if not line or not line.startswith("data: "):
                         continue
                     data_str = line[6:]
