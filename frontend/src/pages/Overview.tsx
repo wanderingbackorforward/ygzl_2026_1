@@ -48,23 +48,27 @@ const OverviewDashboard: React.FC = () => {
     setCardLibraryOpen(false);
   }, [selectedCardIds]);
 
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2000);
+  }, []);
+
   const handleRemoveCard = useCallback((cardId: string) => {
     const fixed = new Set(['safety-score', 'risk-radar']);
     if (fixed.has(cardId)) {
-      alert('此卡片为固定卡片，无法移除');
+      showToast('此卡片为固定卡片，无法移除');
       return;
     }
-    if (window.confirm(`确认移除"${getCardById(cardId)?.title}"卡片？`)) {
-      setSelectedCardIds(prev => prev.filter(id => id !== cardId));
-    }
-  }, []);
+    setSelectedCardIds(prev => prev.filter(id => id !== cardId));
+  }, [showToast]);
 
   const handleResetCards = useCallback(() => {
-    if (window.confirm('确认重置为默认卡片配置？')) {
-      setSelectedCardIds(DEFAULT_CARD_IDS);
-      localStorage.removeItem('overview-selected-cards');
-    }
-  }, []);
+    setSelectedCardIds(DEFAULT_CARD_IDS);
+    localStorage.removeItem('overview-selected-cards');
+    showToast('已重置为默认卡片配置');
+  }, [showToast]);
 
   const selectedCardSet = useMemo(() => new Set(selectedCardIds), [selectedCardIds]);
 
@@ -73,7 +77,7 @@ const OverviewDashboard: React.FC = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ fontSize: 20, fontWeight: 800, color: '#e6f7ff' }}>项目监测数据汇总中心</div>
-          <div style={{ fontSize: 12, letterSpacing: 2, color: '#8ba0b6' }}>PROJECT DATA AGGREGATION & MONITORING</div>
+          <div style={{ fontSize: 14, letterSpacing: 2, color: '#e2e8f0' }}>PROJECT DATA AGGREGATION & MONITORING</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button
@@ -115,6 +119,18 @@ const OverviewDashboard: React.FC = () => {
         onAddCard={handleAddCard}
         onClose={() => setCardLibraryOpen(false)}
       />
+
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(0,0,0,0.85)', color: '#fff', padding: '10px 24px',
+          borderRadius: 8, fontSize: 14, zIndex: 9999,
+          border: '1px solid rgba(0,229,255,0.3)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+        }}>
+          {toast}
+        </div>
+      )}
     </div>
   );
 };
