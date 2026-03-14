@@ -202,7 +202,7 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
           </div>
         ))}
         {[...new Set(nodes.map(n => n.type))].length > 0 && [...new Set(edges.map(e => e.type))].length > 0 && (
-          <span className="text-sm text-slate-300">|</span>
+          <span className="text-sm text-slate-200">|</span>
         )}
         {[...new Set(edges.map(e => e.type))].map(t => (
           <div key={t} className="flex items-center gap-1.5">
@@ -372,7 +372,7 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
         {hoveredNode && (
           <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[280px] rounded-lg border border-cyan-500/30 bg-slate-900/95 px-4 py-3 text-sm shadow-lg shadow-cyan-500/10 backdrop-blur">
             <div className="mb-1 text-base font-semibold text-cyan-200">{hoveredNode.label}</div>
-            <div className="text-sm text-slate-300">
+            <div className="text-sm text-slate-200">
               {TYPE_LABELS[hoveredNode.type] || hoveredNode.type}
             </div>
             {hoveredNode.severity && (
@@ -388,7 +388,7 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
               </div>
             )}
             {hoveredNode.attrs?.point_id && (
-              <div className="mt-1 text-sm text-slate-300">ID: {hoveredNode.attrs.point_id}</div>
+              <div className="mt-1 text-sm text-slate-200">ID: {hoveredNode.attrs.point_id}</div>
             )}
             {/* Paper-specific tooltip */}
             {hoveredNode.type === 'AcademicPaper' && hoveredNode.attrs && (
@@ -397,7 +397,7 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
                   <div className="text-sm font-medium leading-snug text-violet-200">{hoveredNode.attrs.title}</div>
                 )}
                 {hoveredNode.attrs.authors && (
-                  <div className="text-sm text-slate-300 truncate">{hoveredNode.attrs.authors}</div>
+                  <div className="text-sm text-slate-200 truncate">{hoveredNode.attrs.authors}</div>
                 )}
                 <div className="flex items-center gap-2 text-sm">
                   {hoveredNode.attrs.year && (
@@ -407,7 +407,7 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
                     <span className="text-amber-300">{hoveredNode.attrs.citations} 引用</span>
                   )}
                   {hoveredNode.attrs.doi && (
-                    <span className="text-slate-300">DOI</span>
+                    <span className="text-slate-200">DOI</span>
                   )}
                 </div>
               </div>
@@ -422,10 +422,10 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
               {TYPE_LABELS[hoveredEdge.type] || hoveredEdge.type}
             </div>
             {hoveredEdge.attrs?.distance != null && (
-              <div className="text-sm text-slate-300">距离: {hoveredEdge.attrs.distance}m</div>
+              <div className="text-sm text-slate-200">距离: {hoveredEdge.attrs.distance}m</div>
             )}
             {hoveredEdge.attrs?.correlation != null && (
-              <div className="text-sm text-slate-300">相关系数: {hoveredEdge.attrs.correlation}</div>
+              <div className="text-sm text-slate-200">相关系数: {hoveredEdge.attrs.correlation}</div>
             )}
           </div>
         )}
@@ -433,7 +433,7 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
 
       {/* Stats bar */}
       {stats?.node_types && (
-        <div className="flex shrink-0 items-center gap-3 border-t border-cyan-500/10 px-3 py-2 text-sm text-slate-300">
+        <div className="flex shrink-0 items-center gap-3 border-t border-cyan-500/10 px-3 py-2 text-sm text-slate-200">
           {Object.entries(stats.node_types).map(([type, count]) => (
             <span key={type}>{TYPE_LABELS[type] || type}: {count}</span>
           ))}
