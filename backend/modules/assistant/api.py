@@ -875,7 +875,7 @@ def send_message_stream(conv_id: str):
 
         return Response(
             generate(),
-            mimetype="text/event-stream",
+            mimetype="text/event-stream; charset=utf-8",
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
