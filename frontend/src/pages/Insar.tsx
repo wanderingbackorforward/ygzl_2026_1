@@ -1638,113 +1638,156 @@ export default function Insar() {
         </div>
 
         {/* 风险概览侧边栏 */}
-        <div className="w-80 shrink-0 border-l border-slate-700 bg-slate-900 p-4 overflow-y-auto">
-          <h3 className="mb-4 text-base font-semibold text-white">风险概览</h3>
+        <div className="w-80 shrink-0 border-l border-slate-700 bg-slate-900 overflow-y-auto">
+          <div className="p-4">
+            <h3 className="mb-4 text-base font-semibold text-white">风险概览</h3>
 
-          {/* 风险统计徽章 */}
-          <div className="mb-4 flex flex-col gap-2">
-            <div className="flex items-center justify-between rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2">
-              <span className="text-sm text-white">危险</span>
-              <span className="text-xl font-bold text-red-400">{riskSummary.danger}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-2">
-              <span className="text-sm text-white">预警</span>
-              <span className="text-xl font-bold text-orange-400">{riskSummary.warning}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2">
-              <span className="text-sm text-white">正常</span>
-              <span className="text-xl font-bold text-green-400">{riskSummary.normal}</span>
-            </div>
-          </div>
-
-          <div className="mb-3 text-xs text-slate-300">
-            总点数：{riskSummary.total}
-          </div>
-
-          {/* 高风险点列表 */}
-          {riskSummary.top.length > 0 && (
-            <div>
-              <h4 className="mb-2 text-sm font-semibold text-white">
-                高风险点 (Top {Math.min(5, riskSummary.top.length)})
-              </h4>
-              <div className="flex flex-col gap-2">
-                {riskSummary.top.slice(0, 5).map((p) => {
-                  const isDanger = p.risk === 'danger'
-                  const color = isDanger ? 'red' : 'orange'
-                  const label = isDanger ? '危险' : '预警'
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => {
-                        setMode('native')
-                        setIndicator('threshold')
-                        setFocusId(null)
-                        window.setTimeout(() => setFocusId(p.id), 0)
-                      }}
-                      className={`flex items-center gap-2 rounded-lg border border-${color}-500/30 bg-slate-800 px-3 py-2 text-left text-white hover:bg-slate-700`}
-                    >
-                      <span className={`shrink-0 text-xs font-bold text-${color}-400`}>
-                        {label}
-                      </span>
-                      <span className="flex-1 truncate text-sm font-medium">
-                        {p.id || '未命名'}
-                      </span>
-                      <span className={`shrink-0 text-xs text-${color}-400`}>
-                        {p.velocity.toFixed(2)} mm/年
-                      </span>
-                    </button>
-                  )
-                })}
+            {/* 风险统计徽章 */}
+            <div className="mb-4 flex flex-col gap-2">
+              <div className="flex items-center justify-between rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 transition-colors hover:bg-red-500/15">
+                <span className="text-sm font-medium text-white">危险</span>
+                <span className="text-2xl font-bold text-red-400">{riskSummary.danger}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-2.5 transition-colors hover:bg-orange-500/15">
+                <span className="text-sm font-medium text-white">预警</span>
+                <span className="text-2xl font-bold text-orange-400">{riskSummary.warning}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2.5 transition-colors hover:bg-green-500/15">
+                <span className="text-sm font-medium text-white">正常</span>
+                <span className="text-2xl font-bold text-green-400">{riskSummary.normal}</span>
               </div>
             </div>
-          )}
 
-          {/* 危险区列表 */}
-          {showZones && zonesPanel?.top?.length > 0 && (
-            <div className="mt-4">
-              <h4 className="mb-2 text-sm font-semibold text-white">
-                高风险区 (Top {Math.min(5, zonesPanel.top.length)})
-              </h4>
-              <div className="flex flex-col gap-2">
-                {zonesPanel.top.slice(0, 5).map((z) => {
-                  const isDanger = z.level === 'danger'
-                  const isUplift = z.direction === 'uplift'
-                  const color = isUplift
-                    ? (isDanger ? 'purple' : 'blue')
-                    : (isDanger ? 'red' : 'orange')
-                  const dirLabel = isUplift ? '抬升' : '沉降'
-                  const lvlLabel = isDanger ? '显著' : '轻微'
-                  const label = `${dirLabel}${lvlLabel}区`
-                  return (
-                    <button
-                      key={z.id}
-                      type="button"
-                      onClick={() => {
-                        setMode('native')
-                        setIndicator('threshold')
-                        if (!showZones) setShowZones(true)
-                        setFocusId(null)
-                        setFocusZoneId(null)
-                        window.setTimeout(() => setFocusZoneId(z.id), 0)
-                      }}
-                      className={`flex items-center gap-2 rounded-lg border border-${color}-500/30 bg-slate-800 px-3 py-2 text-left text-white hover:bg-slate-700`}
-                    >
-                      <span className={`shrink-0 text-xs font-bold text-${color}-400`}>
-                        {label}
-                      </span>
-                      <span className="flex-1 truncate text-sm font-medium">
-                        {z.id}
-                      </span>
-                      <span className={`shrink-0 text-xs text-${color}-400`}>
-                        {z.min_velocity === null ? '—' : `${z.min_velocity.toFixed(2)} mm/年`}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
+            <div className="mb-4 text-xs text-slate-300">
+              总点数：{riskSummary.total}
             </div>
-          )}
+
+            {/* 状态提示 */}
+            {riskSummary.total > 0 && (
+              <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/50 p-3">
+                {riskSummary.danger > 0 ? (
+                  <p className="text-xs leading-relaxed text-red-300">
+                    <i className="fas fa-exclamation-triangle mr-1" />
+                    当前存在 {riskSummary.danger} 个危险点，建议立即查看并制定干预措施
+                  </p>
+                ) : riskSummary.warning > 0 ? (
+                  <p className="text-xs leading-relaxed text-orange-300">
+                    <i className="fas fa-exclamation-circle mr-1" />
+                    当前存在 {riskSummary.warning} 个预警点，建议重点关注并提前准备处置
+                  </p>
+                ) : (
+                  <p className="text-xs leading-relaxed text-green-300">
+                    <i className="fas fa-check-circle mr-1" />
+                    当前未识别出危险/预警点，可保持常规监测与巡检
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* 高风险点列表 */}
+            {riskSummary.top.length > 0 ? (
+              <div>
+                <h4 className="mb-2 text-sm font-semibold text-white">
+                  高风险点 (Top {Math.min(5, riskSummary.top.length)})
+                </h4>
+                <div className="flex flex-col gap-2">
+                  {riskSummary.top.slice(0, 5).map((p) => {
+                    const isDanger = p.risk === 'danger'
+                    const label = isDanger ? '危险' : '预警'
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setMode('native')
+                          setIndicator('threshold')
+                          setFocusId(null)
+                          window.setTimeout(() => setFocusId(p.id), 0)
+                        }}
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-white transition-colors ${
+                          isDanger
+                            ? 'border-red-500/30 bg-slate-800 hover:bg-slate-700 hover:border-red-500/50'
+                            : 'border-orange-500/30 bg-slate-800 hover:bg-slate-700 hover:border-orange-500/50'
+                        }`}
+                      >
+                        <span className={`shrink-0 text-xs font-bold ${isDanger ? 'text-red-400' : 'text-orange-400'}`}>
+                          {label}
+                        </span>
+                        <span className="flex-1 truncate text-sm font-medium">
+                          {p.id || '未命名'}
+                        </span>
+                        <span className={`shrink-0 text-xs ${isDanger ? 'text-red-400' : 'text-orange-400'}`}>
+                          {p.velocity.toFixed(2)} mm/年
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : riskSummary.total > 0 ? (
+              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-center">
+                <p className="text-sm text-slate-400">暂无高风险点</p>
+              </div>
+            ) : null}
+
+            {/* 危险区列表 */}
+            {showZones && zonesPanel?.top?.length > 0 && (
+              <div className="mt-4">
+                <h4 className="mb-2 text-sm font-semibold text-white">
+                  高风险区 (Top {Math.min(5, zonesPanel.top.length)})
+                </h4>
+                <div className="flex flex-col gap-2">
+                  {zonesPanel.top.slice(0, 5).map((z) => {
+                    const isDanger = z.level === 'danger'
+                    const isUplift = z.direction === 'uplift'
+                    const dirLabel = isUplift ? '抬升' : '沉降'
+                    const lvlLabel = isDanger ? '显著' : '轻微'
+                    const label = `${dirLabel}${lvlLabel}区`
+
+                    // 确定颜色类
+                    let borderClass = ''
+                    let borderHoverClass = ''
+                    let textClass = ''
+                    if (isUplift) {
+                      borderClass = isDanger ? 'border-purple-500/30' : 'border-blue-500/30'
+                      borderHoverClass = isDanger ? 'hover:border-purple-500/50' : 'hover:border-blue-500/50'
+                      textClass = isDanger ? 'text-purple-400' : 'text-blue-400'
+                    } else {
+                      borderClass = isDanger ? 'border-red-500/30' : 'border-orange-500/30'
+                      borderHoverClass = isDanger ? 'hover:border-red-500/50' : 'hover:border-orange-500/50'
+                      textClass = isDanger ? 'text-red-400' : 'text-orange-400'
+                    }
+
+                    return (
+                      <button
+                        key={z.id}
+                        type="button"
+                        onClick={() => {
+                          setMode('native')
+                          setIndicator('threshold')
+                          if (!showZones) setShowZones(true)
+                          setFocusId(null)
+                          setFocusZoneId(null)
+                          window.setTimeout(() => setFocusZoneId(z.id), 0)
+                        }}
+                        className={`flex items-center gap-2 rounded-lg border ${borderClass} ${borderHoverClass} bg-slate-800 px-3 py-2 text-left text-white transition-colors hover:bg-slate-700`}
+                      >
+                        <span className={`shrink-0 text-xs font-bold ${textClass}`}>
+                          {label}
+                        </span>
+                        <span className="flex-1 truncate text-sm font-medium">
+                          {z.id}
+                        </span>
+                        <span className={`shrink-0 text-xs ${textClass}`}>
+                          {z.min_velocity === null ? '—' : `${z.min_velocity.toFixed(2)} mm/年`}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
