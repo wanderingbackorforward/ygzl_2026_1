@@ -70,3 +70,52 @@ def centroid_of_lonlat(
     if not xs or not ys:
         return None
     return sum(xs) / len(xs), sum(ys) / len(ys)
+
+
+# ---------------------------------------------------------------------------
+# 坐标系转换
+# ---------------------------------------------------------------------------
+
+def web_mercator_to_lonlat(x: float, y: float) -> Tuple[float, float]:
+    """Web Mercator (EPSG:3857) 转经纬度"""
+    r = 20037508.34
+    lon = (x / r) * 180.0
+    lat = (y / r) * 180.0
+    lat = 180.0 / math.pi * (2.0 * math.atan(math.exp(lat * math.pi / 180.0)) - math.pi / 2.0)
+    return lon, lat
+
+
+def auto_to_lonlat(x: float, y: float) -> Tuple[float, float]:
+    """自动检测坐标系并转换为经纬度"""
+    if -180.0 <= x <= 180.0 and -90.0 <= y <= 90.0:
+        return x, y
+    if abs(x) <= 20037508.34 and abs(y) <= 20037508.34:
+        return web_mercator_to_lonlat(x, y)
+    return x, y
+
+
+def geometry_to_lonlat(geometry: dict) -> dict:
+    """将 GeoJSON geometry 坐标转换为经纬度"""
+    from typing import List
+    gtype = geometry.get("type")
+    coords = geometry.get("coordinates")
+    if not gtype or coords is None:
+        return geometry
+
+    def conv_pair(pair: List[float]) -> List[float]:
+        lon, lat = auto_to_lonlat(float(pair[0]), float(pair[1]))
+        return [lon, lat]
+
+    if gtype == "Point":
+        return {"type": "Point", "coordinates": conv_pair(list(coords))}
+    if gtype == "MultiPoint":
+        return {"type": "MultiPoint", "coordinates": [conv_pair(list(p)) for p in coords]}
+    if gtype == "LineString":
+        return {"type": "LineString", "coordinates": [conv_pair(list(p)) for p in coords]}
+    if gtype == "MultiLineString":
+        return {"type": "MultiLineString", "coordinates": [[conv_pair(list(p)) for p in line] for line in coords]}
+    if gtype == "Polygon":
+        return {"type": "Polygon", "coordinates": [[conv_pair(list(p)) for p in ring] for ring in coords]}
+    if gtype == "MultiPolygon":
+        return {"type": "MultiPolygon", "coordinates": [[[conv_pair(list(p)) for p in ring] for ring in poly] for poly in coords]}
+    return geometry
