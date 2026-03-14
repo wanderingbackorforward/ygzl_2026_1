@@ -73,27 +73,27 @@ export const VitalSignsStrip: React.FC = () => {
       maxWidth: {
         value: `${maxW.toFixed(2)}mm`,
         status: maxStatus as 'green' | 'yellow' | 'red',
-        subtitle: `GB ${maxGrade.toUpperCase()}-grade`,
+        subtitle: `GB ${maxGrade.toUpperCase()}级`,
       },
       accelPoints: {
         value: `${accelCount}`,
         status: accelStatus as 'green' | 'yellow' | 'red',
-        subtitle: 'accelerating',
+        subtitle: '个加速中',
       },
       avgRate: {
         value: `${avgRate.toFixed(3)}`,
         status: rateStatus as 'green' | 'yellow' | 'red',
-        subtitle: 'mm/day avg',
+        subtitle: 'mm/天 均值',
       },
       gradeC: {
         value: `${dangerCount}`,
         status: gradeStatus as 'green' | 'yellow' | 'red',
-        subtitle: 'expanding pts',
+        subtitle: '个扩展点',
       },
       totalPoints: {
         value: `${points.length}`,
         status: 'green' as const,
-        subtitle: 'monitored',
+        subtitle: '个监测点',
       },
     };
   }, [overview, points, slopeData]);
@@ -101,11 +101,11 @@ export const VitalSignsStrip: React.FC = () => {
   return (
     <div className="shrink-0 px-4 py-3">
       <div className="grid grid-cols-5 gap-3">
-        <VitalCard label="Max Width" {...vitals.maxWidth} />
-        <VitalCard label="Accelerating" {...vitals.accelPoints} />
-        <VitalCard label="Avg Rate" {...vitals.avgRate} />
-        <VitalCard label="Expanding" {...vitals.gradeC} />
-        <VitalCard label="Total Points" {...vitals.totalPoints} />
+        <VitalCard label="最大宽度" {...vitals.maxWidth} />
+        <VitalCard label="加速点" {...vitals.accelPoints} />
+        <VitalCard label="均速率" {...vitals.avgRate} />
+        <VitalCard label="扩展中" {...vitals.gradeC} />
+        <VitalCard label="总监测点" {...vitals.totalPoints} />
       </div>
     </div>
   );

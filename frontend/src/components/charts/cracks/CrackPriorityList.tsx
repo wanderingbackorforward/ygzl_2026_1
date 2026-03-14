@@ -66,7 +66,7 @@ export const CrackPriorityList: React.FC<CardComponentProps> = () => {
   if (!priorityItems.length) {
     return (
       <div className="dashboard-card__content flex items-center justify-center text-slate-400">
-        No data available
+        暂无数据
       </div>
     );
   }
@@ -111,11 +111,11 @@ export const CrackPriorityList: React.FC<CardComponentProps> = () => {
 
             {/* Metrics */}
             <div className="flex-1 flex items-center gap-4 text-xs text-slate-300">
-              <span>Width: {item.currentWidth.toFixed(2)}mm</span>
-              <span>Rate: {item.dailyRate.toFixed(3)}mm/d</span>
+              <span>宽度: {item.currentWidth.toFixed(2)}mm</span>
+              <span>速率: {item.dailyRate.toFixed(3)}mm/d</span>
               {item.daysToDegrade && (
                 <span className="text-yellow-400">
-                  ⚠ {item.daysToDegrade}d to next grade
+                  {item.daysToDegrade}天后降级
                 </span>
               )}
             </div>

@@ -19,28 +19,28 @@ interface GradeCardData {
 
 const GRADE_META: Record<string, { label: string; color: string; bgClass: string; description: string }> = {
   a: {
-    label: 'A - Intact',
+    label: 'A级 - 完好',
     color: '#22c55e',
     bgClass: 'bg-green-900/30 border-green-700/50',
-    description: '<0.05mm hairline',
+    description: '<0.05mm 发丝裂缝',
   },
   b: {
-    label: 'B - Slight',
+    label: 'B级 - 轻微',
     color: '#eab308',
     bgClass: 'bg-yellow-900/30 border-yellow-700/50',
-    description: '0.05-0.2mm minor',
+    description: '0.05-0.2mm 规范内',
   },
   c: {
-    label: 'C - Significant',
+    label: 'C级 - 明显',
     color: '#f97316',
     bgClass: 'bg-orange-900/30 border-orange-700/50',
-    description: '0.2-1.0mm capacity affected',
+    description: '0.2-1.0mm 承载力受影响',
   },
   d: {
-    label: 'D - Severe',
+    label: 'D级 - 严重',
     color: '#ef4444',
     bgClass: 'bg-red-900/30 border-red-700/50',
-    description: '>1.0mm failure risk',
+    description: '>1.0mm 存在结构破坏风险',
   },
 };
 
@@ -103,12 +103,12 @@ export const CrackGradeCards: React.FC<CardComponentProps> = () => {
       <div className="mt-4 p-3 rounded-lg bg-slate-800/50 border border-slate-700/50">
         <div className="text-xs text-slate-300">
           <span className="font-semibold text-white">GB 50292-2015 Standard:</span>
-          {' '}Total {points.length} points monitored.
+          {' '}共 {points.length} 个监测点。
           {gradeCards.find(c => c.grade === 'd')!.count > 0 && (
-            <span className="text-red-400 ml-2">⚠ {gradeCards.find(c => c.grade === 'd')!.count} severe cracks require immediate action</span>
+            <span className="text-red-400 ml-2">{gradeCards.find(c => c.grade === 'd')!.count} 个严重裂缝需立即处理</span>
           )}
           {gradeCards.find(c => c.grade === 'c')!.count > 0 && (
-            <span className="text-orange-400 ml-2">⚠ {gradeCards.find(c => c.grade === 'c')!.count} significant cracks need repair</span>
+            <span className="text-orange-400 ml-2">{gradeCards.find(c => c.grade === 'c')!.count} 个明显裂缝需修复</span>
           )}
         </div>
       </div>

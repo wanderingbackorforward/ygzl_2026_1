@@ -24,7 +24,7 @@ export const CrackSpatialMap: React.FC<CardComponentProps> = () => {
   const option = useMemo((): EChartsOption => {
     if (!points.length) {
       return {
-        title: { text: 'No monitoring points', left: 'center', top: 'center', textStyle: { color: '#888' } },
+        title: { text: '暂无监测点数据', left: 'center', top: 'center', textStyle: { color: '#888' } },
       };
     }
 
@@ -107,10 +107,10 @@ export const CrackSpatialMap: React.FC<CardComponentProps> = () => {
       ],
       legend: {
         data: [
-          { name: 'A-grade (healthy)', icon: 'circle', itemStyle: { color: GRADE_COLORS.a } },
-          { name: 'B-grade (slight)', icon: 'circle', itemStyle: { color: GRADE_COLORS.b } },
-          { name: 'C-grade (significant)', icon: 'circle', itemStyle: { color: GRADE_COLORS.c } },
-          { name: 'D-grade (severe)', icon: 'circle', itemStyle: { color: GRADE_COLORS.d } },
+          { name: 'A级 (完好)', icon: 'circle', itemStyle: { color: GRADE_COLORS.a } },
+          { name: 'B级 (轻微)', icon: 'circle', itemStyle: { color: GRADE_COLORS.b } },
+          { name: 'C级 (明显)', icon: 'circle', itemStyle: { color: GRADE_COLORS.c } },
+          { name: 'D级 (严重)', icon: 'circle', itemStyle: { color: GRADE_COLORS.d } },
         ],
         bottom: 10,
         textStyle: { fontSize: 11, color: '#ccc' },

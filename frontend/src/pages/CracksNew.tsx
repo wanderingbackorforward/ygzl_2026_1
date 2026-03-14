@@ -141,8 +141,8 @@ const CracksDashboard: React.FC = () => {
               className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
             >
               <i className="fas fa-microscope" />
-              Open Deep Diagnostics: {selectedPointId}
-              <span className="text-xs opacity-70">(Wavelet / Hurst / CUSUM / Entropy / Creep / Thermal / Settlement)</span>
+              打开深度诊断: {selectedPointId}
+              <span className="text-xs opacity-70">(小波分解 / Hurst指数 / CUSUM / 熵 / 蠕变 / 热分离 / 沉降因果)</span>
             </button>
           </div>
         )}

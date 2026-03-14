@@ -17,7 +17,7 @@ export const CrackConfidenceBandChart: React.FC<CardComponentProps> = () => {
     if (!trendData || trendData.length < 10) {
       return {
         title: {
-          text: selectedPointId ? 'Insufficient data' : 'Select a monitoring point',
+          text: selectedPointId ? '数据不足' : '请选择监测点',
           left: 'center',
           top: 'center',
           textStyle: { color: '#888' },
@@ -53,7 +53,7 @@ export const CrackConfidenceBandChart: React.FC<CardComponentProps> = () => {
 
     return {
       title: {
-        text: `${selectedPointId} — Confidence Band`,
+        text: `${selectedPointId} — 置信带趋势`,
         left: 'center',
         top: 10,
         textStyle: { fontSize: 16, color: '#fff' },
@@ -62,14 +62,14 @@ export const CrackConfidenceBandChart: React.FC<CardComponentProps> = () => {
         trigger: 'axis',
         formatter: (params: any) => {
           const date = params[0]?.axisValue ?? '';
-          const val = params.find((p: any) => p.seriesName === 'Actual')?.value ?? '--';
-          const upper = params.find((p: any) => p.seriesName === 'Upper')?.value ?? '--';
-          const lower = params.find((p: any) => p.seriesName === 'Lower')?.value ?? '--';
-          return `${date}<br/>Value: ${val}<br/>Band: [${lower?.toFixed(2)}, ${upper?.toFixed(2)}]`;
+          const val = params.find((p: any) => p.seriesName === '上限')?.value ?? params.find((p: any) => p.seriesName === '正常')?.value ?? '--';
+          const upper = params.find((p: any) => p.seriesName === '上限')?.value ?? '--';
+          const lower = params.find((p: any) => p.seriesName === '下限')?.value ?? '--';
+          return `${date}<br/>数值: ${val}<br/>置信带: [${lower?.toFixed?.(2) ?? lower}, ${upper?.toFixed?.(2) ?? upper}]`;
         },
       },
       legend: {
-        data: ['Confidence Band', 'Normal', 'Anomaly'],
+        data: ['置信带', '正常', '异常'],
         top: 40,
         textStyle: { fontSize: 11, color: '#ccc' },
       },
@@ -87,7 +87,7 @@ export const CrackConfidenceBandChart: React.FC<CardComponentProps> = () => {
       },
       yAxis: {
         type: 'value',
-        name: 'Width (mm)',
+        name: '宽度 (mm)',
         nameTextStyle: { color: '#ccc' },
         axisLabel: { fontSize: 10, color: '#888' },
         axisLine: { lineStyle: { color: '#555' } },
@@ -95,7 +95,7 @@ export const CrackConfidenceBandChart: React.FC<CardComponentProps> = () => {
       },
       series: [
         {
-          name: 'Upper',
+          name: '上限',
           type: 'line',
           data: upperBand,
           lineStyle: { width: 0 },
@@ -104,7 +104,7 @@ export const CrackConfidenceBandChart: React.FC<CardComponentProps> = () => {
           areaStyle: { color: 'rgba(100, 100, 100, 0.2)' },
         },
         {
-          name: 'Lower',
+          name: '下限',
           type: 'line',
           data: lowerBand,
           lineStyle: { width: 0 },
@@ -113,7 +113,7 @@ export const CrackConfidenceBandChart: React.FC<CardComponentProps> = () => {
           areaStyle: { color: 'rgba(100, 100, 100, 0.2)' },
         },
         {
-          name: 'Normal',
+          name: '正常',
           type: 'line',
           data: normalData,
           lineStyle: { color: '#3b82f6', width: 2 },
@@ -121,7 +121,7 @@ export const CrackConfidenceBandChart: React.FC<CardComponentProps> = () => {
           z: 10,
         },
         {
-          name: 'Anomaly',
+          name: '异常',
           type: 'line',
           data: anomalyData,
           lineStyle: { color: '#ef4444', width: 3 },

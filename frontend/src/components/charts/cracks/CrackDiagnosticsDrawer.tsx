@@ -87,7 +87,7 @@ export const CrackDiagnosticsDrawer: React.FC<DiagnosticsDrawerProps> = ({
       {/* Content */}
       {!diagnostics ? (
         <div className="p-8 text-center text-slate-400">
-          Insufficient data for diagnostics
+          数据不足，无法进行诊断分析
         </div>
       ) : (
         <div className="p-4 space-y-6">
@@ -99,19 +99,19 @@ export const CrackDiagnosticsDrawer: React.FC<DiagnosticsDrawerProps> = ({
                 <span className="text-white font-semibold">{diagnostics.wavelet.levels}</span>
               </div>
               <div className="p-3 bg-slate-800/50 rounded">
-                <div className="text-xs text-slate-400 mb-1">趋势分量 (Approximation):</div>
+                <div className="text-xs text-slate-400 mb-1">趋势分量 (低频近似):</div>
                 <div className="text-white">
                   长期结构趋势，已分离季节性波动和噪声
                 </div>
               </div>
               <div className="p-3 bg-slate-800/50 rounded">
-                <div className="text-xs text-slate-400 mb-1">季节分量 (Detail 1-2):</div>
+                <div className="text-xs text-slate-400 mb-1">季节分量 (中频细节):</div>
                 <div className="text-white">
                   日/周温度循环引起的可逆变化
                 </div>
               </div>
               <div className="p-3 bg-slate-800/50 rounded">
-                <div className="text-xs text-slate-400 mb-1">噪声分量 (Detail 0):</div>
+                <div className="text-xs text-slate-400 mb-1">噪声分量 (高频细节):</div>
                 <div className="text-white">
                   测量误差和高频干扰
                 </div>
