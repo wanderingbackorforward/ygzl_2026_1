@@ -17,25 +17,33 @@ import {
   generateMockMultiFactorCorrelation,
 } from './mockData';
 
-// 记录哪些接口不可用（按路径），不再是全局开关
-const failedEndpoints = new Set<string>();
+// 记录哪些接口不可用（按路径+失败时间），支持定时重试
+const failedEndpoints = new Map<string, number>();
+
+// 失败后多久重试真实 API（毫秒）：2分钟
+const RETRY_INTERVAL_MS = 2 * 60 * 1000;
 
 // 兼容旧接口：检测是否有任何接口降级
 export function isMockMode(): boolean {
   return failedEndpoints.size > 0;
 }
 
-// 兼容旧接口
+// 退出演示模式：清除所有失败标记，下次请求会重试真实 API
 export function setMockMode(enabled: boolean) {
   if (!enabled) {
     failedEndpoints.clear();
   }
 }
 
+// 获取失败端点数量（供 UI 显示）
+export function getFailedEndpointCount(): number {
+  return failedEndpoints.size;
+}
+
 /**
  * 增强的 fetch 函数 - 按接口独立降级
  * 单个接口失败只影响该接口，不影响其他接口
- * 降级时只记录简短日志，不打印完整 Error 堆栈以减少控制台噪音
+ * 失败后 RETRY_INTERVAL_MS 内走 mock，之后自动重试真实 API
  */
 async function fetchWithFallback<T>(
   url: string,
@@ -45,9 +53,14 @@ async function fetchWithFallback<T>(
   // 提取短路径用于日志（去掉 API_BASE 前缀）
   const shortPath = url.replace(API_BASE, '');
 
-  // 已知不可用的接口直接走 mock，不再重复请求
-  if (failedEndpoints.has(shortPath) && mockGenerator) {
-    return mockGenerator();
+  // 已知不可用的接口：检查是否超过重试间隔
+  const failedAt = failedEndpoints.get(shortPath);
+  if (failedAt && mockGenerator) {
+    if (Date.now() - failedAt < RETRY_INTERVAL_MS) {
+      return mockGenerator();
+    }
+    // 超过重试间隔，移除标记，尝试真实 API
+    failedEndpoints.delete(shortPath);
   }
 
   try {
@@ -55,8 +68,7 @@ async function fetchWithFallback<T>(
 
     if (!response.ok) {
       if (mockGenerator) {
-        failedEndpoints.add(shortPath);
-        // 首次降级时只打一行简短日志，不带 Error 对象
+        failedEndpoints.set(shortPath, Date.now());
         console.log(`[ML Mock] ${shortPath} -> ${response.status}, using mock data`);
         return mockGenerator();
       }
@@ -68,7 +80,7 @@ async function fetchWithFallback<T>(
     return await response.json();
   } catch (error) {
     if (mockGenerator) {
-      failedEndpoints.add(shortPath);
+      failedEndpoints.set(shortPath, Date.now());
       const msg = error instanceof Error ? error.message : String(error);
       console.log(`[ML Mock] ${shortPath} -> ${msg}, using mock data`);
       return mockGenerator();
