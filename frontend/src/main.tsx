@@ -11,20 +11,35 @@ import ModuleGate from './components/modules/ModuleGate'
 
 const IS_MOBILE = import.meta.env.VITE_MOBILE === 'true'
 
-const FloatingAssistant = React.lazy(() => import('./components/assistant/FloatingAssistant'))
-const Settlement = React.lazy(() => import('./pages/Settlement'))
-const Temperature = React.lazy(() => import('./pages/Temperature'))
-const Cracks = React.lazy(() => import('./pages/Cracks'))
-const Vibration = React.lazy(() => import('./pages/Vibration'))
-const Insar = React.lazy(() => import('./pages/Insar'))
-const Overview = React.lazy(() => import('./pages/Overview'))
-const ThreeModel = React.lazy(() => import('./pages/ThreeModel'))
-const Tickets = React.lazy(() => import('./pages/Tickets'))
-const Cover = React.lazy(() => import('./pages/Cover'))
-const ModuleAdmin = React.lazy(() => import('./pages/ModuleAdmin'))
-const Tunnel = React.lazy(() => import('./pages/Tunnel'))
-const AdvancedAnalysis = React.lazy(() => import('./pages/AdvancedAnalysis'))
-const ShieldTrajectory = React.lazy(() => import('./pages/ShieldTrajectory'))
+// chunk 加载失败时自动刷新页面（部署更新后旧 chunk 不存在）
+function lazyWithRetry(factory: () => Promise<{ default: React.ComponentType<any> }>) {
+  return React.lazy(() =>
+    factory().catch(() => {
+      const reloaded = sessionStorage.getItem('chunk_reload')
+      if (!reloaded) {
+        sessionStorage.setItem('chunk_reload', '1')
+        window.location.reload()
+      }
+      sessionStorage.removeItem('chunk_reload')
+      return factory()
+    })
+  )
+}
+
+const FloatingAssistant = lazyWithRetry(() => import('./components/assistant/FloatingAssistant'))
+const Settlement = lazyWithRetry(() => import('./pages/Settlement'))
+const Temperature = lazyWithRetry(() => import('./pages/Temperature'))
+const Cracks = lazyWithRetry(() => import('./pages/Cracks'))
+const Vibration = lazyWithRetry(() => import('./pages/Vibration'))
+const Insar = lazyWithRetry(() => import('./pages/Insar'))
+const Overview = lazyWithRetry(() => import('./pages/Overview'))
+const ThreeModel = lazyWithRetry(() => import('./pages/ThreeModel'))
+const Tickets = lazyWithRetry(() => import('./pages/Tickets'))
+const Cover = lazyWithRetry(() => import('./pages/Cover'))
+const ModuleAdmin = lazyWithRetry(() => import('./pages/ModuleAdmin'))
+const Tunnel = lazyWithRetry(() => import('./pages/Tunnel'))
+const AdvancedAnalysis = lazyWithRetry(() => import('./pages/AdvancedAnalysis'))
+const ShieldTrajectory = lazyWithRetry(() => import('./pages/ShieldTrajectory'))
 
 
 function App() {
