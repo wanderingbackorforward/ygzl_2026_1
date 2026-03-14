@@ -16,6 +16,7 @@ export const KnowledgeGraphDashboard: React.FC = () => {
   const [subTab, setSubTab] = useState<SubTab>('docs');
   const [stats, setStats] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [qaQuestion, setQaQuestion] = useState('');
 
   useEffect(() => {
     fetchKGStats()
@@ -24,28 +25,75 @@ export const KnowledgeGraphDashboard: React.FC = () => {
       .finally(() => setStatsLoading(false));
   }, []);
 
+  // Smart default tab: show explore if has data, docs if empty
+  useEffect(() => {
+    if (stats && !stats.mock && stats.total_nodes > 0 && subTab === 'docs') {
+      setSubTab('explore');
+    }
+  }, [stats]);
+
+  // Quick question handler
+  const handleQuickQuestion = (q: string) => {
+    setQaQuestion(q);
+    setSubTab('qa');
+  };
+
+  // Compute user-friendly stats
+  const docCount = statsLoading ? '...' : String(
+    (stats?.node_types?.Document || 0) + (stats?.node_types?.AcademicPaper || 0)
+  );
+  const pointCount = statsLoading ? '...' : String(stats?.node_types?.MonitoringPoint || 0);
+  const relationCount = statsLoading ? '...' : String(stats?.total_edges ?? 0);
+  const anomalyCount = statsLoading ? '...' : String(stats?.node_types?.Anomaly || 0);
+
   return (
     <div style={styles.container}>
-      {/* 使用提示 */}
+      {/* Empty state: 3-step workflow guide */}
       {stats && !stats.mock && stats.total_nodes === 0 && (
         <div style={{
-          display: 'flex', alignItems: 'flex-start', gap: '10px',
-          padding: '12px 16px', marginBottom: '14px',
-          backgroundColor: 'rgba(74, 158, 255, 0.1)',
-          border: '1px solid rgba(74, 158, 255, 0.3)',
-          borderRadius: '8px', fontSize: '13px', lineHeight: '1.5',
+          display: 'flex', gap: '16px', padding: '20px',
+          backgroundColor: 'rgba(74, 158, 255, 0.06)',
+          border: '1px solid rgba(74, 158, 255, 0.2)',
+          borderRadius: '12px', alignItems: 'stretch',
         }}>
-          <i className="fas fa-info-circle" style={{ color: '#4a9eff', fontSize: '16px', marginTop: '2px', flexShrink: 0 }} />
-          <div style={{ color: '#e2e8f0' }}>
-            <span style={{ fontWeight: 'bold', color: '#fff' }}>开始使用：</span>
-            在"文献管理"中添加文献或笔记，系统将自动提取知识构建图谱，然后可在"知识问答"中基于图谱内容提问。
+          {/* Step 1 */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '12px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(74,158,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fas fa-upload" style={{ color: '#4a9eff', fontSize: '16px' }} />
+            </div>
+            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>1. 添加文献</div>
+            <div style={{ fontSize: '12px', color: '#e2e8f0', textAlign: 'center' }}>上传论文、笔记或粘贴文本内容</div>
+          </div>
+          {/* Arrow */}
+          <div style={{ display: 'flex', alignItems: 'center', color: '#4a9eff', fontSize: '18px', flexShrink: 0 }}>
+            <i className="fas fa-chevron-right" />
+          </div>
+          {/* Step 2 */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '12px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fas fa-cogs" style={{ color: '#10b981', fontSize: '16px' }} />
+            </div>
+            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>2. 自动构建</div>
+            <div style={{ fontSize: '12px', color: '#e2e8f0', textAlign: 'center' }}>系统自动提取实体和关系，构建知识图谱</div>
+          </div>
+          {/* Arrow */}
+          <div style={{ display: 'flex', alignItems: 'center', color: '#4a9eff', fontSize: '18px', flexShrink: 0 }}>
+            <i className="fas fa-chevron-right" />
+          </div>
+          {/* Step 3 */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '12px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(251,146,60,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fas fa-comments" style={{ color: '#fb923c', fontSize: '16px' }} />
+            </div>
+            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>3. 智能问答</div>
+            <div style={{ fontSize: '12px', color: '#e2e8f0', textAlign: 'center' }}>基于图谱内容提问，获得精准回答</div>
           </div>
         </div>
       )}
       {stats?.mock && (
         <div style={{
           display: 'flex', alignItems: 'flex-start', gap: '10px',
-          padding: '12px 16px', marginBottom: '14px',
+          padding: '12px 16px',
           backgroundColor: 'rgba(255, 169, 64, 0.12)',
           border: '1px solid rgba(255, 169, 64, 0.4)',
           borderRadius: '8px', fontSize: '13px', lineHeight: '1.5',
@@ -58,21 +106,36 @@ export const KnowledgeGraphDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Stats cards */}
+      {/* Stats cards - user friendly */}
       <div style={styles.statsGrid}>
-        <StatCard label="节点总数" value={statsLoading ? '...' : String(stats?.total_nodes ?? 0)} icon="circle" color="#06b6d4" />
-        <StatCard label="边总数" value={statsLoading ? '...' : String(stats?.total_edges ?? 0)} icon="share-alt" color="#a78bfa" />
-        <StatCard
-          label="节点类型"
-          value={statsLoading ? '...' : String(Object.keys(stats?.node_types || {}).length)}
-          icon="th-large" color="#f59e0b"
-        />
-        <StatCard
-          label="边类型"
-          value={statsLoading ? '...' : String(Object.keys(stats?.edge_types || {}).length)}
-          icon="exchange-alt" color="#fb923c"
-        />
+        <StatCard label="已录文献" value={docCount} icon="book" color="#3b82f6" />
+        <StatCard label="监测点位" value={pointCount} icon="map-marker-alt" color="#06b6d4" />
+        <StatCard label="知识关联" value={relationCount} icon="link" color="#a78bfa" />
+        <StatCard label="异常发现" value={anomalyCount} icon="exclamation-triangle" color="#ef4444" />
       </div>
+
+      {/* Quick questions - only show when graph has data */}
+      {stats && stats.total_nodes > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '12px', color: '#e2e8f0', whiteSpace: 'nowrap' }}>
+            <i className="fas fa-bolt" style={{ marginRight: '4px', color: '#facc15' }} />
+            快速提问:
+          </span>
+          {['哪些点位风险最高？', 'S3有什么风险？', '沉降控制措施有哪些？'].map((q, i) => (
+            <button
+              key={i}
+              onClick={() => handleQuickQuestion(q)}
+              style={{
+                padding: '5px 12px', backgroundColor: 'rgba(74,158,255,0.1)',
+                border: '1px solid rgba(74,158,255,0.25)', borderRadius: '14px',
+                color: '#fff', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s',
+              }}
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Sub-tab selector */}
       <div style={styles.subTabs}>
@@ -111,7 +174,7 @@ export const KnowledgeGraphDashboard: React.FC = () => {
       }} />}
       {subTab === 'explore' && <ExplorePanel />}
       {subTab === 'risk' && <RiskPanel />}
-      {subTab === 'qa' && <QAPanel />}
+      {subTab === 'qa' && <QAPanel initialQuestion={qaQuestion} onQuestionConsumed={() => setQaQuestion('')} />}
     </div>
   );
 };
@@ -443,11 +506,19 @@ const RiskPanel: React.FC = () => {
 };
 
 // ━━━ QA Panel ━━━
-const QAPanel: React.FC = () => {
+const QAPanel: React.FC<{ initialQuestion?: string; onQuestionConsumed?: () => void }> = ({ initialQuestion, onQuestionConsumed }) => {
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<Array<{ q: string; a: any }>>([]);
+
+  // Auto-fill from quick question
+  useEffect(() => {
+    if (initialQuestion && initialQuestion.trim()) {
+      setQuestion(initialQuestion);
+      onQuestionConsumed?.();
+    }
+  }, [initialQuestion]);
 
   const askQuestion = useCallback(async () => {
     if (!question.trim()) return;
