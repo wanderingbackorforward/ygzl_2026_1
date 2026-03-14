@@ -16,7 +16,7 @@ const DEFAULT_CARD_IDS = ['safety-score', 'risk-radar', 'settlement-overview', '
 const OverviewDashboard: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [cardLibraryOpen, setCardLibraryOpen] = useState(false);
-  const { layouts } = useLayout();
+  const { layouts, updateLayout } = useLayout();
 
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>(() => {
     const saved = localStorage.getItem('overview-selected-cards');
@@ -45,9 +45,31 @@ const OverviewDashboard: React.FC = () => {
   const handleAddCard = useCallback((cardId: string) => {
     if (!selectedCardIds.includes(cardId)) {
       setSelectedCardIds(prev => [...prev, cardId]);
+
+      // 为新卡片设置合理的初始位置（放在当前布局最下面）
+      const currentLayout = layouts['overview']?.lg || [];
+      const maxY = currentLayout.length > 0
+        ? Math.max(...currentLayout.map(item => item.y + item.h))
+        : 0;
+
+      const newCard = getCardById(cardId);
+      if (newCard) {
+        const newLayout = {
+          i: cardId,
+          x: 0,
+          y: maxY,
+          w: newCard.defaultLayout.w,
+          h: newCard.defaultLayout.h,
+          minW: newCard.defaultLayout.minW,
+          maxW: newCard.defaultLayout.maxW,
+          minH: newCard.defaultLayout.minH,
+          maxH: newCard.defaultLayout.maxH,
+        };
+        updateLayout('overview', 'lg', [...currentLayout, newLayout]);
+      }
     }
     setCardLibraryOpen(false);
-  }, [selectedCardIds]);
+  }, [selectedCardIds, layouts, updateLayout]);
 
   const [toast, setToast] = useState<string | null>(null);
 

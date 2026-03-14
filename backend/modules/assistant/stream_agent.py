@@ -40,6 +40,30 @@ def _sse(event_type, data):
     return f"event: {event_type}\ndata: {payload}\n\n"
 
 
+def _decode_utf8_text(value):
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (bytes, bytearray)):
+        try:
+            return value.decode("utf-8")
+        except Exception:
+            try:
+                return value.decode("utf-8", errors="replace")
+            except Exception:
+                return ""
+    return ""
+
+
+def _response_json_utf8(resp):
+    try:
+        raw = resp.content
+        if isinstance(raw, (bytes, bytearray)):
+            return json.loads(raw.decode("utf-8"))
+    except Exception:
+        pass
+    return resp.json()
+
+
 def _claude_settings():
     api_key = (
         os.environ.get("CLAUDE_API_KEY")
@@ -226,7 +250,7 @@ def stream_agent(content, page_path, page_context, conv_id, user_message):
                     "message": f"Claude HTTP {resp.status_code}: {detail}"
                 })
                 return
-            response_data = resp.json()
+            response_data = _response_json_utf8(resp)
         except requests.exceptions.Timeout:
             yield _sse("error", {"message": "Claude API timeout"})
             return
@@ -411,7 +435,8 @@ def _stream_summary(question, tool_steps, api_base, hdrs, model,
             })
             return
 
-        for line in resp.iter_lines(decode_unicode=True):
+        for raw_line in resp.iter_lines(decode_unicode=False):
+            line = _decode_utf8_text(raw_line)
             if not line or not line.startswith("data: "):
                 continue
             data_str = line[6:]
