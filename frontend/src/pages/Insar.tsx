@@ -1302,6 +1302,59 @@ export default function Insar() {
     if (tab === 'map') window.setTimeout(() => window.dispatchEvent(new Event('resize')), 0)
   }, [tab, mode])
 
+  // 键盘快捷键
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // ESC 关闭面板
+      if (e.key === 'Escape') {
+        if (showSettings) {
+          setShowSettings(false)
+          e.preventDefault()
+        } else if (selectedPoint) {
+          setSelectedPoint(null)
+          e.preventDefault()
+        }
+      }
+
+      // 左右箭头切换点位（仅在详情面板打开时）
+      if (selectedPoint && riskSummary.top.length > 1) {
+        const currentIndex = riskSummary.top.findIndex(p => p.id === selectedPoint.id)
+        if (currentIndex !== -1) {
+          if (e.key === 'ArrowLeft' && currentIndex > 0) {
+            const prevPoint = riskSummary.top[currentIndex - 1]
+            setFocusId(null)
+            window.setTimeout(() => {
+              setFocusId(prevPoint.id)
+              setSelectedPoint({
+                id: prevPoint.id,
+                lat: prevPoint.lat,
+                lng: prevPoint.lng,
+                props: { velocity: prevPoint.velocity }
+              })
+            }, 0)
+            e.preventDefault()
+          } else if (e.key === 'ArrowRight' && currentIndex < riskSummary.top.length - 1) {
+            const nextPoint = riskSummary.top[currentIndex + 1]
+            setFocusId(null)
+            window.setTimeout(() => {
+              setFocusId(nextPoint.id)
+              setSelectedPoint({
+                id: nextPoint.id,
+                lat: nextPoint.lat,
+                lng: nextPoint.lng,
+                props: { velocity: nextPoint.velocity }
+              })
+            }, 0)
+            e.preventDefault()
+          }
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [showSettings, selectedPoint, riskSummary.top])
+
   useEffect(() => {
     let mounted = true
     const url = `${API_BASE}/insar/datasets`
@@ -1811,13 +1864,79 @@ export default function Insar() {
                 <i className="fas fa-map-marker-alt text-cyan-400" />
                 <h3 className="text-base font-semibold text-white">点位详情</h3>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedPoint(null)}
-                className="text-slate-400 transition-colors hover:text-white"
-              >
-                <i className="fas fa-times text-lg" />
-              </button>
+              <div className="flex items-center gap-2">
+                {/* 导航按钮 */}
+                {riskSummary.top.length > 1 && (() => {
+                  const currentIndex = riskSummary.top.findIndex(p => p.id === selectedPoint.id)
+                  if (currentIndex === -1) return null
+                  const hasPrev = currentIndex > 0
+                  const hasNext = currentIndex < riskSummary.top.length - 1
+                  return (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (hasPrev) {
+                            const prevPoint = riskSummary.top[currentIndex - 1]
+                            setFocusId(null)
+                            window.setTimeout(() => {
+                              setFocusId(prevPoint.id)
+                              setSelectedPoint({
+                                id: prevPoint.id,
+                                lat: prevPoint.lat,
+                                lng: prevPoint.lng,
+                                props: { velocity: prevPoint.velocity }
+                              })
+                            }, 0)
+                          }
+                        }}
+                        disabled={!hasPrev}
+                        className={`text-sm transition-colors ${
+                          hasPrev ? 'text-slate-400 hover:text-white' : 'text-slate-600 cursor-not-allowed'
+                        }`}
+                        title="上一个"
+                      >
+                        <i className="fas fa-chevron-left" />
+                      </button>
+                      <span className="text-xs text-slate-400">
+                        {currentIndex + 1} / {riskSummary.top.length}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (hasNext) {
+                            const nextPoint = riskSummary.top[currentIndex + 1]
+                            setFocusId(null)
+                            window.setTimeout(() => {
+                              setFocusId(nextPoint.id)
+                              setSelectedPoint({
+                                id: nextPoint.id,
+                                lat: nextPoint.lat,
+                                lng: nextPoint.lng,
+                                props: { velocity: nextPoint.velocity }
+                              })
+                            }, 0)
+                          }
+                        }}
+                        disabled={!hasNext}
+                        className={`text-sm transition-colors ${
+                          hasNext ? 'text-slate-400 hover:text-white' : 'text-slate-600 cursor-not-allowed'
+                        }`}
+                        title="下一个"
+                      >
+                        <i className="fas fa-chevron-right" />
+                      </button>
+                    </>
+                  )
+                })()}
+                <button
+                  type="button"
+                  onClick={() => setSelectedPoint(null)}
+                  className="ml-2 text-slate-400 transition-colors hover:text-white"
+                >
+                  <i className="fas fa-times text-lg" />
+                </button>
+              </div>
             </div>
 
             {/* 内容区域 */}
@@ -1953,6 +2072,21 @@ export default function Insar() {
                   </div>
                 )
               })()}
+
+              {/* 快捷键提示 */}
+              {riskSummary.top.length > 1 && (
+                <div className="mt-4 rounded-lg border border-slate-700 bg-slate-800/30 p-3">
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <i className="fas fa-keyboard" />
+                    <span>快捷键：</span>
+                    <kbd className="rounded bg-slate-700 px-1.5 py-0.5 font-mono text-white">←</kbd>
+                    <kbd className="rounded bg-slate-700 px-1.5 py-0.5 font-mono text-white">→</kbd>
+                    <span>切换点位</span>
+                    <kbd className="ml-2 rounded bg-slate-700 px-1.5 py-0.5 font-mono text-white">ESC</kbd>
+                    <span>关闭</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
