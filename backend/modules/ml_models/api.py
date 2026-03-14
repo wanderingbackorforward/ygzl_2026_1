@@ -81,8 +81,16 @@ except Exception as e:
 try:
     from modules.ml_models.knowledge_graph import KnowledgeGraphBuilder, NEO4J_AVAILABLE
 except Exception as e:
-    print(f"[警告] KnowledgeGraph模块加载失败: {e}")
+    print(f"[Info] Neo4j not available: {e}")
     NEO4J_AVAILABLE = False
+
+# Supabase-based KG fallback (always available)
+try:
+    from modules.ml_models.supabase_kg import SupabaseKnowledgeGraph
+    SUPABASE_KG_AVAILABLE = True
+except Exception as e:
+    print(f"[Info] SupabaseKG not available: {e}")
+    SUPABASE_KG_AVAILABLE = False
 
 try:
     from modules.ml_models.causal_reasoning import CausalReasoningEngine
@@ -1026,6 +1034,9 @@ def api_kg_query_neighbors(point_id):
     """
     try:
         if not NEO4J_AVAILABLE:
+            if SUPABASE_KG_AVAILABLE:
+                kg = SupabaseKnowledgeGraph()
+                return jsonify(kg.get_neighbors(point_id))
             return jsonify(_mock_kg_neighbors(point_id))
 
         max_distance = float(request.args.get('max_distance', 50.0))
@@ -1077,6 +1088,9 @@ def api_kg_query_risk_points():
         severity = request.args.get('severity', 'high')
 
         if not NEO4J_AVAILABLE:
+            if SUPABASE_KG_AVAILABLE:
+                kg = SupabaseKnowledgeGraph()
+                return jsonify(kg.get_risk_points(severity))
             return jsonify(_mock_kg_risk_points(severity))
 
         kg = KnowledgeGraphBuilder()
@@ -1100,6 +1114,9 @@ def api_kg_stats():
     """查询知识图谱统计信息"""
     try:
         if not NEO4J_AVAILABLE:
+            if SUPABASE_KG_AVAILABLE:
+                kg = SupabaseKnowledgeGraph()
+                return jsonify(kg.get_stats())
             return jsonify(_mock_kg_stats())
 
         kg = KnowledgeGraphBuilder()
@@ -1138,6 +1155,9 @@ def api_kgqa_ask():
         if not KGQA_AVAILABLE or not NEO4J_AVAILABLE:
             if not question:
                 return jsonify({'success': False, 'message': 'Missing question'}), 400
+            if SUPABASE_KG_AVAILABLE:
+                kg = SupabaseKnowledgeGraph()
+                return jsonify(kg.answer_question(question))
             return jsonify(_mock_kgqa(question))
 
         if not question:
