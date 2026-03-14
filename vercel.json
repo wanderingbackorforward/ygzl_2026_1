@@ -26,16 +26,10 @@
         "Access-Control-Allow-Headers": "Content-Type,Authorization"
       }
     },
-    {
-      "src": "/static/(.*)",
-      "headers": {
-        "Access-Control-Allow-Origin": "*"
-      }
-    },
     { "handle": "filesystem" },
     {
       "src": "/(.*)",
-      "dest": "/frontend/$1"
+      "dest": "/index.html"
     }
   ]
 }
