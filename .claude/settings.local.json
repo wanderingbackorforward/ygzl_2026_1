@@ -11,7 +11,14 @@
       "mcp__chrome-devtools__take_screenshot",
       "WebFetch(domain:skillsmp.com)",
       "mcp__chrome-devtools__take_snapshot",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.scbaopo.org)",
+      "WebFetch(domain:blog.endaq.com)",
+      "WebFetch(domain:www.sonitussystems.com)",
+      "WebFetch(domain:www.chinaminingmagazine.com)",
+      "WebFetch(domain:texcel.com.au)",
+      "WebFetch(domain:www.cgejournal.com)",
+      "WebFetch(domain:img.antpedia.com)"
     ]
   }
 }

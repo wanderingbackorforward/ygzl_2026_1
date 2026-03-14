@@ -260,6 +260,7 @@ class SupabaseKnowledgeGraph:
             'GeologicalStructure': '#a78bfa',
             'Document': '#3b82f6',
             'Concept': '#10b981',
+            'Threshold': '#facc15',
         }
         i = 0
         for nid in list(neighbor_ids)[:12]:
@@ -283,6 +284,8 @@ class SupabaseKnowledgeGraph:
                 'RELATED_TO': '#10b981',
                 'CORRELATES_WITH': '#a78bfa',
                 'CAUSES': '#fb923c',
+                'EXCEEDS_THRESHOLD': '#facc15',
+                'NEAR_BY': '#06b6d4',
             }
             if self.G.has_edge(point_id, nid):
                 edata = self.G.edges[point_id, nid]
@@ -624,42 +627,80 @@ class SupabaseKnowledgeGraph:
                 r'(\d+\.?\d*)\s*(mm|cm|m|mm/day|cm/day)', content, _re.IGNORECASE
             )
 
-            # Extract keywords as concept entities
+            # Extract keywords as concept entities (中文标签)
             keyword_patterns = {
-                'settlement': ['settlement', 'subsidence', 'deformation',
-                               'sinking', 'heave'],
-                'crack': ['crack', 'fracture', 'fissure'],
-                'geology': ['clay', 'sand', 'rock', 'soil', 'groundwater',
-                            'karst', 'limestone', 'granite'],
-                'construction': ['excavation', 'blasting', 'tunneling',
-                                 'drilling', 'grouting', 'reinforcement'],
-                'risk': ['risk', 'danger', 'warning', 'alert', 'threshold',
-                         'critical', 'failure'],
-            }
-            # Also check Chinese keywords
-            cn_keyword_patterns = {
-                'settlement': ['沉降', '下沉', '变形', '隆起'],
-                'crack': ['裂缝', '裂纹', '开裂'],
-                'geology': ['粘土', '砂土', '岩石', '土壤', '地下水',
-                            '溶洞', '石灰岩', '花岗岩'],
-                'construction': ['开挖', '爆破', '盾构', '钻孔', '注浆', '加固'],
-                'risk': ['风险', '危险', '预警', '阈值', '临界', '破坏'],
+                '沉降': ['settlement', 'subsidence', 'deformation', 'sinking', 'heave',
+                        '沉降', '下沉', '变形', '隆起', '沉陷'],
+                '裂缝': ['crack', 'fracture', 'fissure', '裂缝', '裂纹', '开裂', '龟裂'],
+                '地质': ['clay', 'sand', 'rock', 'soil', 'groundwater', 'karst', 'limestone', 'granite',
+                        '粘土', '砂土', '岩石', '土壤', '地下水', '溶洞', '石灰岩', '花岗岩', '软土'],
+                '施工': ['excavation', 'blasting', 'tunneling', 'drilling', 'grouting', 'reinforcement',
+                        '开挖', '爆破', '盾构', '钻孔', '注浆', '加固', '基坑', '隧道'],
+                '风险': ['risk', 'danger', 'warning', 'alert', 'threshold', 'critical', 'failure',
+                        '风险', '危险', '预警', '阈值', '临界', '破坏', '超限'],
+                '监测': ['monitoring', 'measurement', 'survey', 'observation',
+                        '监测', '测量', '观测', '巡检'],
+                '预测': ['prediction', 'forecast', 'trend', 'model',
+                        '预测', '预报', '趋势', '模型'],
             }
 
             content_lower = content.lower()
-            found_concepts = set()
-            for category, keywords in {**keyword_patterns, **cn_keyword_patterns}.items():
+            found_concepts = {}  # {concept_id: label}
+            for cn_label, keywords in keyword_patterns.items():
                 for kw in keywords:
                     if kw.lower() in content_lower or kw in content:
-                        concept_id = f"concept_{category}"
+                        concept_id = f"concept_{cn_label}"
                         if concept_id not in found_concepts:
-                            found_concepts.add(concept_id)
+                            found_concepts[concept_id] = cn_label
                             entities.append({
                                 'id': concept_id,
                                 'node_type': 'Concept',
-                                'label': category.capitalize(),
-                                'properties': {'category': category},
+                                'label': cn_label,  # 中文标签
+                                'properties': {'category': cn_label},
                             })
+                        break  # 找到一个关键词就够了
+
+            # Extract施工事件实体
+            construction_events = []
+            event_patterns = [
+                (r'爆破|blasting', '爆破施工'),
+                (r'开挖|excavation', '基坑开挖'),
+                (r'盾构|shield|tunneling', '盾构掘进'),
+                (r'注浆|grouting', '注浆加固'),
+            ]
+            for pattern, event_name in event_patterns:
+                if _re.search(pattern, content, _re.IGNORECASE):
+                    event_id = f"event_{event_name.replace(' ', '_')}"
+                    if event_id not in [e['id'] for e in entities]:
+                        entities.append({
+                            'id': event_id,
+                            'node_type': 'ConstructionEvent',
+                            'label': event_name,
+                            'properties': {'event_type': event_name},
+                        })
+                        construction_events.append(event_id)
+
+            # Extract数值实体（沉降量、速率）
+            measurements = _re.findall(r'(\d+\.?\d*)\s*(mm|cm|m|mm/day|cm/day)', content, _re.IGNORECASE)
+            significant_values = set()
+            for val, unit in measurements:
+                num = float(val)
+                # 只保留显著数值（沉降量 >10mm 或速率 >1mm/day）
+                if (unit.lower() in ['mm', 'cm', 'm'] and num >= 10) or \
+                   (unit.lower() in ['mm/day', 'cm/day'] and num >= 1):
+                    significant_values.add(f"{val}{unit}")
+
+            # Extract阈值实体
+            threshold_patterns = _re.findall(r'(阈值|threshold|预警|warning|限值|limit).*?(\d+\.?\d*)\s*(mm|cm)', content, _re.IGNORECASE)
+            for _, val, unit in threshold_patterns:
+                threshold_id = f"threshold_{val}{unit}"
+                if threshold_id not in [e['id'] for e in entities]:
+                    entities.append({
+                        'id': threshold_id,
+                        'node_type': 'Threshold',
+                        'label': f"预警阈值 {val}{unit}",
+                        'properties': {'value': float(val), 'unit': unit},
+                    })
 
             # Create a document node
             doc_node_id = f"doc_{doc_id[:8]}"
@@ -670,7 +711,7 @@ class SupabaseKnowledgeGraph:
                 'properties': {'doc_id': doc_id, 'source_type': doc.get('source_type', 'text')},
             })
 
-            # 3. Build relations
+            # 3. Build relations (更丰富的关系类型)
             # Document -> mentions -> entities
             for ent in entities:
                 if ent['id'] != doc_node_id:
@@ -685,13 +726,63 @@ class SupabaseKnowledgeGraph:
             # Point-to-concept relations
             for pid in point_refs:
                 pid_upper = pid.upper()
-                for concept_id in found_concepts:
+                for concept_id, concept_label in found_concepts.items():
                     relations.append({
                         'source_id': pid_upper,
                         'target_id': concept_id,
                         'edge_type': 'RELATED_TO',
                         'properties': {'source': 'document_extraction'},
                         'confidence': 0.7,
+                    })
+
+            # Construction event -> causes -> settlement (因果关系)
+            for event_id in construction_events:
+                for pid in point_refs:
+                    pid_upper = pid.upper()
+                    # 检查文本中是否提到事件影响该点位
+                    if _re.search(rf'{event_id.split("_")[1]}.*{pid_upper}|{pid_upper}.*{event_id.split("_")[1]}',
+                                  content, _re.IGNORECASE):
+                        relations.append({
+                            'source_id': event_id,
+                            'target_id': pid_upper,
+                            'edge_type': 'CAUSES',
+                            'properties': {'impact_type': 'settlement'},
+                            'confidence': 0.8,
+                        })
+
+            # Point -> exceeds -> threshold (超限关系)
+            for ent in entities:
+                if ent['node_type'] == 'Threshold':
+                    threshold_val = ent['properties']['value']
+                    # 查找提到超过该阈值的点位
+                    for pid in point_refs:
+                        pid_upper = pid.upper()
+                        # 简单规则：如果点位和阈值在同一句话中，且有"超过/超限/达到"等词
+                        sentences = _re.split(r'[。！？\n]', content)
+                        for sent in sentences:
+                            if pid_upper in sent and str(threshold_val) in sent:
+                                if _re.search(r'超过|超限|达到|接近|exceed|reach', sent, _re.IGNORECASE):
+                                    relations.append({
+                                        'source_id': pid_upper,
+                                        'target_id': ent['id'],
+                                        'edge_type': 'EXCEEDS_THRESHOLD',
+                                        'properties': {},
+                                        'confidence': 0.75,
+                                    })
+                                    break
+
+            # Point-to-point spatial relations (空间邻近)
+            # 如果文本中提到"S1和S2"、"S3-S5"等，建立邻近关系
+            point_pairs = _re.findall(r'(S\d{1,2})\s*(?:和|与|及|、|,|-)\s*(S\d{1,2})', content, _re.IGNORECASE)
+            for p1, p2 in point_pairs:
+                p1_upper, p2_upper = p1.upper(), p2.upper()
+                if p1_upper != p2_upper:
+                    relations.append({
+                        'source_id': p1_upper,
+                        'target_id': p2_upper,
+                        'edge_type': 'NEAR_BY',
+                        'properties': {'source': 'text_mention'},
+                        'confidence': 0.6,
                     })
 
             # 4. Upsert entities to Supabase

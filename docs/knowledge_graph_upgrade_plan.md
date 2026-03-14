@@ -113,10 +113,11 @@ CREATE TABLE kg_document_entities (
   - SPATIAL_NEAR / DETECTED_AT / CORRELATES_WITH / CAUSES 各有独立颜色
   - 图例增加"引用"和"关联"边类型
 
-### Phase 7: 测试与优化
-- [ ] 7.1 端到端测试
-- [ ] 7.2 性能优化（批量处理）
-- [ ] 7.3 错误处理和降级
+### Phase 7: 测试与优化 ✅ (已完成)
+- [x] 7.1 后端 datetime 导入修复（process_document 依赖）
+- [x] 7.2 前端错误处理（网络失败/提交失败友好提示，可关闭错误条）
+- [x] 7.3 AdvancedAnalysis 页面描述更新（反映文献管理新功能）
+- [x] 7.4 演示模式提示优化（空图谱时显示使用引导，mock 时简化提示）
 
 ## Vercel 部署注意事项
 1. **无状态处理**：所有数据存 Supabase，不依赖本地文件系统

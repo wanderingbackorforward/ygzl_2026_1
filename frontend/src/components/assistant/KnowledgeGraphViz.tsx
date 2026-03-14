@@ -39,6 +39,7 @@ const TYPE_LABELS: Record<string, string> = {
   AcademicPaper: '参考文献',
   Document: '文献',
   Concept: '概念',
+  Threshold: '预警阈值',
   SPATIAL_NEAR: '空间邻近',
   CORRELATES_WITH: '关联',
   CAUSES: '因果',
@@ -46,6 +47,8 @@ const TYPE_LABELS: Record<string, string> = {
   REFERENCES: '参考',
   MENTIONS: '引用',
   RELATED_TO: '关联',
+  EXCEEDS_THRESHOLD: '超限',
+  NEAR_BY: '邻近',
 }
 
 export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGraphVizProps) {
@@ -187,6 +190,10 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
           <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: '#10b981' }} />
           <span className="text-sm text-slate-200">概念</span>
         </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: '#facc15' }} />
+          <span className="text-sm text-slate-200">预警阈值</span>
+        </div>
         <span className="text-sm text-slate-500">|</span>
         <div className="flex items-center gap-1.5">
           <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#38bdf8' }} />
@@ -211,6 +218,14 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
         <div className="flex items-center gap-1.5">
           <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#10b981' }} />
           <span className="text-sm text-slate-200">关联</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#facc15' }} />
+          <span className="text-sm text-slate-200">超限</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#06b6d4' }} />
+          <span className="text-sm text-slate-200">邻近</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#c084fc' }} />

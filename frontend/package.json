@@ -11,7 +11,10 @@
   },
   "dependencies": {
     "echarts": "^5.5.0",
+    "fft.js": "^4.0.4",
+    "fili": "^2.0.3",
     "leaflet": "^1.9.4",
+    "mathjs": "^15.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-grid-layout": "^2.2.2",
