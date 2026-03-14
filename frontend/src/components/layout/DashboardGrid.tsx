@@ -6,6 +6,34 @@ import { MobileCardSwitcher } from './MobileCardSwitcher';
 import type { CardConfig, Breakpoint, LayoutItem } from '../../types/layout';
 import { BREAKPOINTS, COLS, ROW_HEIGHT, MARGIN } from '../../types/layout';
 
+class CardErrorBoundary extends React.Component<
+  { cardTitle: string; children: React.ReactNode },
+  { hasError: boolean; errorMsg: string }
+> {
+  state = { hasError: false, errorMsg: '' };
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, errorMsg: error.message };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          height: '100%', padding: 16, color: '#fff', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+            "{this.props.cardTitle}" 加载失败
+          </div>
+          <div style={{ fontSize: 12, color: '#e2e8f0', wordBreak: 'break-word' }}>
+            {this.state.errorMsg}
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
@@ -204,11 +232,13 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
                 onFullscreen={() => onCardFullscreen?.(cardId)}
                 onRemove={onRemoveCard ? () => onRemoveCard(cardId) : undefined}
               >
-                <CardComponent
-                  cardId={cardId}
-                  onFullscreen={() => onCardFullscreen?.(cardId)}
-                  {...card.props}
-                />
+                <CardErrorBoundary cardTitle={card.title}>
+                  <CardComponent
+                    cardId={cardId}
+                    onFullscreen={() => onCardFullscreen?.(cardId)}
+                    {...card.props}
+                  />
+                </CardErrorBoundary>
               </CardBase>
             </div>
           );

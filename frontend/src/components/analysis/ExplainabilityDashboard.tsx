@@ -15,7 +15,7 @@ export const ExplainabilityDashboard: React.FC = () => {
           onClick={() => setSubTab('shap')}
         >
           <i className="fas fa-chart-bar" style={{ marginRight: '6px' }} />
-          SHAP 特征重要性
+          特征重要性分析
         </button>
         <button
           style={{ ...styles.subTab, ...(subTab === 'causal' ? styles.subTabActive : {}) }}
