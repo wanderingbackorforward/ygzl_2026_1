@@ -31,12 +31,13 @@ from modules.ml_models.supabase_data import (
     find_distant_points,
 )
 
-# 导入ML模块
-from modules.ml_models.anomaly_detector import AnomalyDetector, detect_anomalies_for_point
-from modules.ml_models.time_series_predictor import TimeSeriesPredictor, predict_settlement
-from modules.ml_models.spatial_correlation import SpatialCorrelationAnalyzer, analyze_spatial_correlation
-from modules.ml_models.causal_inference import CausalInference, analyze_event_impact
-from modules.ml_models.model_selector import ModelSelector, auto_predict
+# ML模块延迟导入（避免冷启动超时）
+# 这些模块依赖 scikit-learn 等大型库，在路由函数内按需导入
+AnomalyDetector = None
+TimeSeriesPredictor = None
+SpatialCorrelationAnalyzer = None
+CausalInference = None
+ModelSelector = None
 
 try:
     from modules.ml_models.prophet_predictor import ProphetPredictor, predict_with_prophet, PROPHET_AVAILABLE
@@ -358,6 +359,9 @@ def api_auto_predict(point_id):
         metric: 评估指标（mae/rmse/mape，默认mae）
     """
     try:
+        # 延迟导入
+        from modules.ml_models.model_selector import auto_predict
+
         # 兼容前端 forecast_days 和 steps 两种参数名
         steps = int(request.args.get('steps', request.args.get('forecast_days', 30)))
         metric = request.args.get('metric', 'mae')
@@ -384,6 +388,9 @@ def api_predict(point_id):
         steps: 预测步数（默认30天）
     """
     try:
+        # 延迟导入
+        from modules.ml_models.time_series_predictor import predict_settlement
+
         model_type = request.args.get('model', 'arima')
         # 兼容前端 forecast_days 和 steps 两种参数名
         steps = int(request.args.get('steps', request.args.get('forecast_days', 30)))
@@ -393,6 +400,7 @@ def api_predict(point_id):
         if model_type == 'prophet':
             if not PROPHET_AVAILABLE:
                 return jsonify(_lightweight_prophet_predict(point_id, steps))
+            from modules.ml_models.prophet_predictor import predict_with_prophet
             result = predict_with_prophet(point_id, None, steps=steps)
         else:
             result = predict_settlement(point_id, model_type=model_type, steps=steps, df=df)
@@ -420,6 +428,9 @@ def api_detect_anomalies(point_id):
         contamination: 异常比例（默认0.05）
     """
     try:
+        # 延迟导入
+        from modules.ml_models.anomaly_detector import detect_anomalies_for_point
+
         method = request.args.get('method', 'isolation_forest')
         contamination = float(request.args.get('contamination', 0.05))
 
@@ -448,6 +459,9 @@ def api_batch_detect_anomalies():
         }
     """
     try:
+        # 延迟导入（避免冷启动超时）
+        from modules.ml_models.anomaly_detector import detect_anomalies_for_point
+
         data = request.get_json()
         point_ids = data.get('point_ids', [])
         method = data.get('method', 'isolation_forest')

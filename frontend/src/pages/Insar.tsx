@@ -1702,7 +1702,16 @@ export default function Insar() {
                           setMode('native')
                           setIndicator('threshold')
                           setFocusId(null)
-                          window.setTimeout(() => setFocusId(p.id), 0)
+                          window.setTimeout(() => {
+                            setFocusId(p.id)
+                            // 同时打开详情面板
+                            setSelectedPoint({
+                              id: p.id,
+                              lat: p.lat,
+                              lng: p.lng,
+                              props: { velocity: p.velocity }
+                            })
+                          }, 0)
                         }}
                         className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-white transition-colors ${
                           isDanger
@@ -1790,6 +1799,99 @@ export default function Insar() {
           </div>
         </div>
       </div>
+
+      {/* 详情面板 - 点击点位时从右侧滑出 */}
+      {selectedPoint && (
+        <div className="fixed right-0 top-0 z-40 h-full w-96 transform border-l border-slate-700 bg-slate-900 shadow-2xl transition-transform duration-300">
+          <div className="flex h-full flex-col">
+            {/* 头部 */}
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-700 bg-slate-800 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <i className="fas fa-map-marker-alt text-cyan-400" />
+                <h3 className="text-base font-semibold text-white">点位详情</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedPoint(null)}
+                className="text-slate-400 transition-colors hover:text-white"
+              >
+                <i className="fas fa-times text-lg" />
+              </button>
+            </div>
+
+            {/* 内容区域 */}
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              {/* 点位基本信息 */}
+              <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+                <h4 className="mb-3 text-sm font-semibold text-white">基本信息</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-300">点位 ID</span>
+                    <span className="font-medium text-white">{selectedPoint.id || '未命名'}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-300">经度</span>
+                    <span className="font-mono text-white">{selectedPoint.lng.toFixed(6)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-300">纬度</span>
+                    <span className="font-mono text-white">{selectedPoint.lat.toFixed(6)}</span>
+                  </div>
+                  {(() => {
+                    const velocity = getVelocityFromProps(selectedPoint.props, velocityField)
+                    if (velocity !== null) {
+                      const risk = riskFromVelocity(velocity, thresholds)
+                      const { label: riskLabel, color: riskColor } = (() => {
+                        if (risk === 'danger') return { label: '危险', color: 'text-red-400' }
+                        if (risk === 'warning') return { label: '预警', color: 'text-orange-400' }
+                        return { label: '正常', color: 'text-green-400' }
+                      })()
+                      return (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-300">速度</span>
+                            <span className="font-mono text-white">{velocity.toFixed(2)} mm/年</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-300">风险等级</span>
+                            <span className={`font-semibold ${riskColor}`}>{riskLabel}</span>
+                          </div>
+                        </>
+                      )
+                    }
+                    return null
+                  })()}
+                </div>
+              </div>
+
+              {/* 其他属性 */}
+              {selectedPoint.props && Object.keys(selectedPoint.props).length > 0 && (
+                <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+                  <h4 className="mb-3 text-sm font-semibold text-white">其他属性</h4>
+                  <div className="space-y-2 text-sm">
+                    {Object.entries(selectedPoint.props)
+                      .filter(([key]) => !['id', 'velocity', 'vel', 'rate', 'value'].includes(key))
+                      .slice(0, 10)
+                      .map(([key, value]) => (
+                        <div key={key} className="flex items-start justify-between gap-2">
+                          <span className="text-slate-300 truncate">{key}</span>
+                          <span className="font-mono text-xs text-white text-right break-all">
+                            {value === null || value === undefined ? '—' : String(value)}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 占位：时序图和施工建议将在下一步添加 */}
+              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-center">
+                <p className="text-sm text-slate-400">时序图和施工建议将在下一步实现</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 设置抽屉 - 暂时占位，下一步实现 */}
       {showSettings && (
