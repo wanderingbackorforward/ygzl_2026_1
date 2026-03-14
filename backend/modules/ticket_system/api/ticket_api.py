@@ -885,3 +885,105 @@ def get_active_tickets():
         print(f"[ERROR] 获取活跃工单失败: {e}")
         print(traceback.format_exc())
         return create_response(None, f"获取活跃工单失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/parse-quick-input', methods=['POST'])
+def parse_quick_input():
+    """
+    AI 智能解析快速输入
+    用户输入一句话（如"DB-001沉降15mm"），AI自动解析出工单字段
+    """
+    try:
+        data = request.get_json()
+        user_input = data.get('input', '').strip()
+
+        if not user_input:
+            return create_response(None, "输入不能为空", False, 400)
+
+        # 使用简单规则解析（不依赖 LLM，避免网络不稳定）
+        parsed = _parse_quick_input_rule_based(user_input)
+
+        return create_response(parsed, "解析成功")
+
+    except Exception as e:
+        print(f"[ERROR] 解析快速输入失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"解析失败: {str(e)}", False, 500)
+
+
+def _parse_quick_input_rule_based(user_input: str) -> dict:
+    """
+    基于规则的快速输入解析（不依赖 LLM）
+
+    支持的模式：
+    - "DB-001 沉降 15mm" → 监测点 + 类型 + 数值
+    - "裂缝异常 DB-002" → 类型 + 监测点
+    - "温度超限 35度 DB-003" → 类型 + 数值 + 监测点
+    """
+    import re
+
+    result = {
+        'title': '',
+        'ticket_type': '',
+        'priority': 'MEDIUM',
+        'monitoring_point_id': '',
+        'current_value': None,
+        'description': ''
+    }
+
+    # 提取监测点编号（DB-xxx, CK-xxx, WD-xxx, ZD-xxx）
+    point_match = re.search(r'(DB|CK|WD|ZD)-?\d+', user_input, re.IGNORECASE)
+    if point_match:
+        result['monitoring_point_id'] = point_match.group(0).upper()
+
+    # 提取数值（带单位）
+    value_patterns = [
+        (r'(\d+\.?\d*)\s*(mm|毫米)', 'mm'),
+        (r'(\d+\.?\d*)\s*(度|℃|°C)', '℃'),
+        (r'(\d+\.?\d*)\s*(m/s²|米每秒平方)', 'm/s²'),
+    ]
+    for pattern, unit in value_patterns:
+        value_match = re.search(pattern, user_input, re.IGNORECASE)
+        if value_match:
+            result['current_value'] = float(value_match.group(1))
+            break
+
+    # 识别工单类型和优先级
+    type_keywords = {
+        'SETTLEMENT_ALERT': ['沉降', '下沉', '变形'],
+        'CRACK_ALERT': ['裂缝', '裂纹', '开裂'],
+        'TEMPERATURE_ALERT': ['温度', '高温', '低温', '温差'],
+        'VIBRATION_ALERT': ['振动', '震动', '加速度'],
+        'EQUIPMENT_FAILURE': ['设备', '故障', '损坏', '失效'],
+        'DATA_MISSING': ['数据', '缺失', '丢失', '中断'],
+    }
+
+    for ticket_type, keywords in type_keywords.items():
+        if any(kw in user_input for kw in keywords):
+            result['ticket_type'] = ticket_type
+            break
+
+    # 根据关键词判断优先级
+    if any(kw in user_input for kw in ['紧急', '严重', '超限', '告警', '危险']):
+        result['priority'] = 'CRITICAL'
+    elif any(kw in user_input for kw in ['重要', '异常', '超过']):
+        result['priority'] = 'HIGH'
+    elif any(kw in user_input for kw in ['一般', '正常', '轻微']):
+        result['priority'] = 'LOW'
+
+    # 生成标题
+    if result['monitoring_point_id'] and result['ticket_type']:
+        type_name = get_ticket_type(result['ticket_type']).get('name', '异常')
+        result['title'] = f"{result['monitoring_point_id']} {type_name}"
+    else:
+        result['title'] = user_input[:50]  # 截取前50字符
+
+    # 生成描述
+    desc_parts = [f"用户输入：{user_input}"]
+    if result['monitoring_point_id']:
+        desc_parts.append(f"监测点：{result['monitoring_point_id']}")
+    if result['current_value'] is not None:
+        desc_parts.append(f"当前值：{result['current_value']}")
+    result['description'] = '\n'.join(desc_parts)
+
+    return result

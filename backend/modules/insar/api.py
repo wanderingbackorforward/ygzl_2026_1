@@ -445,14 +445,19 @@ def insar_zones():
             }
         )
     except Exception as e:
+        import traceback
+        error_traceback = traceback.format_exc()
+        print(f"[DEBUG] /api/insar/zones error: {error_traceback}")
+
         if isinstance(e, ValueError):
-            return jsonify({"status": "error", "message": str(e)}), 400
+            return jsonify({"status": "error", "message": str(e), "traceback": error_traceback}), 400
         dataset_hint = (request.args.get("dataset") or "").strip() or "dataset"
         abs_hint_dir = os.path.abspath(os.path.join(raw_dir, dataset_hint))
         return jsonify(
             {
                 "status": "error",
                 "message": str(e),
+                "traceback": error_traceback,
                 "hint": f"请把 Shapefile 放到 {abs_hint_dir} 下（至少 .shp + .dbf）。也可设置 INSAR_DATA_DIR 指向包含 raw/processed 的 insar 数据目录。",
                 "meta": {"dataset": dataset_hint, "insar_data_dir": os.path.abspath(os.path.join(raw_dir, "..")), "raw_dir": raw_dir},
             }
