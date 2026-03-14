@@ -43,6 +43,73 @@ try:
 except:
     PROPHET_AVAILABLE = False
 
+
+def _lightweight_prophet_predict(point_id, steps=30):
+    """Lightweight Prophet alternative using statsmodels ExponentialSmoothing."""
+    from statsmodels.tsa.holtwinters import ExponentialSmoothing
+
+    df = fetch_point_settlement(point_id)
+    if len(df) < 15:
+        return _mock_prediction(point_id, steps, 'prophet')
+
+    df = df.sort_values('date').reset_index(drop=True)
+    values = df['settlement'].values
+    dates = pd.to_datetime(df['date'])
+
+    # Fit Holt-Winters (additive trend, no seasonality for short series)
+    try:
+        model = ExponentialSmoothing(
+            values, trend='add', seasonal=None,
+            initialization_method='estimated'
+        ).fit(optimized=True)
+    except Exception:
+        model = ExponentialSmoothing(
+            values, trend='add', seasonal=None
+        ).fit()
+
+    # Forecast
+    forecast = model.forecast(steps)
+    fc_vals = forecast.tolist()
+
+    # Confidence interval from residuals
+    residuals = values - model.fittedvalues
+    std_err = float(np.std(residuals))
+
+    last_date = dates.iloc[-1]
+    fc_dates = [(last_date + pd.Timedelta(days=i+1)).strftime('%Y-%m-%d') for i in range(steps)]
+    fc_lower = [v - 1.96 * std_err * (1 + 0.02*i) for i, v in enumerate(fc_vals)]
+    fc_upper = [v + 1.96 * std_err * (1 + 0.02*i) for i, v in enumerate(fc_vals)]
+
+    hist_dates = [d.strftime('%Y-%m-%d') for d in dates]
+
+    from sklearn.metrics import r2_score
+    train_r2 = float(r2_score(values, model.fittedvalues))
+
+    return {
+        'success': True,
+        'point_id': point_id,
+        'selected_model': 'lightweight_prophet',
+        'model_variant': 'lightweight',
+        'model_selection_info': {
+            'best_score': round(train_r2, 4),
+            'metric': 'r2',
+            'data_characteristics': {
+                'data_size': len(values),
+                'trend_strength': round(abs(np.polyfit(range(len(values)), values, 1)[0]), 4),
+                'volatility': round(float(np.std(np.diff(values))), 4),
+                'seasonality_strength': 0.0,
+            },
+        },
+        'historical': [{'date': d, 'value': round(float(v), 3)} for d, v in zip(hist_dates, values)],
+        'forecast': {
+            'dates': fc_dates,
+            'values': [round(v, 3) for v in fc_vals],
+            'lower_bound': [round(v, 3) for v in fc_lower],
+            'upper_bound': [round(v, 3) for v in fc_upper],
+        },
+        'model_performance': {'train_r2': round(train_r2, 4)},
+    }
+
 # 导入深度学习模块
 try:
     from modules.ml_models.informer_predictor import InformerPredictor
@@ -320,7 +387,7 @@ def api_predict(point_id):
 
         if model_type == 'prophet':
             if not PROPHET_AVAILABLE:
-                return jsonify(_mock_prediction(point_id, steps, 'prophet'))
+                return jsonify(_lightweight_prophet_predict(point_id, steps))
             result = predict_with_prophet(point_id, None, steps=steps)
         else:
             result = predict_settlement(point_id, model_type=model_type, steps=steps, df=df)
