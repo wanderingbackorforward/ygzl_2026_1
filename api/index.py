@@ -10,4 +10,4 @@ if backend_dir not in sys.path:
 try:
     from modules.api.api_server import app
 except Exception:
-    from api._fallback import app
+    from fallback_app import app
