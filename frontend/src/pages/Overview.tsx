@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { LayoutProvider, useLayout } from '../contexts/LayoutContext';
 import { OverviewProvider } from '../contexts/OverviewContext';
+import { CracksProvider } from '../contexts/CracksContext';
 import { DashboardGrid } from '../components/layout/DashboardGrid';
 import type { CardConfig } from '../types/layout';
 import { CardLibraryModal } from '../components/overview/CardLibraryModal';
@@ -139,7 +140,9 @@ export default function Overview() {
   return (
     <LayoutProvider>
       <OverviewProvider>
-        <OverviewDashboard />
+        <CracksProvider>
+          <OverviewDashboard />
+        </CracksProvider>
       </OverviewProvider>
     </LayoutProvider>
   );
