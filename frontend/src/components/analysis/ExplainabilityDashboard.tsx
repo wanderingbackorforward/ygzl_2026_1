@@ -33,6 +33,23 @@ export const ExplainabilityDashboard: React.FC = () => {
 };
 
 // ━━━ SHAP Panel ━━━
+const FEATURE_NAME_CN: Record<string, string> = {
+  'lag_1 (1-day lag)': '1日滞后值',
+  'lag_2 (2-day lag)': '2日滞后值',
+  'lag_3 (3-day lag)': '3日滞后值',
+  'lag_7 (7-day lag)': '7日滞后值',
+  'roll_mean_3 (3-day avg)': '3日滚动均值',
+  'roll_std_3 (3-day volatility)': '3日波动性',
+  'roll_mean_7 (7-day avg)': '7日滚动均值',
+  'roll_std_7 (7-day volatility)': '7日波动性',
+  'rate_of_change (daily delta)': '日变化率',
+  'time_progression': '时间进度',
+  'temperature': '温度',
+  'crack_width': '裂缝宽度',
+  'vibration': '振动',
+};
+const toCN = (name: string) => FEATURE_NAME_CN[name] || name;
+
 const SHAPPanel: React.FC = () => {
   const [selectedPoint, setSelectedPoint] = useState('S1');
   const [data, setData] = useState<any>(null);
@@ -96,7 +113,7 @@ const SHAPPanel: React.FC = () => {
       ctx.font = '13px system-ui';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'middle';
-      ctx.fillText(feat.feature, leftPad - 12, y + barH / 2);
+      ctx.fillText(toCN(feat.feature), leftPad - 12, y + barH / 2);
 
       // Value label
       ctx.fillStyle = '#fff';
@@ -132,7 +149,7 @@ const SHAPPanel: React.FC = () => {
           {pointIds.map(pid => <option key={pid} value={pid}>{pid}</option>)}
         </select>
         <button style={styles.runButton} onClick={loadSHAP} disabled={loading}>
-          {loading ? '分析中...' : '运行 SHAP 分析'}
+          {loading ? '分析中...' : '运行特征分析'}
         </button>
       </div>
 
@@ -149,7 +166,7 @@ const SHAPPanel: React.FC = () => {
           {/* Summary table */}
           {data.summary && data.summary.length > 0 && (
             <div style={styles.tableSection}>
-              <div style={styles.sectionTitle}>SHAP 统计详情</div>
+              <div style={styles.sectionTitle}>特征统计详情</div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={styles.table}>
                   <thead>
@@ -166,7 +183,7 @@ const SHAPPanel: React.FC = () => {
                   <tbody>
                     {data.summary.map((s: any) => (
                       <tr key={s.feature}>
-                        <td style={styles.td}>{s.feature}</td>
+                        <td style={styles.td}>{toCN(s.feature)}</td>
                         <td style={styles.tdNum}>{s.mean_shap.toFixed(4)}</td>
                         <td style={styles.tdNum}>{s.mean_abs_shap.toFixed(4)}</td>
                         <td style={styles.tdNum}>{s.std_shap.toFixed(4)}</td>
