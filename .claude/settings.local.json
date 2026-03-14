@@ -18,7 +18,14 @@
       "WebFetch(domain:www.chinaminingmagazine.com)",
       "WebFetch(domain:texcel.com.au)",
       "WebFetch(domain:www.cgejournal.com)",
-      "WebFetch(domain:img.antpedia.com)"
+      "WebFetch(domain:img.antpedia.com)",
+      "WebFetch(domain:www.bloomberg.com)",
+      "WebFetch(domain:www.lippihom.com)",
+      "WebFetch(domain:www.nngroup.com)",
+      "WebFetch(domain:www.pencilandpaper.io)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:blog.logrocket.com)",
+      "WebFetch(domain:www.notateslaapp.com)"
     ]
   }
 }
