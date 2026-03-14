@@ -3,15 +3,34 @@
  * 乔布斯式设计：Hero数字 + 主图 + 侧边抽屉
  */
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { HeroPPV } from '@/components/vibration/HeroPPV'
+import { PPVTrendChart } from '@/components/vibration/PPVTrendChart'
+import { ChannelList } from '@/components/vibration/ChannelList'
+import { AlertHistory } from '@/components/vibration/AlertHistory'
 import type {
   VibrationDataset,
   StructureType,
   StructureCondition,
   SiteType,
-  SafetyLevel
+  SafetyLevel,
+  ChannelInfo,
+  AlertRecord,
+  Thresholds
 } from '@/utils/vibration/types'
+import { getDynamicThreshold, calculateSafetyScore, getAlertLevel } from '@/utils/vibration/gb6722'
+
+// 通道颜色配置
+const CHANNEL_COLORS = [
+  '#06b6d4', // cyan-500
+  '#3b82f6', // blue-500
+  '#8b5cf6', // violet-500
+  '#ec4899', // pink-500
+  '#f59e0b', // amber-500
+  '#10b981', // emerald-500
+  '#6366f1', // indigo-500
+  '#f97316'  // orange-500
+]
 
 export const VibrationV2: React.FC = () => {
   // ==================== 状态管理 ====================
@@ -23,15 +42,14 @@ export const VibrationV2: React.FC = () => {
   // 配置
   const [structureType, setStructureType] = useState<StructureType>('brick')
   const [structureCondition, setStructureCondition] = useState<StructureCondition>('good')
-  const [siteType, setSiteType] = useState<SiteType>('soil')
   const [distance, setDistance] = useState<number>(100)
 
-  // 计算结果（临时mock数据）
-  const [ppv, setPpv] = useState<number>(12.5)
-  const [level, setLevel] = useState<SafetyLevel>('caution')
-  const [score, setScore] = useState<number>(87)
-  const [alertCount, setAlertCount] = useState<number>(3)
-  const [exceedRatio, setExceedRatio] = useState<number>(2.1)
+  // 通道数据（mock）
+  const [channels, setChannels] = useState<ChannelInfo[]>([])
+  const [channelTrendData, setChannelTrendData] = useState<any[]>([])
+
+  // 报警记录（mock）
+  const [alerts, setAlerts] = useState<AlertRecord[]>([])
 
   // 侧边抽屉
   const [selectedChannelId, setSelectedChannelId] = useState<number | null>(null)
@@ -40,21 +58,155 @@ export const VibrationV2: React.FC = () => {
   // 设置抽屉
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false)
 
-  // ==================== 数据加载 ====================
+  // ==================== Mock 数据生成 ====================
 
   useEffect(() => {
-    // TODO: 从 API 加载数据集列表
-    // fetch('/api/vibration/datasets')
-    //   .then(res => res.json())
-    //   .then(data => setDatasets(data))
-  }, [])
+    // 生成 mock 数据集列表
+    const mockDatasets: VibrationDataset[] = [
+      {
+        id: '1',
+        name: '2026-03-15 爆破监测数据',
+        uploadTime: new Date('2026-03-15T14:30:00'),
+        description: '某隧道爆破振动监测',
+        channelCount: 8,
+        samplingRate: 1000
+      }
+    ]
+    setDatasets(mockDatasets)
+    setSelectedDatasetId('1')
 
-  useEffect(() => {
-    if (selectedDatasetId) {
-      // TODO: 加载选中数据集的详细数据
-      // TODO: 调用算法层计算 PPV/阈值/评分
+    // 生成 mock 通道数据
+    const mockChannels: ChannelInfo[] = []
+    const mockTrendData: any[] = []
+    const mockAlerts: AlertRecord[] = []
+
+    for (let i = 1; i <= 8; i++) {
+      // 生成随机 PPV 和主频
+      const ppv = Math.random() * 15 + 2  // 2-17 mm/s
+      const dominantFreq = Math.random() * 40 + 10  // 10-50 Hz
+
+      // 计算阈值
+      const thresholds = getDynamicThreshold({
+        structureType,
+        dominantFreq,
+        distance,
+        condition: structureCondition
+      })
+
+      // 判定预警等级
+      const alertLevel = getAlertLevel(ppv, thresholds)
+
+      mockChannels.push({
+        channelId: i,
+        ppv,
+        dominantFreq,
+        status: alertLevel === 'safe' ? 'normal' : alertLevel === 'warn' ? 'warning' : 'alert',
+        alertLevel,
+        samplingRate: 1000
+      })
+
+      // 生成趋势数据（模拟 10 秒数据）
+      const timestamps: number[] = []
+      const ppvTimeSeries: number[] = []
+      for (let t = 0; t <= 10; t += 0.01) {
+        timestamps.push(t)
+        // 模拟振动波形（衰减正弦波）
+        const amplitude = ppv * Math.exp(-t / 3) * (1 + 0.3 * Math.sin(2 * Math.PI * dominantFreq * t / 10))
+        ppvTimeSeries.push(Math.max(0, amplitude))
+      }
+
+      mockTrendData.push({
+        channelId: i,
+        ppvTimeSeries,
+        timestamps,
+        color: CHANNEL_COLORS[i - 1],
+        visible: true
+      })
+
+      // 生成报警记录
+      if (alertLevel !== 'safe') {
+        mockAlerts.push({
+          id: `alert-${i}`,
+          timestamp: new Date(Date.now() - Math.random() * 3600000),  // 过去1小时内
+          channelId: i,
+          ppv,
+          threshold: thresholds.warn,
+          level: alertLevel,
+          message: `通道${i} PPV=${ppv.toFixed(1)} mm/s`
+        })
+      }
     }
-  }, [selectedDatasetId, structureType, structureCondition, distance])
+
+    // 按时间倒序排序
+    mockAlerts.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+
+    setChannels(mockChannels)
+    setChannelTrendData(mockTrendData)
+    setAlerts(mockAlerts)
+  }, [structureType, structureCondition, distance])
+
+  // ==================== 计算汇总数据 ====================
+
+  const summaryData = useMemo(() => {
+    if (channels.length === 0) {
+      return {
+        maxPPV: 0,
+        level: 'safe' as SafetyLevel,
+        score: 100,
+        alertCount: 0,
+        exceedRatio: 0,
+        thresholds: { warn: 0, alert: 0, stop: 0 }
+      }
+    }
+
+    // 找到最大 PPV
+    const maxPPV = Math.max(...channels.map(ch => ch.ppv))
+    const maxChannel = channels.find(ch => ch.ppv === maxPPV)!
+
+    // 计算阈值（使用最大 PPV 通道的主频）
+    const thresholds = getDynamicThreshold({
+      structureType,
+      dominantFreq: maxChannel.dominantFreq,
+      distance,
+      condition: structureCondition
+    })
+
+    // 计算报警次数
+    const alertCount = channels.filter(ch => ch.alertLevel !== 'safe').length
+
+    // 计算超限率（假设每个通道有1000个采样点）
+    const totalPoints = channels.length * 1000
+    const exceedPoints = channels.reduce((sum, ch) => {
+      return sum + (ch.ppv > thresholds.warn ? 100 : 0)  // 简化计算
+    }, 0)
+    const exceedRatio = (exceedPoints / totalPoints) * 100
+
+    // 计算安全评分
+    const scoreResult = calculateSafetyScore({
+      ppvMax: maxPPV,
+      threshold: thresholds.stop,
+      duration: 0.5,  // mock 持续时间
+      alertCount,
+      dominantFreq: maxChannel.dominantFreq,
+      exceedRatio
+    })
+
+    return {
+      maxPPV,
+      level: scoreResult.level,
+      score: scoreResult.score,
+      alertCount,
+      exceedRatio,
+      thresholds
+    }
+  }, [channels, structureType, structureCondition, distance])
+
+  // ==================== 事件处理 ====================
+
+  const handleChannelClick = (channelId: number) => {
+    setSelectedChannelId(channelId)
+    setIsDrawerOpen(true)
+  }
 
   // ==================== 结构类型选项 ====================
 
@@ -121,6 +273,7 @@ export const VibrationV2: React.FC = () => {
               className="rounded-md bg-slate-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-600"
               onClick={() => {
                 // TODO: 导出功能
+                alert('导出功能待实现')
               }}
             >
               导出
@@ -138,11 +291,11 @@ export const VibrationV2: React.FC = () => {
       {/* Hero PPV */}
       <div className="shrink-0 border-b border-slate-700 bg-slate-900">
         <HeroPPV
-          ppv={ppv}
-          level={level}
-          score={score}
-          alertCount={alertCount}
-          exceedRatio={exceedRatio}
+          ppv={summaryData.maxPPV}
+          level={summaryData.level}
+          score={summaryData.score}
+          alertCount={summaryData.alertCount}
+          exceedRatio={summaryData.exceedRatio}
         />
       </div>
 
@@ -150,9 +303,12 @@ export const VibrationV2: React.FC = () => {
       <div className="flex min-h-0 flex-1">
         {/* 左侧：PPV 趋势图（占 65%） */}
         <div className="flex min-h-0 flex-1 flex-col border-r border-slate-700 p-6">
-          <div className="flex h-full items-center justify-center rounded-lg border border-slate-700 bg-slate-900">
-            <p className="text-slate-400">PPV 趋势图（待实现）</p>
-          </div>
+          <PPVTrendChart
+            channelsData={channelTrendData}
+            thresholds={summaryData.thresholds}
+            highlightedChannelId={selectedChannelId}
+            onChannelClick={handleChannelClick}
+          />
         </div>
 
         {/* 右侧：通道概览 + 报警记录（占 35%） */}
@@ -160,19 +316,19 @@ export const VibrationV2: React.FC = () => {
           {/* 通道概览 */}
           <div className="flex min-h-0 flex-1 flex-col border-b border-slate-700 p-6">
             <h3 className="mb-4 text-sm font-semibold text-white">通道概览</h3>
-            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
-              {/* TODO: 通道列表 */}
-              <p className="text-sm text-slate-400">通道列表（待实现）</p>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <ChannelList
+                channels={channels}
+                selectedChannelId={selectedChannelId}
+                onChannelClick={handleChannelClick}
+              />
             </div>
           </div>
 
           {/* 报警记录 */}
           <div className="flex shrink-0 flex-col border-t border-slate-700 p-6">
             <h3 className="mb-4 text-sm font-semibold text-white">报警记录</h3>
-            <div className="space-y-2">
-              {/* TODO: 报警记录列表 */}
-              <p className="text-sm text-slate-400">报警记录（待实现）</p>
-            </div>
+            <AlertHistory alerts={alerts} maxCount={5} />
           </div>
         </div>
       </div>
@@ -187,7 +343,7 @@ export const VibrationV2: React.FC = () => {
           />
 
           {/* 抽屉内容 */}
-          <div className="relative h-full w-[40%] bg-slate-900 shadow-xl">
+          <div className="relative h-full w-[40%] bg-slate-900 shadow-xl animate-in slide-in-from-right duration-300">
             <div className="flex h-full flex-col">
               {/* 抽屉头部 */}
               <div className="flex shrink-0 items-center justify-between border-b border-slate-700 p-6">
@@ -204,7 +360,7 @@ export const VibrationV2: React.FC = () => {
 
               {/* 抽屉内容 */}
               <div className="min-h-0 flex-1 overflow-y-auto p-6">
-                <p className="text-slate-400">通道详情（待实现）</p>
+                <p className="text-slate-400">通道详情（Phase 4 实现）</p>
               </div>
             </div>
           </div>
@@ -221,7 +377,7 @@ export const VibrationV2: React.FC = () => {
           />
 
           {/* 抽屉内容 */}
-          <div className="relative h-full w-[30%] bg-slate-900 shadow-xl">
+          <div className="relative h-full w-[30%] bg-slate-900 shadow-xl animate-in slide-in-from-right duration-300">
             <div className="flex h-full flex-col">
               {/* 抽屉头部 */}
               <div className="flex shrink-0 items-center justify-between border-b border-slate-700 p-6">
