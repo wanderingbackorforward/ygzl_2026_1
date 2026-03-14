@@ -75,8 +75,8 @@ function App() {
                   <Route path="/settlement" element={<ModuleGate moduleKey="settlement"><Settlement /></ModuleGate>} />
                   <Route path="/temperature" element={<ModuleGate moduleKey="temperature"><Temperature /></ModuleGate>} />
                   <Route path="/cracks" element={<ModuleGate moduleKey="cracks"><Cracks /></ModuleGate>} />
-                  <Route path="/vibration" element={<ModuleGate moduleKey="vibration"><Vibration /></ModuleGate>} />
-                  <Route path="/vibration-v2" element={<ModuleGate moduleKey="vibration"><VibrationV2 /></ModuleGate>} />
+                  <Route path="/vibration" element={<ModuleGate moduleKey="vibration"><VibrationV2 /></ModuleGate>} />
+                  <Route path="/vibration-legacy" element={<ModuleGate moduleKey="vibration"><Vibration /></ModuleGate>} />
                   <Route path="/insar" element={<ModuleGate moduleKey="insar"><Insar /></ModuleGate>} />
                   <Route path="/overview" element={<ModuleGate moduleKey="overview"><Overview /></ModuleGate>} />
                   <Route path="/three" element={<ModuleGate moduleKey="three"><ThreeModel /></ModuleGate>} />
