@@ -1958,22 +1958,236 @@ export default function Insar() {
         </div>
       )}
 
-      {/* 设置抽屉 - 暂时占位，下一步实现 */}
+      {/* 设置抽屉 */}
       {showSettings && (
         <div className="fixed right-0 top-0 z-50 h-full w-96 transform border-l border-slate-700 bg-slate-900 shadow-2xl transition-transform duration-300">
           <div className="flex h-full flex-col">
-            <div className="flex shrink-0 items-center justify-between border-b border-slate-700 p-4">
-              <h3 className="text-base font-semibold text-white">设置</h3>
+            {/* 头部 */}
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-700 bg-slate-800 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <i className="fas fa-cog text-cyan-400" />
+                <h3 className="text-base font-semibold text-white">设置</h3>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowSettings(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 transition-colors hover:text-white"
               >
-                <i className="fas fa-times" />
+                <i className="fas fa-times text-lg" />
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4">
-              <p className="text-sm text-slate-300">设置内容将在下一步实现</p>
+
+            {/* 内容区域 */}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="p-4 space-y-6">
+                {/* 显示模式 */}
+                <div>
+                  <h4 className="mb-3 text-sm font-semibold text-white">显示模式</h4>
+                  <div className="space-y-2">
+                    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/50 p-3 transition-colors hover:bg-slate-800">
+                      <input
+                        type="radio"
+                        name="indicator"
+                        checked={indicator === 'velocity'}
+                        onChange={() => setIndicator('velocity')}
+                        className="h-4 w-4 text-cyan-500"
+                      />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-white">速度</div>
+                        <div className="text-xs text-slate-400">显示形变速度（mm/年）</div>
+                      </div>
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/50 p-3 transition-colors hover:bg-slate-800">
+                      <input
+                        type="radio"
+                        name="indicator"
+                        checked={indicator === 'keyDate'}
+                        onChange={() => setIndicator('keyDate')}
+                        className="h-4 w-4 text-cyan-500"
+                      />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-white">关键日期</div>
+                        <div className="text-xs text-slate-400">显示特定日期的形变值</div>
+                      </div>
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/50 p-3 transition-colors hover:bg-slate-800">
+                      <input
+                        type="radio"
+                        name="indicator"
+                        checked={indicator === 'threshold'}
+                        onChange={() => setIndicator('threshold')}
+                        className="h-4 w-4 text-cyan-500"
+                      />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-white">阈值分级</div>
+                        <div className="text-xs text-slate-400">按风险等级着色</div>
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* 关键日期选择 */}
+                  {indicator === 'keyDate' && (
+                    <div className="mt-3 rounded-lg border border-slate-700 bg-slate-800/50 p-3">
+                      <label className="mb-2 block text-xs text-slate-300">选择日期</label>
+                      <select
+                        value={keyDateField}
+                        onChange={(e) => setKeyDateField(e.target.value)}
+                        className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white"
+                      >
+                        {(fieldsInfo?.d_fields || []).map((f) => (
+                          <option key={f} value={f}>
+                            {formatKeyDateField(f)}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-2 text-xs text-slate-400">负数表示沉降</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* 阈值设置 */}
+                {indicator === 'threshold' && (
+                  <div>
+                    <h4 className="mb-3 text-sm font-semibold text-white">阈值设置</h4>
+                    <div className="space-y-3">
+                      <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3">
+                        <label className="mb-2 block text-xs text-slate-300">危险阈值（mm/年）</label>
+                        <input
+                          type="number"
+                          value={thresholds.strong}
+                          onChange={(e) => setThresholds((t) => ({ ...t, strong: Number(e.target.value) || 0 }))}
+                          className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white"
+                          step="0.5"
+                          min="0"
+                        />
+                        <p className="mt-1 text-xs text-slate-400">速度 ≤ -{thresholds.strong} 为危险</p>
+                      </div>
+                      <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3">
+                        <label className="mb-2 block text-xs text-slate-300">预警阈值（mm/年）</label>
+                        <input
+                          type="number"
+                          value={thresholds.mild}
+                          onChange={(e) => setThresholds((t) => ({ ...t, mild: Number(e.target.value) || 0 }))}
+                          className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white"
+                          step="0.5"
+                          min="0"
+                        />
+                        <p className="mt-1 text-xs text-slate-400">速度 ≤ -{thresholds.mild} 为预警</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setThresholds({ strong: 6, mild: 1.5 })}
+                          className="flex-1 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-xs text-white transition-colors hover:bg-slate-700"
+                        >
+                          保守
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setThresholds({ strong: 10, mild: 2 })}
+                          className="flex-1 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-xs text-white transition-colors hover:bg-slate-700"
+                        >
+                          标准
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setThresholds({ strong: 15, mild: 3 })}
+                          className="flex-1 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-xs text-white transition-colors hover:bg-slate-700"
+                        >
+                          宽松
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 高级选项 */}
+                <div>
+                  <h4 className="mb-3 text-sm font-semibold text-white">高级选项</h4>
+                  <div className="space-y-3">
+                    <label className="flex cursor-pointer items-center justify-between rounded-lg border border-slate-700 bg-slate-800/50 p-3 transition-colors hover:bg-slate-800">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-white">视窗裁剪</div>
+                        <div className="text-xs text-slate-400">只加载当前视窗范围内的数据</div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={useBbox}
+                        onChange={(e) => setUseBbox(e.target.checked)}
+                        className="h-4 w-4 text-cyan-500"
+                      />
+                    </label>
+
+                    <label className="flex cursor-pointer items-center justify-between rounded-lg border border-slate-700 bg-slate-800/50 p-3 transition-colors hover:bg-slate-800">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-white">显示危险区</div>
+                        <div className="text-xs text-slate-400">使用 DBSCAN 聚类识别高风险区域</div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={showZones}
+                        onChange={(e) => setShowZones(e.target.checked)}
+                        className="h-4 w-4 text-cyan-500"
+                      />
+                    </label>
+
+                    {/* 危险区参数 */}
+                    {showZones && (
+                      <div className="ml-4 space-y-3 border-l-2 border-slate-700 pl-3">
+                        <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3">
+                          <label className="mb-2 block text-xs text-slate-300">聚类半径 eps（米）</label>
+                          <input
+                            type="number"
+                            value={zoneEpsM}
+                            onChange={(e) => setZoneEpsM(Number(e.target.value) || 0)}
+                            className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white"
+                            step="10"
+                            min="10"
+                          />
+                          <p className="mt-1 text-xs text-slate-400">点之间的最大距离</p>
+                        </div>
+                        <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3">
+                          <label className="mb-2 block text-xs text-slate-300">最小点数 minPts</label>
+                          <input
+                            type="number"
+                            value={zoneMinPts}
+                            onChange={(e) => setZoneMinPts(Math.max(1, Math.round(Number(e.target.value) || 0)))}
+                            className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white"
+                            step="1"
+                            min="1"
+                          />
+                          <p className="mt-1 text-xs text-slate-400">形成簇的最小点数</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 外链地图 */}
+                <div>
+                  <h4 className="mb-3 text-sm font-semibold text-white">外部地图</h4>
+                  <a
+                    href="http://47.96.7.238:38089/mapLayer"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm font-medium text-cyan-400 transition-colors hover:bg-cyan-500/20"
+                  >
+                    <i className="fas fa-external-link-alt" />
+                    在新窗口打开外链地图
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* 底部操作栏 */}
+            <div className="shrink-0 border-t border-slate-700 bg-slate-800 p-4">
+              <button
+                type="button"
+                onClick={() => setShowSettings(false)}
+                className="w-full rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-700"
+              >
+                完成
+              </button>
             </div>
           </div>
         </div>
