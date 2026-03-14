@@ -204,14 +204,14 @@ def classify_agent_intent(question: str) -> str:
 
     if any(k in q for k in ["anomal", "abnorm", "\u5f02\u5e38", "\u544a\u8b66", "\u8d85\u9650", "\u98ce\u9669"]):
         return "anomaly"
+    if any(k in q for k in ["crack", "\u88c2\u7f1d"]):
+        return "crack"
     if any(k in q for k in ["predict", "forecast", "\u9884\u6d4b", "\u8d8b\u52bf", "\u672a\u6765", "\u9884\u671f"]):
         return "prediction"
     if any(k in q for k in ["correlat", "\u5173\u8054", "\u76f8\u5173", "\u7a7a\u95f4", "spatial"]):
         return "correlation"
     if any(k in q for k in ["temperature", "\u6e29\u5ea6"]):
         return "temperature"
-    if any(k in q for k in ["crack", "\u88c2\u7f1d"]):
-        return "crack"
     if any(k in q for k in ["knowledge graph", "\u77e5\u8bc6\u56fe\u8c31", "\u56e0\u679c", "causal"]):
         return "knowledge_graph"
     if any(k in q for k in ["paper", "research", "\u8bba\u6587", "\u7814\u7a76", "\u6587\u732e"]):

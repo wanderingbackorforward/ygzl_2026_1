@@ -61,7 +61,10 @@ def _truncate_result(result_str, max_chars=TOOL_RESULT_MAX_CHARS):
         obj = json.loads(result_str)
         # If it has a 'data' list, truncate it
         if isinstance(obj, dict):
-            for key in ('data', 'anomalies', 'events', 'points', 'results', 'predictions'):
+            for key in (
+                'data', 'anomalies', 'events', 'points',
+                'results', 'predictions', 'point_summaries', 'time_series'
+            ):
                 if key in obj and isinstance(obj[key], list) and len(obj[key]) > 5:
                     original_len = len(obj[key])
                     obj[key] = obj[key][:5]
@@ -515,6 +518,32 @@ def _make_summary(tool_name, result):
     if not result.get("success", True):
         return f"[Error] {result.get('error', 'unknown')}"[:100]
 
+    if tool_name == "query_crack_data":
+        point_summaries = result.get("point_summaries", [])
+        summary = result.get("summary", {}) if isinstance(result.get("summary"), dict) else {}
+        total_points = summary.get("total_points", len(point_summaries))
+        rates = []
+        for row in point_summaries:
+            if not isinstance(row, dict):
+                continue
+            rate = row.get("average_change_rate")
+            if rate is None:
+                continue
+            try:
+                rates.append((str(row.get("point_id", "?")), float(rate)))
+            except Exception:
+                continue
+        if rates:
+            high = [x for x in rates if x[1] > 0.1]
+            medium = [x for x in rates if 0.05 < x[1] <= 0.1]
+            top = sorted(rates, key=lambda x: abs(x[1]), reverse=True)[:3]
+            top_text = ", ".join([f"{pid}:{rate:.3f}mm/day" for pid, rate in top])
+            return (
+                f"Cracks: points={total_points}, rates={len(rates)}, "
+                f"high>{0.1}={len(high)}, medium={len(medium)}, top={top_text}"
+            )
+        return f"Cracks: points={total_points}, records={result.get('total_records',0)}"
+
     summaries = {
         "list_monitoring_points": lambda r: f"Found {r.get('count', 0)} monitoring points",
         "query_settlement_data": lambda r: (
@@ -522,7 +551,6 @@ def _make_summary(tool_name, result):
             f"latest={r.get('summary',{}).get('latest_value','?')}mm"
         ),
         "query_temperature_data": lambda r: f"{r.get('total_records',0)} temperature records",
-        "query_crack_data": lambda r: f"{r.get('total_records',0)} crack records",
         "query_construction_events": lambda r: f"{r.get('count',0)} construction events",
         "detect_anomalies": lambda r: (
             f"Point {r.get('point_id','?')}: {r.get('anomaly_count',0)} anomalies "

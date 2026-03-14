@@ -4,6 +4,9 @@
   "buildCommand": "npm run build --prefix frontend",
   "outputDirectory": "frontend/dist",
   "functions": {
+    "api/modules.py": {
+      "maxDuration": 10
+    },
     "api/index.py": {
       "maxDuration": 60,
       "includeFiles": "frontend/public/static/data/insar/**"
@@ -26,6 +29,7 @@
     }
   ],
   "rewrites": [
+    { "source": "/api/modules/:path*", "destination": "/api/modules.py" },
     { "source": "/api/:path*", "destination": "/api/index.py" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]

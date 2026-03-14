@@ -27,6 +27,46 @@ const FALLBACK_MODULES: AppModule[] = [
   { module_key: 'tickets', route_path: '/tickets', display_name: '工单', icon_class: 'fas fa-ticket-alt', sort_order: 90, status: 'developed', is_visible: true },
 ]
 
+const MODULES_CACHE_KEY = 'modules_cache_v1'
+
+function normalizeModules(rows: AppModule[]): AppModule[] {
+  return (rows || [])
+    .filter(Boolean)
+    .filter(m => m.is_visible !== false)
+    .slice()
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+}
+
+async function fetchModulesWithRetry(): Promise<AppModule[]> {
+  try {
+    return await apiGet<AppModule[]>('/modules')
+  } catch {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    return await apiGet<AppModule[]>('/modules')
+  }
+}
+
+function readCachedModules(): AppModule[] | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(MODULES_CACHE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function writeCachedModules(rows: AppModule[]) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(MODULES_CACHE_KEY, JSON.stringify(rows))
+  } catch {
+    return
+  }
+}
+
 export function ModulesProvider({ children }: { children: ReactNode }) {
   const [modules, setModules] = useState<AppModule[]>([])
   const [loading, setLoading] = useState<boolean>(true)
@@ -36,16 +76,19 @@ export function ModulesProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     setError(null)
     try {
-      const rows = await apiGet<AppModule[]>('/modules')
-      const normalized = (rows || [])
-        .filter(Boolean)
-        .filter(m => m.is_visible !== false)
-        .slice()
-        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      const rows = await fetchModulesWithRetry()
+      const normalized = normalizeModules(rows)
       setModules(normalized)
+      writeCachedModules(normalized)
     } catch (e) {
-      setModules(FALLBACK_MODULES)
-      setError(e instanceof Error ? `${e.message}，已使用本地模块配置` : '加载模块配置失败，已使用本地模块配置')
+      const cached = readCachedModules()
+      if (cached?.length) {
+        setModules(normalizeModules(cached))
+        setError('模块配置服务暂时不可用，已使用上次成功配置')
+      } else {
+        setModules(FALLBACK_MODULES)
+        setError(e instanceof Error ? `${e.message}，已使用本地模块配置` : '加载模块配置失败，已使用本地模块配置')
+      }
     } finally {
       setLoading(false)
     }
