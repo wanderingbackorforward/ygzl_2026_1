@@ -1424,100 +1424,6 @@ export default function Insar() {
   const globalAdvice = adviceStore.globalByDataset?.[dataset]?.text ?? ''
   const pointAdvice = selectedPoint?.id ? (adviceStore.pointByDataset?.[dataset]?.[selectedPoint.id]?.text ?? '') : ''
 
-  const riskDistributionOption = useMemo((): EChartsOption => {
-    return {
-      title: { text: '风险分布', left: 'center', textStyle: { fontSize: 12 } },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-      grid: { left: '10%', right: '8%', top: '18%', bottom: '12%', containLabel: true },
-      xAxis: { type: 'category', data: ['危险', '预警', '正常'], axisLabel: { fontSize: 10 } },
-      yAxis: { type: 'value', axisLabel: { fontSize: 10 } },
-      series: [
-        {
-          type: 'bar',
-          data: [
-            { value: riskSummary.danger, itemStyle: { color: '#ff3e5f' } },
-            { value: riskSummary.warning, itemStyle: { color: '#ff9e0d' } },
-            { value: riskSummary.normal, itemStyle: { color: '#00e676' } },
-          ],
-          barWidth: '45%',
-        }
-      ],
-      animationDuration: 600,
-    }
-  }, [riskSummary.danger, riskSummary.warning, riskSummary.normal])
-
-  const velocitySplitOption = useMemo((): EChartsOption => {
-    const split = riskStats?.velocitySplit
-    const total = (split?.negative || 0) + (split?.positive || 0) + (split?.nearZero || 0)
-    if (!split || total === 0) {
-      return { title: { text: '暂无速度结构', left: 'center', top: 'center', textStyle: { color: '#888', fontSize: 12 } } }
-    }
-    return {
-      title: { text: '沉降/抬升结构', left: 'center', textStyle: { fontSize: 12 } },
-      tooltip: { trigger: 'item' },
-      legend: { bottom: 0, textStyle: { fontSize: 10 } },
-      series: [
-        {
-          type: 'pie',
-          radius: ['35%', '65%'],
-          center: ['50%', '52%'],
-          label: { fontSize: 10 },
-          data: [
-            { name: '沉降', value: split.negative, itemStyle: { color: '#ff3e5f' } },
-            { name: '稳定', value: split.nearZero, itemStyle: { color: '#00e676' } },
-            { name: '抬升', value: split.positive, itemStyle: { color: '#3b82f6' } },
-          ],
-        }
-      ],
-      animationDuration: 600,
-    }
-  }, [riskStats?.velocitySplit])
-
-  const velocityHistOption = useMemo((): EChartsOption => {
-    const hist = riskStats?.velocityHist
-    if (!hist) {
-      return { title: { text: '暂无速度分布', left: 'center', top: 'center', textStyle: { color: '#888', fontSize: 12 } } }
-    }
-    const labels = hist.edges.map((v) => v.toFixed(1))
-    return {
-      title: { text: `速度分布 (±${hist.maxAbs})`, left: 'center', textStyle: { fontSize: 12 } },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-      grid: { left: '10%', right: '8%', top: '18%', bottom: '16%', containLabel: true },
-      xAxis: { type: 'category', data: labels, axisLabel: { fontSize: 9, rotate: 30 } },
-      yAxis: { type: 'value', axisLabel: { fontSize: 10 } },
-      series: [
-        {
-          type: 'bar',
-          data: hist.counts,
-          barWidth: '65%',
-          itemStyle: { color: '#40aeff' },
-        }
-      ],
-      animationDuration: 600,
-    }
-  }, [riskStats?.velocityHist])
-
-  const chainageOption = useMemo((): EChartsOption => {
-    const chainage = riskStats?.chainage
-    if (!chainage || !chainage.labels.length) {
-      return { title: { text: '暂无里程风险分布', left: 'center', top: 'center', textStyle: { color: '#888', fontSize: 12 } } }
-    }
-    return {
-      title: { text: '沿隧道里程风险分布', left: 'center', textStyle: { fontSize: 12 } },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-      grid: { left: '10%', right: '8%', top: '18%', bottom: '18%', containLabel: true },
-      xAxis: { type: 'category', data: chainage.labels, axisLabel: { fontSize: 9, rotate: 30 } },
-      yAxis: { type: 'value', axisLabel: { fontSize: 10 } },
-      dataZoom: [{ type: 'inside' }, { type: 'slider', height: 14, bottom: 0 }],
-      series: [
-        { name: '危险', type: 'bar', stack: 'risk', data: chainage.danger, itemStyle: { color: '#ff3e5f' } },
-        { name: '预警', type: 'bar', stack: 'risk', data: chainage.warning, itemStyle: { color: '#ff9e0d' } },
-        { name: '正常', type: 'bar', stack: 'risk', data: chainage.normal, itemStyle: { color: '#00e676' } },
-      ],
-      animationDuration: 600,
-    }
-  }, [riskStats?.chainage])
-
   const setGlobalAdvice = (text: string) => {
     setAdviceStore((prev) => ({
       globalByDataset: { ...(prev.globalByDataset || {}), [dataset]: { text, updatedAt: Date.now() } },
@@ -1535,60 +1441,11 @@ export default function Insar() {
         ...(prev.pointByDataset || {}),
         [ds]: {
           ...((prev.pointByDataset || {})[ds] || {}),
-          [pid]: { text, updatedAt: Date.now() }
-        }
-      }
+          [pid]: { text, updatedAt: Date.now() },
+        },
+      },
     }))
   }
-
-  const appendAdvice = (base: string, line: string) => {
-    const t = (base || '').trim()
-    const add = (line || '').trim()
-    if (!add) return t
-    if (!t) return add
-    return `${t}\n${add}`
-  }
-
-  const appendMeasureToAdvice = (m: ExpertMeasure) => {
-    const line = `- ${m.title}：${m.detail}`
-    if (selectedPoint?.id) setPointAdvice(appendAdvice(pointAdvice, line))
-    else setGlobalAdvice(appendAdvice(globalAdvice, line))
-  }
-
-  const applyTemplate = (target: 'auto' | 'global' | 'point' = 'auto') => {
-    const measures = expertMeasuresForRisk(contextLevel)
-    const text = measures.map((m) => `- ${m.title}：${m.detail}`).join('\n')
-    if (target === 'global') {
-      setGlobalAdvice(text)
-      return
-    }
-    if (target === 'point') {
-      setPointAdvice(text)
-      return
-    }
-    if (selectedPoint?.id) setPointAdvice(text)
-    else setGlobalAdvice(text)
-  }
-
-  const exportAdvice = async () => {
-    const payload = {
-      dataset,
-      exportedAt: new Date().toISOString(),
-      thresholds,
-      summary: { danger: riskSummary.danger, warning: riskSummary.warning, normal: riskSummary.normal, total: riskSummary.total },
-      selectedPoint: selectedPoint ? { id: selectedPoint.id, lat: selectedPoint.lat, lng: selectedPoint.lng } : null,
-      globalAdvice: (adviceStore.globalByDataset?.[dataset] || null),
-      pointAdvice: (adviceStore.pointByDataset?.[dataset] || {})
-    }
-    const text = JSON.stringify(payload, null, 2)
-    try {
-      await navigator.clipboard.writeText(text)
-    } catch {
-    }
-  }
-
-  // 新增状态：控制设置抽屉显示
-  const [showSettings, setShowSettings] = useState(false)
 
   return (
     <div className="flex h-screen flex-col bg-slate-950 text-white">
