@@ -5,7 +5,7 @@ import { assistantApi } from './api'
 import AgentSteps from './AgentSteps'
 import KnowledgeGraphViz from './KnowledgeGraphViz'
 import PaperReferences from './PaperReferences'
-import StreamingProgress from './StreamingProgress'
+
 import type { AgentStep, AssistantMode, Conversation, Message, Provider, Role } from './types'
 
 interface ConversationViewProps {
@@ -71,88 +71,163 @@ export default function ConversationView({
     onLoadingChange?.(loading)
   }, [loading])
 
-  // Handle quick prompt - auto send
+  // Ref to abort SSE stream on unmount or new send
+  const abortRef = useRef<{ abort: () => void } | null>(null)
+  // Streaming text accumulator (shown in real-time)
+  const [streamingText, setStreamingText] = useState('')
+  // Streaming tool steps (shown in real-time)
+  const [streamingSteps, setStreamingSteps] = useState<AgentStep[]>([])
+  // Streaming status label
+  const [streamingStatus, setStreamingStatus] = useState('')
+
+  // Cleanup on unmount
+  useEffect(() => () => { abortRef.current?.abort() }, [])
+
+  // Handle quick prompt - auto send (SSE streaming)
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim() || loading) return
+
+    // Abort any previous stream
+    abortRef.current?.abort()
 
     setLoading(true)
     setLoadingStartTime(Date.now())
     setError('')
+    setStreamingText('')
+    setStreamingSteps([])
+    setStreamingStatus('')
 
-    const tempUserMessage: Message = {
-      id: `temp-${Date.now()}`,
-      role: 'user',
-      content: content.trim(),
-      contentType: 'text',
-      createdAt: new Date().toISOString()
-    }
+    const tempUserMsgId = `temp-${Date.now()}`
+    const streamAssistantId = `stream-${Date.now()}`
 
+    // Add temp user message immediately
     setConversation(prev => {
       if (!prev) return prev
       return {
         ...prev,
-        messages: [...(prev.messages || []), tempUserMessage],
+        messages: [
+          ...(prev.messages || []),
+          {
+            id: tempUserMsgId,
+            role: 'user',
+            content: content.trim(),
+            contentType: 'text',
+            createdAt: new Date().toISOString(),
+          } as Message,
+        ],
       }
     })
 
     setInput('')
 
-    try {
-      const result = await assistantApi.sendMessage(
-        conversationId,
-        content.trim(),
-        role,
-        pagePath,
-        pageContext,
-        provider,
-        mode
-      )
+    const handle = assistantApi.sendMessageStream(
+      conversationId,
+      content.trim(),
+      role,
+      pagePath,
+      pageContext,
+      provider,
+      mode,
+      {
+        onThinking: (status) => {
+          const labels: Record<string, string> = {
+            connecting: 'AI connecting...',
+            generating: 'AI generating...',
+            planning: 'Agent selecting tools...',
+            calling_ai: 'Agent thinking...',
+            summarizing: 'Agent summarizing...',
+            fallback_deepseek: 'Switching to DeepSeek...',
+          }
+          setStreamingStatus(labels[status] || status)
+        },
 
-      const kgViz = result.kgVisualization || undefined
-      const papersData = result.papers || undefined
-      const papersQ = result.papersQuery || undefined
+        onToolStart: (toolName, _input, iteration) => {
+          setStreamingSteps(prev => [
+            ...prev,
+            {
+              iteration,
+              tool_name: toolName,
+              tool_input: _input,
+              result_summary: 'running...',
+              duration_ms: 0,
+              success: true,
+            },
+          ])
+          setStreamingStatus(`Running ${toolName}...`)
+        },
 
-      const assistantMsg: Message = {
-        ...result.assistantMessage,
-        model: result.model,
-        provider: result.provider,
-        metadata: {
-          ...(result.assistantMessage.metadata || {}),
-          mode: mode,
-          tool_steps: result.agentSteps,
-          total_iterations: result.agentIterations,
-          total_duration_ms: result.agentDurationMs,
-          kg_visualization: kgViz,
-          papers: papersData,
-          papers_query: papersQ,
+        onToolEnd: (toolName, summary, durationMs, success) => {
+          setStreamingSteps(prev =>
+            prev.map(s =>
+              s.tool_name === toolName && s.result_summary === 'running...'
+                ? { ...s, result_summary: summary, duration_ms: durationMs, success }
+                : s
+            )
+          )
+        },
+
+        onTextDelta: (delta) => {
+          setStreamingText(prev => prev + delta)
+          setStreamingStatus('')
+        },
+
+        onError: (message) => {
+          setError(message)
+          setLoading(false)
+          // Remove temp user msg on error
+          setConversation(prev => {
+            if (!prev) return prev
+            return {
+              ...prev,
+              messages: prev.messages.filter(m => m.id !== tempUserMsgId),
+            }
+          })
+        },
+
+        onDone: (data) => {
+          // Replace temp messages with real ones from backend
+          const realUserMsg = data.user_message as Message
+          const finalSteps = data.tool_steps || []
+
+          const assistantMsg: Message = {
+            id: data.message_id || streamAssistantId,
+            role: 'assistant',
+            content: '', // will be filled from streamingText
+            contentType: 'markdown',
+            model: data.model,
+            createdAt: new Date().toISOString(),
+            metadata: {
+              mode,
+              tool_steps: finalSteps.length > 0 ? finalSteps : undefined,
+              kg_visualization: data.kg_visualization || undefined,
+              papers: data.papers || undefined,
+              papers_query: data.papers_query || undefined,
+            },
+          }
+
+          // Use the accumulated streaming text as the final content
+          setStreamingText(prev => {
+            assistantMsg.content = prev
+            setConversation(convPrev => {
+              if (!convPrev) return convPrev
+              const filtered = convPrev.messages.filter(m => m.id !== tempUserMsgId)
+              return {
+                ...convPrev,
+                messages: [...filtered, realUserMsg, assistantMsg],
+              }
+            })
+            return ''
+          })
+
+          setStreamingSteps([])
+          setStreamingStatus('')
+          setLoading(false)
+          inputRef.current?.focus()
         },
       }
+    )
 
-      setConversation(prev => {
-        if (!prev) return prev
-        const messagesWithoutTemp = prev.messages.filter(m => m.id !== tempUserMessage.id)
-        return {
-          ...prev,
-          messages: [...messagesWithoutTemp, result.userMessage, assistantMsg],
-        }
-      })
-
-      // Only show KG/papers if Agent actually called those tools
-      // Do NOT auto-enrich with generic static data - it's useless decoration
-    } catch (err: any) {
-      console.error('Failed to send message:', err)
-      setError(err.message || 'Failed to send message')
-      setConversation(prev => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          messages: prev.messages.filter(m => m.id !== tempUserMessage.id),
-        }
-      })
-    } finally {
-      setLoading(false)
-      inputRef.current?.focus()
-    }
+    abortRef.current = handle
   }, [conversationId, role, pagePath, pageContext, provider, mode, loading])
 
   useEffect(() => {
@@ -324,9 +399,47 @@ export default function ConversationView({
           </div>
         )}
 
-        {/* Streaming progress indicator */}
+        {/* Real-time streaming display */}
         {loading && (
-          <StreamingProgress mode={mode} startTime={loadingStartTime} />
+          <div className="mb-6 flex justify-start">
+            <div className="w-full max-w-[75%] rounded-2xl bg-slate-700 px-6 py-5">
+              {/* Agent tool steps (real-time) */}
+              {streamingSteps.length > 0 && (
+                <AgentSteps steps={streamingSteps} />
+              )}
+
+              {/* Status label */}
+              {streamingStatus && !streamingText && (
+                <div className="flex items-center gap-3 py-2">
+                  <svg className="h-5 w-5 animate-spin text-cyan-400" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span className="text-lg text-white">{streamingStatus}</span>
+                </div>
+              )}
+
+              {/* Streaming text (real-time markdown) */}
+              {streamingText && (
+                <div className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-p:text-white prose-a:text-cyan-300 prose-code:text-white prose-strong:text-white">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      h1: props => <h1 className="mb-4 text-2xl font-bold text-white" {...props} />,
+                      h2: props => <h2 className="mb-4 text-xl font-bold text-white" {...props} />,
+                      h3: props => <h3 className="mb-3 text-lg font-bold text-white" {...props} />,
+                      p: props => <p className="mb-4 text-lg leading-8 text-white" {...props} />,
+                      li: props => <li className="text-lg leading-8 text-white" {...props} />,
+                      strong: props => <strong className="font-bold text-white" {...props} />,
+                    }}
+                  >
+                    {streamingText}
+                  </ReactMarkdown>
+                  <span className="inline-block h-5 w-1 animate-pulse bg-cyan-400" />
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         <div ref={messagesEndRef} />

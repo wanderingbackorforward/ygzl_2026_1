@@ -1,15 +1,26 @@
 # -*- coding: utf-8 -*-
+import json
 import os
+import time
 from typing import Any, Dict, Optional, Tuple
 
 import requests
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, Response, jsonify, request
 
 from .db_service import ConversationService
 from .prompts import get_role_prompt, build_full_system_prompt
 
 
 assistant_bp = Blueprint("assistant", __name__, url_prefix="/api/assistant")
+
+
+# ==================== SSE Helpers ====================
+
+
+def _sse_event(event_type, data):
+    """Format a single SSE event line."""
+    payload = json.dumps(data, ensure_ascii=False, default=str)
+    return f"event: {event_type}\ndata: {payload}\n\n"
 
 
 def _merge_papers_into_kg(kg_viz, papers):
@@ -685,6 +696,192 @@ def send_message(conv_id: str):
                 "provider": "deepseek" if is_fallback else (provider if provider != "auto" else "claude"),
             },
         })
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ==================== SSE Streaming Endpoint ====================
+
+
+def _claude_stream_headers(api_key):
+    """Headers for Claude streaming API calls."""
+    return {
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+    }
+
+
+def _stream_chat(content, role, page_path, page_context, provider, conv_id, user_message):
+    """Generator that yields SSE events for chat mode streaming."""
+
+    # 1. Immediately emit thinking event (user sees feedback in <1s)
+    yield _sse_event("thinking", {"status": "connecting"})
+
+    system_prompt = build_full_system_prompt(role, page_path, content)
+    user_content_str = _build_user_content(content, page_path, page_context)
+
+    api_key, api_base, model, timeout_s, max_tokens = _claude_settings()
+
+    # Try Claude streaming first
+    claude_ok = False
+    full_text = ""
+    actual_model = model
+
+    if api_key:
+        url = f"{api_base}/v1/messages"
+        payload = {
+            "model": model,
+            "max_tokens": max_tokens,
+            "system": system_prompt,
+            "messages": [{"role": "user", "content": user_content_str}],
+            "temperature": 0.2,
+            "stream": True,
+        }
+
+        try:
+            resp = requests.post(
+                url,
+                headers=_claude_stream_headers(api_key),
+                json=payload,
+                timeout=timeout_s,
+                stream=True,
+            )
+            if resp.ok:
+                yield _sse_event("thinking", {"status": "generating"})
+                for line in resp.iter_lines(decode_unicode=True):
+                    if not line or not line.startswith("data: "):
+                        continue
+                    data_str = line[6:]
+                    if data_str.strip() == "[DONE]":
+                        break
+                    try:
+                        ev = json.loads(data_str)
+                    except (json.JSONDecodeError, ValueError):
+                        continue
+
+                    etype = ev.get("type", "")
+                    if etype == "message_start":
+                        actual_model = ev.get("message", {}).get("model", model)
+                    elif etype == "content_block_delta":
+                        delta = ev.get("delta", {})
+                        if delta.get("type") == "text_delta":
+                            chunk = delta.get("text", "")
+                            if chunk:
+                                full_text += chunk
+                                yield _sse_event("text_delta", {"delta": chunk})
+                    elif etype == "message_stop":
+                        break
+                    elif etype == "error":
+                        err_detail = ev.get("error", {}).get("message", "Claude stream error")
+                        yield _sse_event("error", {"message": err_detail, "recoverable": True})
+                        break
+
+                if full_text:
+                    claude_ok = True
+            else:
+                print(f"[WARN] Claude stream HTTP {resp.status_code}")
+        except requests.exceptions.Timeout:
+            print("[WARN] Claude stream timeout, trying DeepSeek fallback")
+        except Exception as e:
+            print(f"[WARN] Claude stream error: {e}")
+
+    # DeepSeek fallback (non-streaming, one-shot)
+    if not claude_ok:
+        yield _sse_event("thinking", {"status": "fallback_deepseek"})
+        answer, ds_model, ds_err = _call_deepseek(system_prompt, user_content_str)
+        if answer:
+            full_text = answer
+            actual_model = f"{ds_model} (fallback)"
+            yield _sse_event("text_delta", {"delta": answer})
+        else:
+            yield _sse_event("error", {"message": f"All providers failed. {ds_err or ''}"})
+            return
+
+    # Save to DB after stream completes
+    if full_text:
+        assistant_message = ConversationService.add_message(
+            conv_id=conv_id,
+            role="assistant",
+            content=full_text,
+            content_type="markdown",
+            metadata={"mode": "chat"},
+        )
+        yield _sse_event("done", {
+            "message_id": assistant_message.get("id", ""),
+            "model": actual_model,
+            "user_message": user_message,
+        })
+    else:
+        yield _sse_event("error", {"message": "Empty response from AI"})
+
+
+@assistant_bp.route("/conversations/<conv_id>/messages/stream", methods=["POST"])
+def send_message_stream(conv_id: str):
+    """SSE streaming endpoint - text appears token by token like ChatGPT."""
+    try:
+        body = request.get_json(silent=True) or {}
+        content = (body.get("content") or body.get("question") or "").strip()
+        role = body.get("role", "researcher")
+        page_path = (body.get("pagePath") or "").strip()
+        page_context = body.get("pageContext")
+        provider = (body.get("provider") or "auto").strip()
+        mode = (body.get("mode") or "chat").strip()
+
+        if not content:
+            return jsonify({"status": "error", "message": "Message content cannot be empty"}), 400
+
+        if not _is_meaningful_question(content):
+            return jsonify({"status": "error", "message": "Question too short or unclear"}), 400
+
+        conversation = ConversationService.get_conversation(conv_id)
+        if not conversation:
+            return jsonify({"status": "error", "message": "Conversation not found"}), 404
+
+        if not _any_ai_configured():
+            return jsonify({"status": "error", "message": "No AI provider configured"}), 400
+
+        # Save user message BEFORE streaming starts
+        user_message = ConversationService.add_message(
+            conv_id=conv_id,
+            role="user",
+            content=content,
+            content_type="text",
+        )
+
+        def generate():
+            try:
+                if mode == "agent":
+                    from .stream_agent import stream_agent
+                    yield from stream_agent(
+                        content, page_path, page_context,
+                        conv_id, user_message,
+                    )
+                else:
+                    yield from _stream_chat(
+                        content, role, page_path, page_context,
+                        provider, conv_id, user_message,
+                    )
+            except GeneratorExit:
+                # Client disconnected - logged for debugging
+                print(f"[WARN] SSE client disconnected for conv={conv_id}")
+            except Exception as e:
+                print(f"[ERROR] SSE generator error: {e}")
+                try:
+                    yield _sse_event("error", {"message": str(e)})
+                except Exception:
+                    pass
+
+        return Response(
+            generate(),
+            mimetype="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

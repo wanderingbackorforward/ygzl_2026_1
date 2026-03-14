@@ -162,6 +162,116 @@ export const assistantApi = {
     return json.data!
   },
 
+  // SSE 流式发送消息 - 逐 token 返回，不会 504 超时
+  sendMessageStream(
+    convId: string,
+    content: string,
+    role: Role,
+    pagePath?: string,
+    pageContext?: any,
+    provider: Provider = 'auto',
+    mode: AssistantMode = 'chat',
+    callbacks?: {
+      onThinking?: (status: string, extra?: any) => void
+      onToolStart?: (toolName: string, toolInput: any, iteration: number) => void
+      onToolEnd?: (toolName: string, summary: string, durationMs: number, success: boolean) => void
+      onTextDelta?: (delta: string) => void
+      onError?: (message: string) => void
+      onDone?: (data: {
+        message_id: string
+        model: string
+        user_message: Message
+        tool_steps?: AgentStep[]
+        kg_visualization?: KGVisualization
+        papers?: AcademicPaper[]
+        papers_query?: string
+      }) => void
+    }
+  ): { abort: () => void } {
+    const controller = new AbortController()
+
+    const run = async () => {
+      try {
+        const res = await fetch(
+          `${API_BASE}/assistant/conversations/${convId}/messages/stream`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content, role, pagePath, pageContext, provider, mode }),
+            signal: controller.signal,
+          }
+        )
+
+        if (!res.ok) {
+          const text = await res.text().catch(() => '')
+          callbacks?.onError?.(`HTTP ${res.status}: ${text.slice(0, 200)}`)
+          return
+        }
+
+        const reader = res.body?.getReader()
+        if (!reader) {
+          callbacks?.onError?.('No response body')
+          return
+        }
+
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+
+          // Parse SSE lines
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || '' // keep incomplete line
+
+          let currentEvent = ''
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              currentEvent = line.slice(7).trim()
+            } else if (line.startsWith('data: ') && currentEvent) {
+              try {
+                const data = JSON.parse(line.slice(6))
+                switch (currentEvent) {
+                  case 'thinking':
+                    callbacks?.onThinking?.(data.status, data)
+                    break
+                  case 'tool_start':
+                    callbacks?.onToolStart?.(data.tool_name, data.tool_input, data.iteration)
+                    break
+                  case 'tool_end':
+                    callbacks?.onToolEnd?.(data.tool_name, data.result_summary, data.duration_ms, data.success)
+                    break
+                  case 'text_delta':
+                    callbacks?.onTextDelta?.(data.delta)
+                    break
+                  case 'error':
+                    callbacks?.onError?.(data.message)
+                    break
+                  case 'done':
+                    callbacks?.onDone?.(data)
+                    break
+                }
+              } catch {
+                // skip malformed JSON
+              }
+              currentEvent = ''
+            }
+          }
+        }
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          callbacks?.onError?.(err.message || 'Stream connection failed')
+        }
+      }
+    }
+
+    run()
+    return { abort: () => controller.abort() }
+  },
+
   // 异步加载知识图谱（主请求返回后调用，不阻塞 AI 回答）
   async enrichKG(): Promise<KGVisualization | null> {
     try {
