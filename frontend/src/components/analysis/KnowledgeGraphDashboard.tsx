@@ -5,12 +5,15 @@ import {
   fetchKGNeighbors,
   fetchKGRiskPoints,
   fetchKGQA,
+  fetchKGDocuments,
+  addKGDocument,
+  deleteKGDocument,
 } from '../../utils/apiClient';
 
-type SubTab = 'explore' | 'risk' | 'qa';
+type SubTab = 'docs' | 'explore' | 'risk' | 'qa';
 
 export const KnowledgeGraphDashboard: React.FC = () => {
-  const [subTab, setSubTab] = useState<SubTab>('explore');
+  const [subTab, setSubTab] = useState<SubTab>('docs');
   const [stats, setStats] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -60,6 +63,13 @@ export const KnowledgeGraphDashboard: React.FC = () => {
       {/* Sub-tab selector */}
       <div style={styles.subTabs}>
         <button
+          style={{ ...styles.subTab, ...(subTab === 'docs' ? styles.subTabActive : {}) }}
+          onClick={() => setSubTab('docs')}
+        >
+          <i className="fas fa-book" style={{ marginRight: '6px' }} />
+          文献管理
+        </button>
+        <button
           style={{ ...styles.subTab, ...(subTab === 'explore' ? styles.subTabActive : {}) }}
           onClick={() => setSubTab('explore')}
         >
@@ -82,9 +92,185 @@ export const KnowledgeGraphDashboard: React.FC = () => {
         </button>
       </div>
 
+      {subTab === 'docs' && <DocsPanel onStatsChange={() => {
+        fetchKGStats().then(data => setStats(data)).catch(() => {});
+      }} />}
       {subTab === 'explore' && <ExplorePanel />}
       {subTab === 'risk' && <RiskPanel />}
       {subTab === 'qa' && <QAPanel />}
+    </div>
+  );
+};
+
+// ━━━ Docs Panel (文献管理) ━━━
+const DocsPanel: React.FC<{ onStatsChange: () => void }> = ({ onStatsChange }) => {
+  const [docs, setDocs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [formTitle, setFormTitle] = useState('');
+  const [formContent, setFormContent] = useState('');
+  const [formType, setFormType] = useState('text');
+  const [formUrl, setFormUrl] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const loadDocs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await fetchKGDocuments();
+      setDocs(data?.documents || []);
+    } catch { /* ignore */ }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { loadDocs(); }, [loadDocs]);
+
+  const handleSubmit = async () => {
+    if (!formTitle.trim() || !formContent.trim()) return;
+    setSubmitting(true);
+    try {
+      const result = await addKGDocument(formTitle, formContent, formType, formUrl);
+      if (result?.success) {
+        setFormTitle(''); setFormContent(''); setFormUrl(''); setShowForm(false);
+        loadDocs();
+        onStatsChange();
+      }
+    } catch { /* ignore */ }
+    finally { setSubmitting(false); }
+  };
+
+  const handleDelete = async (docId: string) => {
+    setDeleting(docId);
+    try {
+      await deleteKGDocument(docId);
+      loadDocs();
+      onStatsChange();
+    } catch { /* ignore */ }
+    finally { setDeleting(null); }
+  };
+
+  return (
+    <div style={styles.panelContent}>
+      {/* Add button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontSize: '13px', color: '#fff' }}>
+          共 {docs.length} 篇文献
+        </div>
+        <button
+          style={{ ...styles.runButton, marginLeft: 'auto' }}
+          onClick={() => setShowForm(!showForm)}
+        >
+          <i className={`fas fa-${showForm ? 'times' : 'plus'}`} style={{ marginRight: '6px' }} />
+          {showForm ? '取消' : '添加文献'}
+        </button>
+      </div>
+
+      {/* Add form */}
+      {showForm && (
+        <div style={{
+          padding: '16px', backgroundColor: 'rgba(30,30,50,0.8)', borderRadius: '8px',
+          border: '1px solid rgba(74,158,255,0.3)', display: 'flex', flexDirection: 'column', gap: '12px',
+        }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <select value={formType} onChange={e => setFormType(e.target.value)} style={styles.select}>
+              <option value="text">文本</option>
+              <option value="url">网页链接</option>
+              <option value="pdf">PDF摘要</option>
+            </select>
+            <input
+              value={formTitle}
+              onChange={e => setFormTitle(e.target.value)}
+              placeholder="文献标题"
+              style={{ ...styles.input, flex: 1 }}
+            />
+          </div>
+          {formType === 'url' && (
+            <input
+              value={formUrl}
+              onChange={e => setFormUrl(e.target.value)}
+              placeholder="来源链接 (可选)"
+              style={styles.input}
+            />
+          )}
+          <textarea
+            value={formContent}
+            onChange={e => setFormContent(e.target.value)}
+            placeholder="粘贴文献内容、摘要或笔记..."
+            rows={6}
+            style={{ ...styles.input, resize: 'vertical', lineHeight: '1.6' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <button
+              style={{ ...styles.runButton, opacity: submitting || !formTitle.trim() || !formContent.trim() ? 0.4 : 1 }}
+              onClick={handleSubmit}
+              disabled={submitting || !formTitle.trim() || !formContent.trim()}
+            >
+              {submitting ? '处理中...' : '提交并提取知识'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Document list */}
+      {loading ? (
+        <div style={styles.emptyHint}>加载中...</div>
+      ) : docs.length === 0 ? (
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px',
+          padding: '48px 20px', color: '#fff',
+        }}>
+          <i className="fas fa-book-open" style={{ fontSize: '36px', color: 'rgba(74,158,255,0.4)' }} />
+          <div style={{ fontSize: '15px' }}>暂无文献</div>
+          <div style={{ fontSize: '13px', color: '#94a3b8' }}>
+            点击"添加文献"上传知识内容，系统将自动提取实体和关系
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {docs.map((doc: any) => (
+            <div key={doc.id} style={{
+              padding: '14px 16px', backgroundColor: 'rgba(30,30,50,0.6)', borderRadius: '8px',
+              border: '1px solid rgba(74,158,255,0.15)', display: 'flex', alignItems: 'flex-start', gap: '14px',
+            }}>
+              <i className={`fas fa-${doc.source_type === 'url' ? 'link' : doc.source_type === 'pdf' ? 'file-pdf' : 'file-alt'}`}
+                style={{ fontSize: '18px', color: '#4a9eff', marginTop: '2px', flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff', marginBottom: '4px' }}>
+                  {doc.title}
+                </div>
+                <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: '#94a3b8', flexWrap: 'wrap' }}>
+                  <span>{doc.source_type === 'url' ? '网页' : doc.source_type === 'pdf' ? 'PDF' : '文本'}</span>
+                  <span>{new Date(doc.uploaded_at).toLocaleDateString()}</span>
+                  {doc.processed && (
+                    <>
+                      <span style={{ color: '#52c41a' }}>
+                        <i className="fas fa-check" style={{ marginRight: '4px' }} />已处理
+                      </span>
+                      <span>实体: {doc.entity_count}</span>
+                      <span>关系: {doc.relation_count}</span>
+                    </>
+                  )}
+                  {!doc.processed && (
+                    <span style={{ color: '#facc15' }}>待处理</span>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => handleDelete(doc.id)}
+                disabled={deleting === doc.id}
+                style={{
+                  background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer',
+                  fontSize: '14px', padding: '4px 8px', opacity: deleting === doc.id ? 0.4 : 0.7,
+                  flexShrink: 0,
+                }}
+                title="删除"
+              >
+                <i className={`fas fa-${deleting === doc.id ? 'spinner fa-spin' : 'trash'}`} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
