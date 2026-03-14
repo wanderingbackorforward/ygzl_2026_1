@@ -226,3 +226,37 @@ Three types detected by keywords:
 - Peer review after completion
 - Generate figures extensively
 - Log everything with metrics
+
+# Vercel 部署规则（本项目特定）
+
+## 项目部署架构
+- **前端**：Vite 构建 → `frontend/dist`（静态站）
+- **后端**：`api/index.py` → 唯一的 Serverless Function 入口
+- **路由**：所有 `/api/*` 请求 rewrite 到 `api/index.py`，其余走 SPA fallback
+- **Node.js 版本**：Dashboard 必须设为 **20.x**（24.x 会破坏 Python Function 检测）
+
+## api/ 目录结构（不可修改）
+```
+api/
+├── index.py          # 唯一的 .py 文件！
+├── pyproject.toml    # Python 依赖声明
+└── requirements.txt  # 备用依赖声明
+```
+**绝对不能在 api/ 下添加其他 .py 文件。** 新 Python 代码放 `backend/` 目录。
+
+## api/index.py 内容（不可随意修改）
+```python
+import os, sys
+sys.path.append(backend_dir)
+try:
+    from modules.api.api_server import app  # 完整版
+except Exception:
+    from fallback_app import app  # 降级版
+```
+- 保持精简（<15 行），不要内联 fallback 逻辑
+- fallback app 放 `backend/fallback_app.py`
+
+## backend/ 代码 Vercel 兼容性
+- **禁止模块加载时调用** `os.makedirs()` / `os.mkdir()` — Vercel 只读文件系统
+- 创建目录必须 `try/except OSError` 包裹，或延迟到实际需要时
+- `includeFiles: "backend/**/*.py"` 确保子模块被打包
