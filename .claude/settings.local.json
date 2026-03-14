@@ -8,7 +8,10 @@
       "WebSearch",
       "mcp__web-search-prime__web_search_prime",
       "mcp__chrome-devtools__navigate_page",
-      "mcp__chrome-devtools__take_screenshot"
+      "mcp__chrome-devtools__take_screenshot",
+      "WebFetch(domain:skillsmp.com)",
+      "mcp__chrome-devtools__take_snapshot",
+      "WebFetch(domain:github.com)"
     ]
   }
 }
