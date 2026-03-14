@@ -1217,6 +1217,10 @@ export default function Insar() {
   const [focusId, setFocusId] = useState<string | null>(null)
   const [selectedPoint, setSelectedPoint] = useState<{ id: string, props: Record<string, any>, lat: number, lng: number } | null>(null)
   const [showSettings, setShowSettings] = useState(false)
+  // 主组件自有的时序数据状态（用于详情面板）
+  const [panelSeries, setPanelSeries] = useState<SeriesData | null>(null)
+  const [panelSeriesLoading, setPanelSeriesLoading] = useState(false)
+  const [panelSeriesError, setPanelSeriesError] = useState<string | null>(null)
   const [adviceStore, setAdviceStore] = useState<AdviceStore>(() => loadAdviceStore())
   const [thresholds, setThresholds] = useState<Thresholds>(() => {
     try {
@@ -1281,6 +1285,56 @@ export default function Insar() {
     } catch {
     }
   }, [adviceStore])
+
+  // 主组件：当 selectedPoint 改变时加载时序数据
+  useEffect(() => {
+    if (!selectedPoint?.id) {
+      setPanelSeries(null)
+      return
+    }
+    let mounted = true
+    const controller = new AbortController()
+    setPanelSeriesLoading(true)
+    setPanelSeriesError(null)
+    const safeDataset = safeDatasetName(dataset)
+    const url = `${API_BASE}/insar/series?dataset=${encodeURIComponent(safeDataset)}&id=${encodeURIComponent(selectedPoint.id)}`
+    ;(async () => {
+      try {
+        const res = await fetch(url, { signal: controller.signal })
+        const body = await res.json().catch(() => null as any)
+        if (!res.ok) throw new Error(body?.message || `请求失败：${res.status}`)
+        if (body && typeof body === 'object' && body.status && body.status !== 'success') {
+          throw new Error(body?.message || '加载失败')
+        }
+        if (!mounted) return
+        setPanelSeries(body?.data && typeof body.data === 'object' ? body.data : null)
+      } catch (e: any) {
+        if (!mounted) return
+        if (e?.name === 'AbortError') return
+        setPanelSeries(null)
+        setPanelSeriesError(e?.message || '加载失败')
+      } finally {
+        if (mounted) setPanelSeriesLoading(false)
+      }
+    })()
+    return () => { mounted = false; controller.abort() }
+  }, [dataset, selectedPoint?.id])
+
+  // 主组件：时序图表选项
+  const panelSeriesOption = useMemo((): EChartsOption => {
+    const s = panelSeries?.series || []
+    const dates = s.map((d) => d.date)
+    const values = s.map((d) => d.value)
+    return {
+      title: { text: `点位：${panelSeries?.id || selectedPoint?.id || ''}`, left: 'center', textStyle: { fontSize: 12 } },
+      tooltip: { trigger: 'axis' },
+      grid: { left: '12%', right: '8%', top: '20%', bottom: '14%' },
+      xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 9, rotate: 30 } },
+      yAxis: { type: 'value', axisLabel: { fontSize: 10 } },
+      series: [{ name: 'D', type: 'line', data: values, smooth: true, symbol: 'circle', symbolSize: 4, lineStyle: { width: 2 }, itemStyle: { color: '#00e5ff' } }],
+      animationDuration: 600,
+    }
+  }, [panelSeries?.id, panelSeries?.series, selectedPoint?.id])
 
   // 键盘快捷键
   useEffect(() => {
@@ -1847,23 +1901,23 @@ export default function Insar() {
                   <i className="fas fa-chart-line mr-2 text-cyan-400" />
                   时序变化
                 </h4>
-                {seriesLoading ? (
+                {panelSeriesLoading ? (
                   <div className="flex h-48 items-center justify-center">
                     <div className="text-sm text-slate-400">
                       <i className="fas fa-spinner fa-spin mr-2" />
                       加载中...
                     </div>
                   </div>
-                ) : seriesError ? (
+                ) : panelSeriesError ? (
                   <div className="flex h-48 items-center justify-center">
                     <div className="text-sm text-red-400">
                       <i className="fas fa-exclamation-circle mr-2" />
-                      {seriesError}
+                      {panelSeriesError}
                     </div>
                   </div>
-                ) : series?.series && series.series.length > 0 ? (
+                ) : panelSeries?.series && panelSeries.series.length > 0 ? (
                   <div className="h-48">
-                    <EChartsWrapper option={seriesOption} />
+                    <EChartsWrapper option={panelSeriesOption} />
                   </div>
                 ) : (
                   <div className="flex h-48 items-center justify-center">
