@@ -41,14 +41,43 @@ const TYPE_LABELS: Record<string, string> = {
   Concept: '概念',
   Threshold: '预警阈值',
   SPATIAL_NEAR: '空间邻近',
-  CORRELATES_WITH: '关联',
+  CORRELATES_WITH: '数据相关',
   CAUSES: '因果',
   DETECTED_AT: '检测于',
   REFERENCES: '参考',
   MENTIONS: '引用',
-  RELATED_TO: '关联',
+  RELATED_TO: '概念关联',
   EXCEEDS_THRESHOLD: '超限',
   NEAR_BY: '邻近',
+}
+
+const NODE_TYPE_COLORS: Record<string, string> = {
+  MonitoringPoint: '#06b6d4',
+  ConstructionEvent: '#f59e0b',
+  Anomaly: '#ef4444',
+  AcademicPaper: '#8b5cf6',
+  Document: '#3b82f6',
+  Concept: '#10b981',
+  Threshold: '#facc15',
+}
+
+const EDGE_TYPE_COLORS: Record<string, string> = {
+  SPATIAL_NEAR: '#38bdf8',
+  CORRELATES_WITH: '#a78bfa',
+  CAUSES: '#fb923c',
+  DETECTED_AT: '#f87171',
+  MENTIONS: '#3b82f6',
+  RELATED_TO: '#10b981',
+  EXCEEDS_THRESHOLD: '#facc15',
+  NEAR_BY: '#06b6d4',
+  REFERENCES: '#c084fc',
+}
+
+const SEVERITY_LABELS: Record<string, string> = {
+  critical: '严重',
+  high: '高',
+  medium: '中等',
+  low: '低',
 }
 
 export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGraphVizProps) {
@@ -116,13 +145,13 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
           className="flex w-full items-center justify-between text-left"
         >
           <div className="flex items-center gap-2">
-            <span className="text-lg">🕸</span>
+            <i className="fas fa-project-diagram" style={{ color: '#06b6d4', fontSize: '16px' }} />
             <span className="text-base font-medium text-cyan-200">知识图谱</span>
-            <span className="text-sm text-slate-300">
+            <span className="text-sm text-slate-200">
               {stats?.total_nodes ?? nodes.length} 节点 / {stats?.total_edges ?? edges.length} 边
             </span>
           </div>
-          <span className="text-sm text-slate-300">点击展开 ▼</span>
+          <span className="text-sm text-slate-200">点击展开 ▼</span>
         </button>
       </div>
     )
@@ -143,10 +172,10 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
       {/* Header */}
       <div className="flex shrink-0 items-center justify-between border-b border-cyan-500/10 px-3 py-2">
         <div className="flex items-center gap-2">
-          <span className="text-lg">🕸</span>
+          <i className="fas fa-project-diagram" style={{ color: '#06b6d4', fontSize: '16px' }} />
           <span className="text-base font-medium text-cyan-200">知识图谱</span>
           {stats && (
-            <span className="text-sm text-slate-300">
+            <span className="text-sm text-slate-200">
               {stats.total_nodes} 节点 / {stats.total_edges} 边
             </span>
           )}
@@ -158,79 +187,29 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
           <button type="button" onClick={() => setTransform(p => ({ ...p, scale: Math.max(0.3, p.scale * 0.8) }))}
             className="rounded px-2 py-1 text-sm font-medium text-slate-200 hover:bg-white/10 hover:text-white">-</button>
           <button type="button" onClick={() => setTransform({ x: 0, y: 0, scale: 1 })}
-            className="rounded px-2 py-1 text-sm font-medium text-slate-200 hover:bg-white/10 hover:text-white">Reset</button>
+            className="rounded px-2 py-1 text-sm font-medium text-slate-200 hover:bg-white/10 hover:text-white">重置</button>
           <button type="button" onClick={() => setCollapsed(true)}
             className="rounded px-2 py-1 text-sm font-medium text-slate-200 hover:bg-white/10 hover:text-white">收起 ▲</button>
         </div>
       </div>
 
-      {/* Legend */}
+      {/* Legend - dynamic: only show types present in current graph */}
       <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-cyan-500/10 px-3 py-2">
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: '#06b6d4' }} />
-          <span className="text-sm text-slate-200">监测点</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: '#f59e0b' }} />
-          <span className="text-sm text-slate-200">施工事件</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: '#ef4444' }} />
-          <span className="text-sm text-slate-200">异常</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: '#8b5cf6' }} />
-          <span className="text-sm text-slate-200">参考文献</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: '#3b82f6' }} />
-          <span className="text-sm text-slate-200">文献</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: '#10b981' }} />
-          <span className="text-sm text-slate-200">概念</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: '#facc15' }} />
-          <span className="text-sm text-slate-200">预警阈值</span>
-        </div>
-        <span className="text-sm text-slate-500">|</span>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#38bdf8' }} />
-          <span className="text-sm text-slate-200">空间邻近</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#a78bfa' }} />
-          <span className="text-sm text-slate-200">关联</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#fb923c' }} />
-          <span className="text-sm text-slate-200">因果</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#f87171' }} />
-          <span className="text-sm text-slate-200">检测于</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#3b82f6' }} />
-          <span className="text-sm text-slate-200">引用</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#10b981' }} />
-          <span className="text-sm text-slate-200">关联</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#facc15' }} />
-          <span className="text-sm text-slate-200">超限</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#06b6d4' }} />
-          <span className="text-sm text-slate-200">邻近</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4" style={{ backgroundColor: '#c084fc' }} />
-          <span className="text-sm text-slate-200">参考</span>
-        </div>
+        {[...new Set(nodes.map(n => n.type))].map(t => (
+          <div key={t} className="flex items-center gap-1.5">
+            <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: NODE_TYPE_COLORS[t] || '#8b5cf6' }} />
+            <span className="text-sm text-slate-200">{TYPE_LABELS[t] || t}</span>
+          </div>
+        ))}
+        {[...new Set(nodes.map(n => n.type))].length > 0 && [...new Set(edges.map(e => e.type))].length > 0 && (
+          <span className="text-sm text-slate-300">|</span>
+        )}
+        {[...new Set(edges.map(e => e.type))].map(t => (
+          <div key={t} className="flex items-center gap-1.5">
+            <span className="inline-block h-0.5 w-4" style={{ backgroundColor: EDGE_TYPE_COLORS[t] || '#a78bfa' }} />
+            <span className="text-sm text-slate-200">{TYPE_LABELS[t] || t}</span>
+          </div>
+        ))}
       </div>
 
       {/* SVG Canvas */}
@@ -283,6 +262,19 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
                     markerEnd="url(#kg-arrow)"
                     className="transition-all duration-200"
                   />
+                  {/* Edge label at midpoint */}
+                  <text
+                    x={(src.x + tgt.x) / 2}
+                    y={(src.y + tgt.y) / 2 - 6}
+                    textAnchor="middle"
+                    fill="#e2e8f0"
+                    fontSize={10}
+                    fontWeight={isHovered ? 600 : 400}
+                    opacity={isHovered ? 1 : 0.6}
+                    className="pointer-events-none select-none transition-all duration-200"
+                  >
+                    {TYPE_LABELS[edge.type] || edge.label}
+                  </text>
                   {/* Invisible wider line for hover */}
                   <line
                     x1={src.x} y1={src.y}
@@ -363,7 +355,7 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
                   <text
                     x={node.x} y={node.y + r + 14}
                     textAnchor="middle"
-                    fill={isHovered ? '#f1f5f9' : '#cbd5e1'}
+                    fill={isHovered ? '#ffffff' : '#f1f5f9'}
                     fontSize={isHovered ? 14 : 12}
                     fontWeight={isHovered ? 700 : 500}
                     className="pointer-events-none select-none transition-all duration-200"
@@ -391,7 +383,7 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
                   hoveredNode.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-300' :
                   'bg-green-500/20 text-green-300'
                 }`}>
-                  {hoveredNode.severity}
+                  {SEVERITY_LABELS[hoveredNode.severity] || hoveredNode.severity}
                 </span>
               </div>
             )}
