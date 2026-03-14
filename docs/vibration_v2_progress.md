@@ -49,21 +49,21 @@
 **目标**：1秒决策，视觉冲击力
 
 ### 2.1 页面骨架
-- [ ] 创建 `frontend/src/pages/VibrationV2.tsx`
-- [ ] 注册路由 `/vibration-v2`
-- [ ] 基础布局（Flexbox，h-screen）
+- [x] 创建 `frontend/src/pages/VibrationV2.tsx`
+- [x] 注册路由 `/vibration-v2`
+- [x] 基础布局（Flexbox，h-screen）
 
 ### 2.2 Hero PPV 组件
-- [ ] 创建 `HeroPPV.tsx` 组件
-- [ ] 72px 动态变色数字（绿/黄/红）
-- [ ] 呼吸动画（animate-pulse / animate-ping）
-- [ ] 安全状态指示器（盾牌/三角/禁止图标）
+- [x] 创建 `HeroPPV.tsx` 组件
+- [x] 72px 动态变色数字（绿/黄/红）
+- [x] 呼吸动画（animate-pulse / animate-ping）
+- [x] 安全状态指示器（盾牌/三角/禁止图标）
 
 ### 2.3 顶栏徽章
-- [ ] 数据集选择下拉框
-- [ ] 结构类型选择下拉框
-- [ ] 内联徽章（评分/报警/超限率，18px）
-- [ ] 导出/设置按钮
+- [x] 数据集选择下拉框
+- [x] 结构类型选择下拉框
+- [x] 内联徽章（评分/报警/超限率，18px）
+- [x] 导出/设置按钮
 
 ### 2.4 响应式测试
 - [ ] 1920x1080 测试
