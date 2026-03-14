@@ -4,12 +4,9 @@
   "buildCommand": "npm run build --prefix frontend",
   "outputDirectory": "frontend/dist",
   "functions": {
-    "api/modules.py": {
-      "maxDuration": 10
-    },
-    "api/index.py": {
+    "api/*.py": {
       "maxDuration": 60,
-      "includeFiles": "frontend/public/static/data/insar/**"
+      "includeFiles": "backend/**/*.py,frontend/public/static/data/insar/**"
     }
   },
   "headers": [
