@@ -26,7 +26,22 @@ export const KnowledgeGraphDashboard: React.FC = () => {
 
   return (
     <div style={styles.container}>
-      {/* 演示模式提示 */}
+      {/* 使用提示 */}
+      {stats && !stats.mock && stats.total_nodes === 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: '10px',
+          padding: '12px 16px', marginBottom: '14px',
+          backgroundColor: 'rgba(74, 158, 255, 0.1)',
+          border: '1px solid rgba(74, 158, 255, 0.3)',
+          borderRadius: '8px', fontSize: '13px', lineHeight: '1.5',
+        }}>
+          <i className="fas fa-info-circle" style={{ color: '#4a9eff', fontSize: '16px', marginTop: '2px', flexShrink: 0 }} />
+          <div style={{ color: '#e2e8f0' }}>
+            <span style={{ fontWeight: 'bold', color: '#fff' }}>开始使用：</span>
+            在"文献管理"中添加文献或笔记，系统将自动提取知识构建图谱，然后可在"知识问答"中基于图谱内容提问。
+          </div>
+        </div>
+      )}
       {stats?.mock && (
         <div style={{
           display: 'flex', alignItems: 'flex-start', gap: '10px',
@@ -38,8 +53,7 @@ export const KnowledgeGraphDashboard: React.FC = () => {
           <i className="fas fa-info-circle" style={{ color: '#ffa940', fontSize: '16px', marginTop: '2px', flexShrink: 0 }} />
           <div style={{ color: '#e2e8f0' }}>
             <span style={{ fontWeight: 'bold', color: '#fff' }}>演示模式：</span>
-            知识图谱需要 Neo4j 图数据库支持，当前云端环境暂未连接，显示的是模拟数据。
-            图谱探索、高风险点查询和知识问答功能均为功能预览。
+            当前显示模拟数据。添加文献后将使用真实图谱数据。
           </div>
         </div>
       )}
@@ -113,6 +127,7 @@ const DocsPanel: React.FC<{ onStatsChange: () => void }> = ({ onStatsChange }) =
   const [formUrl, setFormUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [error, setError] = useState('');
 
   const loadDocs = useCallback(async () => {
     setLoading(true);
@@ -128,19 +143,23 @@ const DocsPanel: React.FC<{ onStatsChange: () => void }> = ({ onStatsChange }) =
   const handleSubmit = async () => {
     if (!formTitle.trim() || !formContent.trim()) return;
     setSubmitting(true);
+    setError('');
     try {
       const result = await addKGDocument(formTitle, formContent, formType, formUrl);
       if (result?.success) {
         setFormTitle(''); setFormContent(''); setFormUrl(''); setShowForm(false);
         loadDocs();
         onStatsChange();
+      } else {
+        setError(result?.message || '添加失败，请重试');
       }
-    } catch { /* ignore */ }
+    } catch { setError('网络错误，请检查连接后重试'); }
     finally { setSubmitting(false); }
   };
 
   const handleDelete = async (docId: string) => {
     setDeleting(docId);
+    setError('');
     try {
       await deleteKGDocument(docId);
       loadDocs();
@@ -151,6 +170,21 @@ const DocsPanel: React.FC<{ onStatsChange: () => void }> = ({ onStatsChange }) =
 
   return (
     <div style={styles.panelContent}>
+      {/* Error message */}
+      {error && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px',
+          backgroundColor: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)',
+          borderRadius: '8px', fontSize: '13px', color: '#fca5a5',
+        }}>
+          <i className="fas fa-exclamation-circle" style={{ color: '#ef4444' }} />
+          {error}
+          <button onClick={() => setError('')} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>
+            <i className="fas fa-times" />
+          </button>
+        </div>
+      )}
+
       {/* Add button */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ fontSize: '13px', color: '#fff' }}>

@@ -35,7 +35,7 @@ const analysisGroups = [
   {
     label: '综合分析',
     items: [
-      { id: 'knowledgegraph' as TabType, label: '知识图谱', icon: 'share-alt', desc: '用自然语言提问 —— 直接输入问题（如"S1附近有哪些风险点？"），系统自动从知识库中查找答案' },
+      { id: 'knowledgegraph' as TabType, label: '知识图谱', icon: 'share-alt', desc: '文献知识管理 —— 上传文献/笔记，系统自动提取实体和关系构建知识图谱，基于图谱内容进行智能问答，答案附带来源引用' },
     ],
   },
   {
