@@ -68,23 +68,23 @@ export function computeMasterCaution(inputs: {
   const reasons: string[] = [];
 
   // RED conditions
-  if (inputs.worstGrade === 'd') reasons.push('GB50292 D-grade detected');
-  if (inputs.worstCreepStage === 'TERTIARY') reasons.push('Stage III acceleration');
-  if (inputs.maxHurst > 0.8) reasons.push(`Hurst ${inputs.maxHurst.toFixed(2)} — strong persistence`);
+  if (inputs.worstGrade === 'd') reasons.push('GB50292 D级 严重损伤');
+  if (inputs.worstCreepStage === 'TERTIARY') reasons.push('III期加速扩展');
+  if (inputs.maxHurst > 0.8) reasons.push(`Hurst ${inputs.maxHurst.toFixed(2)} 强持续性`);
 
   if (reasons.length > 0) {
-    return { level: 'RED', label: 'critical — immediate action required', reasons };
+    return { level: 'RED', label: '危险 — 需立即处理', reasons };
   }
 
   // YELLOW conditions
-  if (inputs.worstGrade === 'c') reasons.push('GB50292 C-grade detected');
-  if (inputs.hasActiveAlarms) reasons.push('CUSUM change point detected');
-  if (inputs.maxHurst > 0.6) reasons.push(`Hurst ${inputs.maxHurst.toFixed(2)} — mild persistence`);
-  if (inputs.spatialClustering) reasons.push('spatial clustering detected');
+  if (inputs.worstGrade === 'c') reasons.push('GB50292 C级 明显损伤');
+  if (inputs.hasActiveAlarms) reasons.push('CUSUM检测到变点');
+  if (inputs.maxHurst > 0.6) reasons.push(`Hurst ${inputs.maxHurst.toFixed(2)} 轻度持续性`);
+  if (inputs.spatialClustering) reasons.push('空间聚类异常');
 
   if (reasons.length > 0) {
-    return { level: 'YELLOW', label: 'attention — enhanced monitoring', reasons };
+    return { level: 'YELLOW', label: '关注 — 加强监测', reasons };
   }
 
-  return { level: 'GREEN', label: 'all systems nominal', reasons: [] };
+  return { level: 'GREEN', label: '系统正常', reasons: [] };
 }

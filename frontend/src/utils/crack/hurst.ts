@@ -23,7 +23,7 @@ export interface HurstResult {
 export function hurstExponent(data: number[], minWindow = 10): HurstResult {
   const n = data.length;
   if (n < minWindow * 2) {
-    return { H: 0.5, interpretation: 'random', risk: 'medium', label: 'insufficient data' };
+    return { H: 0.5, interpretation: 'random', risk: 'medium', label: '数据不足' };
   }
 
   const logRS: number[] = [];
@@ -65,7 +65,7 @@ export function hurstExponent(data: number[], minWindow = 10): HurstResult {
   }
 
   if (logRS.length < 3) {
-    return { H: 0.5, interpretation: 'random', risk: 'medium', label: 'insufficient windows' };
+    return { H: 0.5, interpretation: 'random', risk: 'medium', label: '窗口数不足' };
   }
 
   // Linear regression: log(R/S) = H * log(n) + c
@@ -85,10 +85,10 @@ export function hurstExponent(data: number[], minWindow = 10): HurstResult {
   const risk: HurstResult['risk'] =
     H > 0.7 ? 'high' : H > 0.55 ? 'medium' : 'low';
   const label =
-    H > 0.7 ? 'accelerating trend detected'
-    : H > 0.55 ? 'mild persistence'
-    : H < 0.45 ? 'self-limiting, stable'
-    : 'random fluctuation';
+    H > 0.7 ? '检测到加速趋势'
+    : H > 0.55 ? '轻度持续性'
+    : H < 0.45 ? '自限性，稳定'
+    : '随机波动';
 
   return { H: Number(H.toFixed(3)), interpretation, risk, label };
 }

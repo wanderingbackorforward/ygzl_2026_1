@@ -72,7 +72,7 @@ export function thermalSeparation(
       bestLag: 0,
       regime: 'MIXED',
       riskLevel: 'medium',
-      label: 'insufficient data for analysis',
+      label: '数据不足，无法进行分析',
       thermalComponent: crackValues.map(() => 0),
       structuralComponent: [...crackValues],
       lagCorrelations: [],
@@ -110,10 +110,10 @@ export function thermalSeparation(
 
   const label =
     regime === 'THERMAL_DOMINANT'
-      ? `thermal-dominant (r=${best.r.toFixed(2)}, lag=${best.lag}d) - seasonal fluctuation`
+      ? `热主导型 (r=${best.r.toFixed(2)}, 滞后${best.lag}天) - 季节性波动`
       : regime === 'STRUCTURAL_DOMINANT'
-      ? `structural-dominant (r=${best.r.toFixed(2)}) - independent of temperature`
-      : `mixed response (r=${best.r.toFixed(2)}, lag=${best.lag}d)`;
+      ? `结构主导型 (r=${best.r.toFixed(2)}) - 与温度无关的变化`
+      : `混合型 (r=${best.r.toFixed(2)}, 滞后${best.lag}天)`;
 
   return {
     correlation: Number(best.r.toFixed(3)),
@@ -148,7 +148,7 @@ export function settlementCausality(
     return {
       peakCorrelation: 0,
       peakLag: 0,
-      interpretation: 'insufficient data',
+      interpretation: '数据不足',
       lagCorrelations: [],
     };
   }
@@ -160,10 +160,10 @@ export function settlementCausality(
 
   const interpretation =
     peak.lag > 0
-      ? `crack responds ${peak.lag} days AFTER settlement (r=${peak.r.toFixed(2)}) — settlement is likely the cause`
+      ? `裂缝滞后沉降 ${peak.lag} 天 (r=${peak.r.toFixed(2)}) — 沉降可能是主因`
       : peak.lag < 0
-      ? `crack precedes settlement by ${-peak.lag} days (r=${peak.r.toFixed(2)}) — early warning signal`
-      : `simultaneous response (r=${peak.r.toFixed(2)})`;
+      ? `裂缝先于沉降 ${-peak.lag} 天 (r=${peak.r.toFixed(2)}) — 早期预警信号`
+      : `同步响应 (r=${peak.r.toFixed(2)})`;
 
   return {
     peakCorrelation: Number(peak.r.toFixed(3)),

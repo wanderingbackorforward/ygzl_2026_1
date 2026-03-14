@@ -30,10 +30,10 @@ export interface PhaseResult {
 }
 
 const STAGE_META: Record<CreepStage, { label: string; risk: PhaseSegment['risk'] }> = {
-  DORMANT:   { label: 'dormant (no significant growth)',     risk: 'negligible' },
-  PRIMARY:   { label: 'Stage I - decelerating',              risk: 'low' },
-  SECONDARY: { label: 'Stage II - steady-state',             risk: 'moderate' },
-  TERTIARY:  { label: 'Stage III - accelerating (DANGER)',   risk: 'critical' },
+  DORMANT:   { label: '休眠期 (无显著增长)',              risk: 'negligible' },
+  PRIMARY:   { label: 'I期 - 减速阶段',                  risk: 'low' },
+  SECONDARY: { label: 'II期 - 稳定阶段',                 risk: 'moderate' },
+  TERTIARY:  { label: 'III期 - 加速阶段 (危险)',          risk: 'critical' },
 };
 
 /**
