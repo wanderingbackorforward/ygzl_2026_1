@@ -29,8 +29,7 @@ class InsarConfig:
         if os.path.isdir(frontend_path):
             return frontend_path
 
-        # 最终回退：创建默认目录
-        os.makedirs(default_path, exist_ok=True)
+        # 最终回退：返回默认路径（不创建目录，Vercel 只读文件系统）
         return default_path
 
     def _resolve_cache_dir(self) -> str:
@@ -40,7 +39,10 @@ class InsarConfig:
 
         if self._is_serverless():
             cache_path = os.path.join("/tmp", "insar", "processed")
-            os.makedirs(cache_path, exist_ok=True)
+            try:
+                os.makedirs(cache_path, exist_ok=True)
+            except OSError:
+                pass
             return cache_path
 
         return self.processed_dir
