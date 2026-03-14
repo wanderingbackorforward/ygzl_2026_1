@@ -1553,108 +1553,224 @@ export default function Insar() {
     }
   }
 
+  // 新增状态：控制设置抽屉显示
+  const [showSettings, setShowSettings] = useState(false)
+
   return (
-    <div style={{ padding: 16, color: '#aaddff', background: '#03060a', minHeight: '100vh' }}>
-      <h2 style={{ marginBottom: 10 }}><i className="fas fa-satellite" /> InSAR监测系统</h2>
+    <div className="flex h-screen flex-col bg-slate-950 text-white">
+      {/* 顶栏 - 简化版 */}
+      <div className="shrink-0 border-b border-slate-700 bg-slate-900 px-4 py-3">
+        <div className="flex items-center gap-4">
+          <h2 className="text-lg font-semibold text-white">
+            <i className="fas fa-satellite" /> InSAR 监测
+          </h2>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-        <div style={{ display: 'flex', border: '1px solid rgba(64,174,255,.35)', borderRadius: 10, overflow: 'hidden' }}>
-          <button type="button" onClick={() => setTab('map')} style={{ padding: '8px 12px', border: 'none', background: tab === 'map' ? 'rgba(64,174,255,.25)' : 'transparent', color: '#aaddff', cursor: 'pointer' }}>
-            地图
-          </button>
-          <button type="button" onClick={() => { setTab('ops'); setMode('native') }} style={{ padding: '8px 12px', border: 'none', background: tab === 'ops' ? 'rgba(64,174,255,.25)' : 'transparent', color: '#aaddff', cursor: 'pointer' }}>
-            预警/建议
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-200">数据集</span>
+            <select
+              value={dataset}
+              onChange={(e) => setDataset(e.target.value)}
+              className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-white"
+            >
+              {datasets.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowSettings(true)}
+            className="ml-auto flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-white hover:bg-slate-700"
+          >
+            <i className="fas fa-cog" />
+            设置
           </button>
         </div>
-        <div style={{ display: 'flex', border: '1px solid rgba(64,174,255,.35)', borderRadius: 10, overflow: 'hidden' }}>
-          <button type="button" onClick={() => { setMode('native') }} style={{ padding: '8px 12px', border: 'none', background: mode === 'native' ? 'rgba(64,174,255,.25)' : 'transparent', color: '#aaddff', cursor: 'pointer' }}>
-            原生模式
-          </button>
-          <button type="button" onClick={() => { setMode('iframe'); setTab('map') }} style={{ padding: '8px 12px', border: 'none', background: mode === 'iframe' ? 'rgba(64,174,255,.25)' : 'transparent', color: '#aaddff', cursor: 'pointer' }}>
-            外链模式（备用）
-          </button>
-        </div>
-
-        {mode === 'native' ? (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 14 }}>数据集</span>
-              <select value={dataset} onChange={(e) => setDataset(e.target.value)} style={{ width: 160, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }}>
-                {datasets.map((d) => <option key={d} value={d}>{d}</option>)}
-              </select>
-              <span style={{ fontSize: 12, opacity: 1 }}>仓库路径：static/data/insar/raw/{safeDatasetName(dataset)}/</span>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, opacity: 1 }}>指标</span>
-              <div style={{ display: 'flex', border: '1px solid rgba(64,174,255,.35)', borderRadius: 10, overflow: 'hidden' }}>
-                <button type="button" onClick={() => setIndicator('velocity')} style={{ padding: '8px 10px', border: 'none', background: indicator === 'velocity' ? 'rgba(64,174,255,.25)' : 'transparent', color: '#aaddff', cursor: 'pointer' }}>
-                  速度
-                </button>
-                <button type="button" onClick={() => setIndicator('keyDate')} style={{ padding: '8px 10px', border: 'none', background: indicator === 'keyDate' ? 'rgba(64,174,255,.25)' : 'transparent', color: '#aaddff', cursor: 'pointer' }}>
-                  关键日期
-                </button>
-                <button type="button" onClick={() => setIndicator('threshold')} style={{ padding: '8px 10px', border: 'none', background: indicator === 'threshold' ? 'rgba(64,174,255,.25)' : 'transparent', color: '#aaddff', cursor: 'pointer' }}>
-                  阈值分级
-                </button>
-              </div>
-            </div>
-
-            {indicator === 'keyDate' ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 12, opacity: 1 }}>日期</span>
-                <select value={keyDateField} onChange={(e) => setKeyDateField(e.target.value)} style={{ width: 180, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }}>
-                  {(fieldsInfo?.d_fields || []).map((f) => <option key={f} value={f}>{formatKeyDateField(f)}</option>)}
-                </select>
-                <span style={{ fontSize: 12, opacity: 1 }}>负数=沉降</span>
-              </div>
-            ) : null}
-
-            {indicator === 'threshold' ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12, opacity: 1 }}>阈值</span>
-                <span style={{ fontSize: 12, opacity: 1 }}>显著</span>
-                <input value={thresholds.strong} onChange={(e) => setThresholds((t) => ({ ...t, strong: Number(e.target.value) || 0 }))} style={{ width: 70, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }} />
-                <span style={{ fontSize: 12, opacity: 1 }}>轻微</span>
-                <input value={thresholds.mild} onChange={(e) => setThresholds((t) => ({ ...t, mild: Number(e.target.value) || 0 }))} style={{ width: 70, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }} />
-                <span style={{ fontSize: 12, opacity: 1 }}>mm/年</span>
-              </div>
-            ) : null}
-
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 1, cursor: 'pointer' }}>
-              <input type="checkbox" checked={useBbox} onChange={(e) => setUseBbox(e.target.checked)} />
-              视窗裁剪（范围）
-            </label>
-
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 1, cursor: 'pointer' }}>
-              <input type="checkbox" checked={showZones} onChange={(e) => setShowZones(e.target.checked)} />
-              危险区
-            </label>
-            {showZones ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12, opacity: 15 }}>eps</span>
-                <input value={zoneEpsM} onChange={(e) => setZoneEpsM(Number(e.target.value) || 0)} style={{ width: 70, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }} />
-                <span style={{ fontSize: 12, opacity: 15 }}>m</span>
-                <span style={{ fontSize: 12, opacity: 15 }}>minPts</span>
-                <input value={zoneMinPts} onChange={(e) => setZoneMinPts(Math.max(1, Math.round(Number(e.target.value) || 0)))} style={{ width: 70, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(64,174,255,.35)', background: 'rgba(10,25,47,.6)', color: '#aaddff' }} />
-              </div>
-            ) : null}
-          </>
-        ) : null}
-
-        <a href="http://47.96.7.238:38089/mapLayer" target="_blank" rel="noreferrer" style={{
-          display: 'inline-block',
-          color: '#40aeff',
-          border: '1px solid rgba(64,174,255,.6)',
-          borderRadius: 6,
-          padding: '6px 12px',
-          background: 'rgba(64,174,255,.1)',
-          textDecoration: 'none'
-        }}>
-          <i className="fas fa-external-link-alt" /> 新窗口打开外链地图
-        </a>
       </div>
 
+      {/* 主内容区域 - 地图 + 风险概览 */}
+      <div className="min-h-0 flex-1 flex">
+        {/* 地图视图 */}
+        <div className="flex-1 min-w-0">
+          {mode === 'native' ? (
+            <InsarNativeMap
+              dataset={dataset}
+              indicator={indicator}
+              valueField={valueField}
+              velocityFieldName={velocityField}
+              thresholds={thresholds}
+              useBbox={useBbox}
+              showZones={showZones}
+              zoneEpsM={zoneEpsM}
+              zoneMinPts={zoneMinPts}
+              chainageBinSize={chainageBinSize}
+              chainageMaxDistance={chainageMaxDistance}
+              onSummaryChange={setRiskSummary}
+              onStatsChange={setRiskStats}
+              onZonesChange={setZonesPanel}
+              focusId={focusId}
+              focusZoneId={focusZoneId}
+              onSelectedChange={setSelectedPoint}
+            />
+          ) : (
+            <div className="relative h-full w-full">
+              {location.protocol === 'https:' ? (
+                <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-slate-400">
+                  <span className="text-sm">HTTPS 环境下无法加载外部地图服务</span>
+                  <a
+                    href="http://47.96.7.238:38089/mapLayer"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm text-cyan-400 hover:text-cyan-300"
+                  >
+                    在新标签页中打开地图
+                  </a>
+                </div>
+              ) : (
+                <iframe
+                  title="insar-map"
+                  src="http://47.96.7.238:38089/mapLayer"
+                  allowFullScreen
+                  className="h-full w-full border-none"
+                />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 风险概览侧边栏 */}
+        <div className="w-80 shrink-0 border-l border-slate-700 bg-slate-900 p-4 overflow-y-auto">
+          <h3 className="mb-4 text-base font-semibold text-white">风险概览</h3>
+
+          {/* 风险统计徽章 */}
+          <div className="mb-4 flex flex-col gap-2">
+            <div className="flex items-center justify-between rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2">
+              <span className="text-sm text-white">危险</span>
+              <span className="text-xl font-bold text-red-400">{riskSummary.danger}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-2">
+              <span className="text-sm text-white">预警</span>
+              <span className="text-xl font-bold text-orange-400">{riskSummary.warning}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2">
+              <span className="text-sm text-white">正常</span>
+              <span className="text-xl font-bold text-green-400">{riskSummary.normal}</span>
+            </div>
+          </div>
+
+          <div className="mb-3 text-xs text-slate-300">
+            总点数：{riskSummary.total}
+          </div>
+
+          {/* 高风险点列表 */}
+          {riskSummary.top.length > 0 && (
+            <div>
+              <h4 className="mb-2 text-sm font-semibold text-white">
+                高风险点 (Top {Math.min(5, riskSummary.top.length)})
+              </h4>
+              <div className="flex flex-col gap-2">
+                {riskSummary.top.slice(0, 5).map((p) => {
+                  const isDanger = p.risk === 'danger'
+                  const color = isDanger ? 'red' : 'orange'
+                  const label = isDanger ? '危险' : '预警'
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setMode('native')
+                        setIndicator('threshold')
+                        setFocusId(null)
+                        window.setTimeout(() => setFocusId(p.id), 0)
+                      }}
+                      className={`flex items-center gap-2 rounded-lg border border-${color}-500/30 bg-slate-800 px-3 py-2 text-left text-white hover:bg-slate-700`}
+                    >
+                      <span className={`shrink-0 text-xs font-bold text-${color}-400`}>
+                        {label}
+                      </span>
+                      <span className="flex-1 truncate text-sm font-medium">
+                        {p.id || '未命名'}
+                      </span>
+                      <span className={`shrink-0 text-xs text-${color}-400`}>
+                        {p.velocity.toFixed(2)} mm/年
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 危险区列表 */}
+          {showZones && zonesPanel?.top?.length > 0 && (
+            <div className="mt-4">
+              <h4 className="mb-2 text-sm font-semibold text-white">
+                高风险区 (Top {Math.min(5, zonesPanel.top.length)})
+              </h4>
+              <div className="flex flex-col gap-2">
+                {zonesPanel.top.slice(0, 5).map((z) => {
+                  const isDanger = z.level === 'danger'
+                  const isUplift = z.direction === 'uplift'
+                  const color = isUplift
+                    ? (isDanger ? 'purple' : 'blue')
+                    : (isDanger ? 'red' : 'orange')
+                  const dirLabel = isUplift ? '抬升' : '沉降'
+                  const lvlLabel = isDanger ? '显著' : '轻微'
+                  const label = `${dirLabel}${lvlLabel}区`
+                  return (
+                    <button
+                      key={z.id}
+                      type="button"
+                      onClick={() => {
+                        setMode('native')
+                        setIndicator('threshold')
+                        if (!showZones) setShowZones(true)
+                        setFocusId(null)
+                        setFocusZoneId(null)
+                        window.setTimeout(() => setFocusZoneId(z.id), 0)
+                      }}
+                      className={`flex items-center gap-2 rounded-lg border border-${color}-500/30 bg-slate-800 px-3 py-2 text-left text-white hover:bg-slate-700`}
+                    >
+                      <span className={`shrink-0 text-xs font-bold text-${color}-400`}>
+                        {label}
+                      </span>
+                      <span className="flex-1 truncate text-sm font-medium">
+                        {z.id}
+                      </span>
+                      <span className={`shrink-0 text-xs text-${color}-400`}>
+                        {z.min_velocity === null ? '—' : `${z.min_velocity.toFixed(2)} mm/年`}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 设置抽屉 - 暂时占位，下一步实现 */}
+      {showSettings && (
+        <div className="fixed right-0 top-0 z-50 h-full w-96 transform border-l border-slate-700 bg-slate-900 shadow-2xl transition-transform duration-300">
+          <div className="flex h-full flex-col">
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-700 p-4">
+              <h3 className="text-base font-semibold text-white">设置</h3>
+              <button
+                type="button"
+                onClick={() => setShowSettings(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <i className="fas fa-times" />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              <p className="text-sm text-slate-300">设置内容将在下一步实现</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 旧的 tab 内容 - 暂时保留用于过渡 */}
+      <div style={{ display: 'none' }}>
         {tab === 'ops' ? (
           <>
             <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, border: '1px solid rgba(64,174,255,.25)', background: 'rgba(10,25,47,.55)' }}>
@@ -1965,6 +2081,7 @@ export default function Insar() {
           )}
         </div> : null
       )}
+      </div>
     </div>
   )
 }
