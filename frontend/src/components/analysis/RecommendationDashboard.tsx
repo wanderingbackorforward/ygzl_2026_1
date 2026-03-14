@@ -26,7 +26,7 @@ export const RecommendationDashboard: React.FC = () => {
       // 使用支持自动降级的 API 客户端
       const result = await fetchRecommendations(pointIds);
 
-      if (result.success && result.recommendations && Array.isArray(result.recommendations)) {
+      if (result.recommendations && Array.isArray(result.recommendations)) {
         // 转换为 Recommendation 类型
         const allRecommendations: Recommendation[] = result.recommendations.map((item: any) => ({
           id: item.id,
