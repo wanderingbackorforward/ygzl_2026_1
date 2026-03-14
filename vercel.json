@@ -6,7 +6,7 @@
   "functions": {
     "api/index.py": {
       "maxDuration": 60,
-      "includeFiles": "frontend/public/static/data/insar/**"
+      "includeFiles": "backend/**/*.py,frontend/public/static/data/insar/**"
     }
   },
   "headers": [
