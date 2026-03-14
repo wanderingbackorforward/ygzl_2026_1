@@ -8,6 +8,14 @@ export const SafetyScoreGaugeCard: React.FC<CardComponentProps> = () => {
   const { summary, loading, error } = useOverview();
   const safetyScore = summary?.safety_score ?? 0;
 
+  const grade = useMemo(() => {
+    if (safetyScore >= 90) return { text: '优秀', color: '#22c55e' };
+    if (safetyScore >= 80) return { text: '良好', color: '#00e5ff' };
+    if (safetyScore >= 60) return { text: '一般', color: '#eab308' };
+    if (safetyScore >= 40) return { text: '较差', color: '#f97316' };
+    return { text: '危险', color: '#ef4444' };
+  }, [safetyScore]);
+
   const option = useMemo((): EChartsOption => {
     return {
       series: [
@@ -18,32 +26,33 @@ export const SafetyScoreGaugeCard: React.FC<CardComponentProps> = () => {
           min: 0,
           max: 100,
           splitNumber: 5,
-          center: ['50%', '70%'],
+          center: ['50%', '68%'],
           radius: '100%',
           axisLine: {
             lineStyle: {
               width: 10,
               color: [
-                [0.6, '#ff4d4f'],
-                [0.8, '#faad14'],
-                [1, '#00e5ff'],
+                [0.4, '#ef4444'],
+                [0.6, '#f97316'],
+                [0.8, '#eab308'],
+                [1, '#22c55e'],
               ],
             },
           },
           pointer: { length: '50%', width: 4, itemStyle: { color: 'auto' } },
           axisTick: { show: false },
           splitLine: { length: 12, lineStyle: { color: 'auto', width: 2 } },
-          axisLabel: { color: '#8ba0b6', fontSize: 10, distance: -40 },
-          title: { offsetCenter: [0, '-20%'], fontSize: 18, color: '#fff' },
+          axisLabel: { color: '#fff', fontSize: 10, distance: -40 },
+          title: { show: false },
           detail: {
-            fontSize: 36,
-            offsetCenter: [0, '0%'],
+            fontSize: 32,
+            offsetCenter: [0, '-5%'],
             valueAnimation: true,
             formatter: '{value}',
             color: '#fff',
-            fontFamily: 'Impact',
+            fontWeight: 700,
           },
-          data: [{ value: safetyScore, name: '安全评分' }],
+          data: [{ value: safetyScore }],
         },
       ],
     };
@@ -51,8 +60,16 @@ export const SafetyScoreGaugeCard: React.FC<CardComponentProps> = () => {
 
   if (error) return <div className="dashboard-card__error">{error}</div>;
   return (
-    <div className="dashboard-card__chart">
-      <EChartsWrapper option={option} loading={loading} />
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <EChartsWrapper option={option} loading={loading} />
+      </div>
+      <div style={{ textAlign: 'center', padding: '0 8px 8px', flexShrink: 0 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: grade.color }}>{grade.text}</div>
+        <div style={{ fontSize: 12, color: '#e2e8f0', marginTop: 2 }}>
+          综合沉降、裂缝、温度、振动数据计算
+        </div>
+      </div>
     </div>
   );
 };

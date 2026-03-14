@@ -35,23 +35,33 @@ export const CracksOverviewCard: React.FC<CardComponentProps> = () => {
   }, [summary]);
 
   if (error) return <div className="dashboard-card__error">{error}</div>;
+
+  const critical = summary?.cracks?.critical_count ?? 0;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: '100%' }}>
-      <div className="stats-panel">
-        <div className="stat-item">
-          <div className="stat-item__label">监测点</div>
-          <div className="stat-item__value">{summary?.cracks?.total_points ?? 0}</div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr',
+        gap: 4, padding: '6px 10px', flexShrink: 0,
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ color: '#fff', fontSize: 12 }}>监测点</div>
+          <div style={{ color: '#00e5ff', fontSize: 18, fontWeight: 700 }}>{summary?.cracks?.total_points ?? 0}</div>
         </div>
-        <div className="stat-item">
-          <div className="stat-item__label">扩展</div>
-          <div className="stat-item__value stat-item__value--warning">{summary?.cracks?.expanding_count ?? 0}</div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ color: '#fff', fontSize: 12 }}>严重</div>
+          <div style={{ color: critical > 0 ? '#ef4444' : '#22c55e', fontSize: 18, fontWeight: 700 }}>{critical}</div>
         </div>
-        <div className="stat-item">
-          <div className="stat-item__label">稳定</div>
-          <div className="stat-item__value stat-item__value--success">{summary?.cracks?.stable_count ?? 0}</div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ color: '#fff', fontSize: 12 }}>扩展</div>
+          <div style={{ color: '#f97316', fontSize: 18, fontWeight: 700 }}>{summary?.cracks?.expanding_count ?? 0}</div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ color: '#fff', fontSize: 12 }}>稳定</div>
+          <div style={{ color: '#22c55e', fontSize: 18, fontWeight: 700 }}>{summary?.cracks?.stable_count ?? 0}</div>
         </div>
       </div>
-      <div className="dashboard-card__chart" style={{ minHeight: 180 }}>
+      <div style={{ flex: 1, minHeight: 0 }}>
         <EChartsWrapper option={option} loading={loading} />
       </div>
     </div>
