@@ -140,9 +140,14 @@ except Exception as e:
     ENSEMBLE_AVAILABLE = False
 
 # Lightweight fallbacks (sklearn-only, always available on Vercel)
-from modules.ml_models.lightweight_deep import (
-    LightweightInformer, LightweightSTGCN, LightweightPINN, LightweightEnsemble
-)
+try:
+    from modules.ml_models.lightweight_deep import (
+        LightweightInformer, LightweightSTGCN, LightweightPINN, LightweightEnsemble
+    )
+    LIGHTWEIGHT_AVAILABLE = True
+except Exception as e:
+    print(f"[Info] Lightweight deep models unavailable: {e}")
+    LIGHTWEIGHT_AVAILABLE = False
 
 try:
     from modules.ml_models.explainability import ExplainabilityAnalyzer, SHAP_AVAILABLE, LightweightExplainer, build_settlement_features
@@ -652,12 +657,13 @@ def api_predict_informer(point_id):
 
         if not INFORMER_AVAILABLE:
             # Use lightweight alternative with real data
-            df = fetch_point_settlement(point_id)
-            if len(df) >= 15:
-                lw = LightweightInformer()
-                r = lw.predict(df, point_id, steps)
-                r['model_info'] = {'model_type': 'lightweight_informer', 'seq_len': seq_len, 'pred_len': steps}
-                return jsonify(r)
+            if LIGHTWEIGHT_AVAILABLE:
+                df = fetch_point_settlement(point_id)
+                if len(df) >= 15:
+                    lw = LightweightInformer()
+                    r = lw.predict(df, point_id, steps)
+                    r['model_info'] = {'model_type': 'lightweight_informer', 'seq_len': seq_len, 'pred_len': steps}
+                    return jsonify(r)
             r = _mock_prediction(point_id, steps, 'informer')
             r['model_info'] = {'model_type': 'informer', 'seq_len': seq_len, 'pred_len': steps, 'd_model': 512, 'n_heads': 8}
             return jsonify(r)
@@ -752,12 +758,14 @@ def api_predict_stgcn():
     try:
         if not STGCN_AVAILABLE:
             # Use lightweight alternative with real data
-            try:
-                lw = LightweightSTGCN()
-                r = lw.predict(None, steps)
-                return jsonify(r)
-            except Exception:
-                return jsonify(_mock_stgcn(steps))
+            if LIGHTWEIGHT_AVAILABLE:
+                try:
+                    lw = LightweightSTGCN()
+                    r = lw.predict(None, steps)
+                    return jsonify(r)
+                except Exception:
+                    pass
+            return jsonify(_mock_stgcn(steps))
 
         steps = int(request.args.get('steps', 30))
         seq_len = int(request.args.get('seq_len', 60))
@@ -866,10 +874,11 @@ def api_predict_pinn(point_id):
     """
     try:
         if not PINN_AVAILABLE:
-            df = fetch_point_settlement(point_id)
-            if len(df) >= 15:
-                lw = LightweightPINN()
-                return jsonify(lw.predict(df, point_id, steps, 0.1))
+            if LIGHTWEIGHT_AVAILABLE:
+                df = fetch_point_settlement(point_id)
+                if len(df) >= 15:
+                    lw = LightweightPINN()
+                    return jsonify(lw.predict(df, point_id, steps, 0.1))
             return jsonify(_mock_prediction(point_id, steps, 'pinn'))
 
         steps = int(request.args.get('steps', 30))
@@ -972,10 +981,11 @@ def api_predict_ensemble(point_id):
     """
     try:
         if not ENSEMBLE_AVAILABLE:
-            df = fetch_point_settlement(point_id)
-            if len(df) >= 15:
-                lw = LightweightEnsemble()
-                return jsonify(lw.predict(df, point_id, steps))
+            if LIGHTWEIGHT_AVAILABLE:
+                df = fetch_point_settlement(point_id)
+                if len(df) >= 15:
+                    lw = LightweightEnsemble()
+                    return jsonify(lw.predict(df, point_id, steps))
             return jsonify(_mock_prediction(point_id, steps, 'ensemble'))
 
         steps = int(request.args.get('steps', 30))
