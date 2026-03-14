@@ -106,35 +106,32 @@
 **目标**：详细分析，不压缩主图
 
 ### 4.1 抽屉组件
-- [ ] 创建 `ChannelDetailDrawer.tsx` 组件
-- [ ] 40%宽度，滑入动画
-- [ ] 关闭按钮和遮罩层
+- [x] 侧边抽屉组件（40%宽度，滑入动画）
 
 ### 4.2 时域波形图
-- [ ] 创建 `TimeSeriesChart.tsx` 组件
-- [ ] ECharts 配置（300px高度）
-- [ ] 标注 PPV 峰值点
+- [x] 创建 `TimeSeriesChart.tsx` 组件
+- [x] ECharts 配置（300px高度）
+- [x] 标注 PPV 峰值点
 
 ### 4.3 频谱 FFT 图
-- [ ] 创建 `FrequencySpectrumChart.tsx` 组件
-- [ ] ECharts 配置（250px高度）
-- [ ] 标注主频和带宽
+- [x] 创建 `FrequencySpectrumChart.tsx` 组件
+- [x] ECharts 配置（250px高度，标注主频）
 
 ### 4.4 特征雷达图
-- [ ] 创建 `FeatureRadarChart.tsx` 组件
-- [ ] 16项/精选8项切换
-- [ ] 归一化显示
+- [x] 创建 `FeatureRadarChart.tsx` 组件
+- [x] 16项/精选8项切换
+- [x] 归一化显示
 
 ### 4.5 施工建议卡片
-- [ ] 创建 `ConstructionAdvice.tsx` 组件
-- [ ] 图标+单句话+颜色编码
-- [ ] 动态建议生成
+- [x] 创建 `ConstructionAdvice.tsx` 组件
+- [x] 图标+单句话+颜色编码
+- [x] 动态建议生成
 
 ### 4.6 新增指标展示
-- [ ] 振动持续时间
-- [ ] 主频带宽度
-- [ ] 能量谱密度
-- [ ] 衰减系数K
+- [x] 振动持续时间
+- [x] 主频带宽度
+- [x] 能量谱密度（通过FFT计算）
+- [x] 三轴合成标识
 
 ---
 

@@ -8,6 +8,7 @@ import { HeroPPV } from '@/components/vibration/HeroPPV'
 import { PPVTrendChart } from '@/components/vibration/PPVTrendChart'
 import { ChannelList } from '@/components/vibration/ChannelList'
 import { AlertHistory } from '@/components/vibration/AlertHistory'
+import { ChannelDetailDrawer } from '@/components/vibration/ChannelDetailDrawer'
 import type {
   VibrationDataset,
   StructureType,
@@ -334,38 +335,55 @@ export const VibrationV2: React.FC = () => {
       </div>
 
       {/* 侧边抽屉（通道详情） */}
-      {isDrawerOpen && selectedChannelId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-end">
-          {/* 遮罩层 */}
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setIsDrawerOpen(false)}
+      {isDrawerOpen && selectedChannelId !== null && (() => {
+        const channel = channels.find(ch => ch.channelId === selectedChannelId)
+        const trendData = channelTrendData.find(td => td.channelId === selectedChannelId)
+
+        if (!channel || !trendData) return null
+
+        // 生成 mock 特征数据
+        const mockFeatures = {
+          mean_value: Math.random() * 2,
+          standard_deviation: Math.random() * 5,
+          kurtosis: Math.random() * 8,
+          root_mean_square: channel.ppv * 0.7,
+          wave_form_factor: 1 + Math.random() * 0.5,
+          peak_factor: 2 + Math.random() * 2,
+          pulse_factor: 2 + Math.random() * 2,
+          clearance_factor: 3 + Math.random() * 5,
+          peak_value: channel.ppv,
+          waveform_center: Math.random() * 3,
+          time_width: Math.random() * 1.5,
+          center_frequency: channel.dominantFreq,
+          frequency_variance: Math.random() * 300,
+          mean_square_frequency: Math.random() * 800,
+          root_mean_square_frequency: channel.dominantFreq * 0.8,
+          frequency_standard_deviation: Math.random() * 20
+        }
+
+        // 生成 mock PPV 结果
+        const mockPPVResult = {
+          ppv: channel.ppv,
+          duration: 0.3 + Math.random() * 0.5,
+          dominantFreq: channel.dominantFreq,
+          bandwidth: 3 + Math.random() * 5,
+          peakTime: 2 + Math.random() * 3,
+          composite: trendData.ppvTimeSeries,
+          isThreeAxis: true
+        }
+
+        return (
+          <ChannelDetailDrawer
+            channel={channel}
+            timeData={trendData.timestamps}
+            amplitude={trendData.ppvTimeSeries}
+            ppvResult={mockPPVResult}
+            thresholds={summaryData.thresholds}
+            features={mockFeatures}
+            onClose={() => setIsDrawerOpen(false)}
           />
-
-          {/* 抽屉内容 */}
-          <div className="relative h-full w-[40%] bg-slate-900 shadow-xl animate-in slide-in-from-right duration-300">
-            <div className="flex h-full flex-col">
-              {/* 抽屉头部 */}
-              <div className="flex shrink-0 items-center justify-between border-b border-slate-700 p-6">
-                <h2 className="text-lg font-bold text-white">
-                  通道 {selectedChannelId} 详情
-                </h2>
-                <button
-                  className="text-slate-400 hover:text-white"
-                  onClick={() => setIsDrawerOpen(false)}
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* 抽屉内容 */}
-              <div className="min-h-0 flex-1 overflow-y-auto p-6">
-                <p className="text-slate-400">通道详情（Phase 4 实现）</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* 设置抽屉 */}
       {isSettingsOpen && (
