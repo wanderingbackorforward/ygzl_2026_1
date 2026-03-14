@@ -19,7 +19,7 @@ export const KnowledgeGraphDashboard: React.FC = () => {
   const [qaQuestion, setQaQuestion] = useState('');
 
   // Auto-insights: proactively answer key questions for the user
-  const [insights, setInsights] = useState<Array<{ q: string; a: any; loading: boolean }>>([]);
+  const [insights, setInsights] = useState<Array<{ q: string; a: any; loading: boolean; category?: string; icon?: string; color?: string }>>([]);
   const insightsLoaded = useRef(false);
 
   useEffect(() => {
@@ -41,31 +41,79 @@ export const KnowledgeGraphDashboard: React.FC = () => {
     if (!stats || stats.total_nodes === 0 || insightsLoaded.current) return;
     insightsLoaded.current = true;
 
-    const autoQuestions = [
-      { q: '哪些点位风险最高？', icon: 'exclamation-triangle', color: '#ef4444' },
-      { q: 'S3附近有哪些风险？', icon: 'map-marker-alt', color: '#fb923c' },
-      { q: '沉降控制措施有哪些？', icon: 'shield-alt', color: '#10b981' },
-      { q: '施工事件对沉降有什么影响？', icon: 'hard-hat', color: '#f59e0b' },
-      { q: '裂缝和沉降有什么关系？', icon: 'compress-alt', color: '#a78bfa' },
-      { q: '地下水对沉降有什么影响？', icon: 'water', color: '#38bdf8' },
-      { q: '哪些点位沉降超过预警阈值？', icon: 'bell', color: '#f87171' },
-      { q: '盾构施工如何影响地表沉降？', icon: 'cogs', color: '#06b6d4' },
+    const insightCategories = [
+      {
+        title: '风险预警', icon: 'exclamation-triangle', color: '#ef4444',
+        questions: [
+          '哪些点位风险最高？',
+          '哪些点位沉降超过预警阈值？',
+          '最近有哪些异常事件？',
+        ],
+      },
+      {
+        title: '施工影响', icon: 'hard-hat', color: '#f59e0b',
+        questions: [
+          '盾构施工如何影响地表沉降？',
+          '爆破振动对结构有什么影响？',
+          '基坑开挖对邻近建筑的影响？',
+        ],
+      },
+      {
+        title: '地质与环境', icon: 'mountain', color: '#38bdf8',
+        questions: [
+          '地下水对沉降有什么影响？',
+          '软土地基沉降有什么特征？',
+          '温度变化对监测数据有什么影响？',
+        ],
+      },
+      {
+        title: '控制与处置', icon: 'shield-alt', color: '#10b981',
+        questions: [
+          '沉降控制措施有哪些？',
+          '裂缝和沉降有什么关系？',
+          '注浆加固效果如何？',
+        ],
+      },
+      {
+        title: '监测技术', icon: 'satellite-dish', color: '#a78bfa',
+        questions: [
+          '监测数据异常值如何识别？',
+          '多源数据融合有什么优势？',
+          '沉降监测自动化系统怎么设计？',
+        ],
+      },
+      {
+        title: '规范标准', icon: 'book-open', color: '#06b6d4',
+        questions: [
+          '沉降监测规范有哪些要求？',
+          '监测点位如何优化布设？',
+          '沉降速率阈值如何动态调整？',
+        ],
+      },
     ];
 
-    setInsights(autoQuestions.map(aq => ({ q: aq.q, a: null, loading: true })));
+    // Flatten all questions with category info
+    const allQuestions = insightCategories.flatMap(cat =>
+      cat.questions.map(q => ({ q, category: cat.title, icon: cat.icon, color: cat.color }))
+    );
 
-    autoQuestions.forEach((aq, idx) => {
-      fetchKGQA(aq.q)
-        .then(result => {
-          setInsights(prev => prev.map((item, i) =>
-            i === idx ? { ...item, a: result, loading: false } : item
-          ));
-        })
-        .catch(() => {
-          setInsights(prev => prev.map((item, i) =>
-            i === idx ? { ...item, a: null, loading: false } : item
-          ));
-        });
+    setInsights(allQuestions.map(aq => ({ q: aq.q, a: null, loading: true, category: aq.category, icon: aq.icon, color: aq.color })));
+
+    allQuestions.forEach((aq, idx) => {
+      // Stagger requests to avoid overloading
+      setTimeout(() => {
+        fetchKGQA(aq.q)
+          .then(result => {
+            setInsights(prev => prev.map((item, i) =>
+              i === idx ? { ...item, a: result, loading: false } : item
+            ));
+          })
+          .catch(() => {
+            setInsights(prev => prev.map((item, i) =>
+              i === idx ? { ...item, a: null, loading: false } : item
+            ));
+          });
+      }, idx * 200); // 200ms stagger
     });
   }, [stats]);
 
@@ -151,60 +199,55 @@ export const KnowledgeGraphDashboard: React.FC = () => {
         <StatCard label="异常发现" value={anomalyCount} icon="exclamation-triangle" color="#ef4444" />
       </div>
 
-      {/* Auto-insights: proactively show answers, user doesn't need to ask */}
+      {/* Auto-insights: grouped by category */}
       {insights.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <i className="fas fa-lightbulb" style={{ color: '#facc15' }} />
             智能洞察
+            <span style={{ fontSize: '13px', fontWeight: 'normal', color: '#e2e8f0' }}>
+              — 基于 {docCount} 篇文献自动分析
+            </span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
-            {insights.map((insight, idx) => {
-              const autoQ = [
-                { icon: 'exclamation-triangle', color: '#ef4444' },
-                { icon: 'map-marker-alt', color: '#fb923c' },
-                { icon: 'shield-alt', color: '#10b981' },
-                { icon: 'hard-hat', color: '#f59e0b' },
-                { icon: 'compress-alt', color: '#a78bfa' },
-                { icon: 'water', color: '#38bdf8' },
-                { icon: 'bell', color: '#f87171' },
-                { icon: 'cogs', color: '#06b6d4' },
-              ];
-              const ic = autoQ[idx] || { icon: 'info-circle', color: '#4a9eff' };
-              return (
-                <div key={idx} style={{
-                  padding: '14px 16px', backgroundColor: 'rgba(30,30,50,0.8)', borderRadius: '8px',
-                  border: `1px solid ${ic.color}33`, display: 'flex', flexDirection: 'column', gap: '8px',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <i className={`fas fa-${ic.icon}`} style={{ color: ic.color, fontSize: '14px' }} />
-                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff' }}>{insight.q}</span>
-                  </div>
-                  {insight.loading ? (
-                    <div style={{ fontSize: '13px', color: '#e2e8f0' }}>
-                      <i className="fas fa-spinner fa-spin" style={{ marginRight: '6px' }} />分析中...
-                    </div>
-                  ) : insight.a?.answer ? (
-                    <div style={{ fontSize: '13px', color: '#e2e8f0', lineHeight: '1.6', whiteSpace: 'pre-wrap', maxHeight: '80px', overflow: 'hidden' }}>
-                      {insight.a.answer.split('\n').filter((l: string) => l.trim() && !l.startsWith('---')).slice(0, 3).join('\n')}
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '13px', color: '#e2e8f0' }}>暂无数据</div>
-                  )}
-                  {insight.a?.sources && insight.a.sources.length > 0 && (
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                      {insight.a.sources.slice(0, 2).map((s: string, si: number) => (
-                        <span key={si} style={{
-                          padding: '2px 8px', backgroundColor: 'rgba(74,158,255,0.12)',
-                          borderRadius: '10px', fontSize: '13px', color: '#fff',
-                        }}>{s === 'knowledge_graph' ? '知识图谱' : s.length > 10 ? s.slice(0, 10) + '...' : s}</span>
-                      ))}
-                    </div>
-                  )}
+          {(() => {
+            // Group insights by category
+            const groups: Record<string, typeof insights> = {};
+            insights.forEach(item => {
+              const cat = item.category || '其他';
+              if (!groups[cat]) groups[cat] = [];
+              groups[cat].push(item);
+            });
+            return Object.entries(groups).map(([catName, items]) => (
+              <div key={catName} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
+                  <i className={`fas fa-${items[0]?.icon || 'folder'}`} style={{ color: items[0]?.color || '#4a9eff', fontSize: '14px' }} />
+                  <span style={{ fontSize: '14px', fontWeight: 'bold', color: items[0]?.color || '#fff' }}>{catName}</span>
                 </div>
-              );
-            })}
-          </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
+                  {items.map((insight, idx) => (
+                    <div key={idx} style={{
+                      padding: '12px 14px', backgroundColor: 'rgba(30,30,50,0.8)', borderRadius: '8px',
+                      borderLeft: `3px solid ${insight.color || '#4a9eff'}`,
+                      display: 'flex', flexDirection: 'column', gap: '6px',
+                    }}>
+                      <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff' }}>{insight.q}</div>
+                      {insight.loading ? (
+                        <div style={{ fontSize: '13px', color: '#e2e8f0' }}>
+                          <i className="fas fa-spinner fa-spin" style={{ marginRight: '6px' }} />分析中...
+                        </div>
+                      ) : insight.a?.answer ? (
+                        <div style={{ fontSize: '13px', color: '#e2e8f0', lineHeight: '1.6', whiteSpace: 'pre-wrap', maxHeight: '72px', overflow: 'hidden' }}>
+                          {insight.a.answer.split('\n').filter((l: string) => l.trim() && !l.startsWith('---')).slice(0, 2).join('\n')}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '13px', color: '#e2e8f0' }}>暂无相关文献数据</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ));
+          })()}
         </div>
       )}
 
