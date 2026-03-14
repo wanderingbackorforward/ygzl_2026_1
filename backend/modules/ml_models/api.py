@@ -1316,6 +1316,90 @@ def api_kgqa_ask():
 
 
 # =========================================================
+# 13.5 知识图谱文献管理API
+# =========================================================
+
+@ml_api.route('/kg/documents', methods=['GET'])
+def api_kg_list_documents():
+    """List all documents in the knowledge base."""
+    try:
+        limit = int(request.args.get('limit', 50))
+        offset = int(request.args.get('offset', 0))
+        kg = SupabaseKnowledgeGraph()
+        return jsonify(kg.list_documents(limit, offset))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@ml_api.route('/kg/documents', methods=['POST'])
+def api_kg_add_document():
+    """Add a new document to the knowledge base."""
+    try:
+        data = request.get_json()
+        title = data.get('title', '').strip()
+        content = data.get('content', '').strip()
+        source_type = data.get('source_type', 'text')
+        source_url = data.get('source_url', '')
+
+        if not title:
+            return jsonify({'success': False, 'message': 'Missing title'}), 400
+        if not content:
+            return jsonify({'success': False, 'message': 'Missing content'}), 400
+
+        kg = SupabaseKnowledgeGraph()
+        result = kg.add_document(title, content, source_type, source_url)
+
+        # Auto-process after upload
+        if result.get('success') and result.get('document_id'):
+            proc = kg.process_document(result['document_id'])
+            result['processing'] = proc
+
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@ml_api.route('/kg/documents/<doc_id>', methods=['GET'])
+def api_kg_get_document(doc_id):
+    """Get a single document by ID."""
+    try:
+        kg = SupabaseKnowledgeGraph()
+        return jsonify(kg.get_document(doc_id))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@ml_api.route('/kg/documents/<doc_id>', methods=['DELETE'])
+def api_kg_delete_document(doc_id):
+    """Delete a document and its extracted entities."""
+    try:
+        kg = SupabaseKnowledgeGraph()
+        return jsonify(kg.delete_document(doc_id))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@ml_api.route('/kg/documents/<doc_id>/process', methods=['POST'])
+def api_kg_process_document(doc_id):
+    """Re-process a document to extract entities and relations."""
+    try:
+        kg = SupabaseKnowledgeGraph()
+        return jsonify(kg.process_document(doc_id))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# =========================================================
 # 14. 因果推理API
 # =========================================================
 

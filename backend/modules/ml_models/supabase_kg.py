@@ -364,3 +364,300 @@ class SupabaseKnowledgeGraph:
             'sources': ['supabase_knowledge_graph', 'networkx_analysis'],
             'confidence': 0.8,
         }
+
+    # ---- Document Management ----
+
+    def list_documents(self, limit: int = 50, offset: int = 0) -> Dict:
+        """List uploaded documents."""
+        try:
+            url = (f"{_base_url()}/rest/v1/kg_documents"
+                   f"?select=id,title,source_type,source_url,file_size,"
+                   f"processed,entity_count,relation_count,uploaded_at,processed_at"
+                   f"&order=uploaded_at.desc&limit={limit}&offset={offset}")
+            r = requests.get(url, headers=_headers(), timeout=10)
+            r.raise_for_status()
+            docs = r.json()
+
+            # Get total count
+            h = _headers()
+            h['Prefer'] = 'count=exact'
+            h['Range-Unit'] = 'items'
+            h['Range'] = '0-0'
+            r2 = requests.get(
+                f"{_base_url()}/rest/v1/kg_documents?select=id",
+                headers=h, timeout=10,
+            )
+            total = 0
+            cr = r2.headers.get('content-range', '')
+            if '/' in cr:
+                try:
+                    total = int(cr.split('/')[1])
+                except (ValueError, IndexError):
+                    total = len(docs)
+            else:
+                total = len(docs)
+
+            return {'success': True, 'documents': docs, 'total': total}
+        except Exception as ex:
+            print(f"[KG] list_documents failed: {ex}")
+            return {'success': False, 'message': str(ex), 'documents': [], 'total': 0}
+
+    def add_document(self, title: str, content: str,
+                     source_type: str = 'text', source_url: str = '') -> Dict:
+        """Add a new document to the knowledge base."""
+        try:
+            doc = {
+                'title': title,
+                'content': content,
+                'source_type': source_type,
+                'source_url': source_url,
+                'file_size': len(content.encode('utf-8')) if content else 0,
+                'processed': False,
+            }
+            r = requests.post(
+                f"{_base_url()}/rest/v1/kg_documents",
+                headers=_headers(), json=doc, timeout=10,
+            )
+            r.raise_for_status()
+            created = r.json()
+            doc_id = created[0]['id'] if isinstance(created, list) else created.get('id')
+            return {'success': True, 'document_id': doc_id, 'message': 'Document added'}
+        except Exception as ex:
+            print(f"[KG] add_document failed: {ex}")
+            return {'success': False, 'message': str(ex)}
+
+    def get_document(self, doc_id: str) -> Dict:
+        """Get a single document by ID."""
+        try:
+            r = requests.get(
+                f"{_base_url()}/rest/v1/kg_documents?id=eq.{doc_id}&select=*",
+                headers=_headers(), timeout=10,
+            )
+            r.raise_for_status()
+            docs = r.json()
+            if not docs:
+                return {'success': False, 'message': 'Document not found'}
+            return {'success': True, 'document': docs[0]}
+        except Exception as ex:
+            print(f"[KG] get_document failed: {ex}")
+            return {'success': False, 'message': str(ex)}
+
+    def delete_document(self, doc_id: str) -> Dict:
+        """Delete a document and its extracted entities/relations."""
+        try:
+            # 1. Delete document-entity links
+            requests.delete(
+                f"{_base_url()}/rest/v1/kg_document_entities?document_id=eq.{doc_id}",
+                headers=_headers(), timeout=10,
+            )
+            # 2. Delete nodes from this document
+            requests.delete(
+                f"{_base_url()}/rest/v1/kg_edges?document_id=eq.{doc_id}",
+                headers=_headers(), timeout=10,
+            )
+            requests.delete(
+                f"{_base_url()}/rest/v1/kg_nodes?document_id=eq.{doc_id}",
+                headers=_headers(), timeout=10,
+            )
+            # 3. Delete the document itself
+            r = requests.delete(
+                f"{_base_url()}/rest/v1/kg_documents?id=eq.{doc_id}",
+                headers=_headers(), timeout=10,
+            )
+            r.raise_for_status()
+            # Invalidate cache so next query reloads
+            self._loaded = False
+            self.G.clear()
+            return {'success': True, 'message': 'Document deleted'}
+        except Exception as ex:
+            print(f"[KG] delete_document failed: {ex}")
+            return {'success': False, 'message': str(ex)}
+
+    def process_document(self, doc_id: str) -> Dict:
+        """Extract entities and relations from a document using rule-based NLP.
+        Falls back to simple keyword extraction (no LLM dependency).
+        """
+        try:
+            import re as _re
+
+            # 1. Fetch document content
+            doc_result = self.get_document(doc_id)
+            if not doc_result.get('success'):
+                return doc_result
+            doc = doc_result['document']
+            content = doc.get('content', '')
+            if not content:
+                return {'success': False, 'message': 'Document has no content'}
+
+            title = doc.get('title', '')
+
+            # 2. Rule-based entity extraction
+            entities = []
+            relations = []
+
+            # Extract monitoring point references (S1, S2, ...)
+            point_refs = set(_re.findall(r'\b(S\d{1,2})\b', content, _re.IGNORECASE))
+            for pid in point_refs:
+                pid_upper = pid.upper()
+                entities.append({
+                    'id': pid_upper,
+                    'node_type': 'MonitoringPoint',
+                    'label': pid_upper,
+                    'properties': {},
+                })
+
+            # Extract numeric values with units (e.g., "15mm", "3.5 mm/day")
+            measurements = _re.findall(
+                r'(\d+\.?\d*)\s*(mm|cm|m|mm/day|cm/day)', content, _re.IGNORECASE
+            )
+
+            # Extract keywords as concept entities
+            keyword_patterns = {
+                'settlement': ['settlement', 'subsidence', 'deformation',
+                               'sinking', 'heave'],
+                'crack': ['crack', 'fracture', 'fissure'],
+                'geology': ['clay', 'sand', 'rock', 'soil', 'groundwater',
+                            'karst', 'limestone', 'granite'],
+                'construction': ['excavation', 'blasting', 'tunneling',
+                                 'drilling', 'grouting', 'reinforcement'],
+                'risk': ['risk', 'danger', 'warning', 'alert', 'threshold',
+                         'critical', 'failure'],
+            }
+            # Also check Chinese keywords
+            cn_keyword_patterns = {
+                'settlement': ['沉降', '下沉', '变形', '隆起'],
+                'crack': ['裂缝', '裂纹', '开裂'],
+                'geology': ['粘土', '砂土', '岩石', '土壤', '地下水',
+                            '溶洞', '石灰岩', '花岗岩'],
+                'construction': ['开挖', '爆破', '盾构', '钻孔', '注浆', '加固'],
+                'risk': ['风险', '危险', '预警', '阈值', '临界', '破坏'],
+            }
+
+            content_lower = content.lower()
+            found_concepts = set()
+            for category, keywords in {**keyword_patterns, **cn_keyword_patterns}.items():
+                for kw in keywords:
+                    if kw.lower() in content_lower or kw in content:
+                        concept_id = f"concept_{category}"
+                        if concept_id not in found_concepts:
+                            found_concepts.add(concept_id)
+                            entities.append({
+                                'id': concept_id,
+                                'node_type': 'Concept',
+                                'label': category.capitalize(),
+                                'properties': {'category': category},
+                            })
+
+            # Create a document node
+            doc_node_id = f"doc_{doc_id[:8]}"
+            entities.append({
+                'id': doc_node_id,
+                'node_type': 'Document',
+                'label': title[:60] if title else 'Untitled',
+                'properties': {'doc_id': doc_id, 'source_type': doc.get('source_type', 'text')},
+            })
+
+            # 3. Build relations
+            # Document -> mentions -> entities
+            for ent in entities:
+                if ent['id'] != doc_node_id:
+                    relations.append({
+                        'source_id': doc_node_id,
+                        'target_id': ent['id'],
+                        'edge_type': 'MENTIONS',
+                        'properties': {},
+                        'confidence': 0.9,
+                    })
+
+            # Point-to-concept relations
+            for pid in point_refs:
+                pid_upper = pid.upper()
+                for concept_id in found_concepts:
+                    relations.append({
+                        'source_id': pid_upper,
+                        'target_id': concept_id,
+                        'edge_type': 'RELATED_TO',
+                        'properties': {'source': 'document_extraction'},
+                        'confidence': 0.7,
+                    })
+
+            # 4. Upsert entities to Supabase
+            h = _headers()
+            h['Prefer'] = 'resolution=merge-duplicates,return=representation'
+            node_rows = []
+            for ent in entities:
+                node_rows.append({
+                    'id': ent['id'],
+                    'node_type': ent['node_type'],
+                    'label': ent['label'],
+                    'properties': ent.get('properties', {}),
+                    'document_id': doc_id,
+                    'source': 'document',
+                })
+            if node_rows:
+                requests.post(f"{_base_url()}/rest/v1/kg_nodes",
+                              headers=h, json=node_rows, timeout=15)
+
+            # 5. Insert edges
+            edge_rows = []
+            for rel in relations:
+                edge_rows.append({
+                    'source_id': rel['source_id'],
+                    'target_id': rel['target_id'],
+                    'edge_type': rel['edge_type'],
+                    'properties': rel.get('properties', {}),
+                    'document_id': doc_id,
+                    'confidence': rel.get('confidence', 0.8),
+                })
+            if edge_rows:
+                requests.post(f"{_base_url()}/rest/v1/kg_edges",
+                              headers=_headers(), json=edge_rows, timeout=15)
+
+            # 6. Insert document-entity links
+            de_rows = []
+            for ent in entities:
+                if ent['id'] != doc_node_id:
+                    de_rows.append({
+                        'document_id': doc_id,
+                        'entity_id': ent['id'],
+                        'mention_count': 1,
+                    })
+            if de_rows:
+                h2 = _headers()
+                h2['Prefer'] = 'resolution=merge-duplicates'
+                requests.post(f"{_base_url()}/rest/v1/kg_document_entities",
+                              headers=h2, json=de_rows, timeout=15)
+
+            # 7. Generate summary (first 200 chars)
+            summary = content[:200].strip()
+            if len(content) > 200:
+                summary += '...'
+
+            # 8. Update document status
+            patch = {
+                'processed': True,
+                'entity_count': len(entities),
+                'relation_count': len(relations),
+                'summary': summary,
+                'processed_at': datetime.utcnow().isoformat(),
+            }
+            requests.patch(
+                f"{_base_url()}/rest/v1/kg_documents?id=eq.{doc_id}",
+                headers=_headers(), json=patch, timeout=10,
+            )
+
+            # Invalidate cache
+            self._loaded = False
+            self.G.clear()
+
+            return {
+                'success': True,
+                'document_id': doc_id,
+                'entities_extracted': len(entities),
+                'relations_extracted': len(relations),
+                'message': 'Document processed successfully',
+            }
+
+        except Exception as ex:
+            print(f"[KG] process_document failed: {ex}")
+            return {'success': False, 'message': str(ex)}

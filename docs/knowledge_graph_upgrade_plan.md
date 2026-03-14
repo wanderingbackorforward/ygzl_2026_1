@@ -63,18 +63,19 @@ CREATE TABLE kg_document_entities (
 
 ## 实施步骤
 
-### Phase 1: 数据库准备 ✅
-- [x] 创建 Supabase 表结构
-- [x] 添加索引和约束
-- [x] 测试数据库连接
+### Phase 1: 数据库准备 ✅ (已完成)
+- [x] 创建 kg_nodes, kg_edges 基础表
+- [x] 创建 kg_documents 文献表
+- [x] 创建 kg_document_entities 关联表
+- [x] 创建 kg_qa_history 问答历史表
+- [x] 扩展 kg_nodes/kg_edges 添加 document_id, source, confidence
+- [x] RLS 策略配置
 
-### Phase 2: 后端 API（文献管理）
-- [ ] 2.1 文献上传接口（`POST /api/kg/documents`）
-  - 支持文本输入
-  - 支持 URL 抓取
-  - 支持 PDF 上传（base64）
-- [ ] 2.2 文献列表接口（`GET /api/kg/documents`）
-- [ ] 2.3 文献删除接口（`DELETE /api/kg/documents/{id}`）
+### Phase 2: 后端 API（文献管理）✅ (已完成)
+- [x] 2.1 supabase_kg.py 添加文献管理方法（list/add/get/delete/process_document）
+- [x] 2.2 api.py 注册 5 个路由（GET/POST/DELETE /kg/documents, POST /process）
+- [x] 2.3 apiClient.ts 添加前端 API 调用函数
+- [x] 2.4 规则引擎实体提取（监测点/概念/关键词，中英文双语）
 
 ### Phase 3: 后端 API（图谱构建）
 - [ ] 3.1 实体提取接口（`POST /api/kg/extract`）

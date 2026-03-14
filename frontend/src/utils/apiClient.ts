@@ -383,6 +383,54 @@ export async function fetchKGQA(question: string) {
 }
 
 /**
+ * 知识图谱文献列表
+ */
+export async function fetchKGDocuments(limit = 50, offset = 0) {
+  return fetchWithFallback(
+    `${API_BASE}/ml/kg/documents?limit=${limit}&offset=${offset}`,
+    undefined,
+    () => ({ success: true, documents: [], total: 0 })
+  );
+}
+
+/**
+ * 添加文献到知识图谱
+ */
+export async function addKGDocument(title: string, content: string, sourceType = 'text', sourceUrl = '') {
+  return fetchWithFallback(
+    `${API_BASE}/ml/kg/documents`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, content, source_type: sourceType, source_url: sourceUrl }),
+    },
+    () => ({ success: false, message: 'API unavailable' })
+  );
+}
+
+/**
+ * 删除知识图谱文献
+ */
+export async function deleteKGDocument(docId: string) {
+  return fetchWithFallback(
+    `${API_BASE}/ml/kg/documents/${docId}`,
+    { method: 'DELETE' },
+    () => ({ success: false, message: 'API unavailable' })
+  );
+}
+
+/**
+ * 重新处理文献（提取实体和关系）
+ */
+export async function processKGDocument(docId: string) {
+  return fetchWithFallback(
+    `${API_BASE}/ml/kg/documents/${docId}/process`,
+    { method: 'POST' },
+    () => ({ success: false, message: 'API unavailable' })
+  );
+}
+
+/**
  * 多因素关联分析（温度-沉降-裂缝）
  */
 export async function fetchMultiFactorCorrelation() {
