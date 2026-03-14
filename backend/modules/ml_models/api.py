@@ -508,6 +508,9 @@ def api_spatial_correlation():
         distance_threshold: 距离阈值（米，默认50）
     """
     try:
+        # 延迟导入
+        from modules.ml_models.spatial_correlation import analyze_spatial_correlation
+
         distance_threshold = float(request.args.get('distance_threshold', 50.0))
 
         points_df = fetch_monitoring_points()
@@ -580,6 +583,9 @@ def api_event_impact():
         }
     """
     try:
+        # 延迟导入
+        from modules.ml_models.causal_inference import analyze_event_impact
+
         data = request.get_json()
         point_id = data.get('point_id')
         event_date = data.get('event_date')
