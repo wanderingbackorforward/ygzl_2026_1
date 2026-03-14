@@ -1,6 +1,6 @@
-# 沉降监测数字孪生系统（V1）
+# 隧道工程综合监测数字孪生系统（V1）
 
-面向市政/工程监测的数字孪生平台，集成沉降、裂缝、温度、振动、InSAR 等多源监测数据的采集、处理、智能分析与可视化。后端基于 Flask，前端基于 React + Vite + Tailwind CSS，数据库使用 Supabase (PostgreSQL)，部署于 Vercel。
+面向隧道及市政工程的综合监测数字孪生平台，集成沉降、裂缝、温度、振动、InSAR、盾构机轨迹、隧道结构健康等多源监测数据的采集、处理、智能分析与可视化。后端基于 Flask，前端基于 React + Vite + Tailwind CSS，数据库使用 Supabase (PostgreSQL)，部署于 Vercel。
 
 ## 核心功能
 
