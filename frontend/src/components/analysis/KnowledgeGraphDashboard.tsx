@@ -62,7 +62,7 @@ export const KnowledgeGraphDashboard: React.FC = () => {
               <i className="fas fa-upload" style={{ color: '#4a9eff', fontSize: '16px' }} />
             </div>
             <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>1. 添加文献</div>
-            <div style={{ fontSize: '12px', color: '#e2e8f0', textAlign: 'center' }}>上传论文、笔记或粘贴文本内容</div>
+            <div style={{ fontSize: '14px', color: '#e2e8f0', textAlign: 'center' }}>上传论文、笔记或粘贴文本内容</div>
           </div>
           {/* Arrow */}
           <div style={{ display: 'flex', alignItems: 'center', color: '#4a9eff', fontSize: '18px', flexShrink: 0 }}>
@@ -74,7 +74,7 @@ export const KnowledgeGraphDashboard: React.FC = () => {
               <i className="fas fa-cogs" style={{ color: '#10b981', fontSize: '16px' }} />
             </div>
             <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>2. 自动构建</div>
-            <div style={{ fontSize: '12px', color: '#e2e8f0', textAlign: 'center' }}>系统自动提取实体和关系，构建知识图谱</div>
+            <div style={{ fontSize: '14px', color: '#e2e8f0', textAlign: 'center' }}>系统自动提取实体和关系，构建知识图谱</div>
           </div>
           {/* Arrow */}
           <div style={{ display: 'flex', alignItems: 'center', color: '#4a9eff', fontSize: '18px', flexShrink: 0 }}>
@@ -86,7 +86,7 @@ export const KnowledgeGraphDashboard: React.FC = () => {
               <i className="fas fa-comments" style={{ color: '#fb923c', fontSize: '16px' }} />
             </div>
             <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>3. 智能问答</div>
-            <div style={{ fontSize: '12px', color: '#e2e8f0', textAlign: 'center' }}>基于图谱内容提问，获得精准回答</div>
+            <div style={{ fontSize: '14px', color: '#e2e8f0', textAlign: 'center' }}>基于图谱内容提问，获得精准回答</div>
           </div>
         </div>
       )}
@@ -117,7 +117,7 @@ export const KnowledgeGraphDashboard: React.FC = () => {
       {/* Quick questions - only show when graph has data */}
       {stats && stats.total_nodes > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '12px', color: '#e2e8f0', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: '14px', color: '#e2e8f0', whiteSpace: 'nowrap' }}>
             <i className="fas fa-bolt" style={{ marginRight: '4px', color: '#facc15' }} />
             快速提问:
           </span>
@@ -126,9 +126,9 @@ export const KnowledgeGraphDashboard: React.FC = () => {
               key={i}
               onClick={() => handleQuickQuestion(q)}
               style={{
-                padding: '5px 12px', backgroundColor: 'rgba(74,158,255,0.1)',
+                padding: '6px 14px', backgroundColor: 'rgba(74,158,255,0.1)',
                 border: '1px solid rgba(74,158,255,0.25)', borderRadius: '14px',
-                color: '#fff', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s',
+                color: '#fff', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s',
               }}
             >
               {q}
@@ -335,7 +335,7 @@ const DocsPanel: React.FC<{ onStatsChange: () => void }> = ({ onStatsChange }) =
                 <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff', marginBottom: '4px' }}>
                   {doc.title}
                 </div>
-                <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: '#e2e8f0', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '12px', fontSize: '13px', color: '#e2e8f0', flexWrap: 'wrap' }}>
                   <span>{doc.source_type === 'url' ? '网页' : doc.source_type === 'pdf' ? 'PDF' : '文本'}</span>
                   <span>{new Date(doc.uploaded_at).toLocaleDateString()}</span>
                   {doc.processed && (
@@ -415,9 +415,7 @@ const ExplorePanel: React.FC = () => {
         <select value={selectedPoint} onChange={e => setSelectedPoint(e.target.value)} style={styles.select}>
           {pointIds.map(pid => <option key={pid} value={pid}>{pid}</option>)}
         </select>
-        <button style={styles.runButton} onClick={loadNeighbors} disabled={loading}>
-          {loading ? '加载中...' : '查询邻居'}
-        </button>
+        {loading && <span style={{ fontSize: '13px', color: '#e2e8f0' }}>加载中...</span>}
       </div>
 
       {graphData && graphData.nodes && graphData.nodes.length > 0 && (
@@ -434,7 +432,7 @@ const ExplorePanel: React.FC = () => {
       )}
 
       {!loading && graphData && (!graphData.nodes || graphData.nodes.length === 0) && (
-        <div style={styles.emptyHint}>该点位暂无邻居数据</div>
+        <div style={styles.emptyHint}>该点位暂无邻居数据。尝试选择其他点位，或添加更多文献丰富图谱。</div>
       )}
     </div>
   );
@@ -499,7 +497,7 @@ const RiskPanel: React.FC = () => {
           ))}
         </div>
       ) : (
-        !loading && <div style={styles.emptyHint}>未发现符合条件的风险点</div>
+        !loading && <div style={styles.emptyHint}>未发现符合条件的风险点。尝试降低严重程度筛选条件。</div>
       )}
     </div>
   );
@@ -593,7 +591,7 @@ const QAPanel: React.FC<{ initialQuestion?: string; onQuestionConsumed?: () => v
                         <span key={si} style={{
                           display: 'inline-block', padding: '2px 8px', margin: '2px 4px',
                           backgroundColor: s === 'knowledge_graph' ? 'rgba(6,182,212,0.15)' : 'rgba(74,158,255,0.12)',
-                          borderRadius: '10px', fontSize: '11px',
+                          borderRadius: '10px', fontSize: '13px',
                           color: s === 'knowledge_graph' ? '#06b6d4' : '#e2e8f0',
                         }}>{s === 'knowledge_graph' ? '知识图谱' : s}</span>
                       ))}
@@ -642,7 +640,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   statIcon: { fontSize: '24px' },
   statValue: { fontSize: '18px', fontWeight: 'bold', color: '#fff' },
-  statLabel: { fontSize: '12px', color: '#fff', marginTop: '2px' },
+  statLabel: { fontSize: '14px', color: '#fff', marginTop: '2px' },
   subTabs: { display: 'flex', gap: '8px' },
   subTab: {
     padding: '10px 20px', backgroundColor: 'rgba(30,30,50,0.8)',
@@ -684,10 +682,10 @@ const styles: Record<string, React.CSSProperties> = {
   riskHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' },
   riskPointId: { fontSize: '16px', fontWeight: 'bold', color: '#fff' },
   severityBadge: {
-    padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '600',
+    padding: '4px 10px', borderRadius: '12px', fontSize: '13px', fontWeight: '600',
   },
-  riskDesc: { fontSize: '13px', color: '#e2e8f0', lineHeight: '1.5', marginBottom: '8px' },
-  riskMeta: { display: 'flex', gap: '16px', fontSize: '12px', color: '#e2e8f0' },
+  riskDesc: { fontSize: '14px', color: '#e2e8f0', lineHeight: '1.5', marginBottom: '8px' },
+  riskMeta: { display: 'flex', gap: '16px', fontSize: '13px', color: '#e2e8f0' },
   // QA panel
   presetRow: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
   presetButton: {
@@ -708,8 +706,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex', padding: '12px 14px', backgroundColor: 'rgba(30,30,50,0.6)',
     borderRadius: '8px', color: '#e2e8f0', fontSize: '13px', lineHeight: '1.6',
   },
-  qaConfidence: { marginTop: '8px', fontSize: '12px', color: '#52c41a' },
-  qaSources: { marginTop: '4px', fontSize: '12px', color: '#e2e8f0' },
+  qaConfidence: { marginTop: '8px', fontSize: '13px', color: '#52c41a' },
+  qaSources: { marginTop: '4px', fontSize: '13px', color: '#e2e8f0' },
   inputRow: {
     display: 'flex', gap: '8px', padding: '12px 16px',
     backgroundColor: 'rgba(30,30,50,0.6)', borderRadius: '8px',
