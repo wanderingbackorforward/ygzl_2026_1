@@ -741,14 +741,13 @@ function InsarNativeMap(
   }, [baseLayerName, baseLayers])
 
   useEffect(() => {
-    const pointId = selectedPoint?.id || selected?.id
-    if (!pointId) return
+    if (!selected?.id) return
     let mounted = true
     const controller = new AbortController()
     setSeriesLoading(true)
     setSeriesError(null)
     const safeDataset = safeDatasetName(dataset)
-    const url = `${API_BASE}/insar/series?dataset=${encodeURIComponent(safeDataset)}&id=${encodeURIComponent(pointId)}`
+    const url = `${API_BASE}/insar/series?dataset=${encodeURIComponent(safeDataset)}&id=${encodeURIComponent(selected.id)}`
     ;(async () => {
       try {
         const res = await fetch(url, { signal: controller.signal })
@@ -774,7 +773,7 @@ function InsarNativeMap(
       mounted = false
       controller.abort()
     }
-  }, [dataset, selected?.id, selectedPoint?.id])
+  }, [dataset, selected?.id])
 
   useEffect(() => {
     const map = mapRef.current
