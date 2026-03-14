@@ -1217,6 +1217,7 @@ export default function Insar() {
   const [riskStats, setRiskStats] = useState<RiskStats | null>(null)
   const [focusId, setFocusId] = useState<string | null>(null)
   const [selectedPoint, setSelectedPoint] = useState<{ id: string, props: Record<string, any>, lat: number, lng: number } | null>(null)
+  const [showSettings, setShowSettings] = useState(false)
   const [adviceStore, setAdviceStore] = useState<AdviceStore>(() => loadAdviceStore())
   const [thresholds, setThresholds] = useState<Thresholds>(() => {
     try {
