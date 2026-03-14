@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import KnowledgeGraphViz from '../assistant/KnowledgeGraphViz';
 import {
   fetchKGStats,
@@ -18,6 +18,10 @@ export const KnowledgeGraphDashboard: React.FC = () => {
   const [statsLoading, setStatsLoading] = useState(true);
   const [qaQuestion, setQaQuestion] = useState('');
 
+  // Auto-insights: proactively answer key questions for the user
+  const [insights, setInsights] = useState<Array<{ q: string; a: any; loading: boolean }>>([]);
+  const insightsLoaded = useRef(false);
+
   useEffect(() => {
     fetchKGStats()
       .then(data => setStats(data))
@@ -30,6 +34,34 @@ export const KnowledgeGraphDashboard: React.FC = () => {
     if (stats && !stats.mock && stats.total_nodes > 0 && subTab === 'docs') {
       setSubTab('explore');
     }
+  }, [stats]);
+
+  // Auto-load insights when graph has data
+  useEffect(() => {
+    if (!stats || stats.total_nodes === 0 || insightsLoaded.current) return;
+    insightsLoaded.current = true;
+
+    const autoQuestions = [
+      { q: '哪些点位风险最高？', icon: 'exclamation-triangle', color: '#ef4444' },
+      { q: '沉降控制措施有哪些？', icon: 'shield-alt', color: '#10b981' },
+      { q: '施工事件对沉降有什么影响？', icon: 'hard-hat', color: '#f59e0b' },
+    ];
+
+    setInsights(autoQuestions.map(aq => ({ q: aq.q, a: null, loading: true })));
+
+    autoQuestions.forEach((aq, idx) => {
+      fetchKGQA(aq.q)
+        .then(result => {
+          setInsights(prev => prev.map((item, i) =>
+            i === idx ? { ...item, a: result, loading: false } : item
+          ));
+        })
+        .catch(() => {
+          setInsights(prev => prev.map((item, i) =>
+            i === idx ? { ...item, a: null, loading: false } : item
+          ));
+        });
+    });
   }, [stats]);
 
   // Quick question handler
@@ -114,26 +146,51 @@ export const KnowledgeGraphDashboard: React.FC = () => {
         <StatCard label="异常发现" value={anomalyCount} icon="exclamation-triangle" color="#ef4444" />
       </div>
 
-      {/* Quick questions - only show when graph has data */}
-      {stats && stats.total_nodes > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '14px', color: '#e2e8f0', whiteSpace: 'nowrap' }}>
-            <i className="fas fa-bolt" style={{ marginRight: '4px', color: '#facc15' }} />
-            快速提问:
-          </span>
-          {['哪些点位风险最高？', 'S3有什么风险？', '沉降控制措施有哪些？'].map((q, i) => (
-            <button
-              key={i}
-              onClick={() => handleQuickQuestion(q)}
-              style={{
-                padding: '6px 14px', backgroundColor: 'rgba(74,158,255,0.1)',
-                border: '1px solid rgba(74,158,255,0.25)', borderRadius: '14px',
-                color: '#fff', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s',
-              }}
-            >
-              {q}
-            </button>
-          ))}
+      {/* Auto-insights: proactively show answers, user doesn't need to ask */}
+      {insights.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <i className="fas fa-lightbulb" style={{ color: '#facc15' }} />
+            智能洞察
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+            {insights.map((insight, idx) => {
+              const icons = ['exclamation-triangle', 'shield-alt', 'hard-hat'];
+              const colors = ['#ef4444', '#10b981', '#f59e0b'];
+              return (
+                <div key={idx} style={{
+                  padding: '14px 16px', backgroundColor: 'rgba(30,30,50,0.8)', borderRadius: '8px',
+                  border: `1px solid ${colors[idx]}33`, display: 'flex', flexDirection: 'column', gap: '8px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <i className={`fas fa-${icons[idx]}`} style={{ color: colors[idx], fontSize: '14px' }} />
+                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff' }}>{insight.q}</span>
+                  </div>
+                  {insight.loading ? (
+                    <div style={{ fontSize: '13px', color: '#e2e8f0' }}>
+                      <i className="fas fa-spinner fa-spin" style={{ marginRight: '6px' }} />分析中...
+                    </div>
+                  ) : insight.a?.answer ? (
+                    <div style={{ fontSize: '13px', color: '#e2e8f0', lineHeight: '1.6', whiteSpace: 'pre-wrap', maxHeight: '80px', overflow: 'hidden' }}>
+                      {insight.a.answer.split('\n').filter((l: string) => l.trim() && !l.startsWith('---')).slice(0, 3).join('\n')}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '13px', color: '#e2e8f0' }}>暂无数据</div>
+                  )}
+                  {insight.a?.sources && insight.a.sources.length > 0 && (
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      {insight.a.sources.slice(0, 2).map((s: string, si: number) => (
+                        <span key={si} style={{
+                          padding: '2px 8px', backgroundColor: 'rgba(74,158,255,0.12)',
+                          borderRadius: '10px', fontSize: '13px', color: '#fff',
+                        }}>{s === 'knowledge_graph' ? '知识图谱' : s.length > 10 ? s.slice(0, 10) + '...' : s}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
