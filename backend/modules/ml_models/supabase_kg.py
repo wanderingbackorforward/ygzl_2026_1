@@ -323,47 +323,145 @@ class SupabaseKnowledgeGraph:
         return {'success': True, 'risk_points': risk_points, 'total': len(risk_points)}
 
     def answer_question(self, question: str) -> Dict:
-        """Simple rule-based QA over the graph."""
+        """RAG-enhanced QA: retrieve from documents + graph, then synthesize answer."""
+        import re as _re
         self._load()
         answer_parts = []
+        sources = []
+        confidence = 0.5
 
-        # Extract point IDs from question
-        import re
-        point_matches = re.findall(r'S\d+', question, re.IGNORECASE)
+        # 1. Extract point IDs from question
+        point_matches = _re.findall(r'S\d+', question, _re.IGNORECASE)
 
+        # 2. Search documents for relevant content
+        doc_snippets = self._search_documents(question)
+        if doc_snippets:
+            confidence = min(0.95, confidence + 0.15 * len(doc_snippets))
+            for snippet in doc_snippets[:3]:
+                sources.append(snippet['title'])
+
+        # 3. Graph-based answers for specific points
         if point_matches:
             pid = point_matches[0].upper()
             if pid in self.G:
                 neighbors = list(set(self.G.successors(pid)) | set(self.G.predecessors(pid)))
                 n_monitoring = [n for n in neighbors if self.G.nodes.get(n, {}).get('node_type') == 'MonitoringPoint']
                 n_anomaly = [n for n in neighbors if self.G.nodes.get(n, {}).get('node_type') == 'Anomaly']
-                answer_parts.append(f"{pid} has {len(n_monitoring)} nearby monitoring points and {len(n_anomaly)} associated anomalies.")
+                n_concepts = [n for n in neighbors if self.G.nodes.get(n, {}).get('node_type') == 'Concept']
+                n_docs = [n for n in neighbors if self.G.nodes.get(n, {}).get('node_type') == 'Document']
+
+                answer_parts.append(f"{pid} 共有 {len(n_monitoring)} 个邻近监测点、{len(n_anomaly)} 个异常记录。")
                 if n_monitoring:
-                    answer_parts.append(f"Nearby points: {', '.join(n_monitoring[:5])}")
+                    answer_parts.append(f"邻近点位: {', '.join(n_monitoring[:5])}")
                 if n_anomaly:
-                    answer_parts.append(f"Anomaly nodes: {', '.join(n_anomaly[:3])}")
+                    for aid in n_anomaly[:2]:
+                        props = self.G.nodes[aid].get('properties', {})
+                        label = self.G.nodes[aid].get('label', aid)
+                        answer_parts.append(f"异常: {label}")
+                if n_concepts:
+                    concept_labels = [self.G.nodes[c].get('label', c) for c in n_concepts[:4]]
+                    answer_parts.append(f"相关概念: {', '.join(concept_labels)}")
+                if n_docs:
+                    doc_labels = [self.G.nodes[d].get('label', d) for d in n_docs[:3]]
+                    answer_parts.append(f"相关文献: {', '.join(doc_labels)}")
+                    sources.extend(doc_labels)
+
+                confidence = min(0.95, confidence + 0.2)
             else:
-                answer_parts.append(f"{pid} not found in knowledge graph.")
+                answer_parts.append(f"{pid} 未在知识图谱中找到。")
 
-        # General stats
-        stats = self.get_stats()
-        answer_parts.append(
-            f"Knowledge graph has {stats['total_nodes']} nodes and {stats['total_edges']} edges."
-        )
+        # 4. Add document-based context
+        if doc_snippets:
+            answer_parts.append("\n--- 文献参考 ---")
+            for snippet in doc_snippets[:3]:
+                text = snippet['content'][:150].strip()
+                if len(snippet['content']) > 150:
+                    text += '...'
+                answer_parts.append(f"[{snippet['title']}] {text}")
 
-        # Risk info
-        risk = self.get_risk_points('high')
-        if risk['risk_points']:
-            high_risk = [p['point_id'] for p in risk['risk_points'][:3]]
-            answer_parts.append(f"High-risk points: {', '.join(high_risk)}")
+        # 5. Keyword-based graph search (if no point specified)
+        if not point_matches and not doc_snippets:
+            # Try to find relevant nodes by keyword matching
+            q_lower = question.lower()
+            matched_nodes = []
+            for nid, data in self.G.nodes(data=True):
+                label = data.get('label', '').lower()
+                ntype = data.get('node_type', '')
+                if any(kw in q_lower for kw in [label, nid.lower()]):
+                    matched_nodes.append((nid, data))
+            if matched_nodes:
+                for nid, data in matched_nodes[:3]:
+                    answer_parts.append(f"{data.get('label', nid)} ({data.get('node_type', '')})")
+                confidence = min(0.95, confidence + 0.1)
+
+        # 6. General stats as fallback
+        if not answer_parts:
+            risk = self.get_risk_points('high')
+            if risk['risk_points']:
+                high_risk = [p['point_id'] for p in risk['risk_points'][:3]]
+                answer_parts.append(f"当前高风险点位: {', '.join(high_risk)}")
+            stats = self.get_stats()
+            answer_parts.append(
+                f"知识图谱包含 {stats['total_nodes']} 个节点和 {stats['total_edges']} 条边。"
+            )
+
+        # Deduplicate sources
+        seen = set()
+        unique_sources = []
+        for s in sources:
+            if s not in seen:
+                seen.add(s)
+                unique_sources.append(s)
 
         return {
             'success': True,
             'question': question,
-            'answer': ' '.join(answer_parts),
-            'sources': ['supabase_knowledge_graph', 'networkx_analysis'],
-            'confidence': 0.8,
+            'answer': '\n'.join(answer_parts),
+            'sources': unique_sources if unique_sources else ['knowledge_graph'],
+            'confidence': round(confidence, 2),
         }
+
+    def _search_documents(self, query: str, limit: int = 5) -> List[Dict]:
+        """Search documents by keyword matching against title and content."""
+        import re as _re
+        try:
+            # Extract meaningful keywords from query
+            # Remove common Chinese question words
+            stop_words = ['哪些', '什么', '怎么', '如何', '为什么', '有没有',
+                          '是否', '能否', '请问', '告诉', '关于', '的', '了',
+                          '吗', '呢', '吧', '啊', '在', '和', '与', '或',
+                          'what', 'which', 'how', 'why', 'is', 'are', 'the',
+                          'a', 'an', 'of', 'in', 'on', 'for', 'to', 'and']
+            words = _re.findall(r'[a-zA-Z]+|[\u4e00-\u9fff]+|S\d+', query)
+            keywords = [w for w in words if w.lower() not in stop_words and len(w) > 1]
+
+            if not keywords:
+                return []
+
+            # Build OR filter for Supabase text search
+            # Search in title and content columns
+            results = []
+            for kw in keywords[:4]:  # Limit to 4 keywords
+                try:
+                    # Search title
+                    r = requests.get(
+                        f"{_base_url()}/rest/v1/kg_documents"
+                        f"?select=id,title,content,source_type"
+                        f"&or=(title.ilike.*{kw}*,content.ilike.*{kw}*)"
+                        f"&limit={limit}",
+                        headers=_headers(), timeout=8,
+                    )
+                    if r.ok:
+                        for doc in r.json():
+                            if not any(d['id'] == doc['id'] for d in results):
+                                results.append(doc)
+                except Exception:
+                    pass
+
+            return results[:limit]
+        except Exception as ex:
+            print(f"[KG] _search_documents failed: {ex}")
+            return []
 
     # ---- Document Management ----
 

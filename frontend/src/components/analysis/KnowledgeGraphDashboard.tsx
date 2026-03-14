@@ -473,13 +473,25 @@ const QAPanel: React.FC = () => {
                 <div>
                   <div style={{ whiteSpace: 'pre-wrap' }}>{item.a.answer}</div>
                   {item.a.confidence != null && (
-                    <div style={styles.qaConfidence}>
+                    <div style={{
+                      ...styles.qaConfidence,
+                      color: item.a.confidence > 0.7 ? '#52c41a' : item.a.confidence > 0.5 ? '#facc15' : '#fb923c',
+                    }}>
+                      <i className="fas fa-chart-line" style={{ marginRight: '4px' }} />
                       置信度: {(item.a.confidence * 100).toFixed(0)}%
                     </div>
                   )}
                   {item.a.sources && item.a.sources.length > 0 && (
                     <div style={styles.qaSources}>
-                      来源: {item.a.sources.join(', ')}
+                      <i className="fas fa-bookmark" style={{ marginRight: '4px', color: '#4a9eff' }} />
+                      来源: {item.a.sources.map((s: string, si: number) => (
+                        <span key={si} style={{
+                          display: 'inline-block', padding: '2px 8px', margin: '2px 4px',
+                          backgroundColor: s === 'knowledge_graph' ? 'rgba(6,182,212,0.15)' : 'rgba(74,158,255,0.12)',
+                          borderRadius: '10px', fontSize: '11px',
+                          color: s === 'knowledge_graph' ? '#06b6d4' : '#8bb8e8',
+                        }}>{s}</span>
+                      ))}
                     </div>
                   )}
                 </div>
