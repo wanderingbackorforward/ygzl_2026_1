@@ -15,6 +15,13 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
 }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<echarts.ECharts | null>(null);
+  const dataCharacteristics = prediction.model_selection_info?.data_characteristics ?? {
+    data_size: 0,
+    trend_strength: 0,
+    volatility: 0,
+    seasonality_strength: 0,
+  };
+  const bestScore = prediction.model_selection_info?.best_score;
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -242,31 +249,31 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
         <div style={styles.infoItem}>
           <span style={styles.infoLabel}>数据量</span>
           <span style={styles.infoValue}>
-            {prediction.model_selection_info.data_characteristics.data_size} 条
+            {dataCharacteristics.data_size} 条
           </span>
         </div>
         <div style={styles.infoItem}>
           <span style={styles.infoLabel}>趋势强度</span>
           <span style={styles.infoValue}>
-            {(prediction.model_selection_info.data_characteristics.trend_strength * 100).toFixed(1)}%
+            {(dataCharacteristics.trend_strength * 100).toFixed(1)}%
           </span>
         </div>
         <div style={styles.infoItem}>
           <span style={styles.infoLabel}>波动性</span>
           <span style={styles.infoValue}>
-            {(prediction.model_selection_info.data_characteristics.volatility * 100).toFixed(1)}%
+            {(dataCharacteristics.volatility * 100).toFixed(1)}%
           </span>
         </div>
         <div style={styles.infoItem}>
           <span style={styles.infoLabel}>季节性</span>
           <span style={styles.infoValue}>
-            {(prediction.model_selection_info.data_characteristics.seasonality_strength * 100).toFixed(1)}%
+            {(dataCharacteristics.seasonality_strength * 100).toFixed(1)}%
           </span>
         </div>
         <div style={styles.infoItem}>
           <span style={styles.infoLabel}>模型得分</span>
           <span style={styles.infoValue}>
-            {prediction.model_selection_info.best_score?.toFixed(3) ?? '-'}
+            {typeof bestScore === 'number' ? bestScore.toFixed(3) : '-'}
           </span>
         </div>
       </div>

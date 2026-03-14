@@ -756,6 +756,9 @@ def api_predict_stgcn():
         seq_len: 输入序列长度（默认60天）
     """
     try:
+        steps = int(request.args.get('steps', 30))
+        seq_len = int(request.args.get('seq_len', 60))
+
         if not STGCN_AVAILABLE:
             # Use lightweight alternative with real data
             if LIGHTWEIGHT_AVAILABLE:
@@ -766,9 +769,6 @@ def api_predict_stgcn():
                 except Exception:
                     pass
             return jsonify(_mock_stgcn(steps))
-
-        steps = int(request.args.get('steps', 30))
-        seq_len = int(request.args.get('seq_len', 60))
 
         # STGCN needs all points data
         settlement_df = fetch_all_settlement()
@@ -873,33 +873,42 @@ def api_predict_pinn(point_id):
         physics_weight: 物理损失权重（默认0.1）
     """
     try:
-        if not PINN_AVAILABLE:
-            if LIGHTWEIGHT_AVAILABLE:
-                df = fetch_point_settlement(point_id)
-                if len(df) >= 15:
-                    lw = LightweightPINN()
-                    return jsonify(lw.predict(df, point_id, steps, 0.1))
-            return jsonify(_mock_prediction(point_id, steps, 'pinn'))
-
         steps = int(request.args.get('steps', 30))
         physics_weight = float(request.args.get('physics_weight', 0.1))
 
-        df = fetch_point_settlement(point_id)
+        if not PINN_AVAILABLE:
+            if LIGHTWEIGHT_AVAILABLE:
+                try:
+                    df = fetch_point_settlement(point_id)
+                    if len(df) >= 15:
+                        lw = LightweightPINN()
+                        return jsonify(lw.predict(df, point_id, steps, physics_weight))
+                except Exception:
+                    pass
+            return jsonify(_mock_prediction(point_id, steps, 'pinn'))
 
-        # 创建PINN预测器
-        predictor = PINNPredictor(
-            seq_len=60,
-            pred_len=steps,
-            physics_weight=physics_weight
-        )
+        try:
+            df = fetch_point_settlement(point_id)
 
-        # 准备数据（传入df替代conn）
-        data = predictor.prepare_data(point_id, df=df)
+            predictor = PINNPredictor(
+                seq_len=60,
+                pred_len=steps,
+                physics_weight=physics_weight
+            )
 
-        # 预测
-        result = predictor.predict(data)
-
-        return jsonify(result)
+            data = predictor.prepare_data(point_id, df=df)
+            result = predictor.predict(data)
+            return jsonify(result)
+        except Exception:
+            if LIGHTWEIGHT_AVAILABLE:
+                try:
+                    df = fetch_point_settlement(point_id)
+                    if len(df) >= 15:
+                        lw = LightweightPINN()
+                        return jsonify(lw.predict(df, point_id, steps, physics_weight))
+                except Exception:
+                    pass
+            return jsonify(_mock_prediction(point_id, steps, 'pinn'))
 
     except Exception as e:
         import traceback
@@ -980,6 +989,11 @@ def api_predict_ensemble(point_id):
         base_models: 基础模型列表（逗号分隔，如"arima,informer,pinn"）
     """
     try:
+        steps = int(request.args.get('steps', 30))
+        method = request.args.get('method', 'stacking')
+        base_models_str = request.args.get('base_models', 'arima,informer,pinn')
+        base_models = [m.strip() for m in base_models_str.split(',')]
+
         if not ENSEMBLE_AVAILABLE:
             if LIGHTWEIGHT_AVAILABLE:
                 df = fetch_point_settlement(point_id)
@@ -987,11 +1001,6 @@ def api_predict_ensemble(point_id):
                     lw = LightweightEnsemble()
                     return jsonify(lw.predict(df, point_id, steps))
             return jsonify(_mock_prediction(point_id, steps, 'ensemble'))
-
-        steps = int(request.args.get('steps', 30))
-        method = request.args.get('method', 'stacking')
-        base_models_str = request.args.get('base_models', 'arima,informer,pinn')
-        base_models = [m.strip() for m in base_models_str.split(',')]
 
         df = fetch_point_settlement(point_id)
 
