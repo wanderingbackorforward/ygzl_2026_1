@@ -38,7 +38,72 @@ Scientific writing assistant: research first, verify sources, synthesize into pu
 2. Create `SUMMARY.md`
 3. Conduct peer review → save as `PEER_REVIEW.md`
 
-## Document Type Routing
+## Scientific Writing Skills 自动触发规则
+
+**检测到科学写作任务时，立即调用对应 skill，不要等用户明确要求：**
+
+### 核心写作任务（自动触发）
+
+| 触发关键词 | 自动调用 Skill | 说明 |
+|-----------|---------------|------|
+| **论文/研究文章** | `claude-scientific-writer:scientific-writing` | IMRaD 结构，LaTeX + BibTeX，5+ 图表 |
+| **文献综述/综述** | `claude-scientific-writer:literature-review` | 系统化检索多数据库（PubMed/arXiv/bioRxiv），4+ 图表 |
+| **假设生成** | `claude-scientific-writer:hypothesis-generation` | 彩色框模板，XeLaTeX，4 页正文 + 附录，50+ 引用 |
+| **市场研究/分析** | `claude-scientific-writer:market-research-reports` | 50+ 页，25-30 可视化，McKinsey/BCG 风格 |
+| **治疗方案** | `claude-scientific-writer:treatment-plans` | 1-6 页，HIPAA 合规，SMART 目标 |
+| **临床报告** | `claude-scientific-writer:clinical-reports` | CARE/ICH-E3 指南，监管合规 |
+| **研究海报** | `claude-scientific-writer:latex-posters` | beamerposter/tikzposter，6+ 图表 |
+| **演示文稿/幻灯片** | `claude-scientific-writer:scientific-slides` | Nano Banana Pro AI，每页必有视觉元素 |
+| **研究基金申请** | `claude-scientific-writer:research-grants` | NSF/NIH/DOE/DARPA 格式，预算准备 |
+
+### 辅助功能（按需触发）
+
+| 触发场景 | 自动调用 Skill | 说明 |
+|---------|---------------|------|
+| **需要查找论文** | `claude-scientific-writer:research-lookup` | Perplexity Sonar Pro，自动选模型 |
+| **需要管理引用** | `claude-scientific-writer:citation-management` | Google Scholar/PubMed 搜索，BibTeX 生成 |
+| **需要生成图表** | `claude-scientific-writer:scientific-schematics` | 神经网络架构、流程图、生物通路 |
+| **需要通用图像** | `claude-scientific-writer:generate-image` | FLUX/Gemini，照片/插图/概念图 |
+| **需要转换文档** | `claude-scientific-writer:markitdown` | PDF/DOCX/PPTX → Markdown |
+| **论文转网页/视频** | `claude-scientific-writer:paper-2-web` | Paper2Web/Paper2Video/Paper2Poster |
+
+### 触发逻辑
+
+**检测优先级（从高到低）：**
+1. **明确文档类型** — 用户说"写一篇论文"、"做个海报"、"准备演示" → 直接调用对应 skill
+2. **关键词匹配** — 检测到"hypothesis"、"market research"、"treatment plan" → 调用专用 skill
+3. **任务性质推断** — 需要文献综述 → `literature-review`；需要查论文 → `research-lookup`
+4. **默认行为** — 通用科学写作 → `scientific-writing`
+
+**多 skill 组合场景：**
+- **论文写作** = `scientific-writing` + `research-lookup` + `citation-management` + `scientific-schematics`
+- **演示准备** = `scientific-slides` + `research-lookup` + `generate-image`
+- **市场报告** = `market-research-reports` + `research-lookup` + `scientific-schematics` + `generate-image`
+
+**不触发条件：**
+- 用户明确说"不要用 skill"
+- 任务是修改已有文档（除非需要重新生成图表/引用）
+- 纯文本编辑/格式调整（不涉及内容创作）
+
+### PUA Skill 在科学写作中的应用
+
+科学写作任务也适用 PUA 自动触发（参见全局 CLAUDE.md）：
+
+**触发场景：**
+- 连续 2 次找不到合适引用 → L1：切换数据库/关键词策略
+- LaTeX 编译连续失败 3 次 → L2：WebSearch 错误信息 + 读 .log 文件
+- 图表生成连续失败 4 次 → L3：7 项检查清单（模型选择、prompt 质量、参数设置等）
+- 用户说"为什么还是编译不过" → 立即触发 PUA
+
+**压力升级效果：**
+- L1：尝试不同引用数据库（PubMed → arXiv → Semantic Scholar）
+- L2：深入分析 LaTeX 错误（逐行读 .log，搜索 TeX StackExchange）
+- L3：系统化排查（字体、宏包冲突、编码、路径、权限、TeX 发行版）
+- L4：拼命模式（尝试所有可能的 workaround，包括降级宏包、切换编译器）
+
+## Document Type Routing (Legacy Reference)
+
+以下为快速参考，实际使用时应通过上述自动触发机制调用：
 
 | Keyword | Skill to Use |
 |---------|-------------|
