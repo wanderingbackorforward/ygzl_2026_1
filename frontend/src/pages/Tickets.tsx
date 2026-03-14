@@ -58,20 +58,59 @@ const PRIORITY_COLORS: Record<TicketPriority, string> = {
 
 interface CreateTicketDrawerProps {
   config: TicketConfig
+  template: string | null
   onClose: () => void
   onSuccess: () => void
 }
 
-function CreateTicketDrawer({ config, onClose, onSuccess }: CreateTicketDrawerProps) {
+function CreateTicketDrawer({ config, template, onClose, onSuccess }: CreateTicketDrawerProps) {
+  const [mode, setMode] = useState<'quick' | 'manual'>(template ? 'manual' : 'quick')
+  const [quickInput, setQuickInput] = useState('')
+  const [parsing, setParsing] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
-    ticket_type: '',
+    ticket_type: template || '',
     priority: 'MEDIUM' as TicketPriority,
     description: '',
     monitoring_point_id: '',
+    current_value: null as number | null,
   })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  // 模板预填充
+  useEffect(() => {
+    if (template) {
+      const typeName = config.types?.[template]?.name || ''
+      setFormData((prev) => ({
+        ...prev,
+        ticket_type: template,
+        title: `${typeName}告警`,
+        priority: 'HIGH',
+      }))
+    }
+  }, [template, config])
+
+  async function handleQuickParse() {
+    if (!quickInput.trim()) {
+      setError('请输入内容')
+      return
+    }
+
+    try {
+      setParsing(true)
+      setError('')
+      const parsed = await apiPost<typeof formData>('/tickets/parse-quick-input', {
+        input: quickInput,
+      })
+      setFormData(parsed)
+      setMode('manual')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '解析失败')
+    } finally {
+      setParsing(false)
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -124,75 +163,144 @@ function CreateTicketDrawer({ config, onClose, onSuccess }: CreateTicketDrawerPr
               </div>
             )}
 
-            <div className="mb-4">
-              <label className="mb-1.5 block text-sm font-medium text-white">
-                标题 <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
-                placeholder="简要描述问题"
-              />
-            </div>
+            {/* 快速创建模式 */}
+            {mode === 'quick' && (
+              <div>
+                <div className="mb-3 text-sm text-slate-300">
+                  💡 输入一句话快速创建工单，例如：
+                  <div className="mt-2 space-y-1 text-xs text-slate-400">
+                    <div>• "DB-001 沉降 15mm"</div>
+                    <div>• "裂缝异常 DB-002"</div>
+                    <div>• "温度超限 35度 DB-003"</div>
+                  </div>
+                </div>
+                <textarea
+                  value={quickInput}
+                  onChange={(e) => setQuickInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                      handleQuickParse()
+                    }
+                  }}
+                  rows={4}
+                  className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+                  placeholder="输入问题描述..."
+                />
+                <div className="mt-3 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setMode('manual')}
+                    className="text-xs text-slate-400 hover:text-cyan-400"
+                  >
+                    切换到手动填写
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleQuickParse}
+                    disabled={parsing}
+                    className="rounded bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
+                  >
+                    {parsing ? '解析中...' : 'AI 解析 (Ctrl+Enter)'}
+                  </button>
+                </div>
+              </div>
+            )}
 
-            <div className="mb-4">
-              <label className="mb-1.5 block text-sm font-medium text-white">
-                类型 <span className="text-red-400">*</span>
-              </label>
-              <select
-                value={formData.ticket_type}
-                onChange={(e) => setFormData({ ...formData, ticket_type: e.target.value })}
-                className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
-              >
-                <option value="">请选择类型</option>
-                {config.types &&
-                  Object.entries(config.types).map(([key, val]) => (
-                    <option key={key} value={key}>
-                      {val.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
+            {/* 手动填写模式 */}
+            {mode === 'manual' && (
+              <div>
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="text-sm text-slate-300">手动填写</div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('quick')
+                      setFormData({
+                        title: '',
+                        ticket_type: '',
+                        priority: 'MEDIUM',
+                        description: '',
+                        monitoring_point_id: '',
+                        current_value: null,
+                      })
+                    }}
+                    className="text-xs text-slate-400 hover:text-cyan-400"
+                  >
+                    返回快速创建
+                  </button>
+                </div>
 
-            <div className="mb-4">
-              <label className="mb-1.5 block text-sm font-medium text-white">优先级</label>
-              <select
-                value={formData.priority}
-                onChange={(e) => setFormData({ ...formData, priority: e.target.value as TicketPriority })}
-                className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
-              >
-                {config.priority &&
-                  Object.entries(config.priority).map(([key, val]) => (
-                    <option key={key} value={key}>
-                      {val.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
+                <div className="mb-4">
+                  <label className="mb-1.5 block text-sm font-medium text-white">
+                    标题 <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+                    placeholder="简要描述问题"
+                  />
+                </div>
 
-            <div className="mb-4">
-              <label className="mb-1.5 block text-sm font-medium text-white">监测点</label>
-              <input
-                type="text"
-                value={formData.monitoring_point_id}
-                onChange={(e) => setFormData({ ...formData, monitoring_point_id: e.target.value })}
-                className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
-                placeholder="监测点编号（可选）"
-              />
-            </div>
+                <div className="mb-4">
+                  <label className="mb-1.5 block text-sm font-medium text-white">
+                    类型 <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    value={formData.ticket_type}
+                    onChange={(e) => setFormData({ ...formData, ticket_type: e.target.value })}
+                    className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+                  >
+                    <option value="">请选择类型</option>
+                    {config.types &&
+                      Object.entries(config.types).map(([key, val]) => (
+                        <option key={key} value={key}>
+                          {val.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
 
-            <div className="mb-4">
-              <label className="mb-1.5 block text-sm font-medium text-white">详细描述</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={6}
-                className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
-                placeholder="详细描述问题情况..."
-              />
-            </div>
+                <div className="mb-4">
+                  <label className="mb-1.5 block text-sm font-medium text-white">优先级</label>
+                  <select
+                    value={formData.priority}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value as TicketPriority })}
+                    className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+                  >
+                    {config.priority &&
+                      Object.entries(config.priority).map(([key, val]) => (
+                        <option key={key} value={key}>
+                          {val.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div className="mb-4">
+                  <label className="mb-1.5 block text-sm font-medium text-white">监测点</label>
+                  <input
+                    type="text"
+                    value={formData.monitoring_point_id}
+                    onChange={(e) => setFormData({ ...formData, monitoring_point_id: e.target.value })}
+                    className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+                    placeholder="监测点编号（可选）"
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label className="mb-1.5 block text-sm font-medium text-white">详细描述</label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={6}
+                    className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+                    placeholder="详细描述问题情况..."
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="shrink-0 border-t border-slate-700 px-6 py-4">
@@ -229,6 +337,7 @@ export default function Tickets() {
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [priorityFilter, setPriorityFilter] = useState<string>('')
   const [showCreateDrawer, setShowCreateDrawer] = useState(false)
+  const [quickTemplate, setQuickTemplate] = useState<string | null>(null)
 
   useEffect(() => {
     loadConfig()
@@ -335,7 +444,7 @@ export default function Tickets() {
 
   return (
     <div className="flex h-full flex-col bg-slate-950">
-      {/* 顶栏：统计徽章 + 新建按钮 */}
+      {/* 顶栏：统计徽章 + 快捷按钮 + 新建按钮 */}
       <div className="shrink-0 border-b border-cyan-500/20 bg-slate-900/50 px-6 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -356,12 +465,61 @@ export default function Tickets() {
               </div>
             )}
           </div>
-          <button
-            onClick={() => setShowCreateDrawer(true)}
-            className="rounded bg-cyan-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-cyan-500"
-          >
-            + 新建工单
-          </button>
+          <div className="flex items-center gap-2">
+            {/* 快捷模板按钮 */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => {
+                  setQuickTemplate('SETTLEMENT_ALERT')
+                  setShowCreateDrawer(true)
+                }}
+                className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-white hover:border-cyan-500 hover:bg-slate-700"
+                title="快速创建沉降告警工单"
+              >
+                沉降
+              </button>
+              <button
+                onClick={() => {
+                  setQuickTemplate('CRACK_ALERT')
+                  setShowCreateDrawer(true)
+                }}
+                className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-white hover:border-cyan-500 hover:bg-slate-700"
+                title="快速创建裂缝异常工单"
+              >
+                裂缝
+              </button>
+              <button
+                onClick={() => {
+                  setQuickTemplate('TEMPERATURE_ALERT')
+                  setShowCreateDrawer(true)
+                }}
+                className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-white hover:border-cyan-500 hover:bg-slate-700"
+                title="快速创建温度告警工单"
+              >
+                温度
+              </button>
+              <button
+                onClick={() => {
+                  setQuickTemplate('VIBRATION_ALERT')
+                  setShowCreateDrawer(true)
+                }}
+                className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-white hover:border-cyan-500 hover:bg-slate-700"
+                title="快速创建振动异常工单"
+              >
+                振动
+              </button>
+            </div>
+            <div className="h-4 w-px bg-slate-600"></div>
+            <button
+              onClick={() => {
+                setQuickTemplate(null)
+                setShowCreateDrawer(true)
+              }}
+              className="rounded bg-cyan-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-cyan-500"
+            >
+              + 新建工单
+            </button>
+          </div>
         </div>
       </div>
 
@@ -530,9 +688,14 @@ export default function Tickets() {
       {showCreateDrawer && (
         <CreateTicketDrawer
           config={config}
-          onClose={() => setShowCreateDrawer(false)}
+          template={quickTemplate}
+          onClose={() => {
+            setShowCreateDrawer(false)
+            setQuickTemplate(null)
+          }}
           onSuccess={() => {
             setShowCreateDrawer(false)
+            setQuickTemplate(null)
             loadTickets()
             loadStats()
           }}
