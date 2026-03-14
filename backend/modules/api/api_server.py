@@ -77,9 +77,12 @@ from modules.module_registry.api.module_api import module_bp
 ml_api = None
 try:
     from modules.ml_models.api import ml_api
+    print("[SUCCESS] ML API imported successfully")
 except Exception as e:
-    print(f"Warning: ML modules not available: {e}")
+    print(f"[ERROR] ML modules not available: {e}")
     print("ML API endpoints will not be registered.")
+    import traceback
+    traceback.print_exc()  # 打印完整堆栈
 
 # =========================================================
 # 应用初始化：创建Flask应用和Blueprint
