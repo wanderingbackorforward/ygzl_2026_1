@@ -89,6 +89,7 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [collapsed, setCollapsed] = useState(false)
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
 
   // Build node position map
   const nodeMap = useRef<Map<string, KGNode>>(new Map())
@@ -106,6 +107,11 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
   }, [transform])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    // Track mouse position relative to container for tooltip
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (rect) {
+      setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+    }
     if (!isDragging) return
     setTransform(prev => ({
       ...prev,
@@ -370,7 +376,8 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
 
         {/* Tooltip */}
         {hoveredNode && (
-          <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[280px] rounded-lg border border-cyan-500/30 bg-slate-900/95 px-4 py-3 text-sm shadow-lg shadow-cyan-500/10 backdrop-blur">
+          <div className="pointer-events-none absolute z-10 max-w-[280px] rounded-lg border border-cyan-500/30 bg-slate-900/95 px-4 py-3 text-sm shadow-lg shadow-cyan-500/10 backdrop-blur"
+            style={{ left: Math.min(mousePos.x + 16, (containerRef.current?.clientWidth || 600) - 300), top: Math.min(mousePos.y + 16, (containerRef.current?.clientHeight || 400) - 200) }}>
             <div className="mb-1 text-base font-semibold text-cyan-200">{hoveredNode.label}</div>
             <div className="text-sm text-slate-200">
               {TYPE_LABELS[hoveredNode.type] || hoveredNode.type}
@@ -417,7 +424,8 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
 
         {/* Edge tooltip */}
         {hoveredEdge && !hoveredNode && (
-          <div className="pointer-events-none absolute right-3 top-3 z-10 max-w-[200px] rounded-lg border border-purple-500/30 bg-slate-900/95 px-4 py-3 text-sm shadow-lg backdrop-blur">
+          <div className="pointer-events-none absolute z-10 max-w-[200px] rounded-lg border border-purple-500/30 bg-slate-900/95 px-4 py-3 text-sm shadow-lg backdrop-blur"
+            style={{ left: Math.min(mousePos.x + 16, (containerRef.current?.clientWidth || 600) - 220), top: Math.min(mousePos.y + 16, (containerRef.current?.clientHeight || 400) - 150) }}>
             <div className="mb-1 text-base font-semibold text-purple-200">
               {TYPE_LABELS[hoveredEdge.type] || hoveredEdge.type}
             </div>

@@ -697,7 +697,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   qaHistory: {
     display: 'flex', flexDirection: 'column', gap: '16px',
-    maxHeight: '400px', overflowY: 'auto', padding: '4px',
+    flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px',
   },
   qaItem: { display: 'flex', flexDirection: 'column', gap: '8px' },
   qaQuestion: {
