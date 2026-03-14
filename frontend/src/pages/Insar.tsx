@@ -1950,12 +1950,19 @@ export default function Insar() {
           boxShadow: '0 0 12px rgba(64,174,255,.15) inset',
           background: 'rgba(10,25,47,.6)'
         }}>
-          <iframe
-            title="insar-map"
-            src="http://47.96.7.238:38089/mapLayer"
-            allowFullScreen
-            style={{ width: '100%', height: '100%', border: 'none' }}
-          />
+          {location.protocol === 'https:' ? (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: '#94a3b8' }}>
+              <span style={{ fontSize: 14 }}>HTTPS 环境下无法加载外部地图服务</span>
+              <a href="http://47.96.7.238:38089/mapLayer" target="_blank" rel="noreferrer" style={{ color: '#40aeff', fontSize: 13 }}>在新标签页中打开地图</a>
+            </div>
+          ) : (
+            <iframe
+              title="insar-map"
+              src="http://47.96.7.238:38089/mapLayer"
+              allowFullScreen
+              style={{ width: '100%', height: '100%', border: 'none' }}
+            />
+          )}
         </div> : null
       )}
     </div>
