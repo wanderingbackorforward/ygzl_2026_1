@@ -255,7 +255,7 @@ const DocsPanel: React.FC<{ onStatsChange: () => void }> = ({ onStatsChange }) =
         }}>
           <i className="fas fa-book-open" style={{ fontSize: '36px', color: 'rgba(74,158,255,0.4)' }} />
           <div style={{ fontSize: '15px' }}>暂无文献</div>
-          <div style={{ fontSize: '13px', color: '#94a3b8' }}>
+          <div style={{ fontSize: '13px', color: '#e2e8f0' }}>
             点击"添加文献"上传知识内容，系统将自动提取实体和关系
           </div>
         </div>
@@ -272,7 +272,7 @@ const DocsPanel: React.FC<{ onStatsChange: () => void }> = ({ onStatsChange }) =
                 <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff', marginBottom: '4px' }}>
                   {doc.title}
                 </div>
-                <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: '#94a3b8', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: '#e2e8f0', flexWrap: 'wrap' }}>
                   <span>{doc.source_type === 'url' ? '网页' : doc.source_type === 'pdf' ? 'PDF' : '文本'}</span>
                   <span>{new Date(doc.uploaded_at).toLocaleDateString()}</span>
                   {doc.processed && (
@@ -402,9 +402,9 @@ const RiskPanel: React.FC = () => {
       <div style={styles.paramRow}>
         <label style={styles.paramLabel}>最低严重程度:</label>
         <select value={severity} onChange={e => setSeverity(e.target.value)} style={styles.select}>
-          <option value="critical">严重 (Critical)</option>
-          <option value="high">高 (High)</option>
-          <option value="medium">中 (Medium)</option>
+          <option value="critical">严重</option>
+          <option value="high">高</option>
+          <option value="medium">中等</option>
         </select>
         <button style={styles.runButton} onClick={loadRiskPoints} disabled={loading}>
           {loading ? '查询中...' : '查询风险点'}
@@ -523,8 +523,8 @@ const QAPanel: React.FC = () => {
                           display: 'inline-block', padding: '2px 8px', margin: '2px 4px',
                           backgroundColor: s === 'knowledge_graph' ? 'rgba(6,182,212,0.15)' : 'rgba(74,158,255,0.12)',
                           borderRadius: '10px', fontSize: '11px',
-                          color: s === 'knowledge_graph' ? '#06b6d4' : '#8bb8e8',
-                        }}>{s}</span>
+                          color: s === 'knowledge_graph' ? '#06b6d4' : '#e2e8f0',
+                        }}>{s === 'knowledge_graph' ? '知识图谱' : s}</span>
                       ))}
                     </div>
                   )}
@@ -570,7 +570,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid rgba(74,158,255,0.2)',
   },
   statIcon: { fontSize: '24px' },
-  statValue: { fontSize: '22px', fontWeight: 'bold', color: '#fff' },
+  statValue: { fontSize: '18px', fontWeight: 'bold', color: '#fff' },
   statLabel: { fontSize: '12px', color: '#fff', marginTop: '2px' },
   subTabs: { display: 'flex', gap: '8px' },
   subTab: {
@@ -587,7 +587,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'rgba(30,30,50,0.6)', borderRadius: '8px',
     border: '1px solid rgba(74,158,255,0.2)', flexWrap: 'wrap',
   },
-  paramLabel: { fontSize: '14px', color: '#aaa', whiteSpace: 'nowrap' },
+  paramLabel: { fontSize: '14px', color: '#e2e8f0', whiteSpace: 'nowrap' },
   select: {
     padding: '8px 12px', backgroundColor: 'rgba(20,20,40,0.8)',
     border: '1px solid rgba(74,158,255,0.3)', borderRadius: '6px',
@@ -603,7 +603,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'rgba(30,30,50,0.6)', borderRadius: '8px',
     border: '1px solid rgba(74,158,255,0.2)', overflow: 'hidden',
   },
-  emptyHint: { padding: '40px', textAlign: 'center', color: '#ccc', fontSize: '14px' },
+  emptyHint: { padding: '40px', textAlign: 'center', color: '#fff', fontSize: '14px' },
   // Risk panel
   riskList: { display: 'flex', flexDirection: 'column', gap: '12px' },
   riskCard: {
@@ -615,14 +615,14 @@ const styles: Record<string, React.CSSProperties> = {
   severityBadge: {
     padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '600',
   },
-  riskDesc: { fontSize: '13px', color: '#bbb', lineHeight: '1.5', marginBottom: '8px' },
-  riskMeta: { display: 'flex', gap: '16px', fontSize: '12px', color: '#ccc' },
+  riskDesc: { fontSize: '13px', color: '#e2e8f0', lineHeight: '1.5', marginBottom: '8px' },
+  riskMeta: { display: 'flex', gap: '16px', fontSize: '12px', color: '#e2e8f0' },
   // QA panel
   presetRow: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
   presetButton: {
     padding: '8px 14px', backgroundColor: 'rgba(74,158,255,0.08)',
     border: '1px solid rgba(74,158,255,0.2)', borderRadius: '16px',
-    color: '#8bb8e8', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s',
+    color: '#fff', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s',
   },
   qaHistory: {
     display: 'flex', flexDirection: 'column', gap: '16px',
@@ -631,14 +631,14 @@ const styles: Record<string, React.CSSProperties> = {
   qaItem: { display: 'flex', flexDirection: 'column', gap: '8px' },
   qaQuestion: {
     padding: '10px 14px', backgroundColor: 'rgba(74,158,255,0.1)',
-    borderRadius: '8px', color: '#ddd', fontSize: '14px',
+    borderRadius: '8px', color: '#fff', fontSize: '14px',
   },
   qaAnswer: {
     display: 'flex', padding: '12px 14px', backgroundColor: 'rgba(30,30,50,0.6)',
-    borderRadius: '8px', color: '#ccc', fontSize: '13px', lineHeight: '1.6',
+    borderRadius: '8px', color: '#e2e8f0', fontSize: '13px', lineHeight: '1.6',
   },
   qaConfidence: { marginTop: '8px', fontSize: '12px', color: '#52c41a' },
-  qaSources: { marginTop: '4px', fontSize: '12px', color: '#ccc' },
+  qaSources: { marginTop: '4px', fontSize: '12px', color: '#e2e8f0' },
   inputRow: {
     display: 'flex', gap: '8px', padding: '12px 16px',
     backgroundColor: 'rgba(30,30,50,0.6)', borderRadius: '8px',
