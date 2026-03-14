@@ -36,7 +36,7 @@ class SupabaseKnowledgeGraph:
         self._loaded = False
 
     def _load(self):
-        """Load nodes and edges from Supabase into networkx graph."""
+        """Load nodes and edges from Supabase into networkx graph. Auto-build if empty."""
         if self._loaded:
             return
         try:
@@ -45,6 +45,14 @@ class SupabaseKnowledgeGraph:
                 f"{_base_url()}/rest/v1/kg_nodes?select=*",
                 headers=_headers(), timeout=10,
             )
+            if r.status_code == 404:
+                # Table doesn't exist yet - try to create it
+                self._create_tables()
+                r = requests.get(
+                    f"{_base_url()}/rest/v1/kg_nodes?select=*",
+                    headers=_headers(), timeout=10,
+                )
+
             r.raise_for_status()
             nodes = r.json()
 
@@ -56,6 +64,20 @@ class SupabaseKnowledgeGraph:
             r2.raise_for_status()
             edges = r2.json()
 
+            # Auto-build if tables are empty
+            if not nodes:
+                print("[KG] Tables empty, auto-building from settlement data...")
+                self._auto_build()
+                # Re-fetch after build
+                r = requests.get(f"{_base_url()}/rest/v1/kg_nodes?select=*",
+                                 headers=_headers(), timeout=10)
+                r.raise_for_status()
+                nodes = r.json()
+                r2 = requests.get(f"{_base_url()}/rest/v1/kg_edges?select=*",
+                                  headers=_headers(), timeout=10)
+                r2.raise_for_status()
+                edges = r2.json()
+
             for n in nodes:
                 self.G.add_node(n['id'], node_type=n['node_type'],
                                 label=n['label'], properties=n.get('properties', {}))
@@ -63,9 +85,137 @@ class SupabaseKnowledgeGraph:
                 self.G.add_edge(e['source_id'], e['target_id'],
                                 edge_type=e['edge_type'], properties=e.get('properties', {}))
             self._loaded = True
+            print(f"[KG] Loaded {len(nodes)} nodes, {len(edges)} edges")
         except Exception as ex:
             print(f"[KG] Failed to load from Supabase: {ex}")
             self._loaded = False
+
+    def _create_tables(self):
+        """Create kg_nodes and kg_edges tables via Supabase SQL."""
+        sql = """
+        CREATE TABLE IF NOT EXISTS kg_nodes (
+          id TEXT PRIMARY KEY,
+          node_type TEXT NOT NULL,
+          label TEXT NOT NULL,
+          properties JSONB DEFAULT '{}'::jsonb,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        CREATE TABLE IF NOT EXISTS kg_edges (
+          id SERIAL PRIMARY KEY,
+          source_id TEXT NOT NULL,
+          target_id TEXT NOT NULL,
+          edge_type TEXT NOT NULL,
+          properties JSONB DEFAULT '{}'::jsonb,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        """
+        try:
+            r = requests.post(
+                f"{_base_url()}/rest/v1/rpc/exec_sql",
+                headers=_headers(), json={'query': sql}, timeout=15
+            )
+            print(f"[KG] Create tables: {r.status_code}")
+        except Exception as ex:
+            print(f"[KG] Cannot auto-create tables: {ex}")
+
+    def _auto_build(self):
+        """Auto-populate KG from existing settlement data in Supabase."""
+        try:
+            # 1. Fetch settlement point IDs
+            r = requests.get(
+                f"{_base_url()}/rest/v1/processed_settlement_data?select=point_id&limit=1000",
+                headers=_headers(), timeout=15,
+            )
+            r.raise_for_status()
+            point_ids = sorted(set(row['point_id'] for row in r.json()))
+            if not point_ids:
+                print("[KG] No settlement data for auto-build")
+                return
+
+            # 2. Fetch monitoring point coordinates
+            coords = {}
+            try:
+                r_pts = requests.get(
+                    f"{_base_url()}/rest/v1/monitoring_points?select=point_id,x_coord,y_coord",
+                    headers=_headers(), timeout=10,
+                )
+                if r_pts.ok:
+                    for p in r_pts.json():
+                        coords[p['point_id']] = (float(p.get('x_coord', 0)), float(p.get('y_coord', 0)))
+            except Exception:
+                pass
+
+            # 3. Build nodes
+            nodes = []
+            for pid in point_ids:
+                xy = coords.get(pid, (0, 0))
+                nodes.append({
+                    'id': pid, 'node_type': 'MonitoringPoint',
+                    'label': pid, 'properties': {'x': xy[0], 'y': xy[1]},
+                })
+
+            # Anomaly nodes: points with large cumulative settlement
+            for pid in point_ids:
+                try:
+                    r_s = requests.get(
+                        f"{_base_url()}/rest/v1/processed_settlement_data"
+                        f"?select=cumulative_change&point_id=eq.{pid}&order=measurement_date.desc&limit=1",
+                        headers=_headers(), timeout=8,
+                    )
+                    if r_s.ok and r_s.json():
+                        val = float(r_s.json()[0].get('cumulative_change', 0))
+                        if abs(val) > 15:
+                            sev = 'critical' if abs(val) > 25 else 'high' if abs(val) > 20 else 'medium'
+                            nodes.append({
+                                'id': f'anomaly_{pid}', 'node_type': 'Anomaly',
+                                'label': f'{pid} anomaly ({val:.1f}mm)',
+                                'properties': {'severity': sev, 'value': val, 'anomaly_count': 1,
+                                               'description': f'{pid} cumulative {val:.1f}mm'},
+                            })
+                except Exception:
+                    pass
+
+            # 4. Build edges
+            edges = []
+            # Spatial proximity (distance < 50m)
+            pids_with_coords = [p for p in point_ids if p in coords]
+            for i, p1 in enumerate(pids_with_coords):
+                for p2 in pids_with_coords[i+1:]:
+                    c1, c2 = coords[p1], coords[p2]
+                    dist = np.sqrt((c1[0]-c2[0])**2 + (c1[1]-c2[1])**2)
+                    if dist < 50:
+                        edges.append({
+                            'source_id': p1, 'target_id': p2,
+                            'edge_type': 'SPATIAL_NEAR',
+                            'properties': {'distance': round(dist, 1)},
+                        })
+
+            # Anomaly -> MonitoringPoint
+            for pid in point_ids:
+                aid = f'anomaly_{pid}'
+                if any(n['id'] == aid for n in nodes):
+                    edges.append({
+                        'source_id': aid, 'target_id': pid,
+                        'edge_type': 'DETECTED_AT', 'properties': {},
+                    })
+
+            # 5. Upsert to Supabase
+            if nodes:
+                h = _headers()
+                h['Prefer'] = 'resolution=merge-duplicates,return=representation'
+                for i in range(0, len(nodes), 50):
+                    requests.post(f"{_base_url()}/rest/v1/kg_nodes",
+                                  headers=h, json=nodes[i:i+50], timeout=15)
+
+            if edges:
+                for i in range(0, len(edges), 50):
+                    requests.post(f"{_base_url()}/rest/v1/kg_edges",
+                                  headers=_headers(), json=edges[i:i+50], timeout=15)
+
+            print(f"[KG] Auto-built: {len(nodes)} nodes, {len(edges)} edges")
+
+        except Exception as ex:
+            print(f"[KG] Auto-build failed: {ex}")
 
     # ---- Query methods (match mock output format) ----
 
