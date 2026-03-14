@@ -9,6 +9,8 @@ import { PPVTrendChart } from '@/components/vibration/PPVTrendChart'
 import { ChannelList } from '@/components/vibration/ChannelList'
 import { AlertHistory } from '@/components/vibration/AlertHistory'
 import { ChannelDetailDrawer } from '@/components/vibration/ChannelDetailDrawer'
+import { SadovskyCalculator } from '@/components/vibration/SadovskyCalculator'
+import { SafeDistanceCalculator } from '@/components/vibration/SafeDistanceCalculator'
 import type {
   VibrationDataset,
   StructureType,
@@ -20,6 +22,7 @@ import type {
   Thresholds
 } from '@/utils/vibration/types'
 import { getDynamicThreshold, calculateSafetyScore, getAlertLevel } from '@/utils/vibration/gb6722'
+import { exportChannelsCSV } from '@/utils/vibration/exportUtils'
 
 // 通道颜色配置
 const CHANNEL_COLORS = [
@@ -43,6 +46,7 @@ export const VibrationV2: React.FC = () => {
   // 配置
   const [structureType, setStructureType] = useState<StructureType>('brick')
   const [structureCondition, setStructureCondition] = useState<StructureCondition>('good')
+  const [siteType, setSiteType] = useState<SiteType>('soil')
   const [distance, setDistance] = useState<number>(100)
 
   // 通道数据（mock）
@@ -271,10 +275,14 @@ export const VibrationV2: React.FC = () => {
           {/* 右侧：操作按钮 */}
           <div className="flex items-center gap-3">
             <button
-              className="rounded-md bg-slate-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-600"
+              className="rounded-md bg-cyan-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-cyan-500"
               onClick={() => {
-                // TODO: 导出功能
-                alert('导出功能待实现')
+                exportChannelsCSV(channels, summaryData.thresholds, {
+                  score: summaryData.score,
+                  level: summaryData.level,
+                  factors: [],
+                  recommendation: ''
+                })
               }}
             >
               导出
@@ -452,6 +460,21 @@ export const VibrationV2: React.FC = () => {
                     阈值根据结构类型、主频、距离和结构状态动态计算。
                     预警值=60%阈值，报警值=80%阈值，停工值=100%阈值。
                   </p>
+                </div>
+
+                {/* 分隔线 */}
+                <div className="border-t border-slate-700 pt-4">
+                  <h3 className="mb-4 text-sm font-semibold text-white">PPV 预测工具</h3>
+                  <SadovskyCalculator
+                    siteType={siteType}
+                    onSiteTypeChange={setSiteType}
+                  />
+                </div>
+
+                {/* 安全距离计算 */}
+                <div className="border-t border-slate-700 pt-4">
+                  <h3 className="mb-4 text-sm font-semibold text-white">安全距离计算</h3>
+                  <SafeDistanceCalculator siteType={siteType} />
                 </div>
               </div>
             </div>
