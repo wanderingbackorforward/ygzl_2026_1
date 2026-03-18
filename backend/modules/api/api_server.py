@@ -67,6 +67,12 @@ from modules.ticket_system.api import ticket_bp, user_bp
 
 # 二级数据分析模块
 from modules.analysis_v2.api import analysis_v2_bp
+
+# 温度V2模块
+try:
+    from modules.temperature_v2.api_routes import temperature_v2_api
+except Exception:
+    temperature_v2_api = None
 from modules.insar.api import insar_bp
 from modules.tunnel.api import tunnel_bp
 from modules.advanced_analysis.api import advanced_bp
@@ -1029,6 +1035,9 @@ app.register_blueprint(ticket_bp)
 app.register_blueprint(user_bp)
 # 注册二级数据分析API蓝图
 app.register_blueprint(analysis_v2_bp)
+# 注册温度V2 API蓝图
+if temperature_v2_api is not None:
+    app.register_blueprint(temperature_v2_api)
 app.register_blueprint(assistant_bp)
 # 模块管理路由已迁移到 module_bp 蓝图（见下方 app.register_blueprint(module_bp)）
 app.register_blueprint(insar_bp)
