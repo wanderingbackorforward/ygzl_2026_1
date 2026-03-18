@@ -39,15 +39,41 @@ def v2_overview():
     """V2总览: KPI + 所有传感器状态"""
     try:
         summary = repo.temperature_get_summary()
-        stats = repo.temperature_get_stats()
+        raw_stats = repo.temperature_get_stats()
         points = repo.temperature_get_points()
 
+        # 将raw_stats转换为前端期望的扁平结构
+        cur_temp = raw_stats.get('current_temperature', {}) if isinstance(raw_stats, dict) else {}
+        trends = raw_stats.get('trends', {}) if isinstance(raw_stats, dict) else {}
+        alerts = raw_stats.get('alerts', {}) if isinstance(raw_stats, dict) else {}
+
+        cur_avg = cur_temp.get('avg')
+        cur_max = cur_temp.get('max')
+        cur_min = cur_temp.get('min')
+        avg_range = round(cur_max - cur_min, 2) if cur_max is not None and cur_min is not None else None
+
+        # 找到占比最大的趋势作为dominant_trend
+        dominant_trend = max(trends, key=trends.get) if trends else None
+
+        stats = {
+            'current_avg': cur_avg,
+            'current_max': cur_max,
+            'current_min': cur_min,
+            'avg_range': avg_range,
+            'dominant_trend': dominant_trend,
+            'freeze_thaw_cycles': 0,
+            'sensor_count': cur_temp.get('sensor_count', 0),
+            'date_range': cur_temp.get('date_range'),
+            'trends': trends,
+            'alerts': alerts,
+        }
+
         # 从最新数据计算施工指导
-        conditions = {}
-        if isinstance(stats, dict):
-            conditions['ambient_temp'] = stats.get('current_avg')
-            conditions['daily_range'] = stats.get('avg_range')
-            conditions['ground_temp'] = stats.get('current_min')
+        conditions = {
+            'ambient_temp': cur_avg,
+            'daily_range': avg_range,
+            'ground_temp': cur_min,
+        }
 
         assessment = guide.full_assessment(conditions) if any(v is not None for v in conditions.values()) else None
 
@@ -55,7 +81,7 @@ def v2_overview():
             'success': True,
             'data': {
                 'summary': summary if isinstance(summary, list) else [],
-                'stats': stats if isinstance(stats, dict) else {},
+                'stats': stats,
                 'points': points if isinstance(points, list) else [],
                 'construction_assessment': assessment,
             }
