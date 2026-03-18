@@ -1,5 +1,7 @@
 # Vercel serverless - only essential packages (250MB limit)
 # DO NOT include torch/shap/neo4j - too large for Vercel
+# NOTE: Vercel reads THIS file (not pyproject.toml) when both exist
+# api_server.py hard-imports mysql.connector + sqlalchemy, must include
 Flask
 Flask-Cors
 Werkzeug
@@ -11,3 +13,5 @@ statsmodels
 scipy
 networkx
 pyshp
+mysql-connector-python
+SQLAlchemy
