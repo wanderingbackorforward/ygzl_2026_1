@@ -1,5 +1,34 @@
 # Claude Agent System Instructions
 
+## Vercel Python 依赖铁律（最高优先级，违反即全站崩溃）
+
+### 依赖文件优先级（必须牢记）
+- **Vercel 只读 `api/requirements.txt`**（当它和 `pyproject.toml` 同时存在时）
+- `api/pyproject.toml` 被**完全忽略**，改了没用
+- `backend/requirements.txt` 和根目录 `requirements.txt` Vercel **从不读取**
+- `includeFiles: "backend/**/*.py"` 只打包源码，**不影响依赖安装**
+
+### 修改依赖前的强制检查（每一步都不能跳过）
+1. **确认改的是 `api/requirements.txt`** — 改其他文件等于白改
+2. **grep 整个 backend/ 确认导入链** — `grep -r "^import\|^from" backend/` 确认哪些包被硬导入
+3. **区分硬导入 vs try/except** — 硬导入的包删了就全站500，绝对不能删
+4. **估算包体积** — 当前约200MB/250MB限制，剩余约50MB
+5. **一次只改一个文件** — 部署验证通过后再改下一个，绝不批量改
+
+### 当前硬导入（无 try/except，缺包即全站崩溃）
+| 文件 | 导入 | 所需包 |
+|------|------|--------|
+| api_server.py:19 | `import mysql.connector` | mysql-connector-python |
+| api_server.py:22 | `from sqlalchemy import create_engine` | SQLAlchemy |
+| backend/ 17处 | mysql.connector, sqlalchemy | 同上 |
+
+### 绝对禁止
+- **不要动 `api/index.py`** — 改一个字符都可能导致 Vercel 检测不到 Serverless Function
+- **不要从 `api/requirements.txt` 删任何包** — 除非先确认 backend/ 中没有硬导入
+- **不要把 `backend/requirements.txt` 当成 Vercel 的依赖文件** — 它只是本地开发用的
+
+---
+
 ## Core Mission
 
 Scientific writing assistant: research first, verify sources, synthesize into publication-ready documents.
