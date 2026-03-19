@@ -3,56 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 模型查看器 (Three.js)</title>
+    <title>数字孪生隧道 - 3D漫游平台</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ---- 3D Viewer Full-screen Layout ---- */
+        html, body { margin: 0; padding: 0; overflow: hidden; height: 100%; background: #0a1628; }
+        #viewer-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
+        #viewer-canvas { display: block; width: 100%; height: 100%; }
+
+        /* ---- Loading Overlay ---- */
+        #loading-indicator {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: #0a1628; color: #00e5ff; font-family: 'Rajdhani', monospace;
+            font-size: 18px; z-index: 100; transition: opacity 0.5s;
+        }
+        #loading-indicator.hidden { opacity: 0; pointer-events: none; }
+        .loading-spinner {
+            width: 48px; height: 48px; border: 3px solid rgba(0,229,255,0.2);
+            border-top-color: #00e5ff; border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin-bottom: 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ---- Control Panel (top-left) ---- */
+        #control-panel {
+            position: fixed; top: 16px; left: 16px; z-index: 50;
+            background: rgba(10, 22, 40, 0.92); border: 1px solid rgba(0,229,255,0.3);
+            border-radius: 10px; padding: 14px 16px; min-width: 200px;
+            font-family: 'Rajdhani', sans-serif; color: #fff;
+            backdrop-filter: blur(12px); user-select: none;
+        }
+        #control-panel h3 {
+            margin: 0 0 10px 0; font-size: 14px; color: #00e5ff;
+            letter-spacing: 1px; text-transform: uppercase;
+        }
+        .ctrl-row { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+        .ctrl-btn {
+            padding: 6px 12px; border: 1px solid rgba(0,229,255,0.4);
+            background: rgba(0,229,255,0.08); color: #e0f7fa;
+            border-radius: 6px; cursor: pointer; font-size: 13px;
+            font-family: 'Rajdhani', sans-serif; transition: all 0.15s;
+        }
+        .ctrl-btn:hover { background: rgba(0,229,255,0.2); color: #fff; }
+        .ctrl-btn.active { background: rgba(0,229,255,0.35); color: #fff; border-color: #00e5ff; }
+        .ctrl-divider { height: 1px; background: rgba(0,229,255,0.15); margin: 10px 0; }
+
+        /* ---- Info HUD (bottom-center) ---- */
+        #info-hud {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 50; background: rgba(10, 22, 40, 0.85);
+            border: 1px solid rgba(0,229,255,0.25); border-radius: 8px;
+            padding: 8px 20px; font-family: 'Rajdhani', monospace;
+            color: #e0f7fa; font-size: 13px; white-space: nowrap;
+            backdrop-filter: blur(8px); pointer-events: none;
+        }
+        #info-hud span { color: #00e5ff; font-weight: 600; }
+
+        /* ---- Crosshair (FPS mode) ---- */
+        #crosshair {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); z-index: 40;
+            pointer-events: none; display: none;
+        }
+        #crosshair::before, #crosshair::after {
+            content: ''; position: absolute; background: rgba(0,229,255,0.6);
+        }
+        #crosshair::before { width: 16px; height: 2px; top: -1px; left: -8px; }
+        #crosshair::after { width: 2px; height: 16px; top: -8px; left: -1px; }
+
+        /* ---- Help Overlay ---- */
+        #help-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 22, 40, 0.9); z-index: 200;
+            display: none; align-items: center; justify-content: center;
+            font-family: 'Rajdhani', sans-serif; color: #e0f7fa;
+        }
+        #help-overlay.visible { display: flex; }
+        .help-box {
+            background: rgba(15, 30, 55, 0.95); border: 1px solid rgba(0,229,255,0.3);
+            border-radius: 12px; padding: 28px 36px; max-width: 420px;
+        }
+        .help-box h2 { margin: 0 0 16px 0; color: #00e5ff; font-size: 20px; }
+        .help-box table { width: 100%; border-collapse: collapse; }
+        .help-box td { padding: 4px 8px; font-size: 14px; }
+        .help-box td:first-child { color: #00e5ff; font-weight: 600; white-space: nowrap; }
+        .help-box .close-help {
+            margin-top: 16px; padding: 8px 24px;
+            background: rgba(0,229,255,0.15); border: 1px solid #00e5ff;
+            color: #00e5ff; border-radius: 6px; cursor: pointer;
+            font-family: 'Rajdhani', sans-serif; font-size: 14px;
+        }
+
+        /* ---- Minimap (top-right) ---- */
+        #minimap {
+            position: fixed; top: 16px; right: 16px; z-index: 50;
+            width: 160px; height: 120px; background: rgba(10, 22, 40, 0.85);
+            border: 1px solid rgba(0,229,255,0.3); border-radius: 8px;
+            overflow: hidden;
+        }
+        #minimap canvas { width: 100%; height: 100%; }
+
+        /* ---- Compact nav (embedded mode hidden) ---- */
+        .compact-nav { display: none; }
+    </style>
 </head>
 <body>
-    <div class="dashboard">
-        <div class="dashboard-content">
-            <nav class="compact-nav">
-                <ul>
-                    <li><a href="/settlement"><i class="fas fa-chart-area"></i>沉降</a></li>
-                    <li><a href="/temperature"><i class="fas fa-thermometer-half"></i>温度</a></li>
-                    <li><a href="/cracks"><i class="fas fa-bug"></i>裂缝</a></li>
-                    <li><a href="/vibration"><i class="fas fa-wave-square"></i>振动</a></li>
-                    <li><a href="/insar"><i class="fas fa-satellite"></i>InSAR</a></li>
-                    <li><a href="/overview"><i class="fas fa-chart-line"></i>数据总览</a></li>
-                    <li><a href="/three" class="active"><i class="fas fa-cubes"></i>3D模型</a></li>
-                    <li><a href="/tickets"><i class="fas fa-ticket-alt"></i>工单</a></li>
-                </ul>
-            </nav>
-            <div class="main-content three-layout">
-                <div id="viewer-container" class="three-viewer">
-                    <canvas id="viewer-canvas"></canvas>
-                    <div id="loading-indicator" class="three-loading">加载中...</div>
-                </div>
-                <aside id="tunnel-gallery" class="tunnel-gallery-panel">
-                    <div class="tunnel-gallery-header">
-                        <div class="tunnel-gallery-title">隧道立体图</div>
-                        <div class="tunnel-gallery-status">加载中</div>
-                    </div>
-                    <div class="tunnel-gallery-list"></div>
-                    <div class="tunnel-gallery-note">点击缩略图查看原图</div>
-                </aside>
-            </div>
+    <div id="viewer-container">
+        <canvas id="viewer-canvas"></canvas>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading-indicator">
+        <div class="loading-spinner"></div>
+        <div>正在生成隧道场景...</div>
+    </div>
+
+    <!-- Crosshair for FPS mode -->
+    <div id="crosshair"></div>
+
+    <!-- Control Panel -->
+    <div id="control-panel">
+        <h3><i class="fas fa-gamepad"></i> 漫游控制</h3>
+        <div class="ctrl-row">
+            <button class="ctrl-btn active" data-mode="orbit" onclick="window.setNavMode('orbit')">
+                <i class="fas fa-sync-alt"></i> 轨道
+            </button>
+            <button class="ctrl-btn" data-mode="fps" onclick="window.setNavMode('fps')">
+                <i class="fas fa-walking"></i> 漫游
+            </button>
+            <button class="ctrl-btn" data-mode="fly" onclick="window.setNavMode('fly')">
+                <i class="fas fa-plane"></i> 飞行
+            </button>
+        </div>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-row">
+            <button class="ctrl-btn" onclick="window.startAutoTour()">
+                <i class="fas fa-route"></i> 自动巡航
+            </button>
+            <button class="ctrl-btn" onclick="window.stopAutoTour()">
+                <i class="fas fa-stop"></i> 停止
+            </button>
+        </div>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-row">
+            <button class="ctrl-btn" onclick="window.resetCamera()">
+                <i class="fas fa-home"></i> 复位
+            </button>
+            <button class="ctrl-btn" onclick="window.toggleHelp()">
+                <i class="fas fa-keyboard"></i> 操作说明
+            </button>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:rgba(224,247,250,0.5);">
+            模式: <span id="mode-label" style="color:#00e5ff;">轨道</span>
         </div>
     </div>
+
+    <!-- Info HUD -->
+    <div id="info-hud">
+        位置: <span id="hud-pos">0, 0, 0</span> &nbsp;|&nbsp;
+        里程: <span id="hud-meter">K0+000</span> &nbsp;|&nbsp;
+        FPS: <span id="hud-fps">60</span>
+    </div>
+
+    <!-- Minimap -->
+    <div id="minimap"><canvas id="minimap-canvas"></canvas></div>
+
+    <!-- Help Overlay -->
+    <div id="help-overlay">
+        <div class="help-box">
+            <h2><i class="fas fa-keyboard"></i> 操作说明</h2>
+            <table>
+                <tr><td>WASD</td><td>前后左右移动</td></tr>
+                <tr><td>空格 / Shift</td><td>上升 / 下降</td></tr>
+                <tr><td>鼠标拖拽</td><td>旋转视角</td></tr>
+                <tr><td>滚轮</td><td>缩放（轨道模式）/ 调速（漫游模式）</td></tr>
+                <tr><td>1 / 2 / 3</td><td>切换 轨道/漫游/飞行 模式</td></tr>
+                <tr><td>T</td><td>开始/停止 自动巡航</td></tr>
+                <tr><td>R</td><td>复位相机</td></tr>
+                <tr><td>H</td><td>显示/隐藏 本帮助</td></tr>
+                <tr><td>ESC</td><td>退出漫游模式</td></tr>
+            </table>
+            <button class="close-help" onclick="window.toggleHelp()">关闭 (H)</button>
+        </div>
+    </div>
+
+    <!-- Three.js + Extensions (CDN) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/PointerLockControls.js"></script>
     <script src="js/three_viewer_enhanced.js"></script>
-    <script src="js/tunnel_gallery.js"></script>
-    <script>
-      (function(){
-        var embedded = window.self !== window.top || window.location.search.indexOf('embedded=1') !== -1;
-        if (embedded) {
-          var el = document.querySelector('.compact-nav');
-          if (el) el.style.display = 'none';
-          document.body.style.paddingTop = '0';
-        }
-      })();
-    </script>
 </body>
 </html>
