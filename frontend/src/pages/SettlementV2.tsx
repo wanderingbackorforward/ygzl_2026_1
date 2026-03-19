@@ -54,14 +54,36 @@ function alertLabel(level: string): string {
 }
 
 // ─────────────────────────────────────────────
+// 施工事件类型
+// ─────────────────────────────────────────────
+interface ConstructionEvent {
+  event_id: number;
+  event_date: string;
+  event_type: string;
+  description: string;
+  chainage_start?: number;
+  chainage_end?: number;
+}
+
+// ─────────────────────────────────────────────
 // 英雄区
 // ─────────────────────────────────────────────
+const TIME_OPTIONS = [
+  { label: '7天', value: 7 },
+  { label: '30天', value: 30 },
+  { label: '60天', value: 60 },
+  { label: '90天', value: 90 },
+  { label: '全部', value: 0 },
+];
+
 interface HeroBarProps {
   points: PointSummary[];
   loading: boolean;
+  days: number;
+  onDaysChange: (d: number) => void;
 }
 
-function HeroBar({ points, loading }: HeroBarProps) {
+function HeroBar({ points, loading, days, onDaysChange }: HeroBarProps) {
   if (loading) {
     return (
       <div style={{ background: 'rgba(0,30,60,0.9)', borderBottom: '1px solid rgba(0,229,255,0.15)', padding: '10px 20px', display: 'flex', gap: 32, alignItems: 'center' }}>
@@ -126,7 +148,7 @@ function HeroBar({ points, loading }: HeroBarProps) {
       {kpis.map((k, i) => (
         <div key={k.label} style={{
           flex: 1,
-          borderRight: i < kpis.length - 1 ? '1px solid rgba(0,229,255,0.1)' : 'none',
+          borderRight: '1px solid rgba(0,229,255,0.1)',
           padding: '4px 16px',
           display: 'flex',
           flexDirection: 'column',
@@ -137,6 +159,28 @@ function HeroBar({ points, loading }: HeroBarProps) {
           <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{k.sub}</div>
         </div>
       ))}
+      {/* 时间范围选择器 */}
+      <div style={{ flexShrink: 0, padding: '4px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>时间范围</div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {TIME_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => onDaysChange(opt.value)}
+              style={{
+                padding: '3px 8px',
+                fontSize: 12,
+                borderRadius: 4,
+                border: `1px solid ${days === opt.value ? 'rgba(0,229,255,0.8)' : 'rgba(0,229,255,0.2)'}`,
+                background: days === opt.value ? 'rgba(0,229,255,0.15)' : 'transparent',
+                color: days === opt.value ? '#00e5ff' : 'rgba(255,255,255,0.6)',
+                cursor: 'pointer',
+                fontWeight: days === opt.value ? 600 : 400,
+              }}
+            >{opt.label}</button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -232,9 +276,18 @@ interface TunnelProfileChartProps {
   selectedId: string | null;
   points: PointSummary[];
   loading: boolean;
+  events: ConstructionEvent[];
 }
 
-function TunnelProfileChart({ profileData, selectedId, points, loading }: TunnelProfileChartProps) {
+const EVENT_TYPE_COLORS: Record<string, string> = {
+  掘进: '#38bdf8',
+  注浆: '#a78bfa',
+  衬砌: '#fb923c',
+  监测: '#34d399',
+  其他: '#94a3b8',
+};
+
+function TunnelProfileChart({ profileData, selectedId, points, loading, events }: TunnelProfileChartProps) {
   const option = useMemo((): EChartsOption => {
     if (!profileData || profileData.profile.length === 0) return {};
 
@@ -353,7 +406,7 @@ function TunnelProfileChart({ profileData, selectedId, points, loading }: Tunnel
         itemWidth: 14,
         itemHeight: 10,
       },
-      series: [
+      series: ([
         // 沉降曲线
         {
           type: 'line',
@@ -383,9 +436,39 @@ function TunnelProfileChart({ profileData, selectedId, points, loading }: Tunnel
         },
         // 地层色带
         ...layerSeries,
-      ],
+        // 施工事件标注（竖向区域）
+        ...(events.length > 0 ? [{
+          type: 'line' as const,
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          data: [],
+          markArea: {
+            silent: false,
+            emphasis: { disabled: false },
+            data: events
+              .filter(e => e.chainage_start != null)
+              .map(e => {
+                const type = e.event_type || '其他';
+                const color = EVENT_TYPE_COLORS[type] ?? EVENT_TYPE_COLORS['其他'];
+                return [
+                  {
+                    xAxis: e.chainage_start,
+                    itemStyle: { color: `${color}22`, borderColor: `${color}88`, borderWidth: 1 },
+                    label: {
+                      formatter: `${type}\n${e.event_date?.slice(5, 10) ?? ''}`,
+                      color: color,
+                      fontSize: 10,
+                      position: 'insideTop' as const,
+                    },
+                  },
+                  { xAxis: e.chainage_end ?? (e.chainage_start! + 5) },
+                ];
+              }),
+          },
+        }] : []),
+      ] as any[]),
     };
-  }, [profileData, selectedId, points]);
+  }, [profileData, selectedId, points, events]);
 
   if (loading) {
     return (
@@ -551,13 +634,14 @@ export default function SettlementV2() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [days, setDays] = useState<number>(30);
+  const [events, setEvents] = useState<ConstructionEvent[]>([]);
 
   const fetchSummary = useCallback(async () => {
     setLoading(true);
     try {
       const data = await apiGet<PointSummary[]>('/summary');
       setPoints(data ?? []);
-      // 默认选中第一个报警点或第一个点
       if (data && data.length > 0 && !selectedId) {
         const first = data.find(p => p.alert_level === 'alert') ?? data[0];
         setSelectedId(first.point_id);
@@ -581,7 +665,25 @@ export default function SettlementV2() {
     }
   }, []);
 
+  const fetchEvents = useCallback(async () => {
+    try {
+      const end = new Date().toISOString().slice(0, 10);
+      const startDate = new Date();
+      if (days > 0) startDate.setDate(startDate.getDate() - days);
+      else startDate.setFullYear(startDate.getFullYear() - 10);
+      const start = startDate.toISOString().slice(0, 10);
+      const data = await apiGet<{ events: ConstructionEvent[] }>(
+        `/advanced/events/timeline?start=${start}&end=${end}`
+      );
+      setEvents(data?.events ?? []);
+    } catch (e) {
+      console.error('[SettlementV2] fetch events failed', e);
+      setEvents([]);
+    }
+  }, [days]);
+
   useEffect(() => { fetchSummary(); fetchProfile(); }, [fetchSummary, fetchProfile]);
+  useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
   return (
     <div style={{
@@ -591,8 +693,8 @@ export default function SettlementV2() {
       background: 'radial-gradient(ellipse at center, #0a192f 0%, #040b14 100%)',
       overflow: 'hidden',
     }}>
-      {/* 顶栏英雄区 */}
-      <HeroBar points={points} loading={loading} />
+      {/* 顶栏英雄区 + 时间范围选择器 */}
+      <HeroBar points={points} loading={loading} days={days} onDaysChange={setDays} />
 
       {/* 主体：左侧列表 + 右侧（纵断面图 + 裂缝联动） */}
       <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
@@ -608,6 +710,7 @@ export default function SettlementV2() {
             selectedId={selectedId}
             points={points}
             loading={profileLoading}
+            events={events}
           />
           <CrackJointPanel selectedId={selectedId} />
         </div>
