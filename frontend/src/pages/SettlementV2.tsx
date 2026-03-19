@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiGet } from '../lib/api';
+import { EChartsWrapper } from '../components/charts/EChartsWrapper';
+import type { EChartsOption } from 'echarts';
 
 // ─────────────────────────────────────────────
 // 类型定义
@@ -12,6 +14,27 @@ interface PointSummary {
   trend_type: string;
   predicted_change_30d: number;
   last_date: string;
+}
+
+interface ProfilePoint {
+  chainage_m: number;
+  cumulative_change: number;
+  daily_change: number;
+  point_id: string;
+  value: number;
+}
+
+interface GeoLayer {
+  layer_name: string;
+  depth_top: number;
+  depth_bottom: number;
+  color: string;
+}
+
+interface ProfileData {
+  date: string;
+  profile: ProfilePoint[];
+  layers: GeoLayer[];
 }
 
 // ─────────────────────────────────────────────
@@ -201,16 +224,191 @@ function PointList({ points, loading, selectedId, onSelect }: PointListProps) {
 }
 
 // ─────────────────────────────────────────────
-// 右侧占位区（后续批次填充）
+// 隧道纵断面图
 // ─────────────────────────────────────────────
-function RightPlaceholder({ selectedId }: { selectedId: string | null }) {
-  return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'rgba(0,10,25,0.6)', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-      <div style={{ color: 'rgba(0,229,255,0.3)', fontSize: 14 }}>
-        {selectedId ? `已选中 ${selectedId}` : '请在左侧选择监测点'}
+interface TunnelProfileChartProps {
+  profileData: ProfileData | null;
+  selectedId: string | null;
+  points: PointSummary[];
+  loading: boolean;
+}
+
+function TunnelProfileChart({ profileData, selectedId, points, loading }: TunnelProfileChartProps) {
+  const option = useMemo((): EChartsOption => {
+    if (!profileData || profileData.profile.length === 0) return {};
+
+    const profile = profileData.profile;
+    const layers = profileData.layers;
+
+    // 沉降曲线数据
+    const lineData = profile.map(p => [p.chainage_m, p.cumulative_change]);
+
+    // 监测点散点（区分选中/报警状态）
+    const scatterData = profile.map(p => {
+      const summary = points.find(s => s.point_id === p.point_id);
+      const isSelected = p.point_id === selectedId;
+      const alert = summary?.alert_level ?? 'normal';
+      const color = alert === 'alert' ? '#f87171' : alert === 'warning' ? '#fbbf24' : '#34d399';
+      return {
+        value: [p.chainage_m, p.cumulative_change],
+        name: p.point_id,
+        itemStyle: {
+          color: isSelected ? '#00e5ff' : color,
+          borderColor: isSelected ? '#fff' : 'transparent',
+          borderWidth: isSelected ? 2 : 0,
+        },
+        symbolSize: isSelected ? 14 : 8,
+        label: { show: isSelected, formatter: p.point_id, color: '#fff', fontSize: 11, position: 'top' as const },
+        // 附加数据用于 tooltip
+        dailyChange: p.daily_change,
+        alertLevel: alert,
+      };
+    });
+
+    // 地层色带数据（用 bar 系列堆叠）
+    const maxChainage = Math.max(...profile.map(p => p.chainage_m));
+    const layerSeries = layers.map(layer => ({
+      type: 'bar' as const,
+      xAxisIndex: 1,
+      yAxisIndex: 1,
+      stack: 'layers',
+      name: layer.layer_name,
+      data: [layer.depth_bottom - layer.depth_top],
+      barWidth: '100%',
+      itemStyle: { color: layer.color, opacity: 0.7 },
+      emphasis: { disabled: true },
+    }));
+
+    return {
+      grid: [
+        { left: 60, right: 30, top: 40, bottom: '35%' },   // 上：沉降曲线
+        { left: 60, right: 30, top: '72%', bottom: 30 },    // 下：地层
+      ],
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: 'rgba(10,20,40,0.95)',
+        borderColor: 'rgba(0,229,255,0.3)',
+        textStyle: { color: '#fff', fontSize: 12 },
+        formatter: (params: any) => {
+          if (params.seriesIndex === 1 && params.data) {
+            const d = params.data;
+            const alert = d.alertLevel === 'alert' ? '报警' : d.alertLevel === 'warning' ? '预警' : '正常';
+            return `<b>${d.name}</b><br/>` +
+              `里程: ${d.value[0].toFixed(1)} m<br/>` +
+              `累计沉降: ${d.value[1].toFixed(2)} mm<br/>` +
+              `日变化: ${(d.dailyChange ?? 0).toFixed(3)} mm/d<br/>` +
+              `状态: ${alert}`;
+          }
+          if (params.seriesType === 'bar') {
+            return `${params.seriesName}<br/>厚度: ${params.value} m`;
+          }
+          return '';
+        },
+      },
+      // 上图 X 轴：里程
+      xAxis: [
+        {
+          type: 'value',
+          gridIndex: 0,
+          name: '里程 (m)',
+          nameTextStyle: { color: '#fff', fontSize: 11 },
+          axisLabel: { color: '#fff', fontSize: 11 },
+          axisLine: { lineStyle: { color: 'rgba(0,229,255,0.3)' } },
+          splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
+        },
+        {
+          type: 'category',
+          gridIndex: 1,
+          data: ['地层'],
+          show: false,
+        },
+      ],
+      // Y 轴
+      yAxis: [
+        {
+          type: 'value',
+          gridIndex: 0,
+          name: '累计沉降 (mm)',
+          nameTextStyle: { color: '#fff', fontSize: 11 },
+          axisLabel: { color: '#fff', fontSize: 11 },
+          axisLine: { lineStyle: { color: 'rgba(0,229,255,0.3)' } },
+          splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
+        },
+        {
+          type: 'value',
+          gridIndex: 1,
+          name: '深度 (m)',
+          nameTextStyle: { color: '#fff', fontSize: 11 },
+          axisLabel: { color: '#fff', fontSize: 11 },
+          axisLine: { lineStyle: { color: 'rgba(0,229,255,0.3)' } },
+          splitLine: { show: false },
+          inverse: true,
+        },
+      ],
+      legend: {
+        data: layers.map(l => l.layer_name),
+        bottom: 4,
+        textStyle: { color: '#fff', fontSize: 11 },
+        itemWidth: 14,
+        itemHeight: 10,
+      },
+      series: [
+        // 沉降曲线
+        {
+          type: 'line',
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          data: lineData,
+          smooth: true,
+          symbol: 'none',
+          lineStyle: { color: '#00e5ff', width: 2, shadowColor: 'rgba(0,229,255,0.4)', shadowBlur: 6 },
+          areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(0,229,255,0.15)' }, { offset: 1, color: 'rgba(0,229,255,0)' }] } },
+          markLine: {
+            silent: true,
+            lineStyle: { type: 'dashed' },
+            data: [
+              { yAxis: -5, lineStyle: { color: '#f87171' }, label: { formatter: '报警 -5mm', color: '#f87171', fontSize: 10, position: 'insideEndTop' } },
+              { yAxis: -3, lineStyle: { color: '#fbbf24' }, label: { formatter: '预警 -3mm', color: '#fbbf24', fontSize: 10, position: 'insideEndTop' } },
+            ],
+          },
+        },
+        // 监测点散点
+        {
+          type: 'scatter',
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          data: scatterData,
+          z: 10,
+        },
+        // 地层色带
+        ...layerSeries,
+      ],
+    };
+  }, [profileData, selectedId, points]);
+
+  if (loading) {
+    return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,10,25,0.6)' }}>
+        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>加载纵断面数据...</span>
       </div>
-      <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: 12 }}>
-        隧道纵断面图 · 施工指导 · 科研算法 — 开发中
+    );
+  }
+
+  if (!profileData || profileData.profile.length === 0) {
+    return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,10,25,0.6)' }}>
+        <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>暂无纵断面数据</span>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'rgba(0,10,25,0.6)' }}>
+      <div style={{ padding: '8px 16px 0', fontSize: 12, color: 'rgba(0,229,255,0.6)', fontWeight: 600, flexShrink: 0 }}>
+        隧道纵断面 · {profileData.date}
+      </div>
+      <div style={{ flex: 1, minHeight: 0, padding: '0 8px 4px' }}>
+        <EChartsWrapper option={option} notMerge />
       </div>
     </div>
   );
@@ -223,6 +421,8 @@ export default function SettlementV2() {
   const [points, setPoints] = useState<PointSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   const fetchSummary = useCallback(async () => {
     setLoading(true);
@@ -241,7 +441,19 @@ export default function SettlementV2() {
     }
   }, []);
 
-  useEffect(() => { fetchSummary(); }, [fetchSummary]);
+  const fetchProfile = useCallback(async () => {
+    setProfileLoading(true);
+    try {
+      const data = await apiGet<ProfileData>('/advanced/profile/data');
+      setProfileData(data ?? null);
+    } catch (e) {
+      console.error('[SettlementV2] fetch profile failed', e);
+    } finally {
+      setProfileLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchSummary(); fetchProfile(); }, [fetchSummary, fetchProfile]);
 
   return (
     <div style={{
@@ -254,7 +466,7 @@ export default function SettlementV2() {
       {/* 顶栏英雄区 */}
       <HeroBar points={points} loading={loading} />
 
-      {/* 主体：左侧列表 + 右侧内容 */}
+      {/* 主体：左侧列表 + 右侧纵断面图 */}
       <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
         <PointList
           points={points}
@@ -262,7 +474,12 @@ export default function SettlementV2() {
           selectedId={selectedId}
           onSelect={setSelectedId}
         />
-        <RightPlaceholder selectedId={selectedId} />
+        <TunnelProfileChart
+          profileData={profileData}
+          selectedId={selectedId}
+          points={points}
+          loading={profileLoading}
+        />
       </div>
     </div>
   );
