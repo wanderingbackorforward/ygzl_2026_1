@@ -36,7 +36,12 @@ function getStaticBase(): string {
 export const STATIC_BASE = getStaticBase()
 
 export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`)
+  let res = await fetch(`${API_BASE}${path}`)
+  // 冷启动偶发 500 → 等 1.5s 后自动重试一次
+  if (res.status === 500) {
+    await new Promise(r => setTimeout(r, 1500))
+    res = await fetch(`${API_BASE}${path}`)
+  }
   if (!res.ok) throw new Error(`Request failed: ${res.status}`)
   const body = await res.json()
   if (body && typeof body === 'object') {
