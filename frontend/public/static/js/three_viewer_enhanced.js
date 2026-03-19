@@ -549,12 +549,14 @@
         canvas.addEventListener('mousedown', onMouseDown);
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
+        // Disable right-click menu (right-click used for camera look)
+        canvas.addEventListener('contextmenu', function(e) { e.preventDefault(); });
         // Hover raycast
         canvas.addEventListener('mousemove', onHoverMove);
         // Click to fly to marker
         canvas.addEventListener('click', onClickMarker);
-        // Scroll for speed
-        canvas.addEventListener('wheel', onWheel);
+        // Scroll for speed/thrust
+        canvas.addEventListener('wheel', onWheel, { passive: false });
         // Resize
         window.addEventListener('resize', onResize);
     }
@@ -568,19 +570,23 @@
         mouseButton = e.button;
         prevMouseX = e.clientX;
         prevMouseY = e.clientY;
-        renderer.domElement.requestPointerLock && renderer.domElement.requestPointerLock();
+        if (e.button === 2) {
+            // Right-click: pointer lock for looking around
+            e.preventDefault();
+            renderer.domElement.requestPointerLock && renderer.domElement.requestPointerLock();
+        }
+        // Left-click (button 0): hold to move forward (handled in updateFreeMove)
     }
     function onMouseUp() {
         mouseDown = false;
         mouseButton = -1;
-        // Do NOT exitPointerLock here - let user keep looking around
-        // Pointer lock is only released on ESC / switching to orbit mode
     }
     function onMouseMove(e) {
         if (navMode === 'orbit') return;
         var dx = e.movementX || 0;
         var dy = e.movementY || 0;
-        if (!document.pointerLockElement && !mouseDown) return;
+        // Right-button drag or pointer-locked: look around
+        if (!document.pointerLockElement && mouseButton !== 2) return;
         euler.setFromQuaternion(camera.quaternion);
         euler.y -= dx * MOUSE_SENSITIVITY;
         euler.x -= dy * MOUSE_SENSITIVITY;
@@ -666,9 +672,13 @@
         step();
     }
 
+    var wheelImpulse = 0;  // accumulated scroll impulse for thrust
+
     function onWheel(e) {
         if (navMode !== 'orbit') {
-            speedMultiplier = Math.max(0.2, Math.min(5, speedMultiplier - e.deltaY * 0.001));
+            // Scroll = forward/backward thrust impulse
+            wheelImpulse += -e.deltaY * 0.05;
+            e.preventDefault();
         }
     }
 
@@ -762,6 +772,9 @@
         if (moveState.up) direction.y = 1;
         if (moveState.down) direction.y = -1;
 
+        // Left-click held = move forward (mouse button 0)
+        if (mouseDown && mouseButton === 0) direction.z = -1;
+
         if (direction.length() > 0) {
             direction.normalize();
             camera.getWorldDirection(_forward);
@@ -772,6 +785,15 @@
             velocity.addScaledVector(_up, direction.y * speed * delta);
 
             camera.position.add(velocity);
+        }
+
+        // Scroll wheel thrust impulse (works even without WASD)
+        if (Math.abs(wheelImpulse) > 0.01) {
+            camera.getWorldDirection(_forward);
+            camera.position.addScaledVector(_forward, wheelImpulse);
+            wheelImpulse *= 0.85;  // decay
+        } else {
+            wheelImpulse = 0;
         }
 
         // FPS mode: clamp height above ground
