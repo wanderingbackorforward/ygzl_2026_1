@@ -154,14 +154,14 @@ function HeroBar({ points, loading, days, onDaysChange }: HeroBarProps) {
           flexDirection: 'column',
           justifyContent: 'center',
         }}>
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 2 }}>{k.label}</div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 2 }}>{k.label}</div>
           <div style={{ fontSize: 18, fontWeight: 700, color: k.color, lineHeight: 1.2 }}>{k.value}</div>
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{k.sub}</div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>{k.sub}</div>
         </div>
       ))}
       {/* 时间范围选择器 */}
       <div style={{ flexShrink: 0, padding: '4px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>时间范围</div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>时间范围</div>
         <div style={{ display: 'flex', gap: 4 }}>
           {TIME_OPTIONS.map(opt => (
             <button
@@ -215,12 +215,12 @@ function PointList({ points, loading, selectedId, onSelect }: PointListProps) {
       flexDirection: 'column',
       overflow: 'hidden',
     }}>
-      <div style={{ padding: '10px 12px 6px', fontSize: 11, color: 'rgba(0,229,255,0.6)', fontWeight: 600, letterSpacing: 1, flexShrink: 0 }}>
+      <div style={{ padding: '10px 12px 6px', fontSize: 12, color: 'rgba(0,229,255,0.7)', fontWeight: 600, letterSpacing: 1, flexShrink: 0 }}>
         监测点 · {points.length}个
       </div>
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         {loading ? (
-          <div style={{ padding: 12, color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>加载中...</div>
+          <div style={{ padding: 12, color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>加载中...</div>
         ) : sorted.map(p => {
           const isSelected = selectedId === p.point_id;
           const color = alertColor(p.alert_level);
@@ -257,7 +257,7 @@ function PointList({ points, loading, selectedId, onSelect }: PointListProps) {
                   {alertLabel(p.alert_level)}
                 </span>
               </div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
                 {(p.total_change ?? 0).toFixed(2)} mm
               </div>
             </button>
@@ -481,7 +481,7 @@ function TunnelProfileChart({ profileData, selectedId, points, loading, events }
   if (!profileData || profileData.profile.length === 0) {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,10,25,0.6)' }}>
-        <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>暂无纵断面数据</span>
+        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>暂无纵断面数据</span>
       </div>
     );
   }
@@ -616,7 +616,7 @@ function MultiComparePanel({ allPoints, selectedId, days }: MultiCompareProps) {
         <span style={{ fontSize: 12, color: 'rgba(0,229,255,0.7)', fontWeight: 600 }}>
           多点对比 · {compareIds.length}/5
         </span>
-        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>点击监测点加入对比</span>
+        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>点击监测点加入对比</span>
         <div style={{ flex: 1 }} />
         {/* 已选标签 */}
         {compareIds.map((pid, idx) => (
@@ -624,7 +624,7 @@ function MultiComparePanel({ allPoints, selectedId, days }: MultiCompareProps) {
             key={pid}
             onClick={e => { e.stopPropagation(); togglePoint(pid); }}
             style={{
-              fontSize: 11,
+              fontSize: 12,
               padding: '1px 6px',
               borderRadius: 3,
               background: `${COMPARE_COLORS[idx % COMPARE_COLORS.length]}22`,
@@ -634,7 +634,7 @@ function MultiComparePanel({ allPoints, selectedId, days }: MultiCompareProps) {
             }}
           >{pid} ×</span>
         ))}
-        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 4 }}>
+        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>
           {collapsed ? '▲' : '▼'}
         </span>
       </div>
@@ -647,7 +647,7 @@ function MultiComparePanel({ allPoints, selectedId, days }: MultiCompareProps) {
             </div>
           ) : compareIds.length === 0 ? (
             <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>从左侧列表选择监测点加入对比（最多5个）</span>
+              <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>从左侧列表选择监测点加入对比（最多5个）</span>
             </div>
           ) : (
             <EChartsWrapper option={option} notMerge />
@@ -750,7 +750,7 @@ function CrackJointPanel({ selectedId }: CrackJointPanelProps) {
   if (!selectedId) {
     return (
       <div style={{ height: '40%', flexShrink: 0, borderTop: '1px solid rgba(0,229,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,10,25,0.6)' }}>
-        <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>选择监测点查看裂缝联动</span>
+        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>选择监测点查看裂缝联动</span>
       </div>
     );
   }
@@ -768,7 +768,7 @@ function CrackJointPanel({ selectedId }: CrackJointPanelProps) {
   if (!hasCracks) {
     return (
       <div style={{ height: '40%', flexShrink: 0, borderTop: '1px solid rgba(0,229,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,10,25,0.6)' }}>
-        <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>{selectedId} 无关联裂缝数据</span>
+        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{selectedId} 无关联裂缝数据</span>
       </div>
     );
   }
