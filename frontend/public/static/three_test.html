@@ -4,136 +4,126 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>数字孪生隧道 - 3D漫游平台</title>
-    <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* ---- 3D Viewer Full-screen Layout ---- */
+        /* ---- Reset ---- */
         html, body { margin: 0; padding: 0; overflow: hidden; height: 100%; background: #0a1628; }
         #viewer-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
         #viewer-canvas { display: block; width: 100%; height: 100%; }
 
-        /* ---- Loading Overlay ---- */
+        /* ---- Loading ---- */
         #loading-indicator {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             background: #0a1628; color: #00e5ff; font-family: 'Rajdhani', monospace;
-            font-size: 18px; z-index: 100; transition: opacity 0.5s;
+            font-size: 18px; z-index: 100; transition: opacity 0.6s;
         }
         #loading-indicator.hidden { opacity: 0; pointer-events: none; }
         .loading-spinner {
-            width: 48px; height: 48px; border: 3px solid rgba(0,229,255,0.2);
+            width: 40px; height: 40px; border: 2px solid rgba(0,229,255,0.2);
             border-top-color: #00e5ff; border-radius: 50%;
-            animation: spin 0.8s linear infinite; margin-bottom: 16px;
+            animation: spin 0.8s linear infinite; margin-bottom: 14px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* ---- Control Panel (top-left) ---- */
-        #control-panel {
-            position: fixed; top: 16px; left: 16px; z-index: 50;
-            background: rgba(10, 22, 40, 0.92); border: 1px solid rgba(0,229,255,0.3);
-            border-radius: 10px; padding: 14px 16px; min-width: 200px;
-            font-family: 'Rajdhani', sans-serif; color: #fff;
-            backdrop-filter: blur(12px); user-select: none;
-        }
-        #control-panel h3 {
-            margin: 0 0 10px 0; font-size: 14px; color: #00e5ff;
-            letter-spacing: 1px; text-transform: uppercase;
-        }
-        .ctrl-row { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
-        .ctrl-btn {
-            padding: 6px 12px; border: 1px solid rgba(0,229,255,0.4);
-            background: rgba(0,229,255,0.08); color: #e0f7fa;
-            border-radius: 6px; cursor: pointer; font-size: 13px;
-            font-family: 'Rajdhani', sans-serif; transition: all 0.15s;
-        }
-        .ctrl-btn:hover { background: rgba(0,229,255,0.2); color: #fff; }
-        .ctrl-btn.active { background: rgba(0,229,255,0.35); color: #fff; border-color: #00e5ff; }
-        .ctrl-divider { height: 1px; background: rgba(0,229,255,0.15); margin: 10px 0; }
+        /* ---- All HUD elements: hidden by default, fade on hover ---- */
+        .hud { opacity: 0; transition: opacity 0.4s; pointer-events: none; }
+        body:hover .hud, body.show-hud .hud { opacity: 1; pointer-events: auto; }
 
-        /* ---- Info HUD (bottom-center) ---- */
-        #info-hud {
+        /* ---- Toolbar (bottom-center, single row) ---- */
+        #toolbar {
             position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            z-index: 50; background: rgba(10, 22, 40, 0.85);
-            border: 1px solid rgba(0,229,255,0.25); border-radius: 8px;
-            padding: 8px 20px; font-family: 'Rajdhani', monospace;
-            color: #e0f7fa; font-size: 13px; white-space: nowrap;
-            backdrop-filter: blur(8px); pointer-events: none;
+            z-index: 50; display: flex; align-items: center; gap: 2px;
+            background: rgba(10, 22, 40, 0.85); border: 1px solid rgba(0,229,255,0.2);
+            border-radius: 28px; padding: 4px 6px;
+            font-family: 'Rajdhani', sans-serif; backdrop-filter: blur(12px);
         }
-        #info-hud span { color: #00e5ff; font-weight: 600; }
+        .tb-btn {
+            width: 36px; height: 36px; border: none; border-radius: 50%;
+            background: transparent; color: #7eb8c9; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; transition: all 0.15s;
+        }
+        .tb-btn:hover { background: rgba(0,229,255,0.15); color: #fff; }
+        .tb-btn.active { background: rgba(0,229,255,0.3); color: #fff; }
+        .tb-sep { width: 1px; height: 20px; background: rgba(0,229,255,0.15); margin: 0 2px; }
+        .tb-label {
+            color: #00e5ff; font-size: 13px; font-weight: 600;
+            padding: 0 10px; white-space: nowrap; min-width: 70px; text-align: center;
+        }
 
-        /* ---- Crosshair (FPS mode) ---- */
+        /* ---- Mileage badge (top-center, minimal) ---- */
+        #mileage-badge {
+            position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+            z-index: 50; background: rgba(10, 22, 40, 0.7); border: 1px solid rgba(0,229,255,0.2);
+            border-radius: 20px; padding: 5px 18px;
+            font: 600 14px 'Rajdhani', monospace; color: #00e5ff;
+            backdrop-filter: blur(8px);
+        }
+
+        /* ---- Crosshair ---- */
         #crosshair {
             position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%); z-index: 40;
             pointer-events: none; display: none;
         }
         #crosshair::before, #crosshair::after {
-            content: ''; position: absolute; background: rgba(0,229,255,0.6);
+            content: ''; position: absolute; background: rgba(0,229,255,0.5);
         }
-        #crosshair::before { width: 16px; height: 2px; top: -1px; left: -8px; }
-        #crosshair::after { width: 2px; height: 16px; top: -8px; left: -1px; }
+        #crosshair::before { width: 14px; height: 1.5px; top: -0.75px; left: -7px; }
+        #crosshair::after { width: 1.5px; height: 14px; top: -7px; left: -0.75px; }
 
-        /* ---- Help Overlay ---- */
-        #help-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(10, 22, 40, 0.9); z-index: 200;
-            display: none; align-items: center; justify-content: center;
-            font-family: 'Rajdhani', sans-serif; color: #e0f7fa;
-        }
-        #help-overlay.visible { display: flex; }
-        .help-box {
-            background: rgba(15, 30, 55, 0.95); border: 1px solid rgba(0,229,255,0.3);
-            border-radius: 12px; padding: 28px 36px; max-width: 420px;
-        }
-        .help-box h2 { margin: 0 0 16px 0; color: #00e5ff; font-size: 20px; }
-        .help-box table { width: 100%; border-collapse: collapse; }
-        .help-box td { padding: 4px 8px; font-size: 14px; }
-        .help-box td:first-child { color: #00e5ff; font-weight: 600; white-space: nowrap; }
-        .help-box .close-help {
-            margin-top: 16px; padding: 8px 24px;
-            background: rgba(0,229,255,0.15); border: 1px solid #00e5ff;
-            color: #00e5ff; border-radius: 6px; cursor: pointer;
-            font-family: 'Rajdhani', sans-serif; font-size: 14px;
-        }
-
-        /* ---- Minimap (top-right) ---- */
+        /* ---- Minimap (top-right, smaller) ---- */
         #minimap {
             position: fixed; top: 16px; right: 16px; z-index: 50;
-            width: 160px; height: 120px; background: rgba(10, 22, 40, 0.85);
-            border: 1px solid rgba(0,229,255,0.3); border-radius: 8px;
+            width: 130px; height: 100px; background: rgba(10, 22, 40, 0.7);
+            border: 1px solid rgba(0,229,255,0.2); border-radius: 8px;
             overflow: hidden;
         }
         #minimap canvas { width: 100%; height: 100%; }
 
-        /* ---- Compact nav (embedded mode hidden) ---- */
-        .compact-nav { display: none; }
-
-        /* ---- Monitor Point List (bottom-left) ---- */
-        #point-list {
-            position: fixed; bottom: 60px; left: 16px; z-index: 50;
-            background: rgba(10, 22, 40, 0.92); border: 1px solid rgba(0,229,255,0.3);
-            border-radius: 8px; width: 200px; max-height: 280px;
-            font-family: 'Rajdhani', sans-serif; backdrop-filter: blur(12px);
-            display: flex; flex-direction: column; overflow: hidden;
+        /* ---- Point list toggle ---- */
+        #point-toggle {
+            position: fixed; bottom: 70px; left: 16px; z-index: 50;
+            width: 36px; height: 36px; border-radius: 50%;
+            background: rgba(10, 22, 40, 0.85); border: 1px solid rgba(0,229,255,0.2);
+            color: #7eb8c9; cursor: pointer; display: flex;
+            align-items: center; justify-content: center; font-size: 14px;
+            backdrop-filter: blur(8px); transition: all 0.2s;
         }
+        #point-toggle:hover { background: rgba(0,229,255,0.15); color: #fff; }
+        #point-toggle.open { background: rgba(0,229,255,0.25); color: #fff; }
+        #point-list {
+            position: fixed; bottom: 70px; left: 60px; z-index: 50;
+            background: rgba(10, 22, 40, 0.92); border: 1px solid rgba(0,229,255,0.2);
+            border-radius: 8px; width: 200px; max-height: 320px;
+            font-family: 'Rajdhani', sans-serif; backdrop-filter: blur(12px);
+            display: none; flex-direction: column; overflow: hidden;
+        }
+        #point-list.open { display: flex; }
         #point-list .pl-title {
             padding: 8px 12px; font-size: 13px; color: #00e5ff;
-            border-bottom: 1px solid rgba(0,229,255,0.15); font-weight: 600;
-            flex-shrink: 0;
+            border-bottom: 1px solid rgba(0,229,255,0.1); font-weight: 600; flex-shrink: 0;
         }
-        #point-list .pl-body {
-            overflow-y: auto; flex: 1; min-height: 0; padding: 4px 0;
-        }
+        #point-list .pl-body { overflow-y: auto; flex: 1; min-height: 0; padding: 2px 0; }
         #point-list .pl-item {
             padding: 5px 12px; font-size: 12px; color: #e0f7fa; cursor: pointer;
             display: flex; justify-content: space-between; align-items: center;
-            transition: background 0.1s;
         }
-        #point-list .pl-item:hover { background: rgba(0,229,255,0.12); }
-        #point-list .pl-dot {
-            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+        #point-list .pl-item:hover { background: rgba(0,229,255,0.1); }
+        .pl-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+        /* ---- Tour progress (inline in toolbar) ---- */
+        #tour-progress {
+            display: none; width: 80px; height: 3px;
+            background: rgba(0,229,255,0.15); border-radius: 2px; overflow: hidden;
         }
+        #tour-progress.active { display: block; }
+        #tour-bar { width: 0%; height: 100%; background: #00e5ff; border-radius: 2px; transition: width 0.3s; }
+
+        /* ---- Notification ---- */
+        .compact-nav { display: none; }
     </style>
 </head>
 <body>
@@ -141,99 +131,48 @@
         <canvas id="viewer-canvas"></canvas>
     </div>
 
-    <!-- Loading -->
     <div id="loading-indicator">
         <div class="loading-spinner"></div>
         <div>正在生成隧道场景...</div>
     </div>
 
-    <!-- Crosshair for FPS mode -->
     <div id="crosshair"></div>
 
-    <!-- Control Panel -->
-    <div id="control-panel">
-        <h3><i class="fas fa-gamepad"></i> 漫游控制</h3>
-        <div class="ctrl-row">
-            <button class="ctrl-btn active" data-mode="orbit" onclick="window.setNavMode('orbit')">
-                <i class="fas fa-sync-alt"></i> 轨道
-            </button>
-            <button class="ctrl-btn" data-mode="fps" onclick="window.setNavMode('fps')">
-                <i class="fas fa-walking"></i> 漫游
-            </button>
-            <button class="ctrl-btn" data-mode="fly" onclick="window.setNavMode('fly')">
-                <i class="fas fa-plane"></i> 飞行
-            </button>
-        </div>
-        <div class="ctrl-divider"></div>
-        <div class="ctrl-row">
-            <button class="ctrl-btn" onclick="window.startAutoTour()">
-                <i class="fas fa-route"></i> 自动巡航
-            </button>
-            <button class="ctrl-btn" onclick="window.stopAutoTour()">
-                <i class="fas fa-stop"></i> 停止
-            </button>
-        </div>
-        <div class="ctrl-divider"></div>
-        <div class="ctrl-row">
-            <button class="ctrl-btn" onclick="window.resetCamera()">
-                <i class="fas fa-home"></i> 复位
-            </button>
-            <button class="ctrl-btn" onclick="window.toggleHelp()">
-                <i class="fas fa-keyboard"></i> 操作说明
-            </button>
-        </div>
-        <div style="margin-top:8px;font-size:11px;color:rgba(224,247,250,0.5);">
-            模式: <span id="mode-label" style="color:#00e5ff;">轨道</span>
-        </div>
+    <!-- Mileage: the only always-visible element -->
+    <div id="mileage-badge">K0+000</div>
+
+    <!-- Everything else fades in on mouse move -->
+    <div id="toolbar" class="hud">
+        <button class="tb-btn active" data-mode="orbit" onclick="window.setNavMode('orbit')" title="轨道视角">
+            <i class="fas fa-eye"></i>
+        </button>
+        <button class="tb-btn" data-mode="fps" onclick="window.setNavMode('fps')" title="第一人称">
+            <i class="fas fa-walking"></i>
+        </button>
+        <div class="tb-sep"></div>
+        <button class="tb-btn" onclick="window.startAutoTour()" title="自动巡航">
+            <i class="fas fa-play"></i>
+        </button>
+        <button class="tb-btn" onclick="window.stopAutoTour()" title="停止巡航">
+            <i class="fas fa-stop"></i>
+        </button>
+        <div id="tour-progress"><div id="tour-bar"></div></div>
+        <div class="tb-sep"></div>
+        <button class="tb-btn" onclick="window.resetCamera()" title="复位">
+            <i class="fas fa-home"></i>
+        </button>
     </div>
 
-    <!-- Info HUD -->
-    <div id="info-hud">
-        位置: <span id="hud-pos">0, 0, 0</span> &nbsp;|&nbsp;
-        里程: <span id="hud-meter">K0+000</span> &nbsp;|&nbsp;
-        速度: <span id="hud-speed">1.0x</span> &nbsp;|&nbsp;
-        FPS: <span id="hud-fps">60</span>
-        <div id="tour-progress" style="display:none;margin-top:4px;">
-            <div style="font-size:11px;color:#00e5ff;">巡航进度</div>
-            <div style="width:100%;height:4px;background:rgba(0,229,255,0.15);border-radius:2px;margin-top:2px;">
-                <div id="tour-bar" style="width:0%;height:100%;background:#00e5ff;border-radius:2px;transition:width 0.3s;"></div>
-            </div>
-        </div>
+    <div id="minimap" class="hud"><canvas id="minimap-canvas"></canvas></div>
+
+    <div id="point-toggle" class="hud" onclick="window.togglePointList()">
+        <i class="fas fa-list"></i>
     </div>
-
-    <!-- Minimap -->
-    <div id="minimap"><canvas id="minimap-canvas"></canvas></div>
-
-    <!-- Monitor Point List -->
     <div id="point-list">
-        <div class="pl-title"><i class="fas fa-map-marker-alt"></i> 监测点列表</div>
-        <div class="pl-body" id="point-list-body">
-            <!-- Populated by JS -->
-        </div>
+        <div class="pl-title"><i class="fas fa-map-marker-alt"></i> 监测点</div>
+        <div class="pl-body" id="point-list-body"></div>
     </div>
 
-    <!-- Help Overlay -->
-    <div id="help-overlay">
-        <div class="help-box">
-            <h2><i class="fas fa-keyboard"></i> 操作说明</h2>
-            <table>
-                <tr><td>WASD</td><td>前后左右移动</td></tr>
-                <tr><td>空格 / Shift</td><td>上升 / 下降</td></tr>
-                <tr><td>鼠标左键按住</td><td>持续前进（漫游/飞行模式）</td></tr>
-                <tr><td>鼠标右键拖拽</td><td>旋转视角（漫游/飞行模式）</td></tr>
-                <tr><td>鼠标中键</td><td>选中准心瞄准的监测点</td></tr>
-                <tr><td>滚轮</td><td>缩放（轨道）/ 向前冲刺（漫游/飞行）</td></tr>
-                <tr><td>1 / 2 / 3</td><td>切换 轨道/漫游/飞行 模式</td></tr>
-                <tr><td>T</td><td>开始/停止 自动巡航</td></tr>
-                <tr><td>R</td><td>复位相机</td></tr>
-                <tr><td>H</td><td>显示/隐藏 本帮助</td></tr>
-                <tr><td>ESC</td><td>退出漫游模式</td></tr>
-            </table>
-            <button class="close-help" onclick="window.toggleHelp()">关闭 (H)</button>
-        </div>
-    </div>
-
-    <!-- Three.js + Extensions (CDN) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>
     <script src="js/three_viewer_enhanced.js"></script>

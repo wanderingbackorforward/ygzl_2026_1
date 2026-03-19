@@ -559,6 +559,15 @@
         canvas.addEventListener('wheel', onWheel, { passive: false });
         // Resize
         window.addEventListener('resize', onResize);
+        // Mouse activity: show HUD, auto-hide after 3s idle
+        var hudTimer = null;
+        document.addEventListener('mousemove', function() {
+            document.body.classList.add('show-hud');
+            clearTimeout(hudTimer);
+            hudTimer = setTimeout(function() {
+                document.body.classList.remove('show-hud');
+            }, 3000);
+        });
     }
 
     var mouseDown = false, mouseButton = -1;
@@ -749,10 +758,8 @@
             case 'ShiftLeft': case 'ShiftRight': moveState.down = true; break;
             case 'Digit1': window.setNavMode('orbit'); break;
             case 'Digit2': window.setNavMode('fps'); break;
-            case 'Digit3': window.setNavMode('fly'); break;
             case 'KeyT': touring ? window.stopAutoTour() : window.startAutoTour(); break;
             case 'KeyR': window.resetCamera(); break;
-            case 'KeyH': window.toggleHelp(); break;
             case 'Escape':
                 if (navMode !== 'orbit') window.setNavMode('orbit');
                 break;
@@ -887,28 +894,22 @@
     }
 
     function updateHUD() {
-        var posEl = document.getElementById('hud-pos');
-        var meterEl = document.getElementById('hud-meter');
-        var fpsEl = document.getElementById('hud-fps');
-        var speedEl = document.getElementById('hud-speed');
+        // Mileage badge (the only always-visible element)
+        var badge = document.getElementById('mileage-badge');
+        if (badge) {
+            var m = Math.max(0, -camera.position.z);
+            badge.textContent = 'K0+' + String(Math.round(m)).padStart(3, '0');
+        }
+        // Tour progress bar
         var tourEl = document.getElementById('tour-progress');
         var tourBar = document.getElementById('tour-bar');
-        if (posEl) posEl.textContent = camera.position.x.toFixed(1) + ', '
-            + camera.position.y.toFixed(1) + ', ' + camera.position.z.toFixed(1);
-        if (meterEl) {
-            var m = Math.max(0, -camera.position.z);
-            meterEl.textContent = 'K0+' + String(Math.round(m)).padStart(3, '0');
-        }
-        if (fpsEl) fpsEl.textContent = fpsValue;
-        if (speedEl) speedEl.textContent = speedMultiplier.toFixed(1) + 'x';
-        // Tour progress bar
         if (tourEl && tourBar) {
             if (touring && tourPath.length > 1) {
-                tourEl.style.display = 'block';
+                tourEl.classList.add('active');
                 var pct = Math.min(100, (tourProgress / (tourPath.length - 1)) * 100);
                 tourBar.style.width = pct.toFixed(1) + '%';
             } else {
-                tourEl.style.display = 'none';
+                tourEl.classList.remove('active');
             }
         }
     }
@@ -919,39 +920,31 @@
     window.setNavMode = function(mode) {
         navMode = mode;
         touring = false;
-        // Clean up all highlight states on mode switch
         resetHover();
         resetCrosshairTarget();
         hidePopup();
-        var btns = document.querySelectorAll('.ctrl-btn[data-mode]');
+        var btns = document.querySelectorAll('.tb-btn[data-mode]');
         btns.forEach(function(b) {
             b.classList.toggle('active', b.getAttribute('data-mode') === mode);
         });
-        var label = document.getElementById('mode-label');
         var crosshair = document.getElementById('crosshair');
-        var modeNames = { orbit: '轨道', fps: '漫游', fly: '飞行' };
         if (mode === 'orbit') {
             orbitControls.enabled = true;
             orbitControls.target.set(camera.position.x, camera.position.y - 1, camera.position.z - 5);
-            if (label) label.textContent = '轨道';
             if (crosshair) crosshair.style.display = 'none';
             renderer.domElement.style.cursor = 'grab';
             document.exitPointerLock && document.exitPointerLock();
         } else {
             orbitControls.enabled = false;
-            if (label) label.textContent = modeNames[mode] || mode;
             if (crosshair) crosshair.style.display = 'block';
             renderer.domElement.style.cursor = 'crosshair';
         }
-        showNotification('切换至' + modeNames[mode] + '模式');
     };
 
     window.startAutoTour = function() {
         touring = true;
         tourProgress = 0;
-        window.setNavMode('fly');
-        // Re-enable touring after setNavMode cleared it
-        touring = true;
+        // Don't switch mode, just start the camera animation
     };
 
     window.stopAutoTour = function() {
@@ -968,9 +961,13 @@
         window.setNavMode('orbit');
     };
 
-    window.toggleHelp = function() {
-        var el = document.getElementById('help-overlay');
-        if (el) el.classList.toggle('visible');
+    window.togglePointList = function() {
+        var list = document.getElementById('point-list');
+        var btn = document.getElementById('point-toggle');
+        if (list && btn) {
+            list.classList.toggle('open');
+            btn.classList.toggle('open');
+        }
     };
 
     function showNotification(msg) {
