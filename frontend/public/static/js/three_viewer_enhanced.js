@@ -242,7 +242,7 @@
                            : (15 + Math.random() * 15).toFixed(1);
 
             // Sphere marker
-            var geo = new THREE.SphereGeometry(0.15, 16, 16);
+            var geo = new THREE.SphereGeometry(0.35, 16, 16);
             var mat = new THREE.MeshPhongMaterial({
                 color: STATUS_COLORS[status],
                 emissive: STATUS_COLORS[status],
@@ -263,7 +263,7 @@
             monitorMarkers.push(marker);
 
             // Glow ring
-            var ringGeo = new THREE.RingGeometry(0.2, 0.28, 32);
+            var ringGeo = new THREE.RingGeometry(0.45, 0.55, 32);
             var ringMat = new THREE.MeshBasicMaterial({
                 color: STATUS_COLORS[status],
                 transparent: true,
@@ -688,26 +688,41 @@
         }
         selectedMarker = marker;
         marker.material.color.setHex(0x00e5ff);
-        flyingToMarker = true;  // lock orbit controls
+        flyingToMarker = true;
 
         var p = marker.position;
         var startPos = camera.position.clone();
-        var startTarget = orbitControls.target.clone();
         var endPos = new THREE.Vector3(p.x + 3, p.y + 1.5, p.z + 4);
-        var endTarget = new THREE.Vector3(p.x, p.y, p.z);
         var duration = 1200;
         var startTime = Date.now();
+        var wasOrbit = (navMode === 'orbit');
+
+        // For orbit mode: also animate the orbit target
+        var startTarget = wasOrbit ? orbitControls.target.clone() : null;
+        var endTarget = new THREE.Vector3(p.x, p.y, p.z);
 
         function step() {
             var t = Math.min((Date.now() - startTime) / duration, 1);
             var ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
             camera.position.lerpVectors(startPos, endPos, ease);
-            orbitControls.target.lerpVectors(startTarget, endTarget, ease);
+
+            if (wasOrbit && startTarget) {
+                orbitControls.target.lerpVectors(startTarget, endTarget, ease);
+            } else {
+                // FPS/Fly: make camera look at the marker during flight
+                camera.lookAt(endTarget);
+            }
+
             if (t < 1) {
                 requestAnimationFrame(step);
             } else {
-                flyingToMarker = false;  // unlock
-                orbitControls.update();
+                flyingToMarker = false;
+                if (wasOrbit) {
+                    orbitControls.update();
+                } else {
+                    // Sync euler from final camera quaternion so mouse-look continues smoothly
+                    euler.setFromQuaternion(camera.quaternion);
+                }
                 showNotification('已定位到 ' + marker.userData.pointId + ' (' + marker.userData.mileage + ')');
             }
         }
@@ -776,9 +791,11 @@
             fpsFrames = 0; fpsTime = 0;
         }
 
-        if (navMode === 'orbit' && !flyingToMarker) {
+        if (flyingToMarker) {
+            // During flyToMarker animation, skip all nav updates
+        } else if (navMode === 'orbit') {
             orbitControls.update();
-        } else if (!touring && !flyingToMarker) {
+        } else if (!touring) {
             updateFreeMove(delta);
         }
 
@@ -902,6 +919,10 @@
     window.setNavMode = function(mode) {
         navMode = mode;
         touring = false;
+        // Clean up all highlight states on mode switch
+        resetHover();
+        resetCrosshairTarget();
+        hidePopup();
         var btns = document.querySelectorAll('.ctrl-btn[data-mode]');
         btns.forEach(function(b) {
             b.classList.toggle('active', b.getAttribute('data-mode') === mode);
