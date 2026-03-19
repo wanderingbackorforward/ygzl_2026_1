@@ -884,3 +884,115 @@ def tunnel_risk_auto_tickets():
         created.append(ticket)
 
     return jsonify({"success": True, "data": {"created": created, "skipped": skipped}})
+
+
+# ===================================================================
+# Trajectory deviation analysis endpoints
+# ===================================================================
+from modules.tunnel.trajectory import (
+    compute_deviations, build_summary, compute_correction,
+    compute_prediction, generate_demo_telemetry,
+)
+
+
+def _get_telemetry_sorted(project_id, machine_id, limit=2000):
+    """Fetch telemetry rows sorted by chainage, one record per ring."""
+    r = _repo()
+    rows = r.tbm_telemetry_list(
+        project_id=project_id, machine_id=machine_id,
+        start=None, end=None, limit=limit,
+    )
+    if not rows:
+        return []
+    # dedupe: keep last record per ring_no
+    by_ring = {}
+    for row in rows:
+        rn = row.get("ring_no")
+        if rn is not None:
+            by_ring[rn] = row
+        else:
+            by_ring[id(row)] = row
+    deduped = sorted(by_ring.values(), key=lambda x: float(x.get("chainage_m") or 0))
+    return deduped
+
+
+@tunnel_bp.route("/trajectory/deviation", methods=["GET"])
+def trajectory_deviation():
+    project_id = (request.args.get("project_id") or "").strip()
+    machine_id = (request.args.get("machine_id") or "").strip()
+    if not project_id or not machine_id:
+        return jsonify({"success": False, "message": "missing project_id or machine_id"}), 400
+    limit = int(request.args.get("limit") or 2000)
+    rows = _get_telemetry_sorted(project_id, machine_id, limit)
+    if not rows:
+        return jsonify({"success": True, "data": {"project_id": project_id,
+                        "machine_id": machine_id, "total_rings": 0, "records": []}})
+    dev = compute_deviations(rows)
+    return jsonify({"success": True, "data": {"project_id": project_id,
+                    "machine_id": machine_id, "total_rings": len(dev), "records": dev}})
+
+
+@tunnel_bp.route("/trajectory/summary", methods=["GET"])
+def trajectory_summary():
+    project_id = (request.args.get("project_id") or "").strip()
+    machine_id = (request.args.get("machine_id") or "").strip()
+    if not project_id or not machine_id:
+        return jsonify({"success": False, "message": "missing project_id or machine_id"}), 400
+    window = int(request.args.get("window") or 30)
+    rows = _get_telemetry_sorted(project_id, machine_id)
+    dev = compute_deviations(rows)
+    summary = build_summary(dev, window=window)
+    if not summary:
+        return jsonify({"success": True, "data": None})
+    return jsonify({"success": True, "data": summary})
+
+
+@tunnel_bp.route("/trajectory/correction", methods=["GET"])
+def trajectory_correction():
+    project_id = (request.args.get("project_id") or "").strip()
+    machine_id = (request.args.get("machine_id") or "").strip()
+    if not project_id or not machine_id:
+        return jsonify({"success": False, "message": "missing project_id or machine_id"}), 400
+    n = int(request.args.get("recent") or 5)
+    rows = _get_telemetry_sorted(project_id, machine_id)
+    dev = compute_deviations(rows)
+    correction = compute_correction(dev, n=n)
+    if not correction:
+        return jsonify({"success": True, "data": None})
+    return jsonify({"success": True, "data": correction})
+
+
+@tunnel_bp.route("/trajectory/prediction", methods=["GET"])
+def trajectory_prediction():
+    project_id = (request.args.get("project_id") or "").strip()
+    machine_id = (request.args.get("machine_id") or "").strip()
+    if not project_id or not machine_id:
+        return jsonify({"success": False, "message": "missing project_id or machine_id"}), 400
+    predict_rings = int(request.args.get("predict_rings") or 10)
+    window = int(request.args.get("window") or 30)
+    rows = _get_telemetry_sorted(project_id, machine_id)
+    dev = compute_deviations(rows)
+    pred = compute_prediction(dev, predict_rings=predict_rings, window=window)
+    if not pred:
+        return jsonify({"success": True, "data": None})
+    return jsonify({"success": True, "data": pred})
+
+
+@tunnel_bp.route("/trajectory/seed-demo", methods=["POST"])
+def trajectory_seed_demo():
+    body = request.get_json(silent=True) or {}
+    project_id = (body.get("project_id") or "").strip()
+    machine_id = (body.get("machine_id") or "TBM-01").strip()
+    num_rings = int(body.get("num_rings") or 150)
+    if not project_id:
+        return jsonify({"success": False, "message": "missing project_id"}), 400
+    demo = generate_demo_telemetry(project_id, machine_id, num_rings=num_rings)
+    r = _repo()
+    saved = 0
+    for rec in demo:
+        try:
+            r.tbm_telemetry_upsert(rec)
+            saved += 1
+        except Exception:
+            pass
+    return jsonify({"success": True, "data": {"saved": saved, "total": len(demo)}})

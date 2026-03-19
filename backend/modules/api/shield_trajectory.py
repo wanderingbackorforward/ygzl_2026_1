@@ -14,10 +14,13 @@ UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', '
 OUTPUT_FOLDER = os.path.join(os.path.dirname(__file__), '..', '..', 'outputs', 'shield')
 STATIC_FOLDER = os.path.join(os.path.dirname(__file__), '..', '..', 'static', 'shield')
 
-# 确保必要的文件夹存在
+# 确保必要的文件夹存在（Vercel只读文件系统兼容）
 for folder in [UPLOAD_FOLDER, OUTPUT_FOLDER, STATIC_FOLDER]:
-    if not os.path.exists(folder):
-        os.makedirs(folder)
+    try:
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+    except OSError:
+        pass
 
 
 @shield_bp.route('/trajectory/status', methods=['GET'])
