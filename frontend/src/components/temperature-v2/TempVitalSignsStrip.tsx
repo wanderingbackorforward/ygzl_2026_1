@@ -45,6 +45,7 @@ export const TempVitalSignsStrip: React.FC<TempVitalSignsProps> = ({ stats, asse
   const avgRange = stats?.avg_range;
   const trendType = stats?.dominant_trend;
   const freezeThaw = stats?.freeze_thaw_cycles ?? 0;
+  const displaySensorCount = stats?.sensor_count ?? sensorCount;
   const overallStatus = assessment?.overall_status ?? 'green';
 
   // 温度状态
@@ -60,7 +61,8 @@ export const TempVitalSignsStrip: React.FC<TempVitalSignsProps> = ({ stats, asse
   const trendLabel = trendType === 'rising_fast' ? '快速升温'
     : trendType === 'rising' ? '缓慢升温'
     : trendType === 'falling_fast' ? '快速降温'
-    : trendType === 'falling' ? '缓慢降温' : '稳定';
+    : trendType === 'falling' ? '缓慢降温'
+    : trendType ? String(trendType).slice(0, 6) : '稳定';
   const trendStatus = (trendType === 'rising_fast' || trendType === 'falling_fast') ? 'red'
     : (trendType === 'rising' || trendType === 'falling') ? 'yellow' : 'green';
 
@@ -102,7 +104,7 @@ export const TempVitalSignsStrip: React.FC<TempVitalSignsProps> = ({ stats, asse
         />
         <VitalCard
           label="传感器"
-          value={`${sensorCount}`}
+          value={`${displaySensorCount}`}
           status="green"
           subtitle="个监测点"
         />
