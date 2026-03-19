@@ -93,6 +93,19 @@ function DiagnosisBanner({ result, loading }: { result: DiagnosisResult | null; 
 // 证据画布 — ECharts Graph 因果关系图
 // ─────────────────────────────────────────────
 function EvidenceCanvas({ result }: { result: DiagnosisResult | null }) {
+  const [selected, setSelected] = useState<{ name: string; detail: string; category: string } | null>(null);
+
+  const handleChartReady = useCallback((chart: any) => {
+    chart.off('click');
+    chart.on('click', (params: any) => {
+      if (params.dataType === 'node') {
+        setSelected({ name: params.name, detail: params.value || '', category: params.data?.category ?? '' });
+      } else {
+        setSelected(null);
+      }
+    });
+  }, []);
+
   const option: EChartsOption = useMemo(() => {
     if (!result || result.evidenceNodes.length === 0) {
       return {
@@ -215,7 +228,137 @@ function EvidenceCanvas({ result }: { result: DiagnosisResult | null }) {
           拖拽节点 / 滚轮缩放
         </span>
       </div>
-      <EChartsWrapper option={option} style={{ width: '100%', height: 'calc(100% - 32px)' }} />
+      <EChartsWrapper option={option} style={{ width: '100%', height: selected ? 'calc(100% - 80px)' : 'calc(100% - 32px)' }} onChartReady={handleChartReady} />
+
+      {/* 节点详情条 */}
+      {selected && (
+        <div style={{
+          height: 48, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12,
+          padding: '0 16px', background: 'rgba(6,182,212,0.08)',
+          borderTop: '1px solid rgba(6,182,212,0.2)',
+        }}>
+          <span style={{ color: '#06b6d4', fontSize: 14, fontWeight: 700 }}>{selected.name}</span>
+          <span style={{ color: '#fff', fontSize: 12, flex: 1 }}>{selected.detail}</span>
+          <button onClick={() => setSelected(null)} style={{
+            background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
+            cursor: 'pointer', fontSize: 14, padding: '4px 8px',
+          }}>
+            <i className="fas fa-times" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// 管理概览面板 — 趋势摘要 + 预测迷你图
+// ─────────────────────────────────────────────
+function ManagerOverview({ points }: { points: PointSummary[] }) {
+  // 趋势分类统计
+  const stats = useMemo(() => {
+    const stable = points.filter(p => p.trend_type === 'stable' || Math.abs(p.trend_slope) < 0.05).length;
+    const increasing = points.filter(p => p.trend_type === 'increasing' && p.trend_slope < -0.05).length;
+    const decreasing = points.filter(p => p.trend_type === 'decreasing' || p.trend_slope > 0.05).length;
+    const alert = points.filter(p => p.alert_level === 'alert').length;
+    const warn = points.filter(p => p.alert_level === 'warning').length;
+    const maxSett = points.length > 0 ? Math.min(...points.map(p => p.total_change ?? 0)) : 0;
+    const avgSlope = points.length > 0 ? points.reduce((s, p) => s + (p.trend_slope ?? 0), 0) / points.length : 0;
+    return { stable, increasing, decreasing, alert, warn, maxSett, avgSlope, total: points.length };
+  }, [points]);
+
+  // 30天预测分布迷你图
+  const predOption: EChartsOption = useMemo(() => {
+    if (points.length === 0) return {};
+    const sorted = [...points].sort((a, b) => (a.predicted_change_30d ?? 0) - (b.predicted_change_30d ?? 0));
+    return {
+      grid: { top: 8, bottom: 24, left: 36, right: 8 },
+      xAxis: {
+        type: 'category' as const,
+        data: sorted.map(p => p.point_id),
+        axisLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 9, rotate: 45 },
+        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+      },
+      yAxis: {
+        type: 'value' as const,
+        name: 'mm',
+        nameTextStyle: { color: 'rgba(255,255,255,0.4)', fontSize: 9 },
+        axisLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 9 },
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
+      },
+      series: [{
+        type: 'bar',
+        data: sorted.map(p => ({
+          value: p.predicted_change_30d ?? 0,
+          itemStyle: {
+            color: (p.predicted_change_30d ?? 0) < -20 ? '#ef4444'
+              : (p.predicted_change_30d ?? 0) < -10 ? '#eab308' : '#22c55e',
+          },
+        })),
+        barWidth: '60%',
+      }],
+      tooltip: {
+        trigger: 'axis' as const,
+        backgroundColor: 'rgba(0,20,40,0.95)',
+        borderColor: 'rgba(0,229,255,0.3)',
+        textStyle: { color: '#fff', fontSize: 11 },
+        formatter: (p: any) => {
+          const d = p[0];
+          return `${d.name}<br/>30天预测: ${d.value?.toFixed(1) ?? '-'}mm`;
+        },
+      },
+    };
+  }, [points]);
+
+  const statItems = [
+    { label: '监测总数', value: stats.total, color: '#06b6d4' },
+    { label: '报警', value: stats.alert, color: stats.alert > 0 ? '#ef4444' : '#22c55e' },
+    { label: '预警', value: stats.warn, color: stats.warn > 0 ? '#eab308' : '#22c55e' },
+    { label: '加速中', value: stats.increasing, color: stats.increasing > 0 ? '#f97316' : '#22c55e' },
+  ];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* 统计摘要网格 */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+        {statItems.map(s => (
+          <div key={s.label} style={{
+            background: 'rgba(255,255,255,0.03)', borderRadius: 8,
+            padding: '8px 10px', textAlign: 'center',
+          }}>
+            <div style={{ color: s.color, fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{s.value}</div>
+            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, marginTop: 2 }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* 关键指标 */}
+      <div style={{
+        background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '8px 12px',
+        display: 'flex', justifyContent: 'space-between',
+      }}>
+        <div>
+          <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10 }}>最大沉降</div>
+          <div style={{ color: '#fff', fontSize: 14, fontWeight: 700 }}>{stats.maxSett.toFixed(1)} mm</div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10 }}>平均速率</div>
+          <div style={{ color: '#fff', fontSize: 14, fontWeight: 700 }}>{stats.avgSlope.toFixed(2)} mm/d</div>
+        </div>
+      </div>
+
+      {/* 30天预测分布 */}
+      <div style={{
+        background: 'rgba(255,255,255,0.03)', borderRadius: 10,
+        padding: '10px 12px', borderLeft: '3px solid #3b82f6',
+      }}>
+        <div style={{ color: '#fff', fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
+          30天预测分布
+        </div>
+        <div style={{ height: 140 }}>
+          <EChartsWrapper option={predOption} style={{ width: '100%', height: '100%' }} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -279,6 +422,9 @@ function ActionPanel({ result, points }: { result: DiagnosisResult | null; point
             <MoranIndicator points={points} />
             <AnomalyConfidenceRadar points={points} />
           </div>
+        ) : role === 'manager' ? (
+          /* 管理视角：趋势摘要 + 预测迷你图 */
+          <ManagerOverview points={points} />
         ) : filtered.length === 0 ? (
           <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, textAlign: 'center', padding: 24 }}>
             当前视角暂无待办事项
