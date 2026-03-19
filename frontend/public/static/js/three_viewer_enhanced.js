@@ -38,6 +38,7 @@
     var touring = false;
     var tourProgress = 0;
     var tourPath = [];
+    var flyingToMarker = false;  // lock to prevent orbit interference during fly animation
 
     // Monitoring points
     var monitorMarkers = [];
@@ -639,6 +640,7 @@
         }
         selectedMarker = marker;
         marker.material.color.setHex(0x00e5ff);
+        flyingToMarker = true;  // lock orbit controls
 
         var p = marker.position;
         var startPos = camera.position.clone();
@@ -653,9 +655,13 @@
             var ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
             camera.position.lerpVectors(startPos, endPos, ease);
             orbitControls.target.lerpVectors(startTarget, endTarget, ease);
-            orbitControls.update();
-            if (t < 1) requestAnimationFrame(step);
-            else showNotification('已定位到 ' + marker.userData.pointId + ' (' + marker.userData.mileage + ')');
+            if (t < 1) {
+                requestAnimationFrame(step);
+            } else {
+                flyingToMarker = false;  // unlock
+                orbitControls.update();
+                showNotification('已定位到 ' + marker.userData.pointId + ' (' + marker.userData.mileage + ')');
+            }
         }
         step();
     }
@@ -718,9 +724,9 @@
             fpsFrames = 0; fpsTime = 0;
         }
 
-        if (navMode === 'orbit') {
+        if (navMode === 'orbit' && !flyingToMarker) {
             orbitControls.update();
-        } else if (!touring) {
+        } else if (!touring && !flyingToMarker) {
             updateFreeMove(delta);
         }
 
@@ -802,6 +808,9 @@
         var posEl = document.getElementById('hud-pos');
         var meterEl = document.getElementById('hud-meter');
         var fpsEl = document.getElementById('hud-fps');
+        var speedEl = document.getElementById('hud-speed');
+        var tourEl = document.getElementById('tour-progress');
+        var tourBar = document.getElementById('tour-bar');
         if (posEl) posEl.textContent = camera.position.x.toFixed(1) + ', '
             + camera.position.y.toFixed(1) + ', ' + camera.position.z.toFixed(1);
         if (meterEl) {
@@ -809,6 +818,17 @@
             meterEl.textContent = 'K0+' + String(Math.round(m)).padStart(3, '0');
         }
         if (fpsEl) fpsEl.textContent = fpsValue;
+        if (speedEl) speedEl.textContent = speedMultiplier.toFixed(1) + 'x';
+        // Tour progress bar
+        if (tourEl && tourBar) {
+            if (touring && tourPath.length > 1) {
+                tourEl.style.display = 'block';
+                var pct = Math.min(100, (tourProgress / (tourPath.length - 1)) * 100);
+                tourBar.style.width = pct.toFixed(1) + '%';
+            } else {
+                tourEl.style.display = 'none';
+            }
+        }
     }
 
     // =========================================================

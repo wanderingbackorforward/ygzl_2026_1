@@ -191,7 +191,14 @@
     <div id="info-hud">
         位置: <span id="hud-pos">0, 0, 0</span> &nbsp;|&nbsp;
         里程: <span id="hud-meter">K0+000</span> &nbsp;|&nbsp;
+        速度: <span id="hud-speed">1.0x</span> &nbsp;|&nbsp;
         FPS: <span id="hud-fps">60</span>
+        <div id="tour-progress" style="display:none;margin-top:4px;">
+            <div style="font-size:11px;color:#00e5ff;">巡航进度</div>
+            <div style="width:100%;height:4px;background:rgba(0,229,255,0.15);border-radius:2px;margin-top:2px;">
+                <div id="tour-bar" style="width:0%;height:100%;background:#00e5ff;border-radius:2px;transition:width 0.3s;"></div>
+            </div>
+        </div>
     </div>
 
     <!-- Minimap -->
