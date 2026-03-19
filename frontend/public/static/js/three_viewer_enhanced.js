@@ -79,10 +79,10 @@
         scene.add(tunnel);
 
         // -- Inner lining rings (every 15m, reduced for performance) --
+        var sharedRingGeo = new THREE.TorusGeometry(TUNNEL_RADIUS * 0.98, 0.08, 8, TUNNEL_SEGMENTS, Math.PI);
+        var sharedRingMat = new THREE.MeshPhongMaterial({ color: 0x607d8b, emissive: 0x1a237e, emissiveIntensity: 0.1 });
         for (var i = 0; i <= TUNNEL_LENGTH; i += 15) {
-            var ringGeo = new THREE.TorusGeometry(TUNNEL_RADIUS * 0.98, 0.08, 8, TUNNEL_SEGMENTS, Math.PI);
-            var ringMat = new THREE.MeshPhongMaterial({ color: 0x607d8b, emissive: 0x1a237e, emissiveIntensity: 0.1 });
-            var ring = new THREE.Mesh(ringGeo, ringMat);
+            var ring = new THREE.Mesh(sharedRingGeo, sharedRingMat);
             ring.rotation.y = Math.PI / 2;
             ring.rotation.x = Math.PI;
             ring.position.set(0, TUNNEL_RADIUS * 0.15, -i);
@@ -118,15 +118,15 @@
         createPortal(-TUNNEL_LENGTH);
 
         // -- Tunnel interior lights (every 25m, reduced for performance) --
+        var sharedFixGeo = new THREE.BoxGeometry(0.3, 0.1, 0.3);
+        var sharedFixMat = new THREE.MeshBasicMaterial({ color: 0xfff9c4 });
         for (var k = 5; k < TUNNEL_LENGTH; k += 25) {
             var light = new THREE.PointLight(0xffe0b2, 0.4, 15);
             light.position.set(0, TUNNEL_RADIUS * 0.8, -k);
             scene.add(light);
 
             // Light fixture visual
-            var fixGeo = new THREE.BoxGeometry(0.3, 0.1, 0.3);
-            var fixMat = new THREE.MeshBasicMaterial({ color: 0xfff9c4 });
-            var fixture = new THREE.Mesh(fixGeo, fixMat);
+            var fixture = new THREE.Mesh(sharedFixGeo, sharedFixMat);
             fixture.position.copy(light.position);
             scene.add(fixture);
         }
@@ -145,29 +145,22 @@
     }
 
     function createMileageSigns() {
-        var canvas2d = document.createElement('canvas');
-        canvas2d.width = 128; canvas2d.height = 64;
-        var ctx = canvas2d.getContext('2d');
-
         for (var m = 0; m <= TUNNEL_LENGTH; m += 20) {
-            // Draw text on canvas texture
-            ctx.fillStyle = '#1a237e';
-            ctx.fillRect(0, 0, 128, 64);
-            ctx.strokeStyle = '#00e5ff';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(2, 2, 124, 60);
-            ctx.fillStyle = '#e0f7fa';
-            ctx.font = 'bold 28px Rajdhani, monospace';
-            ctx.textAlign = 'center';
-            ctx.fillText('K0+' + String(m).padStart(3, '0'), 64, 42);
+            // Draw text on fresh canvas for each sign
+            var signCanvas = document.createElement('canvas');
+            signCanvas.width = 128; signCanvas.height = 64;
+            var sCtx = signCanvas.getContext('2d');
+            sCtx.fillStyle = '#1a237e';
+            sCtx.fillRect(0, 0, 128, 64);
+            sCtx.strokeStyle = '#00e5ff';
+            sCtx.lineWidth = 2;
+            sCtx.strokeRect(2, 2, 124, 60);
+            sCtx.fillStyle = '#e0f7fa';
+            sCtx.font = 'bold 28px Rajdhani, monospace';
+            sCtx.textAlign = 'center';
+            sCtx.fillText('K0+' + String(m).padStart(3, '0'), 64, 42);
 
-            var texture = new THREE.CanvasTexture(canvas2d.cloneNode(true).getContext('2d').canvas);
-            // Need to redraw on cloned canvas
-            var cloneCanvas = document.createElement('canvas');
-            cloneCanvas.width = 128; cloneCanvas.height = 64;
-            var cloneCtx = cloneCanvas.getContext('2d');
-            cloneCtx.drawImage(canvas2d, 0, 0);
-            texture = new THREE.CanvasTexture(cloneCanvas);
+            var texture = new THREE.CanvasTexture(signCanvas);
 
             var signGeo = new THREE.PlaneGeometry(1.2, 0.6);
             var signMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
@@ -198,11 +191,11 @@
             scene.add(tray);
         }
 
-        // -- Center lane marking (dashed) --
+        // -- Center lane marking (dashed, merged geometry) --
+        var sharedDashGeo = new THREE.PlaneGeometry(0.15, 1.5);
+        var sharedDashMat = new THREE.MeshBasicMaterial({ color: 0xffd54f, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
         for (var d = 0; d < TUNNEL_LENGTH; d += 4) {
-            var dashGeo = new THREE.PlaneGeometry(0.15, 1.5);
-            var dashMat = new THREE.MeshBasicMaterial({ color: 0xffd54f, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
-            var dash = new THREE.Mesh(dashGeo, dashMat);
+            var dash = new THREE.Mesh(sharedDashGeo, sharedDashMat);
             dash.rotation.x = -Math.PI / 2;
             dash.position.set(0, 0.01, -(d + 0.75));
             scene.add(dash);
@@ -608,7 +601,7 @@
 
         if (navMode === 'orbit') {
             orbitControls.update();
-        } else {
+        } else if (!touring) {
             updateFreeMove(delta);
         }
 
@@ -789,9 +782,20 @@
     window.addEventListener('load', function() {
         if (typeof THREE === 'undefined') {
             console.error('[3D] THREE.js not loaded');
+            var ld = document.getElementById('loading-indicator');
+            if (ld) ld.innerHTML = '<div style="color:#ff3e5f;">THREE.js 加载失败，请检查网络</div>';
             return;
         }
-        init();
+        try {
+            init();
+        } catch (e) {
+            console.error('[3D] Init failed:', e);
+            var ld2 = document.getElementById('loading-indicator');
+            if (ld2) {
+                ld2.classList.remove('hidden');
+                ld2.innerHTML = '<div style="color:#ff3e5f;">3D场景初始化失败</div><div style="font-size:12px;margin-top:8px;color:#e0f7fa;">' + e.message + '</div>';
+            }
+        }
     });
 
 })();
