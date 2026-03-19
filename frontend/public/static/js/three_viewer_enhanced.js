@@ -574,6 +574,12 @@
             // Right-click: pointer lock for looking around
             e.preventDefault();
             renderer.domElement.requestPointerLock && renderer.domElement.requestPointerLock();
+        } else if (e.button === 1) {
+            // Middle-click: select crosshair-aimed monitor point
+            e.preventDefault();
+            if (crosshairTarget) {
+                flyToMarker(crosshairTarget);
+            }
         }
         // Left-click (button 0): hold to move forward (handled in updateFreeMove)
     }
@@ -595,25 +601,61 @@
     }
 
     function onHoverMove(e) {
-        if (navMode !== 'orbit') { hidePopup(); return; }
-        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-        raycaster.setFromCamera(mouse, camera);
+        // Orbit mode: mouse-position based hover
+        if (navMode === 'orbit') {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            var hits = raycaster.intersectObjects(monitorMarkers);
+            if (hits.length > 0) {
+                var m = hits[0].object;
+                if (hoveredMarker !== m) {
+                    resetHover();
+                    hoveredMarker = m;
+                    m.material.emissiveIntensity = 0.9;
+                    m.scale.setScalar(1.4);
+                }
+                showPopup(e.clientX, e.clientY, m.userData);
+                renderer.domElement.style.cursor = 'pointer';
+            } else {
+                resetHover();
+                hidePopup();
+                renderer.domElement.style.cursor = 'grab';
+            }
+        }
+        // FPS/Fly mode: crosshair-based detection handled in animate loop
+    }
+
+    // Crosshair auto-aim: raycast from screen center every few frames
+    var crosshairTarget = null;
+    function updateCrosshairAim() {
+        if (navMode === 'orbit') return;
+        // Ray from screen center (0,0)
+        raycaster.setFromCamera({ x: 0, y: 0 }, camera);
         var hits = raycaster.intersectObjects(monitorMarkers);
         if (hits.length > 0) {
             var m = hits[0].object;
-            if (hoveredMarker !== m) {
-                resetHover();
-                hoveredMarker = m;
+            if (crosshairTarget !== m) {
+                resetCrosshairTarget();
+                crosshairTarget = m;
                 m.material.emissiveIntensity = 0.9;
                 m.scale.setScalar(1.4);
             }
-            showPopup(e.clientX, e.clientY, m.userData);
-            renderer.domElement.style.cursor = 'pointer';
+            // Show popup at screen center (slightly offset)
+            var cx = window.innerWidth / 2 + 20;
+            var cy = window.innerHeight / 2 - 60;
+            showPopup(cx, cy, m.userData);
         } else {
-            resetHover();
+            resetCrosshairTarget();
             hidePopup();
-            renderer.domElement.style.cursor = navMode === 'orbit' ? 'grab' : 'crosshair';
+        }
+    }
+
+    function resetCrosshairTarget() {
+        if (crosshairTarget) {
+            crosshairTarget.material.emissiveIntensity = 0.4;
+            crosshairTarget.scale.setScalar(1);
+            crosshairTarget = null;
         }
     }
 
@@ -750,6 +792,7 @@
         frameCount++;
         if (frameCount % 8 === 0) updateHUD();
         if (frameCount % 15 === 0) updateMinimap();
+        if (frameCount % 6 === 0) updateCrosshairAim();
     }
 
     // Reusable vectors (avoid per-frame allocation)
