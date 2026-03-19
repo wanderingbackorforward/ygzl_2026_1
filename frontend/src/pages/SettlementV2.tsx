@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiGet } from '../lib/api';
 import { EChartsWrapper } from '../components/charts/EChartsWrapper';
+import { useJointData } from '../hooks/useAdvancedAnalysis';
 import type { EChartsOption } from 'echarts';
 
 // ─────────────────────────────────────────────
@@ -415,6 +416,133 @@ function TunnelProfileChart({ profileData, selectedId, points, loading }: Tunnel
 }
 
 // ─────────────────────────────────────────────
+// 沉降-裂缝联动面板
+// ─────────────────────────────────────────────
+interface CrackJointPanelProps {
+  selectedId: string | null;
+}
+
+function CrackJointPanel({ selectedId }: CrackJointPanelProps) {
+  const { data: jointData, loading } = useJointData(selectedId);
+
+  const option = useMemo((): EChartsOption => {
+    if (!jointData) return {};
+
+    const sData = jointData.settlement_data || [];
+    const cracks = jointData.related_cracks || [];
+
+    if (sData.length === 0) return {};
+
+    const dates = sData.map((d: any) => d.measurement_date);
+    const sValues = sData.map((d: any) => d.cumulative_change ?? d.value ?? 0);
+
+    const crackColors = ['#ff3e5f', '#ff9e0d', '#bf5af2', '#00d8c9'];
+    const crackSeries = cracks.map((c: any, idx: number) => ({
+      name: c.crack_point,
+      type: 'line' as const,
+      yAxisIndex: 1,
+      data: (c.data || []).map((d: any) => [d.measurement_date, d.value]),
+      lineStyle: { width: 1.5, type: 'dashed' as const, color: crackColors[idx % crackColors.length] },
+      itemStyle: { color: crackColors[idx % crackColors.length] },
+      symbol: 'circle',
+      symbolSize: 3,
+      smooth: true,
+    }));
+
+    return {
+      grid: { left: 55, right: 55, top: 30, bottom: 30 },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(10,20,40,0.95)',
+        borderColor: 'rgba(0,229,255,0.3)',
+        textStyle: { color: '#fff', fontSize: 11 },
+      },
+      legend: {
+        data: [selectedId || '', ...cracks.map((c: any) => c.crack_point)],
+        top: 2,
+        textStyle: { color: '#fff', fontSize: 10 },
+        itemWidth: 12,
+        itemHeight: 8,
+      },
+      xAxis: {
+        type: 'category',
+        data: dates,
+        axisLabel: { color: '#fff', fontSize: 10, rotate: 30 },
+        axisLine: { lineStyle: { color: 'rgba(0,229,255,0.3)' } },
+      },
+      yAxis: [
+        {
+          type: 'value',
+          name: '沉降(mm)',
+          nameTextStyle: { color: '#00e5ff', fontSize: 10 },
+          axisLabel: { color: '#fff', fontSize: 10 },
+          axisLine: { lineStyle: { color: 'rgba(0,229,255,0.3)' } },
+          splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
+        },
+        {
+          type: 'value',
+          name: '裂缝(mm)',
+          nameTextStyle: { color: '#ff3e5f', fontSize: 10 },
+          axisLabel: { color: '#fff', fontSize: 10 },
+          axisLine: { lineStyle: { color: 'rgba(255,62,95,0.3)' } },
+          splitLine: { show: false },
+        },
+      ],
+      series: [
+        {
+          name: selectedId || '',
+          type: 'line',
+          yAxisIndex: 0,
+          data: sValues,
+          smooth: true,
+          symbol: 'none',
+          lineStyle: { color: '#00e5ff', width: 2 },
+          areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(0,229,255,0.1)' }, { offset: 1, color: 'rgba(0,229,255,0)' }] } },
+        },
+        ...crackSeries,
+      ],
+    };
+  }, [jointData, selectedId]);
+
+  if (!selectedId) {
+    return (
+      <div style={{ height: '40%', flexShrink: 0, borderTop: '1px solid rgba(0,229,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,10,25,0.6)' }}>
+        <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>选择监测点查看裂缝联动</span>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div style={{ height: '40%', flexShrink: 0, borderTop: '1px solid rgba(0,229,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,10,25,0.6)' }}>
+        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>加载联动数据...</span>
+      </div>
+    );
+  }
+
+  const hasCracks = jointData && jointData.related_cracks && jointData.related_cracks.length > 0;
+
+  if (!hasCracks) {
+    return (
+      <div style={{ height: '40%', flexShrink: 0, borderTop: '1px solid rgba(0,229,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,10,25,0.6)' }}>
+        <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>{selectedId} 无关联裂缝数据</span>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ height: '40%', flexShrink: 0, borderTop: '1px solid rgba(0,229,255,0.1)', display: 'flex', flexDirection: 'column', background: 'rgba(0,10,25,0.6)' }}>
+      <div style={{ padding: '6px 16px 0', fontSize: 12, color: 'rgba(0,229,255,0.6)', fontWeight: 600, flexShrink: 0 }}>
+        沉降-裂缝联动 · {selectedId} · {jointData!.related_cracks.length}条关联裂缝
+      </div>
+      <div style={{ flex: 1, minHeight: 0, padding: '0 8px 2px' }}>
+        <EChartsWrapper option={option} notMerge />
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // 主页面
 // ─────────────────────────────────────────────
 export default function SettlementV2() {
@@ -466,7 +594,7 @@ export default function SettlementV2() {
       {/* 顶栏英雄区 */}
       <HeroBar points={points} loading={loading} />
 
-      {/* 主体：左侧列表 + 右侧纵断面图 */}
+      {/* 主体：左侧列表 + 右侧（纵断面图 + 裂缝联动） */}
       <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
         <PointList
           points={points}
@@ -474,12 +602,15 @@ export default function SettlementV2() {
           selectedId={selectedId}
           onSelect={setSelectedId}
         />
-        <TunnelProfileChart
-          profileData={profileData}
-          selectedId={selectedId}
-          points={points}
-          loading={profileLoading}
-        />
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <TunnelProfileChart
+            profileData={profileData}
+            selectedId={selectedId}
+            points={points}
+            loading={profileLoading}
+          />
+          <CrackJointPanel selectedId={selectedId} />
+        </div>
       </div>
     </div>
   );
