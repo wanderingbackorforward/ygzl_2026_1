@@ -8,4 +8,9 @@ print(f"DEBUG: Adding to sys.path: {backend_dir}")
 if backend_dir not in sys.path:
     sys.path.append(backend_dir)
 
-from modules.api.api_server import app
+try:
+    from modules.api.api_server import app
+except Exception as e:
+    print(f"[CRITICAL] api_server import failed: {e}")
+    import traceback; traceback.print_exc()
+    from fallback_app import app

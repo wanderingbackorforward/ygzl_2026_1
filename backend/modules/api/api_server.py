@@ -16,10 +16,14 @@ from decimal import Decimal # <--- 新增导入
 
 from flask import Flask, Blueprint, jsonify, request, send_from_directory, render_template, redirect
 from flask_cors import CORS
-import mysql.connector
-import numpy as np
-import pandas as pd
-from sqlalchemy import create_engine
+# 重量级包懒加载，降低冷启动时间
+def _get_mysql():
+    import mysql.connector as _mc
+    return _mc
+
+def _get_pd():
+    import pandas as _pd
+    return _pd
 from werkzeug.utils import secure_filename
 
 # 只添加一次项目根目录到Python路径
@@ -128,9 +132,9 @@ def get_db_connection():
     """创建数据库连接"""
     try:
         # 使用从 db_config 模块导入的配置
-        conn = mysql.connector.connect(**db_config)
+        conn = _get_mysql().connect(**db_config)
         return conn
-    except mysql.connector.Error as err:
+    except Exception as err:
         print(f"数据库连接错误: {err}")
         return None
 
@@ -561,7 +565,7 @@ def process_uploaded_file(task_id, file_path):
 
 def clean_nan_values(df):
     """将DataFrame中的NaN值替换为None"""
-    return df.where(pd.notna(df), None)
+    return df.where(_get_pd().notna(df), None)
 
 @crack_api.route('/crack/upload', methods=['POST'])
 def upload_crack_data():
@@ -575,6 +579,7 @@ def upload_crack_data():
         temp_dir = 'temp_uploads'; os.makedirs(temp_dir, exist_ok=True)
         upload_path = os.path.join(temp_dir, secure_filename(file.filename)) # 使用secure_filename
         file.save(upload_path)
+        from sqlalchemy import create_engine
         engine = create_engine(f"mysql+mysqlconnector://{db_config['user']}:{db_config['password']}@{db_config['host']}") # 使用mysqlconnector
         conn = engine.connect()
         try: conn.execute(f"USE {db_config['database']}"); database_exists = True
@@ -821,7 +826,7 @@ def save_viewpoint():
         print(f"视角数据已保存/更新: {point_id}") # 在后端打印日志
         return jsonify({'success': True, 'message': f'视角 {point_id} 已保存/更新'})
 
-    except mysql.connector.Error as err:
+    except Exception as err:
         conn.rollback()
         print(f"数据库错误 (保存视角): {err}")
         return jsonify({'success': False, 'message': '数据库操作失败'}), 500
@@ -859,7 +864,7 @@ def get_viewpoints():
         return json_dumps_response({'success': True, 'data': formatted_viewpoints})
 
 
-    except mysql.connector.Error as err:
+    except Exception as err:
         print(f"数据库错误 (获取视角): {err}")
         return jsonify({'success': False, 'message': '数据库查询失败'}), 500
     finally:
