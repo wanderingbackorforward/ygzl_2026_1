@@ -131,11 +131,82 @@
             scene.add(fixture);
         }
 
+        // -- Mileage signs (every 20m, digital twin essential) --
+        createMileageSigns();
+
+        // -- Internal facilities (drainage + cable tray) --
+        createTunnelFacilities();
+
         // -- Monitoring point markers --
         createMonitoringMarkers();
 
         // -- Build tour path --
         buildTourPath();
+    }
+
+    function createMileageSigns() {
+        var canvas2d = document.createElement('canvas');
+        canvas2d.width = 128; canvas2d.height = 64;
+        var ctx = canvas2d.getContext('2d');
+
+        for (var m = 0; m <= TUNNEL_LENGTH; m += 20) {
+            // Draw text on canvas texture
+            ctx.fillStyle = '#1a237e';
+            ctx.fillRect(0, 0, 128, 64);
+            ctx.strokeStyle = '#00e5ff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(2, 2, 124, 60);
+            ctx.fillStyle = '#e0f7fa';
+            ctx.font = 'bold 28px Rajdhani, monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('K0+' + String(m).padStart(3, '0'), 64, 42);
+
+            var texture = new THREE.CanvasTexture(canvas2d.cloneNode(true).getContext('2d').canvas);
+            // Need to redraw on cloned canvas
+            var cloneCanvas = document.createElement('canvas');
+            cloneCanvas.width = 128; cloneCanvas.height = 64;
+            var cloneCtx = cloneCanvas.getContext('2d');
+            cloneCtx.drawImage(canvas2d, 0, 0);
+            texture = new THREE.CanvasTexture(cloneCanvas);
+
+            var signGeo = new THREE.PlaneGeometry(1.2, 0.6);
+            var signMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+            var sign = new THREE.Mesh(signGeo, signMat);
+            // Mount on right wall
+            sign.position.set(TUNNEL_RADIUS * 0.85, 2.5, -m);
+            sign.rotation.y = -Math.PI / 2;
+            scene.add(sign);
+        }
+    }
+
+    function createTunnelFacilities() {
+        // -- Drainage channel (both sides along floor) --
+        var drainGeo = new THREE.BoxGeometry(0.3, 0.15, TUNNEL_LENGTH);
+        var drainMat = new THREE.MeshPhongMaterial({ color: 0x37474f });
+        for (var side = -1; side <= 1; side += 2) {
+            var drain = new THREE.Mesh(drainGeo, drainMat);
+            drain.position.set(side * (TUNNEL_RADIUS - 0.3), 0.05, -TUNNEL_LENGTH / 2);
+            scene.add(drain);
+        }
+
+        // -- Cable tray (both sides upper wall) --
+        var trayGeo = new THREE.BoxGeometry(0.2, 0.1, TUNNEL_LENGTH);
+        var trayMat = new THREE.MeshPhongMaterial({ color: 0x546e7a, emissive: 0x263238, emissiveIntensity: 0.1 });
+        for (var s = -1; s <= 1; s += 2) {
+            var tray = new THREE.Mesh(trayGeo, trayMat);
+            tray.position.set(s * (TUNNEL_RADIUS * 0.7), TUNNEL_RADIUS * 0.65, -TUNNEL_LENGTH / 2);
+            scene.add(tray);
+        }
+
+        // -- Center lane marking (dashed) --
+        for (var d = 0; d < TUNNEL_LENGTH; d += 4) {
+            var dashGeo = new THREE.PlaneGeometry(0.15, 1.5);
+            var dashMat = new THREE.MeshBasicMaterial({ color: 0xffd54f, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+            var dash = new THREE.Mesh(dashGeo, dashMat);
+            dash.rotation.x = -Math.PI / 2;
+            dash.position.set(0, 0.01, -(d + 0.75));
+            scene.add(dash);
+        }
     }
 
     function createPortal(zPos) {
@@ -598,6 +669,7 @@
         if (idx >= tourPath.length - 1) {
             touring = false;
             tourProgress = 0;
+            showNotification('巡航结束');
             return;
         }
         var t = tourProgress - idx;
@@ -680,6 +752,18 @@
         var el = document.getElementById('help-overlay');
         if (el) el.classList.toggle('visible');
     };
+
+    function showNotification(msg) {
+        var n = document.createElement('div');
+        n.textContent = msg;
+        n.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);'
+            + 'padding:10px 28px;background:rgba(0,229,255,0.9);color:#0a1628;'
+            + 'border-radius:6px;font:600 14px Rajdhani,sans-serif;z-index:200;'
+            + 'pointer-events:none;transition:opacity 0.5s;';
+        document.body.appendChild(n);
+        setTimeout(function() { n.style.opacity = '0'; }, 1500);
+        setTimeout(function() { n.remove(); }, 2200);
+    }
 
     // Legacy API compatibility
     window.goToViewpoint = function(pointId) {
