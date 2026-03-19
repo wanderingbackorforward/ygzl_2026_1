@@ -10,6 +10,7 @@ import {
   type ActionItem,
 } from '../utils/diagnosisEngine';
 import type { EChartsOption } from 'echarts';
+import { TerzaghiIndicator, MoranIndicator, AnomalyConfidenceRadar } from '../components/overview-v2/SciencePanel';
 
 // ─────────────────────────────────────────────
 // 数据类型（与后端对齐）
@@ -235,7 +236,7 @@ const URGENCY_STYLE: Record<string, { label: string; color: string; bg: string }
   week:  { label: '本周', color: '#3b82f6', bg: 'rgba(59,130,246,0.10)' },
 };
 
-function ActionPanel({ result }: { result: DiagnosisResult | null }) {
+function ActionPanel({ result, points }: { result: DiagnosisResult | null; points: PointSummary[] }) {
   const [role, setRole] = useState<RoleTab>('engineer');
 
   const filtered = useMemo(
@@ -269,9 +270,16 @@ function ActionPanel({ result }: { result: DiagnosisResult | null }) {
         ))}
       </div>
 
-      {/* 行动列表 */}
+      {/* 内容区域 */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '10px 12px' }}>
-        {filtered.length === 0 ? (
+        {role === 'researcher' ? (
+          /* 科研视角：算法面板 */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <TerzaghiIndicator points={points} />
+            <MoranIndicator points={points} />
+            <AnomalyConfidenceRadar points={points} />
+          </div>
+        ) : filtered.length === 0 ? (
           <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, textAlign: 'center', padding: 24 }}>
             当前视角暂无待办事项
           </div>
@@ -378,7 +386,7 @@ export default function OverviewV2() {
         padding: '12px 16px',
       }}>
         <EvidenceCanvas result={diagnosis} />
-        <ActionPanel result={diagnosis} />
+        <ActionPanel result={diagnosis} points={points} />
       </div>
     </div>
   );
