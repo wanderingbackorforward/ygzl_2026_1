@@ -4,6 +4,7 @@
 # api_server.py hard-imports mysql.connector + sqlalchemy, must include
 Flask
 Flask-Cors
+MarkupSafe>=2.1.0
 Werkzeug
 requests
 numpy
