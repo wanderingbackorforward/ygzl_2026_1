@@ -15,7 +15,7 @@
     var MOVE_SPEED = 8;        // m/s base
     var FLY_SPEED = 15;
     var MOUSE_SENSITIVITY = 0.002;
-    var TOUR_SPEED = 3;        // m/s auto-tour
+    var TOUR_SPEED = 0.8;      // path-index per second (lower = slower tour)
 
     // Monitoring point colors by status
     var STATUS_COLORS = {
@@ -31,9 +31,7 @@
     var orbitControls;
     var navMode = 'orbit';  // 'orbit' | 'fps' | 'fly'
     var moveState = { forward: false, backward: false, left: false, right: false, up: false, down: false };
-    var euler = new THREE.Euler(0, 0, 0, 'YXZ');
-    var velocity = new THREE.Vector3();
-    var direction = new THREE.Vector3();
+    var euler, velocity, direction;  // initialized in init() after THREE is loaded
     var speedMultiplier = 1;
 
     // Auto-tour
@@ -79,8 +77,8 @@
         tunnel.name = 'tunnel_shell';
         scene.add(tunnel);
 
-        // -- Inner lining rings (every 5m) --
-        for (var i = 0; i <= TUNNEL_LENGTH; i += 5) {
+        // -- Inner lining rings (every 15m, reduced for performance) --
+        for (var i = 0; i <= TUNNEL_LENGTH; i += 15) {
             var ringGeo = new THREE.TorusGeometry(TUNNEL_RADIUS * 0.98, 0.08, 8, TUNNEL_SEGMENTS, Math.PI);
             var ringMat = new THREE.MeshPhongMaterial({ color: 0x607d8b, emissive: 0x1a237e, emissiveIntensity: 0.1 });
             var ring = new THREE.Mesh(ringGeo, ringMat);
@@ -118,8 +116,8 @@
         createPortal(0);
         createPortal(-TUNNEL_LENGTH);
 
-        // -- Tunnel interior lights (every 10m) --
-        for (var k = 5; k < TUNNEL_LENGTH; k += 10) {
+        // -- Tunnel interior lights (every 25m, reduced for performance) --
+        for (var k = 5; k < TUNNEL_LENGTH; k += 25) {
             var light = new THREE.PointLight(0xffe0b2, 0.4, 15);
             light.position.set(0, TUNNEL_RADIUS * 0.8, -k);
             scene.add(light);
@@ -205,7 +203,7 @@
             });
             var ring = new THREE.Mesh(ringGeo, ringMat);
             ring.position.copy(marker.position);
-            ring.lookAt(camera.position);
+            ring.rotation.x = -Math.PI / 2;  // horizontal ring on ground plane
             scene.add(ring);
 
             // Vertical line to ground
@@ -242,6 +240,11 @@
     function init() {
         var canvas = document.getElementById('viewer-canvas');
         if (!canvas) return;
+
+        // Initialize THREE-dependent objects
+        euler = new THREE.Euler(0, 0, 0, 'YXZ');
+        velocity = new THREE.Vector3();
+        direction = new THREE.Vector3();
 
         clock = new THREE.Clock();
         scene = new THREE.Scene();
