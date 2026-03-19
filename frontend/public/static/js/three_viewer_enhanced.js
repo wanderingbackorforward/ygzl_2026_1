@@ -50,6 +50,7 @@
 
     // FPS counter
     var fpsFrames = 0, fpsTime = 0, fpsValue = 60;
+    var frameCount = 0;  // deterministic throttle instead of Math.random()
 
     // =========================================================
     // Procedural Tunnel Generation
@@ -387,13 +388,13 @@
         ctx.fill();
 
         // Camera direction indicator
-        var dir = new THREE.Vector3();
-        camera.getWorldDirection(dir);
+        if (!_minimapDir) _minimapDir = new THREE.Vector3();
+        camera.getWorldDirection(_minimapDir);
         ctx.strokeStyle = '#00e5ff';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(cx, cz);
-        ctx.lineTo(cx + dir.x * 12, cz - dir.z * 12);
+        ctx.lineTo(cx + _minimapDir.x * 12, cz - _minimapDir.z * 12);
         ctx.stroke();
     }
 
@@ -430,7 +431,8 @@
     function onMouseUp() {
         mouseDown = false;
         mouseButton = -1;
-        document.exitPointerLock && document.exitPointerLock();
+        // Do NOT exitPointerLock here - let user keep looking around
+        // Pointer lock is only released on ESC / switching to orbit mode
     }
     function onMouseMove(e) {
         if (navMode === 'orbit') return;
@@ -545,12 +547,21 @@
 
         renderer.render(scene, camera);
 
-        // HUD update (throttled)
-        if (Math.random() < 0.15) updateHUD();
-        if (Math.random() < 0.1) updateMinimap();
+        // HUD/minimap update (deterministic throttle, not random)
+        frameCount++;
+        if (frameCount % 8 === 0) updateHUD();
+        if (frameCount % 15 === 0) updateMinimap();
     }
 
+    // Reusable vectors (avoid per-frame allocation)
+    var _forward = null, _right = null, _up = null, _minimapDir = null;
+
     function updateFreeMove(delta) {
+        if (!_forward) {
+            _forward = new THREE.Vector3();
+            _right = new THREE.Vector3();
+            _up = new THREE.Vector3(0, 1, 0);
+        }
         var speed = (navMode === 'fly' ? FLY_SPEED : MOVE_SPEED) * speedMultiplier;
         velocity.set(0, 0, 0);
         direction.set(0, 0, 0);
@@ -564,15 +575,12 @@
 
         if (direction.length() > 0) {
             direction.normalize();
-            var forward = new THREE.Vector3();
-            camera.getWorldDirection(forward);
-            var right = new THREE.Vector3();
-            right.crossVectors(forward, camera.up).normalize();
-            var up = new THREE.Vector3(0, 1, 0);
+            camera.getWorldDirection(_forward);
+            _right.crossVectors(_forward, camera.up).normalize();
 
-            velocity.addScaledVector(forward, -direction.z * speed * delta);
-            velocity.addScaledVector(right, direction.x * speed * delta);
-            velocity.addScaledVector(up, direction.y * speed * delta);
+            velocity.addScaledVector(_forward, -direction.z * speed * delta);
+            velocity.addScaledVector(_right, direction.x * speed * delta);
+            velocity.addScaledVector(_up, direction.y * speed * delta);
 
             camera.position.add(velocity);
         }
