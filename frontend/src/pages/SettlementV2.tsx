@@ -499,6 +499,166 @@ function TunnelProfileChart({ profileData, selectedId, points, loading, events }
 }
 
 // ─────────────────────────────────────────────
+// 多点对比面板
+// ─────────────────────────────────────────────
+const COMPARE_COLORS = ['#00e5ff', '#fbbf24', '#f87171', '#a78bfa', '#34d399'];
+
+interface MultiCompareProps {
+  allPoints: PointSummary[];
+  selectedId: string | null;
+  days: number;
+}
+
+function MultiComparePanel({ allPoints, selectedId, days }: MultiCompareProps) {
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [seriesData, setSeriesData] = useState<Record<string, any[]>>({});
+  const [loading, setLoading] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+
+  // 当选中点变化时自动加入对比列表
+  useEffect(() => {
+    if (selectedId && !compareIds.includes(selectedId)) {
+      setCompareIds(prev => [selectedId, ...prev].slice(0, 5));
+    }
+  }, [selectedId]);
+
+  // 获取所有对比点数据
+  useEffect(() => {
+    if (compareIds.length === 0) return;
+    setLoading(true);
+    Promise.all(
+      compareIds.map(pid =>
+        apiGet<{ timeSeriesData: any[] }>(`/point/${pid}`)
+          .then(d => ({ pid, rows: d?.timeSeriesData ?? [] }))
+          .catch(() => ({ pid, rows: [] }))
+      )
+    ).then(results => {
+      const map: Record<string, any[]> = {};
+      results.forEach(({ pid, rows }) => {
+        // 按 days 过滤
+        if (days > 0) {
+          const cutoff = new Date();
+          cutoff.setDate(cutoff.getDate() - days);
+          map[pid] = rows.filter((r: any) => new Date(r.measurement_date) >= cutoff);
+        } else {
+          map[pid] = rows;
+        }
+      });
+      setSeriesData(map);
+    }).finally(() => setLoading(false));
+  }, [compareIds, days]);
+
+  const togglePoint = (pid: string) => {
+    if (compareIds.includes(pid)) {
+      setCompareIds(prev => prev.filter(id => id !== pid));
+    } else if (compareIds.length < 5) {
+      setCompareIds(prev => [...prev, pid]);
+    }
+  };
+
+  const option = useMemo((): EChartsOption => {
+    const series = compareIds.map((pid, idx) => {
+      const rows = seriesData[pid] ?? [];
+      return {
+        name: pid,
+        type: 'line' as const,
+        data: rows.map((r: any) => [r.measurement_date, r.cumulative_change ?? 0]),
+        smooth: true,
+        symbol: 'none',
+        lineStyle: { color: COMPARE_COLORS[idx % COMPARE_COLORS.length], width: 2 },
+        itemStyle: { color: COMPARE_COLORS[idx % COMPARE_COLORS.length] },
+      };
+    });
+
+    return {
+      grid: { left: 55, right: 20, top: 30, bottom: 30 },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(10,20,40,0.95)',
+        borderColor: 'rgba(0,229,255,0.3)',
+        textStyle: { color: '#fff', fontSize: 11 },
+        formatter: (params: any) => {
+          const date = params[0]?.axisValue ?? '';
+          return `<b>${date}</b><br/>` + params.map((p: any) =>
+            `<span style="color:${p.color}">●</span> ${p.seriesName}: ${(p.value[1] ?? 0).toFixed(2)} mm`
+          ).join('<br/>');
+        },
+      },
+      legend: {
+        data: compareIds,
+        top: 2,
+        textStyle: { color: '#fff', fontSize: 11 },
+        itemWidth: 12,
+        itemHeight: 8,
+      },
+      xAxis: {
+        type: 'time',
+        axisLabel: { color: '#fff', fontSize: 10 },
+        axisLine: { lineStyle: { color: 'rgba(0,229,255,0.3)' } },
+        splitLine: { show: false },
+      },
+      yAxis: {
+        type: 'value',
+        name: '累计沉降(mm)',
+        nameTextStyle: { color: '#00e5ff', fontSize: 10 },
+        axisLabel: { color: '#fff', fontSize: 10 },
+        axisLine: { lineStyle: { color: 'rgba(0,229,255,0.3)' } },
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
+      },
+      series,
+    };
+  }, [compareIds, seriesData]);
+
+  return (
+    <div style={{ flexShrink: 0, borderTop: '1px solid rgba(0,229,255,0.1)', background: 'rgba(0,8,20,0.7)', display: 'flex', flexDirection: 'column', height: collapsed ? 36 : '38%' }}>
+      {/* 标题栏 */}
+      <div style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, cursor: 'pointer' }} onClick={() => setCollapsed(c => !c)}>
+        <span style={{ fontSize: 12, color: 'rgba(0,229,255,0.7)', fontWeight: 600 }}>
+          多点对比 · {compareIds.length}/5
+        </span>
+        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>点击监测点加入对比</span>
+        <div style={{ flex: 1 }} />
+        {/* 已选标签 */}
+        {compareIds.map((pid, idx) => (
+          <span
+            key={pid}
+            onClick={e => { e.stopPropagation(); togglePoint(pid); }}
+            style={{
+              fontSize: 11,
+              padding: '1px 6px',
+              borderRadius: 3,
+              background: `${COMPARE_COLORS[idx % COMPARE_COLORS.length]}22`,
+              border: `1px solid ${COMPARE_COLORS[idx % COMPARE_COLORS.length]}88`,
+              color: COMPARE_COLORS[idx % COMPARE_COLORS.length],
+              cursor: 'pointer',
+            }}
+          >{pid} ×</span>
+        ))}
+        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 4 }}>
+          {collapsed ? '▲' : '▼'}
+        </span>
+      </div>
+      {/* 图表区 */}
+      {!collapsed && (
+        <div style={{ flex: 1, minHeight: 0, padding: '0 8px 4px' }}>
+          {loading ? (
+            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>加载对比数据...</span>
+            </div>
+          ) : compareIds.length === 0 ? (
+            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>从左侧列表选择监测点加入对比（最多5个）</span>
+            </div>
+          ) : (
+            <EChartsWrapper option={option} notMerge />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // 沉降-裂缝联动面板
 // ─────────────────────────────────────────────
 interface CrackJointPanelProps {
@@ -712,6 +872,7 @@ export default function SettlementV2() {
             loading={profileLoading}
             events={events}
           />
+          <MultiComparePanel allPoints={points} selectedId={selectedId} days={days} />
           <CrackJointPanel selectedId={selectedId} />
         </div>
       </div>
