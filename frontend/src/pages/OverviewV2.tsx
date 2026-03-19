@@ -11,6 +11,7 @@ import {
 } from '../utils/diagnosisEngine';
 import type { EChartsOption } from 'echarts';
 import { TerzaghiIndicator, MoranIndicator, AnomalyConfidenceRadar } from '../components/overview-v2/SciencePanel';
+import './OverviewV2.css';
 
 // ─────────────────────────────────────────────
 // 数据类型（与后端对齐）
@@ -526,11 +527,8 @@ export default function OverviewV2() {
         <DiagnosisBanner result={diagnosis} loading={loading} />
       </div>
 
-      {/* 第二层 + 第三层：证据画布 + 行动面板 */}
-      <div style={{
-        flex: 1, minHeight: 0, display: 'flex', gap: 12,
-        padding: '12px 16px',
-      }}>
+      {/* 第二层 + 第三层：证据画布 + 行动面板（响应式） */}
+      <div className="ov2-main">
         <EvidenceCanvas result={diagnosis} />
         <ActionPanel result={diagnosis} points={points} />
       </div>

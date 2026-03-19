@@ -1,0 +1,30 @@
+/* OverviewV2 响应式布局 */
+
+/* 主区域：桌面端横排 */
+.ov2-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+/* 窄屏：纵排堆叠 */
+@media (max-width: 900px) {
+  .ov2-main {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  /* 行动面板窄屏时取消固定宽度 */
+  .ov2-main > div:last-child {
+    width: 100% !important;
+    min-height: 320px;
+  }
+
+  /* 证据画布窄屏时给固定高度 */
+  .ov2-main > div:first-child {
+    min-height: 350px;
+    flex-shrink: 0;
+  }
+}
