@@ -140,6 +140,9 @@
         // -- Monitoring point markers --
         createMonitoringMarkers();
 
+        // -- Settlement heatmap on ground --
+        createHeatmap();
+
         // -- Build tour path --
         buildTourPath();
     }
@@ -282,6 +285,54 @@
     }
 
     // =========================================================
+    // Settlement Heatmap
+    // =========================================================
+    function createHeatmap() {
+        // Generate heatmap texture based on monitoring point data
+        var heatCanvas = document.createElement('canvas');
+        heatCanvas.width = 512; heatCanvas.height = 64;
+        var hCtx = heatCanvas.getContext('2d');
+
+        // Background
+        hCtx.fillStyle = 'rgba(0,0,0,0)';
+        hCtx.fillRect(0, 0, 512, 64);
+
+        // Paint zones based on monitoring points
+        for (var i = 0; i < monitorMarkers.length; i++) {
+            var m = monitorMarkers[i];
+            var xRatio = -m.position.z / TUNNEL_LENGTH;
+            var cx = xRatio * 512;
+            var val = parseFloat(m.userData.settlement);
+            // Color: green(0-5) -> yellow(5-15) -> red(15+)
+            var r, g, b;
+            if (val < 5) {
+                r = Math.floor(val / 5 * 255); g = 230; b = 50;
+            } else if (val < 15) {
+                r = 255; g = Math.floor(230 - (val - 5) / 10 * 200); b = 50;
+            } else {
+                r = 255; g = Math.floor(30 - Math.min(val - 15, 15) / 15 * 30); b = 60;
+            }
+            // Radial gradient blob
+            var grad = hCtx.createRadialGradient(cx, 32, 0, cx, 32, 40);
+            grad.addColorStop(0, 'rgba(' + r + ',' + g + ',' + b + ',0.7)');
+            grad.addColorStop(1, 'rgba(' + r + ',' + g + ',' + b + ',0)');
+            hCtx.fillStyle = grad;
+            hCtx.fillRect(cx - 40, 0, 80, 64);
+        }
+
+        var heatTex = new THREE.CanvasTexture(heatCanvas);
+        var heatGeo = new THREE.PlaneGeometry(TUNNEL_RADIUS * 1.8, TUNNEL_LENGTH);
+        var heatMat = new THREE.MeshBasicMaterial({
+            map: heatTex, transparent: true, opacity: 0.5,
+            side: THREE.DoubleSide, depthWrite: false
+        });
+        var heatMesh = new THREE.Mesh(heatGeo, heatMat);
+        heatMesh.rotation.x = -Math.PI / 2;
+        heatMesh.position.set(0, 0.02, -TUNNEL_LENGTH / 2);
+        scene.add(heatMesh);
+    }
+
+    // =========================================================
     // Tour Path
     // =========================================================
     function buildTourPath() {
@@ -360,6 +411,9 @@
         // Setup minimap
         setupMinimap();
 
+        // Populate monitor point list
+        populatePointList();
+
         // Event listeners
         setupEvents(canvas);
 
@@ -405,6 +459,27 @@
 
     function hidePopup() {
         if (popupEl) popupEl.style.display = 'none';
+    }
+
+    // =========================================================
+    // Monitor Point List
+    // =========================================================
+    function populatePointList() {
+        var body = document.getElementById('point-list-body');
+        if (!body) return;
+        var html = '';
+        var colors = { normal: '#00e676', warning: '#ffc107', danger: '#ff3e5f' };
+        var labels = { normal: '正常', warning: '预警', danger: '报警' };
+        for (var i = 0; i < monitorMarkers.length; i++) {
+            var d = monitorMarkers[i].userData;
+            html += '<div class="pl-item" onclick="window.goToViewpoint(\'' + d.pointId + '\')">'
+                + '<span>' + d.pointId + ' ' + d.mileage + '</span>'
+                + '<span style="display:flex;align-items:center;gap:4px;">'
+                + '<span style="font-size:11px;color:' + colors[d.status] + ';">' + d.settlement + '</span>'
+                + '<span class="pl-dot" style="background:' + colors[d.status] + ';"></span>'
+                + '</span></div>';
+        }
+        body.innerHTML = html;
     }
 
     // =========================================================
@@ -475,6 +550,8 @@
         document.addEventListener('mouseup', onMouseUp);
         // Hover raycast
         canvas.addEventListener('mousemove', onHoverMove);
+        // Click to fly to marker
+        canvas.addEventListener('click', onClickMarker);
         // Scroll for speed
         canvas.addEventListener('wheel', onWheel);
         // Resize
@@ -539,6 +616,48 @@
             hoveredMarker.scale.setScalar(1);
             hoveredMarker = null;
         }
+    }
+
+    // -- Click marker to fly to it --
+    var selectedMarker = null;
+    function onClickMarker(e) {
+        if (navMode !== 'orbit') return;
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        var hits = raycaster.intersectObjects(monitorMarkers);
+        if (hits.length > 0) {
+            var m = hits[0].object;
+            flyToMarker(m);
+        }
+    }
+
+    function flyToMarker(marker) {
+        // Deselect previous
+        if (selectedMarker) {
+            selectedMarker.material.color.setHex(STATUS_COLORS[selectedMarker.userData.status]);
+        }
+        selectedMarker = marker;
+        marker.material.color.setHex(0x00e5ff);
+
+        var p = marker.position;
+        var startPos = camera.position.clone();
+        var startTarget = orbitControls.target.clone();
+        var endPos = new THREE.Vector3(p.x + 3, p.y + 1.5, p.z + 4);
+        var endTarget = new THREE.Vector3(p.x, p.y, p.z);
+        var duration = 1200;
+        var startTime = Date.now();
+
+        function step() {
+            var t = Math.min((Date.now() - startTime) / duration, 1);
+            var ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+            camera.position.lerpVectors(startPos, endPos, ease);
+            orbitControls.target.lerpVectors(startTarget, endTarget, ease);
+            orbitControls.update();
+            if (t < 1) requestAnimationFrame(step);
+            else showNotification('已定位到 ' + marker.userData.pointId + ' (' + marker.userData.mileage + ')');
+        }
+        step();
     }
 
     function onWheel(e) {
@@ -704,6 +823,7 @@
         });
         var label = document.getElementById('mode-label');
         var crosshair = document.getElementById('crosshair');
+        var modeNames = { orbit: '轨道', fps: '漫游', fly: '飞行' };
         if (mode === 'orbit') {
             orbitControls.enabled = true;
             orbitControls.target.set(camera.position.x, camera.position.y - 1, camera.position.z - 5);
@@ -713,10 +833,11 @@
             document.exitPointerLock && document.exitPointerLock();
         } else {
             orbitControls.enabled = false;
-            if (label) label.textContent = mode === 'fps' ? '漫游' : '飞行';
+            if (label) label.textContent = modeNames[mode] || mode;
             if (crosshair) crosshair.style.display = 'block';
             renderer.domElement.style.cursor = 'crosshair';
         }
+        showNotification('切换至' + modeNames[mode] + '模式');
     };
 
     window.startAutoTour = function() {
@@ -763,10 +884,9 @@
         if (!camera) return;
         for (var i = 0; i < monitorMarkers.length; i++) {
             if (monitorMarkers[i].userData.pointId === pointId) {
-                var p = monitorMarkers[i].position;
-                camera.position.set(p.x + 2, p.y + 1, p.z + 3);
-                camera.lookAt(p.x, p.y, p.z);
-                if (orbitControls) orbitControls.target.copy(p);
+                // Use flyToMarker for smooth animation
+                if (navMode !== 'orbit') window.setNavMode('orbit');
+                flyToMarker(monitorMarkers[i]);
                 return;
             }
         }

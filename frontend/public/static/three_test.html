@@ -108,6 +108,32 @@
 
         /* ---- Compact nav (embedded mode hidden) ---- */
         .compact-nav { display: none; }
+
+        /* ---- Monitor Point List (bottom-left) ---- */
+        #point-list {
+            position: fixed; bottom: 60px; left: 16px; z-index: 50;
+            background: rgba(10, 22, 40, 0.92); border: 1px solid rgba(0,229,255,0.3);
+            border-radius: 8px; width: 200px; max-height: 280px;
+            font-family: 'Rajdhani', sans-serif; backdrop-filter: blur(12px);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        #point-list .pl-title {
+            padding: 8px 12px; font-size: 13px; color: #00e5ff;
+            border-bottom: 1px solid rgba(0,229,255,0.15); font-weight: 600;
+            flex-shrink: 0;
+        }
+        #point-list .pl-body {
+            overflow-y: auto; flex: 1; min-height: 0; padding: 4px 0;
+        }
+        #point-list .pl-item {
+            padding: 5px 12px; font-size: 12px; color: #e0f7fa; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+            transition: background 0.1s;
+        }
+        #point-list .pl-item:hover { background: rgba(0,229,255,0.12); }
+        #point-list .pl-dot {
+            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+        }
     </style>
 </head>
 <body>
@@ -170,6 +196,14 @@
 
     <!-- Minimap -->
     <div id="minimap"><canvas id="minimap-canvas"></canvas></div>
+
+    <!-- Monitor Point List -->
+    <div id="point-list">
+        <div class="pl-title"><i class="fas fa-map-marker-alt"></i> 监测点列表</div>
+        <div class="pl-body" id="point-list-body">
+            <!-- Populated by JS -->
+        </div>
+    </div>
 
     <!-- Help Overlay -->
     <div id="help-overlay">
