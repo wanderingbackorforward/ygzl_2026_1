@@ -21,7 +21,7 @@ def patrol():
     cron_secret = os.environ.get('CRON_SECRET', '')
     auth_header = request.headers.get('Authorization', '')
     # Vercel Cron 会发送 Authorization: Bearer <CRON_SECRET>
-    if cron_secret and auth_header:
+    if cron_secret:
         expected = f'Bearer {cron_secret}'
         if auth_header != expected:
             return jsonify({'error': 'Unauthorized'}), 401

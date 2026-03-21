@@ -180,12 +180,6 @@ def run_patrol() -> Dict[str, Any]:
 
     stats = result.stats
     anomalies = result.anomalies
-    summary = result.summary
-    point_stats_raw = summary.get('point_details', [])
-
-    # 从 summary 提取 point_stats
-    # settlement_service 的 summary 包含每个点的统计
-    # 如果 point_details 不存在，从 anomalies 反推
     total_points = stats.total_points or stats.analyzed_points or 0
 
     # --- 第二步：形态分析叠加 ---

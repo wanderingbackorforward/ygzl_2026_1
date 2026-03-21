@@ -9,7 +9,15 @@ import { AgentDropdown } from './AgentDropdown'
 export function AgentHeroCell() {
   const { latestPatrol, unreadAnomalies, loading } = useAgent()
   const [open, setOpen] = useState(false)
+  const [timedOut, setTimedOut] = useState(false)
   const cellRef = useRef<HTMLDivElement>(null)
+
+  // 5秒后如果还在loading且没数据，标记超时降级
+  useEffect(() => {
+    if (!loading && latestPatrol) return
+    const timer = setTimeout(() => setTimedOut(true), 5000)
+    return () => clearTimeout(timer)
+  }, [loading, latestPatrol])
 
   // 点击外部关闭 dropdown
   useEffect(() => {
@@ -40,8 +48,8 @@ export function AgentHeroCell() {
     : hasAnomalies ? 'warning' : 'info'
 
   // 标题和信任锚
-  const headline = latestPatrol?.title || (loading ? '加载中...' : '巡检服务初始化中')
-  const trustAnchor = latestPatrol?.body || ''
+  const headline = latestPatrol?.title || (timedOut ? '系统运行中' : (loading ? '加载中...' : '巡检服务初始化中'))
+  const trustAnchor = latestPatrol?.body || (timedOut ? '巡检数据暂不可用' : '')
 
   // 颜色
   const colors = {
