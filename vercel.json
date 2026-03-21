@@ -9,6 +9,9 @@
       "includeFiles": "backend/**/*.py,frontend/public/static/data/insar/**"
     }
   },
+  "crons": [
+    { "path": "/api/agent/patrol", "schedule": "*/15 * * * *" }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",

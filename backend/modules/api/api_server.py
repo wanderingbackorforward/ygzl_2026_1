@@ -79,6 +79,14 @@ from modules.advanced_analysis.api import advanced_bp
 from modules.assistant.api import assistant_bp
 from modules.module_registry.api.module_api import module_bp
 
+# Agent 巡检模块
+try:
+    from modules.agent.api import agent_bp
+    print("[SUCCESS] Agent API imported successfully")
+except Exception as e:
+    print(f"[WARNING] Failed to import agent API: {e}")
+    agent_bp = None
+
 # 机器学习模块（条件导入，避免在缺少依赖时影响其他API）
 ml_api = None
 try:
@@ -1052,6 +1060,11 @@ if ml_api is not None:
     print("[INFO] ML API registered successfully")
 else:
     print("[WARNING] ML API not registered due to missing dependencies")
+
+# 注册Agent巡检API蓝图
+if agent_bp is not None:
+    app.register_blueprint(agent_bp)
+    print("[INFO] Agent API registered successfully")
 
 # 健康检查路由
 @app.route('/api/health')

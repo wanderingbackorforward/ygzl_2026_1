@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiGet } from '../lib/api';
 import { EChartsWrapper } from '../components/charts/EChartsWrapper';
 import { useJointData } from '../hooks/useAdvancedAnalysis';
+import { AgentHeroCell } from '../components/agent/AgentHeroCell';
 import type { EChartsOption } from 'echarts';
 
 // ─────────────────────────────────────────────
@@ -146,6 +147,18 @@ function HeroBar({ points, loading, days, onDaysChange }: HeroBarProps) {
       flexShrink: 0,
     }}>
       {kpis.map((k, i) => (
+        i === 0 ? (
+          /* Agent 巡检状态格 — 替换原"系统健康度" */
+          <div key="agent" style={{
+            flex: 1,
+            borderRight: '1px solid rgba(0,229,255,0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+          }}>
+            <AgentHeroCell />
+          </div>
+        ) : (
         <div key={k.label} style={{
           flex: 1,
           borderRight: '1px solid rgba(0,229,255,0.1)',
@@ -158,6 +171,7 @@ function HeroBar({ points, loading, days, onDaysChange }: HeroBarProps) {
           <div style={{ fontSize: 18, fontWeight: 700, color: k.color, lineHeight: 1.2 }}>{k.value}</div>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>{k.sub}</div>
         </div>
+        )
       ))}
       {/* 时间范围选择器 */}
       <div style={{ flexShrink: 0, padding: '4px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
@@ -507,46 +521,53 @@ interface MultiCompareProps {
   allPoints: PointSummary[];
   selectedId: string | null;
   days: number;
+  summaryLoaded: boolean;
 }
 
-function MultiComparePanel({ allPoints, selectedId, days }: MultiCompareProps) {
+function MultiComparePanel({ allPoints, selectedId, days, summaryLoaded }: MultiCompareProps) {
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [seriesData, setSeriesData] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
-  // 当选中点变化时自动加入对比列表
+  // 当选中点变化时自动加入对比列表（等 summary 加载完再响应）
   useEffect(() => {
+    if (!summaryLoaded) return;
     if (selectedId && !compareIds.includes(selectedId)) {
       setCompareIds(prev => [selectedId, ...prev].slice(0, 5));
     }
-  }, [selectedId]);
+  }, [selectedId, summaryLoaded]);
 
-  // 获取所有对比点数据
+  // 获取所有对比点数据（等 summary 加载完，再延迟 800ms 发请求，避免冷启动并发）
   useEffect(() => {
-    if (compareIds.length === 0) return;
-    setLoading(true);
-    Promise.all(
-      compareIds.map(pid =>
-        apiGet<{ timeSeriesData: any[] }>(`/point/${pid}`)
-          .then(d => ({ pid, rows: d?.timeSeriesData ?? [] }))
-          .catch(() => ({ pid, rows: [] }))
-      )
-    ).then(results => {
-      const map: Record<string, any[]> = {};
-      results.forEach(({ pid, rows }) => {
-        // 按 days 过滤
-        if (days > 0) {
-          const cutoff = new Date();
-          cutoff.setDate(cutoff.getDate() - days);
-          map[pid] = rows.filter((r: any) => new Date(r.measurement_date) >= cutoff);
-        } else {
-          map[pid] = rows;
-        }
-      });
-      setSeriesData(map);
-    }).finally(() => setLoading(false));
-  }, [compareIds, days]);
+    if (!summaryLoaded || compareIds.length === 0) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+      setLoading(true);
+      Promise.all(
+        compareIds.map(pid =>
+          apiGet<{ timeSeriesData: any[] }>(`/point/${pid}`)
+            .then(d => ({ pid, rows: d?.timeSeriesData ?? [] }))
+            .catch(() => ({ pid, rows: [] }))
+        )
+      ).then(results => {
+        if (cancelled) return;
+        const map: Record<string, any[]> = {};
+        results.forEach(({ pid, rows }) => {
+          if (days > 0) {
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - days);
+            map[pid] = rows.filter((r: any) => new Date(r.measurement_date) >= cutoff);
+          } else {
+            map[pid] = rows;
+          }
+        });
+        setSeriesData(map);
+      }).finally(() => { if (!cancelled) setLoading(false); });
+    }, 800);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [compareIds, days, summaryLoaded]);
 
   const togglePoint = (pid: string) => {
     if (compareIds.includes(pid)) {

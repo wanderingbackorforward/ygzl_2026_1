@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useModules } from '../contexts/ModulesContext'
 import { useAuth } from '../contexts/AuthContext'
+import { useAgentStore } from '../stores/agentStore'
 import type { AppModule } from '../types/modules'
 import FullscreenModal from '../components/layout/FullscreenModal'
 
@@ -79,6 +80,14 @@ export default function Nav() {
   const [pending, setPending] = useState<AppModule | null>(null)
   const [moreOpen, setMoreOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const fetchBadge = useAgentStore(s => s.fetchBadge)
+
+  // 初始拉取 badge + 每 60 秒刷新
+  useEffect(() => {
+    fetchBadge()
+    const timer = setInterval(fetchBadge, 60_000)
+    return () => clearInterval(timer)
+  }, [fetchBadge])
 
   const items = useMemo<AppModule[]>(() => {
     if (modules.length) return modules
@@ -102,6 +111,7 @@ export default function Nav() {
     const category = getModuleCategory(module.module_key)
     const style = CATEGORY_STYLES[category]
     const isActive = pathname === module.route_path
+    const badge = useAgentStore(s => s.badge)
 
     return (
       <li style={{ display: 'inline' }}>
@@ -124,10 +134,23 @@ export default function Nav() {
             display: 'inline-flex',
             alignItems: 'center',
             gap: 8,
+            position: 'relative',
           }}
         >
           {module.icon_class && <i className={module.icon_class} />}
           <span>{module.display_name}</span>
+          {/* Agent 红/黄点 — 仅沉降按钮 */}
+          {module.module_key === 'settlement' && badge.has_unread && !isActive && (
+            <span style={{
+              position: 'absolute',
+              top: 4,
+              right: 4,
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: badge.max_severity === 'critical' ? '#f87171' : '#fbbf24',
+            }} />
+          )}
           {module.status === 'pending' && (
             <span style={{
               display: 'inline-block',
