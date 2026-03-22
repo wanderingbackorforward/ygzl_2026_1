@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-曲线健康度分析 - 老工程师的直觉
-分析沉降曲线的斜率、加速度、收敛性，判断曲线形态是否异常。
+曲线形态感知 — 地质直觉的数学基础
+分析变形曲线的斜率、加速度、收敛性，感知地层应力状态。
 """
 
 import numpy as np
@@ -53,18 +53,18 @@ def analyze_curve_health(values: List[float]) -> Dict:
 
     if abs(slope) < 0.01 and is_converging:
         result['status'] = 'stable'
-        result['description'] = '沉降趋于稳定'
+        result['description'] = '地层变形趋于稳定'
     elif acceleration > 0.02 and not is_converging:
         result['status'] = 'accelerating'
-        result['description'] = '沉降加速且未见收敛'
+        result['description'] = '地层变形加速，尚未找到新的平衡'
     elif acceleration > 0.005 and not is_converging:
         result['status'] = 'not_converging'
-        result['description'] = '沉降持续，未见收敛趋势'
+        result['description'] = '变形未见收敛，扰动影响仍在扩展'
     elif is_converging:
         result['status'] = 'converging'
-        result['description'] = '沉降速率减缓，趋于收敛'
+        result['description'] = '变形速率减缓，地层正在趋于稳定'
     else:
         result['status'] = 'normal'
-        result['description'] = '状态正常'
+        result['description'] = '地层状态正常'
 
     return result

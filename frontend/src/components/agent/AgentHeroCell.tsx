@@ -9,7 +9,7 @@ interface AgentHeroCellProps {
 /**
  * Agent 主状态格 — HeroBar 左侧主位
  * 视觉隔离：深色背景+左侧彩色边条+脉冲动画
- * 人格：沉默寡言的老工程师
+ * 人格：地质直觉 — 它就是隧道的感知系统
  */
 export function AgentHeroCell({ onSelectPoint }: AgentHeroCellProps) {
   const { latestPatrol, unreadAnomalies, loading } = useAgent()
@@ -58,12 +58,12 @@ export function AgentHeroCell({ onSelectPoint }: AgentHeroCellProps) {
     ? 'critical'
     : hasAnomalies ? 'warning' : 'info'
 
-  // 老工程师语气
+  // 地质直觉人格
   const headline = hasAnomalies
     ? (maxSeverity === 'critical'
-      ? `${dedupedAnomalies.length}个点需要处理`
-      : `${dedupedAnomalies.length}个点需要留意`)
-    : (latestPatrol?.title || (timedOut ? '一切正常' : '正在巡检...'))
+      ? `${dedupedAnomalies.length}个断面变形加剧`
+      : `感知到${dedupedAnomalies.length}个断面扰动`)
+    : (latestPatrol?.title || (timedOut ? '地下稳定' : '正在感知...'))
 
   const trustAnchor = latestPatrol?.body || (timedOut ? '数据暂不可用' : '')
 

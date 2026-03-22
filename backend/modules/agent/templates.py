@@ -1,55 +1,66 @@
 # -*- coding: utf-8 -*-
 """
-Agent 一句话模板体系
+Agent 认知表达层 — 地质直觉人格
+它不观察隧道——它就是隧道的感知系统。
 所有面向用户的文本都从预审模板中选择，100%确定性输出。
 """
 
-# === 巡检一句话模板 ===
+# === 巡检标题模板（地质直觉人格） ===
 
 PATROL_TEMPLATES = {
-    'all_normal': '所有监测点状态正常',
-    'all_normal_improving': '整体趋势向好，{n}个点沉降趋于收敛',
-    'single_warning': '{point} 需要关注（{reason}）',
-    'single_critical': '{point} 需要立即处理（{reason}）',
-    'multi_warning': '{n}个监测点需要关注，其中 {point} 最为突出',
-    'multi_critical': '{n_crit}个红色预警 + {n_warn}个黄色关注',
-    'data_missing': '{n}个监测点超过{hours}小时未上传数据',
-    'mixed': '{point} 需要处理；另有{n_missing}个点数据缺失',
-    'new_anomaly': '新发现：{point} 沉降加速（上次巡检时正常）',
-    'resolved': '{point} 已恢复正常',
-    'worsening': '{point} 情况恶化：速率从{prev}升至{curr}mm/d',
-    'unchanged': '{point} 仍需关注（状态未变化）',
-    'initializing': '巡检服务已启动，首次分析将在15分钟内完成',
+    # ---- 稳定态 ----
+    'all_normal': '地下稳定',
+    'all_normal_improving': '整体趋于稳定，{n}个断面变形正在收敛',
+
+    # ---- 单点异常 ----
+    'single_warning': '感知到{point}处轻微扰动（{reason}）',
+    'single_critical': '{point}处变形加剧，需要关注（{reason}）',
+
+    # ---- 多点异常 ----
+    'multi_warning': '感知到{n}个断面扰动，{point}最为明显',
+    'multi_critical': '{n_crit}个断面变形加剧，{n_warn}个需留意',
+
+    # ---- 特殊状态 ----
+    'data_missing': '{n}个监测点超过{hours}小时未感知到信号',
+    'mixed': '{point}变形加剧；另有{n_missing}个点信号中断',
+    'new_anomaly': '{point}开始出现扰动（上次感知时尚属稳定）',
+    'resolved': '{point}变形已收敛，地层恢复稳定',
+    'worsening': '{point}扰动加剧：速率从{prev}升至{curr}mm/d',
+    'unchanged': '{point}扰动持续（态势未变化）',
+    'initializing': '感知系统启动中，首次认知将在15分钟内完成',
 }
 
-TRUST_ANCHOR = '已检查 {checked}/{total} 个点 \u00b7 数据截至 {latest_time}'
-TRUST_ANCHOR_MISSING = '已检查 {checked}/{total} 个点 \u00b7 {missing}个点数据缺失'
+# === 信任锚（持续时态） ===
 
-# === 原因模板 ===
+TRUST_ANCHOR = '正在感知 {checked}/{total} 个点 \u00b7 沉降场{field_status}'
+TRUST_ANCHOR_MISSING = '正在感知 {checked}/{total} 个点 \u00b7 {missing}个点信号中断'
+
+# === 原因模板（机理导向） ===
 
 REASON_TEMPLATES = {
-    'threshold_exceeded': '累计沉降{value}mm，超过预警值{threshold}mm',
-    'accelerating': '沉降速率加快，近期加速度{accel}',
-    'not_converging': '沉降未见收敛趋势，持续下沉中',
-    'accel_and_not_converging': '沉降加速且未见收敛，需重点关注',
-    'rate_high': '日沉降速率{rate}mm/d，超过阈值{threshold}mm/d',
-    'data_stale': '超过{hours}小时未收到新数据',
+    'threshold_exceeded': '累计变形{value}mm，土体承压接近极限',
+    'accelerating': '变形持续加速，地层尚未找到新的平衡',
+    'not_converging': '变形未见收敛，扰动影响仍在扩展',
+    'accel_and_not_converging': '变形加速且未收敛，地层应力持续释放',
+    'rate_high': '变形速率{rate}mm/d，地层应力释放加速',
+    'data_stale': '超过{hours}小时未感知到信号',
 }
 
-# === 建议模板 ===
+# === 建议模板（认知引导） ===
 
 SUGGESTION_TEMPLATES = {
-    'critical': '建议24小时内现场巡查，检查该点位及周边结构安全',
-    'high': '建议加密该点位监测频率，3天内安排现场确认',
-    'medium': '建议持续关注，维持当前监测频率',
-    'prediction': '预测值接近预警线，建议提前准备防控措施',
-    'normal': '维持常规监测即可',
+    'critical': '建议24小时内现场确认，注浆加固优先',
+    'high': '建议加密监测频率，3天内现场确认',
+    'medium': '持续关注，我会跟踪趋势变化',
+    'prediction': '趋势接近临界，建议提前准备防控措施',
+    'normal': '常规态势，无需额外操作',
+    'converging': '措施开始生效，我会持续观察',
 }
 
 
 def select_headline(point_stats, anomalies_by_severity):
     """
-    根据巡检结果选择一句话标题。
+    根据巡检结果选择一句话标题（地质直觉人格）。
 
     Args:
         point_stats: list of {point_id, alert_level, ...}
@@ -91,18 +102,20 @@ def select_headline(point_stats, anomalies_by_severity):
         n=total_anomalies, point=worst.get('point_id', '?'))
 
 
-def format_trust_anchor(checked, total, latest_time, missing=0):
-    """格式化信任锚"""
+def format_trust_anchor(checked, total, latest_time=None, missing=0):
+    """格式化信任锚（持续时态：正在感知）"""
     if missing > 0:
         return TRUST_ANCHOR_MISSING.format(
             checked=checked, total=total, missing=missing)
+    # 沉降场状态判定
+    field_status = '稳定' if checked == total else '部分可用'
     return TRUST_ANCHOR.format(
-        checked=checked, total=total, latest_time=latest_time)
+        checked=checked, total=total, field_status=field_status)
 
 
 def build_insight_body(anomaly_item, curve_health=None):
     """
-    为单个异常点生成解释文本。
+    为单个异常点生成解释文本（机理导向）。
 
     Args:
         anomaly_item: AnomalyItem.to_dict() 结果
@@ -128,7 +141,7 @@ def build_insight_body(anomaly_item, curve_health=None):
 
 
 def get_suggestion(severity_str):
-    """根据严重程度返回建议文本"""
+    """根据严重程度返回建议文本（认知引导风格）"""
     mapping = {
         'critical': SUGGESTION_TEMPLATES['critical'],
         'high': SUGGESTION_TEMPLATES['high'],

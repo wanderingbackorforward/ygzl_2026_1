@@ -226,7 +226,6 @@ def run_patrol() -> Dict[str, Any]:
     trust_anchor = format_trust_anchor(
         checked=total_points,
         total=total_points,
-        latest_time=now_str,
     )
 
     # --- 第五步：生成 insights（按 point_id 去重 + 批量查历史） ---
