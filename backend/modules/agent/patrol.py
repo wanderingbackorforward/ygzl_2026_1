@@ -258,31 +258,31 @@ def run_patrol() -> Dict[str, Any]:
         body = build_insight_body(item, ch)
         suggestion = get_suggestion(severity)
 
-            insight = {
-                'id': str(uuid.uuid4()),
-                'insight_type': 'anomaly',
-                'severity': severity,
-                'point_id': pid,
-                'title': item.get('title', f'{pid} 异常'),
-                'body': body,
-                'evidence': {
-                    'curve_status': curve_status,
-                    'slope': ch.get('slope') if ch else None,
-                    'acceleration': ch.get('acceleration') if ch else None,
-                    'converging': ch.get('converging') if ch else None,
-                    'anomaly_type': item.get('anomaly_type', ''),
-                    'current_value': item.get('current_value'),
-                    'threshold': item.get('threshold'),
-                },
-                'suggestion': suggestion,
-                'acknowledged': False,
-                'dismissed': False,
-            }
-            new_insights.append(insight)
+        insight = {
+            'id': str(uuid.uuid4()),
+            'insight_type': 'anomaly',
+            'severity': severity,
+            'point_id': pid,
+            'title': item.get('title', f'{pid} 异常'),
+            'body': body,
+            'evidence': {
+                'curve_status': curve_status,
+                'slope': ch.get('slope') if ch else None,
+                'acceleration': ch.get('acceleration') if ch else None,
+                'converging': ch.get('converging') if ch else None,
+                'anomaly_type': item.get('anomaly_type', ''),
+                'current_value': item.get('current_value'),
+                'threshold': item.get('threshold'),
+            },
+            'suggestion': suggestion,
+            'acknowledged': False,
+            'dismissed': False,
+        }
+        new_insights.append(insight)
 
-            sev_order = {'info': 0, 'warning': 1, 'critical': 2}
-            if sev_order.get(severity, 0) > sev_order.get(max_severity, 0):
-                max_severity = severity
+        sev_order = {'info': 0, 'warning': 1, 'critical': 2}
+        if sev_order.get(severity, 0) > sev_order.get(max_severity, 0):
+            max_severity = severity
 
     # 写入巡检摘要
     patrol_summary = {
