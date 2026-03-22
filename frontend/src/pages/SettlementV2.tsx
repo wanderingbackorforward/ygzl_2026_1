@@ -536,7 +536,7 @@ function MultiComparePanel({ allPoints, selectedId, days, summaryLoaded }: Multi
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [seriesData, setSeriesData] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   // 当选中点变化时自动加入对比列表（等 summary 加载完再响应）
   useEffect(() => {
@@ -696,6 +696,10 @@ interface CrackJointPanelProps {
 
 function CrackJointPanel({ selectedId }: CrackJointPanelProps) {
   const { data: jointData, loading } = useJointData(selectedId);
+  const [collapsed, setCollapsed] = useState(true);
+
+  const hasCracks = jointData && jointData.related_cracks && jointData.related_cracks.length > 0;
+  const crackCount = jointData?.related_cracks?.length ?? 0;
 
   const option = useMemo((): EChartsOption => {
     if (!jointData) return {};
@@ -778,38 +782,58 @@ function CrackJointPanel({ selectedId }: CrackJointPanelProps) {
 
   if (!selectedId) {
     return (
-      <div style={{ height: '40%', flexShrink: 0, borderTop: '1px solid rgba(0,229,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,10,25,0.6)' }}>
-        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>选择监测点查看裂缝联动</span>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div style={{ height: '40%', flexShrink: 0, borderTop: '1px solid rgba(0,229,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,10,25,0.6)' }}>
-        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>加载联动数据...</span>
-      </div>
-    );
-  }
-
-  const hasCracks = jointData && jointData.related_cracks && jointData.related_cracks.length > 0;
-
-  if (!hasCracks) {
-    return (
-      <div style={{ height: '40%', flexShrink: 0, borderTop: '1px solid rgba(0,229,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,10,25,0.6)' }}>
-        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{selectedId} 无关联裂缝数据</span>
+      <div style={{ flexShrink: 0, borderTop: '1px solid rgba(0,229,255,0.1)', background: 'rgba(0,8,20,0.7)' }}>
+        <div style={{ padding: '8px 12px', fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
+          沉降-裂缝联动 · 选择监测点查看
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ height: '40%', flexShrink: 0, borderTop: '1px solid rgba(0,229,255,0.1)', display: 'flex', flexDirection: 'column', background: 'rgba(0,10,25,0.6)' }}>
-      <div style={{ padding: '6px 16px 0', fontSize: 12, color: 'rgba(0,229,255,0.6)', fontWeight: 600, flexShrink: 0 }}>
-        沉降-裂缝联动 · {selectedId} · {jointData!.related_cracks.length}条关联裂缝
+    <div style={{
+      flexShrink: 0,
+      borderTop: '1px solid rgba(0,229,255,0.1)',
+      background: 'rgba(0,8,20,0.7)',
+      display: 'flex',
+      flexDirection: 'column',
+      height: collapsed ? 36 : '38%',
+      transition: 'height 0.2s',
+    }}>
+      {/* 标题栏 — 始终可见 */}
+      <div
+        style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, cursor: 'pointer' }}
+        onClick={() => setCollapsed(c => !c)}
+      >
+        <span style={{ fontSize: 12, color: 'rgba(0,229,255,0.7)', fontWeight: 600 }}>
+          沉降-裂缝联动 · {selectedId}
+        </span>
+        <span style={{ fontSize: 12, color: hasCracks ? '#34d399' : 'rgba(255,255,255,0.35)' }}>
+          {loading ? '加载中...' : hasCracks ? `${crackCount}条关联裂缝` : '无关联裂缝'}
+        </span>
+        <div style={{ flex: 1 }} />
+        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
+          {collapsed ? '▲' : '▼'}
+        </span>
       </div>
-      <div style={{ flex: 1, minHeight: 0, padding: '0 8px 2px' }}>
-        <EChartsWrapper option={option} notMerge />
-      </div>
+      {/* 图表区 — 折叠时隐藏 */}
+      {!collapsed && (
+        <div style={{ flex: 1, minHeight: 0, padding: '0 8px 4px' }}>
+          {loading ? (
+            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>加载联动数据...</span>
+            </div>
+          ) : !hasCracks ? (
+            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{selectedId} 无关联裂缝数据</span>
+            </div>
+          ) : (
+            <>
+              <EChartsWrapper option={option} notMerge />
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -901,7 +925,7 @@ export default function SettlementV2() {
             loading={profileLoading}
             events={events}
           />
-          <MultiComparePanel allPoints={points} selectedId={selectedId} days={days} />
+          <MultiComparePanel allPoints={points} selectedId={selectedId} days={days} summaryLoaded={!loading} />
           <CrackJointPanel selectedId={selectedId} />
         </div>
       </div>
