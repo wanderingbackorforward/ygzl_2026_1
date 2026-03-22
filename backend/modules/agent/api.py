@@ -14,18 +14,8 @@ agent_bp = Blueprint('agent_bp', __name__, url_prefix='/api/agent')
 def patrol():
     """
     触发一次巡检。
-    Vercel Cron 调用时需要 CRON_SECRET 认证。
-    手动调用(开发)时无需认证。
+    免费版无 Cron，由前端打开页面时触发。
     """
-    # Cron 认证检查
-    cron_secret = os.environ.get('CRON_SECRET', '')
-    auth_header = request.headers.get('Authorization', '')
-    # Vercel Cron 会发送 Authorization: Bearer <CRON_SECRET>
-    if cron_secret:
-        expected = f'Bearer {cron_secret}'
-        if auth_header != expected:
-            return jsonify({'error': 'Unauthorized'}), 401
-
     try:
         from modules.agent.patrol import run_patrol
         result = run_patrol()

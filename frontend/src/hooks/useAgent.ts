@@ -1,23 +1,37 @@
 import { useEffect } from 'react'
 import { useAgentStore } from '../stores/agentStore'
+import { apiGet } from '../lib/api'
 
 /**
  * Agent 数据拉取 hook。
- * 在组件挂载时拉取 insights 和 badge，之后每 60 秒刷新 badge。
+ * 免费版无 Cron，改为：页面打开时触发一次巡检，再拉结果。
  */
 export function useAgent() {
   const { fetchInsights, fetchBadge, insights, badge, loading } = useAgentStore()
 
   useEffect(() => {
-    fetchInsights()
-    fetchBadge()
+    // 页面打开时触发一次巡检（替代 Vercel Cron）
+    apiGet('/agent/patrol').catch(() => {})
 
-    // 每 60 秒刷新 badge（轻量接口）
-    const timer = setInterval(() => {
+    // 等巡检完成后拉结果（给后端 3 秒处理时间）
+    const loadTimer = setTimeout(() => {
+      fetchInsights()
       fetchBadge()
-    }, 60_000)
+    }, 3000)
 
-    return () => clearInterval(timer)
+    // 每 5 分钟重新巡检一次（页面保持打开时）
+    const patrolTimer = setInterval(() => {
+      apiGet('/agent/patrol').catch(() => {})
+      setTimeout(() => {
+        fetchInsights()
+        fetchBadge()
+      }, 3000)
+    }, 5 * 60_000)
+
+    return () => {
+      clearTimeout(loadTimer)
+      clearInterval(patrolTimer)
+    }
   }, [fetchInsights, fetchBadge])
 
   // 最新的巡检摘要
