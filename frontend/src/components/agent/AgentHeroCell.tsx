@@ -2,25 +2,27 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useAgent } from '../../hooks/useAgent'
 import { AgentDropdown } from './AgentDropdown'
 
+interface AgentHeroCellProps {
+  onSelectPoint?: (pointId: string) => void
+}
+
 /**
  * Agent 主状态格 — HeroBar 左侧主位
- * 三种状态：正常（绿色呼吸）、关注（橙黄脉冲）、严重（红色脉冲+闪烁）
+ * 视觉隔离：深色背景+左侧彩色边条+脉冲动画
  * 人格：沉默寡言的老工程师
  */
-export function AgentHeroCell() {
+export function AgentHeroCell({ onSelectPoint }: AgentHeroCellProps) {
   const { latestPatrol, unreadAnomalies, loading } = useAgent()
   const [open, setOpen] = useState(false)
   const [timedOut, setTimedOut] = useState(false)
   const cellRef = useRef<HTMLDivElement>(null)
 
-  // 5秒超时降级
   useEffect(() => {
     if (!loading && latestPatrol) return
     const timer = setTimeout(() => setTimedOut(true), 5000)
     return () => clearTimeout(timer)
   }, [loading, latestPatrol])
 
-  // 点击外部关闭
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
@@ -30,7 +32,6 @@ export function AgentHeroCell() {
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  // Esc 关闭
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
@@ -38,7 +39,7 @@ export function AgentHeroCell() {
     return () => document.removeEventListener('keydown', handler)
   }, [open])
 
-  // 按点位去重（前端层面，取每个 point_id 最严重的一条）
+  // 按点位去重
   const dedupedAnomalies = React.useMemo(() => {
     const map = new Map<string, typeof unreadAnomalies[0]>()
     const sevOrder: Record<string, number> = { critical: 2, warning: 1, info: 0 }
@@ -57,41 +58,41 @@ export function AgentHeroCell() {
     ? 'critical'
     : hasAnomalies ? 'warning' : 'info'
 
-  // 老工程师语气的标题
+  // 老工程师语气
   const headline = hasAnomalies
     ? (maxSeverity === 'critical'
-      ? `${dedupedAnomalies.length}个点有问题，需要处理`
+      ? `${dedupedAnomalies.length}个点需要处理`
       : `${dedupedAnomalies.length}个点需要留意`)
-    : (latestPatrol?.title || (timedOut ? '一切正常' : (loading ? '正在巡检...' : '正在巡检...')))
+    : (latestPatrol?.title || (timedOut ? '一切正常' : '正在巡检...'))
 
   const trustAnchor = latestPatrol?.body || (timedOut ? '数据暂不可用' : '')
 
-  // 颜色和动画
   const config = {
-    info:     { color: '#34d399', glow: 'rgba(52,211,153,0.15)', icon: '\u2713', pulse: false },
-    warning:  { color: '#fbbf24', glow: 'rgba(251,191,36,0.12)', icon: '\u26A0', pulse: true },
-    critical: { color: '#f87171', glow: 'rgba(248,113,113,0.18)', icon: '\u26A0', pulse: true },
+    info:     { color: '#34d399', border: '#34d399', glow: 'rgba(52,211,153,0.08)', pulse: false },
+    warning:  { color: '#fbbf24', border: '#fbbf24', glow: 'rgba(251,191,36,0.06)', pulse: true },
+    critical: { color: '#f87171', border: '#f87171', glow: 'rgba(248,113,113,0.08)', pulse: true },
   }
   const c = config[maxSeverity]
 
-  // 注入脉冲动画 CSS
   useEffect(() => {
     if (document.getElementById('agent-pulse-style')) return
     const style = document.createElement('style')
     style.id = 'agent-pulse-style'
     style.textContent = `
-      @keyframes agent-pulse {
-        0% { box-shadow: 0 0 0 0 var(--agent-glow); }
-        70% { box-shadow: 0 0 0 6px transparent; }
-        100% { box-shadow: 0 0 0 0 transparent; }
-      }
-      @keyframes agent-breathe {
-        0%, 100% { opacity: 0.7; }
-        50% { opacity: 1; }
+      @keyframes agent-dot-pulse {
+        0%, 100% { opacity: 0.6; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.3); }
       }
     `
     document.head.appendChild(style)
   }, [])
+
+  const handlePointClick = (pointId: string) => {
+    if (onSelectPoint) {
+      onSelectPoint(pointId)
+      setOpen(false)
+    }
+  }
 
   return (
     <div ref={cellRef} style={{ position: 'relative' }}>
@@ -99,44 +100,40 @@ export function AgentHeroCell() {
         onClick={() => hasAnomalies && setOpen(!open)}
         style={{
           cursor: hasAnomalies ? 'pointer' : 'default',
-          padding: '6px 10px',
-          borderRadius: 6,
+          padding: '8px 14px',
+          borderLeft: `3px solid ${c.border}`,
           background: c.glow,
+          borderRadius: '0 6px 6px 0',
           transition: 'all 0.3s ease',
-          ...(c.pulse ? {
-            animation: 'agent-pulse 2s infinite',
-            ['--agent-glow' as any]: c.glow,
-          } : {}),
         }}
       >
-        {/* 状态指示器 + 标题 */}
+        {/* 标题行 */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           gap: 8,
         }}>
-          {/* 状态圆点 */}
+          {/* 脉冲圆点 */}
           <div style={{
-            width: 10,
-            height: 10,
+            width: 8,
+            height: 8,
             borderRadius: '50%',
             background: c.color,
             flexShrink: 0,
-            animation: c.pulse ? 'agent-breathe 2s ease-in-out infinite' : 'none',
-            boxShadow: `0 0 6px ${c.color}`,
+            boxShadow: `0 0 8px ${c.color}`,
+            animation: c.pulse ? 'agent-dot-pulse 2s ease-in-out infinite' : 'none',
           }} />
           <span style={{
-            fontSize: 14,
+            fontSize: 15,
             fontWeight: 700,
             color: 'white',
-            letterSpacing: 0.5,
           }}>
             {headline}
           </span>
           {hasAnomalies && (
             <span style={{
-              fontSize: 11,
-              color: 'rgba(255,255,255,0.4)',
+              fontSize: 10,
+              color: 'rgba(255,255,255,0.35)',
               marginLeft: 'auto',
             }}>
               {open ? '\u25B2' : '\u25BC'}
@@ -148,9 +145,9 @@ export function AgentHeroCell() {
         {trustAnchor && (
           <div style={{
             fontSize: 11,
-            color: 'rgba(255,255,255,0.45)',
-            marginTop: 3,
-            paddingLeft: 18,
+            color: 'rgba(255,255,255,0.4)',
+            marginTop: 2,
+            paddingLeft: 16,
           }}>
             {trustAnchor}
           </div>
@@ -161,6 +158,7 @@ export function AgentHeroCell() {
         <AgentDropdown
           anomalies={dedupedAnomalies}
           onClose={() => setOpen(false)}
+          onSelectPoint={handlePointClick}
         />
       )}
     </div>

@@ -82,9 +82,10 @@ interface HeroBarProps {
   loading: boolean;
   days: number;
   onDaysChange: (d: number) => void;
+  onSelectPoint?: (id: string) => void;
 }
 
-function HeroBar({ points, loading, days, onDaysChange }: HeroBarProps) {
+function HeroBar({ points, loading, days, onDaysChange, onSelectPoint }: HeroBarProps) {
   if (loading) {
     return (
       <div style={{ background: 'rgba(0,30,60,0.9)', borderBottom: '1px solid rgba(0,229,255,0.15)', padding: '10px 20px', display: 'flex', gap: 32, alignItems: 'center' }}>
@@ -98,29 +99,15 @@ function HeroBar({ points, loading, days, onDaysChange }: HeroBarProps) {
   const maxSettlement = points.length > 0 ? Math.min(...points.map(p => p.total_change ?? 0)) : 0;
   const maxPoint = points.find(p => p.total_change === maxSettlement);
   const avgRate = points.length > 0 ? points.reduce((s, p) => s + (p.trend_slope ?? 0), 0) / points.length : 0;
+  const normalCount = points.length - alertCount - warnCount;
 
-  // 健康评分：100分 - 报警点*15 - 预警点*8
-  const healthScore = Math.max(0, 100 - alertCount * 15 - warnCount * 8);
-  const healthColor = healthScore >= 80 ? '#34d399' : healthScore >= 60 ? '#fbbf24' : '#f87171';
-
-  const kpis = [
+  // KPI: 去掉"报警/预警"（Agent已覆盖），换成监测点总览和正常率
+  const compactKpis = [
     {
-      label: '系统健康度',
-      value: `${healthScore}分`,
-      color: healthColor,
-      sub: `${points.length}个监测点`,
-    },
-    {
-      label: '报警',
-      value: alertCount,
-      color: alertCount > 0 ? '#f87171' : '#34d399',
-      sub: '超报警阈值',
-    },
-    {
-      label: '预警',
-      value: warnCount,
-      color: warnCount > 0 ? '#fbbf24' : '#34d399',
-      sub: '超警戒阈值',
+      label: '监测点',
+      value: `${points.length}`,
+      color: '#00e5ff',
+      sub: `${normalCount}正常 ${alertCount + warnCount}异常`,
     },
     {
       label: '最大累计沉降',
@@ -135,9 +122,6 @@ function HeroBar({ points, loading, days, onDaysChange }: HeroBarProps) {
       sub: '线性回归',
     },
   ];
-
-  // 右侧紧凑 KPI（跳过第一个"系统健康度"，Agent 替代它）
-  const compactKpis = kpis.slice(1);
 
   return (
     <div style={{
@@ -158,14 +142,14 @@ function HeroBar({ points, loading, days, onDaysChange }: HeroBarProps) {
         justifyContent: 'center',
         paddingRight: 12,
       }}>
-        <AgentHeroCell />
+        <AgentHeroCell onSelectPoint={onSelectPoint} />
       </div>
 
-      {/* 右侧: KPI 紧凑双行网格 */}
+      {/* 右侧: KPI 紧凑网格 */}
       <div style={{
         flex: 1,
         display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
+        gridTemplateColumns: 'repeat(3, 1fr)',
         gap: 0,
         alignItems: 'center',
       }}>
@@ -907,7 +891,7 @@ export default function SettlementV2() {
       overflow: 'hidden',
     }}>
       {/* 顶栏英雄区 + 时间范围选择器 */}
-      <HeroBar points={points} loading={loading} days={days} onDaysChange={setDays} />
+      <HeroBar points={points} loading={loading} days={days} onDaysChange={setDays} onSelectPoint={setSelectedId} />
 
       {/* 主体：左侧列表 + 右侧（纵断面图 + 裂缝联动） */}
       <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
