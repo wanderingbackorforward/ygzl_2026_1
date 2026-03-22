@@ -136,54 +136,62 @@ function HeroBar({ points, loading, days, onDaysChange }: HeroBarProps) {
     },
   ];
 
+  // 右侧紧凑 KPI（跳过第一个"系统健康度"，Agent 替代它）
+  const compactKpis = kpis.slice(1);
+
   return (
     <div style={{
       background: 'linear-gradient(90deg, rgba(0,20,50,0.95) 0%, rgba(0,30,60,0.9) 100%)',
       borderBottom: '1px solid rgba(0,229,255,0.15)',
-      padding: '8px 20px',
+      padding: '6px 16px',
       display: 'flex',
       gap: 0,
       alignItems: 'stretch',
       flexShrink: 0,
     }}>
-      {kpis.map((k, i) => (
-        i === 0 ? (
-          /* Agent 巡检状态格 — 替换原"系统健康度" */
-          <div key="agent" style={{
-            flex: 1,
-            borderRight: '1px solid rgba(0,229,255,0.1)',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
+      {/* 左侧: Agent 主位 — 占更大空间 */}
+      <div style={{
+        flex: '0 0 280px',
+        borderRight: '1px solid rgba(0,229,255,0.15)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        paddingRight: 12,
+      }}>
+        <AgentHeroCell />
+      </div>
+
+      {/* 右侧: KPI 紧凑双行网格 */}
+      <div style={{
+        flex: 1,
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: 0,
+        alignItems: 'center',
+      }}>
+        {compactKpis.map(k => (
+          <div key={k.label} style={{
+            padding: '2px 14px',
+            borderRight: '1px solid rgba(0,229,255,0.06)',
           }}>
-            <AgentHeroCell />
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>{k.label}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: k.color, lineHeight: 1.3 }}>{k.value}</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>{k.sub}</div>
           </div>
-        ) : (
-        <div key={k.label} style={{
-          flex: 1,
-          borderRight: '1px solid rgba(0,229,255,0.1)',
-          padding: '4px 16px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-        }}>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 2 }}>{k.label}</div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: k.color, lineHeight: 1.2 }}>{k.value}</div>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>{k.sub}</div>
-        </div>
-        )
-      ))}
+        ))}
+      </div>
+
       {/* 时间范围选择器 */}
-      <div style={{ flexShrink: 0, padding: '4px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>时间范围</div>
-        <div style={{ display: 'flex', gap: 4 }}>
+      <div style={{ flexShrink: 0, padding: '2px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3 }}>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>时间范围</div>
+        <div style={{ display: 'flex', gap: 3 }}>
           {TIME_OPTIONS.map(opt => (
             <button
               key={opt.value}
               onClick={() => onDaysChange(opt.value)}
               style={{
-                padding: '3px 8px',
-                fontSize: 12,
+                padding: '2px 7px',
+                fontSize: 11,
                 borderRadius: 4,
                 border: `1px solid ${days === opt.value ? 'rgba(0,229,255,0.8)' : 'rgba(0,229,255,0.2)'}`,
                 background: days === opt.value ? 'rgba(0,229,255,0.15)' : 'transparent',
