@@ -54,6 +54,35 @@ function alertLabel(level: string): string {
   return '正常';
 }
 
+// 根据沉降值获取更细粒度的颜色（让"正常"不再千篇一律）
+function valueColor(totalChange: number): string {
+  const abs = Math.abs(totalChange);
+  if (abs >= 5) return '#f87171';     // 超报警线
+  if (abs >= 3) return '#fbbf24';     // 超预警线
+  if (abs >= 2) return '#fb923c';     // 接近预警线
+  if (abs >= 1) return '#a3e635';     // 轻微变形
+  return '#34d399';                   // 稳定
+}
+
+// 细粒度状态标签（让列表有层次感）
+function fineLabel(level: string, totalChange: number): string {
+  if (level === 'alert') return '报警';
+  if (level === 'warning') return '预警';
+  const abs = Math.abs(totalChange);
+  if (abs >= 2) return '留意';
+  if (abs >= 1) return '轻微';
+  return '正常';
+}
+
+function fineLabelColor(level: string, totalChange: number): string {
+  if (level === 'alert') return '#f87171';
+  if (level === 'warning') return '#fbbf24';
+  const abs = Math.abs(totalChange);
+  if (abs >= 2) return '#fb923c';
+  if (abs >= 1) return '#a3e635';
+  return '#34d399';
+}
+
 // ─────────────────────────────────────────────
 // 施工事件类型
 // ─────────────────────────────────────────────
@@ -230,6 +259,11 @@ function PointList({ points, loading, selectedId, onSelect }: PointListProps) {
         ) : sorted.map(p => {
           const isSelected = selectedId === p.point_id;
           const color = alertColor(p.alert_level);
+          const vColor = valueColor(p.total_change ?? 0);
+          const fLabel = fineLabel(p.alert_level, p.total_change ?? 0);
+          const fColor = fineLabelColor(p.alert_level, p.total_change ?? 0);
+          // 沉降量占报警线比例（用于微型进度条）
+          const ratio = Math.min(Math.abs(p.total_change ?? 0) / 5, 1);
           return (
             <button
               key={p.point_id}
@@ -254,17 +288,36 @@ function PointList({ points, loading, selectedId, onSelect }: PointListProps) {
                 </span>
                 <span style={{
                   fontSize: 10,
-                  color: color,
-                  background: `${color}22`,
-                  border: `1px solid ${color}55`,
+                  color: fColor,
+                  background: `${fColor}22`,
+                  border: `1px solid ${fColor}55`,
                   borderRadius: 3,
                   padding: '1px 4px',
                 }}>
-                  {alertLabel(p.alert_level)}
+                  {fLabel}
                 </span>
               </div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
-                {(p.total_change ?? 0).toFixed(2)} mm
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 500, color: vColor }}>
+                  {(p.total_change ?? 0).toFixed(2)} mm
+                </span>
+              </div>
+              {/* 微型沉降进度条 */}
+              <div style={{
+                height: 2,
+                width: '100%',
+                background: 'rgba(255,255,255,0.06)',
+                borderRadius: 1,
+                marginTop: 1,
+              }}>
+                <div style={{
+                  height: '100%',
+                  width: `${ratio * 100}%`,
+                  background: vColor,
+                  borderRadius: 1,
+                  opacity: 0.7,
+                  transition: 'width 0.3s',
+                }} />
               </div>
             </button>
           );
@@ -303,12 +356,13 @@ function TunnelProfileChart({ profileData, selectedId, points, loading, events }
     // 沉降曲线数据
     const lineData = profile.map(p => [p.chainage_m, p.cumulative_change]);
 
-    // 监测点散点（区分选中/报警状态）
+    // 监测点散点（区分选中/报警状态，细粒度着色）
     const scatterData = profile.map(p => {
       const summary = points.find(s => s.point_id === p.point_id);
       const isSelected = p.point_id === selectedId;
       const alert = summary?.alert_level ?? 'normal';
-      const color = alert === 'alert' ? '#f87171' : alert === 'warning' ? '#fbbf24' : '#34d399';
+      const color = alert === 'alert' ? '#f87171' : alert === 'warning' ? '#fbbf24'
+        : valueColor(p.cumulative_change);
       return {
         value: [p.chainage_m, p.cumulative_change],
         name: p.point_id,
@@ -317,7 +371,7 @@ function TunnelProfileChart({ profileData, selectedId, points, loading, events }
           borderColor: isSelected ? '#fff' : 'transparent',
           borderWidth: isSelected ? 2 : 0,
         },
-        symbolSize: isSelected ? 14 : 8,
+        symbolSize: isSelected ? 14 : (Math.abs(p.cumulative_change) >= 3 ? 10 : 8),
         label: { show: isSelected, formatter: p.point_id, color: '#fff', fontSize: 11, position: 'top' as const },
         // 附加数据用于 tooltip
         dailyChange: p.daily_change,
