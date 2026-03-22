@@ -276,9 +276,98 @@ def get_point_data(point_id):
 @app.route('/api/summary')
 def get_summary():
     print("[API] GET /api/summary")
-    """获取所有监测点的汇总分析"""
-    summary = repo.get_summary()
-    return json.dumps(summary, default=decimal_default)
+    """获取所有监测点的汇总分析，支持 days 参数过滤时间范围"""
+    days = request.args.get('days', type=int)
+
+    if days and days > 0:
+        # 按时间范围从原始数据动态计算
+        try:
+            from datetime import datetime, timedelta
+            import numpy as np
+            cutoff = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%dT00:00:00')
+            sb_url = os.environ.get('SUPABASE_URL', '').rstrip('/')
+            sb_key = os.environ.get('SUPABASE_ANON_KEY', '')
+            sb_headers = {'apikey': sb_key, 'Authorization': f'Bearer {sb_key}', 'Accept': 'application/json'}
+            r = requests.get(
+                f'{sb_url}/rest/v1/processed_settlement_data'
+                f'?select=point_id,measurement_date,value,daily_change,cumulative_change'
+                f'&measurement_date=gte.{cutoff}'
+                f'&order=measurement_date.asc',
+                headers=sb_headers,
+                timeout=15,
+            )
+            r.raise_for_status()
+            raw = r.json()
+            if not raw:
+                return json.dumps([], default=decimal_default)
+
+            # 按点位分组计算统计
+            from collections import defaultdict
+            groups = defaultdict(list)
+            for row in raw:
+                pid = row.get('point_id')
+                if pid:
+                    groups[pid].append(row)
+
+            result = []
+            for pid, records in groups.items():
+                records.sort(key=lambda x: x.get('measurement_date', ''))
+                values = [float(r['value']) for r in records if r.get('value') is not None]
+                if len(values) < 2:
+                    continue
+
+                total_change = values[-1] - values[0]
+                # 线性回归算斜率
+                if len(values) >= 3:
+                    x = np.arange(len(values))
+                    slope = float(np.polyfit(x, values, 1)[0])
+                    predicted_change_30d = slope * 30
+                else:
+                    slope = 0.0
+                    predicted_change_30d = 0.0
+
+                # alert_level 判定
+                abs_change = abs(total_change)
+                if abs_change >= 5 or abs(slope) >= 0.15:
+                    alert_level = 'alert'
+                elif abs_change >= 3 or abs(slope) >= 0.08:
+                    alert_level = 'warning'
+                else:
+                    alert_level = 'normal'
+
+                # trend_type
+                if abs(slope) < 0.01:
+                    trend_type = '基本稳定'
+                elif slope < -0.08:
+                    trend_type = '显著下沉'
+                elif slope < -0.03:
+                    trend_type = '轻微下沉'
+                elif slope > 0.03:
+                    trend_type = '轻微上升'
+                else:
+                    trend_type = '基本稳定'
+
+                result.append({
+                    'point_id': pid,
+                    'total_change': round(total_change, 4),
+                    'trend_slope': round(slope, 6),
+                    'trend_type': trend_type,
+                    'alert_level': alert_level,
+                    'predicted_change_30d': round(predicted_change_30d, 4),
+                    'last_date': records[-1].get('measurement_date', ''),
+                })
+
+            import re
+            result.sort(key=lambda x: (int(re.sub(r'[^0-9]', '', x['point_id']) or '0'), x['point_id']))
+            return json.dumps(result, default=decimal_default)
+        except Exception as e:
+            print(f"[API] summary with days={days} failed: {e}")
+            # fallback 到静态表
+            summary = repo.get_summary()
+            return json.dumps(summary, default=decimal_default)
+    else:
+        summary = repo.get_summary()
+        return json.dumps(summary, default=decimal_default)
 
 @app.route('/api/trends')
 def get_trends():

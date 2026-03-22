@@ -336,6 +336,9 @@ interface TunnelProfileChartProps {
   points: PointSummary[];
   loading: boolean;
   events: ConstructionEvent[];
+  availableDates?: string[];
+  currentDate?: string;
+  onDateChange?: (date: string) => void;
 }
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
@@ -346,7 +349,7 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
   其他: '#94a3b8',
 };
 
-function TunnelProfileChart({ profileData, selectedId, points, loading, events }: TunnelProfileChartProps) {
+function TunnelProfileChart({ profileData, selectedId, points, loading, events, availableDates, currentDate, onDateChange }: TunnelProfileChartProps) {
   const option = useMemo((): EChartsOption => {
     if (!profileData || profileData.profile.length === 0) return {};
 
@@ -548,8 +551,30 @@ function TunnelProfileChart({ profileData, selectedId, points, loading, events }
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'rgba(0,10,25,0.6)' }}>
-      <div style={{ padding: '8px 16px 0', fontSize: 12, color: 'rgba(0,229,255,0.6)', fontWeight: 600, flexShrink: 0 }}>
-        隧道纵断面 · {profileData.date}
+      <div style={{ padding: '8px 16px 0', fontSize: 12, color: 'rgba(0,229,255,0.6)', fontWeight: 600, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span>隧道纵断面</span>
+        {availableDates && availableDates.length > 1 && onDateChange ? (
+          <select
+            value={currentDate || profileData?.date || ''}
+            onChange={e => onDateChange(e.target.value)}
+            style={{
+              fontSize: 11,
+              padding: '2px 6px',
+              background: 'rgba(0,229,255,0.08)',
+              border: '1px solid rgba(0,229,255,0.25)',
+              borderRadius: 4,
+              color: '#00e5ff',
+              cursor: 'pointer',
+              outline: 'none',
+            }}
+          >
+            {availableDates.map(d => (
+              <option key={d} value={d} style={{ background: '#0a192f', color: '#fff' }}>{d}</option>
+            ))}
+          </select>
+        ) : (
+          <span style={{ color: 'rgba(255,255,255,0.4)' }}>· {profileData?.date}</span>
+        )}
       </div>
       <div style={{ flex: 1, minHeight: 0, padding: '0 8px 4px' }}>
         <EChartsWrapper option={option} notMerge />
@@ -885,13 +910,16 @@ export default function SettlementV2() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [profileDates, setProfileDates] = useState<string[]>([]);
+  const [profileDate, setProfileDate] = useState<string>('');
   const [days, setDays] = useState<number>(30);
   const [events, setEvents] = useState<ConstructionEvent[]>([]);
 
   const fetchSummary = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiGet<PointSummary[]>('/summary');
+      const url = days > 0 ? `/summary?days=${days}` : '/summary';
+      const data = await apiGet<PointSummary[]>(url);
       setPoints(data ?? []);
       if (data && data.length > 0 && !selectedId) {
         const first = data.find(p => p.alert_level === 'alert') ?? data[0];
@@ -902,17 +930,31 @@ export default function SettlementV2() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [days]);
 
-  const fetchProfile = useCallback(async () => {
+  const fetchProfile = useCallback(async (date?: string) => {
     setProfileLoading(true);
     try {
-      const data = await apiGet<ProfileData>('/advanced/profile/data');
+      const url = date ? `/advanced/profile/data?date=${date}` : '/advanced/profile/data';
+      const data = await apiGet<ProfileData>(url);
       setProfileData(data ?? null);
     } catch (e) {
       console.error('[SettlementV2] fetch profile failed', e);
     } finally {
       setProfileLoading(false);
+    }
+  }, []);
+
+  const fetchProfileDates = useCallback(async () => {
+    try {
+      const data = await apiGet<{ dates: string[] }>('/advanced/profile/dates');
+      const dates = data?.dates ?? [];
+      setProfileDates(dates);
+      if (dates.length > 0 && !profileDate) {
+        setProfileDate(dates[dates.length - 1]); // 默认选最新日期
+      }
+    } catch (e) {
+      console.error('[SettlementV2] fetch profile dates failed', e);
     }
   }, []);
 
@@ -933,7 +975,8 @@ export default function SettlementV2() {
     }
   }, [days]);
 
-  useEffect(() => { fetchSummary(); fetchProfile(); }, [fetchSummary, fetchProfile]);
+  useEffect(() => { fetchSummary(); fetchProfile(); fetchProfileDates(); }, [fetchSummary, fetchProfile, fetchProfileDates]);
+  useEffect(() => { if (profileDate) fetchProfile(profileDate); }, [profileDate, fetchProfile]);
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
   return (
@@ -962,6 +1005,9 @@ export default function SettlementV2() {
             points={points}
             loading={profileLoading}
             events={events}
+            availableDates={profileDates}
+            currentDate={profileDate}
+            onDateChange={setProfileDate}
           />
           <MultiComparePanel allPoints={points} selectedId={selectedId} days={days} summaryLoaded={!loading} />
           <CrackJointPanel selectedId={selectedId} />
