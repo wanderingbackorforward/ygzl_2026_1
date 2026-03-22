@@ -65,6 +65,37 @@ def acknowledge():
         return jsonify({'error': str(e)}), 500
 
 
+@agent_bp.route('/cron-patrol', methods=['GET'])
+def cron_patrol():
+    """
+    外部 Cron 服务触发巡检（cron-job.org / GitHub Actions / etc.）
+    需要 CRON_SECRET 环境变量做简单鉴权，防止被滥用。
+
+    调用方式：GET /api/agent/cron-patrol?token=<CRON_SECRET>
+    """
+    expected = os.environ.get('CRON_SECRET', '')
+    provided = request.args.get('token', '')
+
+    if not expected:
+        return jsonify({'error': 'CRON_SECRET not configured on server'}), 503
+
+    if provided != expected:
+        return jsonify({'error': 'invalid token'}), 403
+
+    try:
+        from modules.agent.patrol import run_patrol
+        result = run_patrol()
+        return jsonify({
+            'source': 'cron',
+            'headline': result.get('headline', ''),
+            'insights_created': result.get('insights_created', 0),
+            'max_severity': result.get('max_severity', 'info'),
+        })
+    except Exception as e:
+        print(f'[Agent Cron] patrol failed: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
 @agent_bp.route('/dismiss', methods=['POST'])
 def dismiss():
     """标记 insight 不相关（误报学习）"""

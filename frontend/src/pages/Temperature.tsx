@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { IS_MOBILE } from '../hooks/useViewMode';
-import TemperatureLegacy from './TemperatureLegacy';
 import TemperatureNew from './TemperatureNew';
 import { TemperatureV2Cockpit } from '../components/temperature-v2';
 
-type TempMode = 'v2' | 'new' | 'legacy';
+type TempMode = 'v2' | 'new';
 
 export default function Temperature() {
   const [mode, setMode] = useState<TempMode>('v2');
@@ -12,7 +11,6 @@ export default function Temperature() {
   const modes: { key: TempMode; label: string }[] = [
     { key: 'v2', label: 'V2驾驶舱' },
     { key: 'new', label: '仪表盘' },
-    { key: 'legacy', label: '旧版' },
   ];
 
   return (
@@ -36,7 +34,7 @@ export default function Temperature() {
         </div>
       )}
       <div style={{ flex: '1 1 auto', minHeight: 0 }}>
-        {mode === 'v2' ? <TemperatureV2Cockpit /> : mode === 'new' ? <TemperatureNew /> : <TemperatureLegacy />}
+        {mode === 'v2' ? <TemperatureV2Cockpit /> : <TemperatureNew />}
       </div>
     </div>
   );

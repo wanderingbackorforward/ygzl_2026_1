@@ -21,6 +21,7 @@ from .templates import (
     temp_headline,
     temp_body,
 )
+from .webhook import push_insights
 
 
 def _headers():
@@ -395,6 +396,14 @@ def run_patrol() -> Dict[str, Any]:
             all_to_write.append(temp_insight)
 
     _write_insights(all_to_write)
+
+    # --- 推送到企业微信/钉钉（v5.1 触达能力） ---
+    try:
+        push_result = push_insights(all_to_write)
+        print(f'[Agent] push result: {push_result}')
+    except Exception as e:
+        push_result = {'pushed': 0, 'error': str(e)}
+        print(f'[Agent] push failed (non-fatal): {e}')
 
     return {
         'headline': headline,

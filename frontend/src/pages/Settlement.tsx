@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
-import SettlementLegacy from './SettlementLegacy';
 import SettlementNew from './SettlementNew';
 import SettlementV2 from './SettlementV2';
 
-type Tab = 'legacy' | 'new' | 'v2';
+type Tab = 'new' | 'v2';
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'legacy', label: '旧版(静态)' },
-  { key: 'new', label: '仪表盘' },
   { key: 'v2', label: 'V2驾驶舱' },
+  { key: 'new', label: '仪表盘' },
 ];
 
 export default function Settlement() {
   const [tab, setTab] = useState<Tab>(() => {
-    try { return (localStorage.getItem('settlement:tab') as Tab) ?? 'v2'; } catch { return 'v2'; }
+    try {
+      const saved = localStorage.getItem('settlement:tab');
+      return saved === 'new' ? 'new' : 'v2';
+    } catch { return 'v2'; }
   });
 
   const handleTab = (t: Tab) => {
@@ -45,9 +46,7 @@ export default function Settlement() {
         ))}
       </div>
       <div style={{ flex: '1 1 auto', minHeight: 0 }}>
-        {tab === 'legacy' && <SettlementLegacy />}
-        {tab === 'new' && <SettlementNew />}
-        {tab === 'v2' && <SettlementV2 />}
+        {tab === 'v2' ? <SettlementV2 /> : <SettlementNew />}
       </div>
     </div>
   );
