@@ -229,23 +229,34 @@ def run_patrol() -> Dict[str, Any]:
         latest_time=now_str,
     )
 
-    # --- 第五步：生成 insights（重复抑制） ---
+    # --- 第五步：生成 insights（按 point_id 去重 + 批量查历史） ---
     new_insights = []
     max_severity = 'info'
+    seen_points = set()  # 同一个点只生成一条 insight
 
-    for sev_key, items in anomalies_by_severity.items():
-        for item in items:
-            pid = item.get('point_id', '')
-            severity = 'critical' if sev_key == 'critical' else 'warning'
-            curve_status = item.get('curve_health', {}).get('status', '')
+    # 合并所有异常，按严重程度排序（critical 优先）
+    all_anomaly_items = []
+    for item in anomalies_by_severity.get('critical', []):
+        all_anomaly_items.append(('critical', item))
+    for item in anomalies_by_severity.get('warning', []):
+        all_anomaly_items.append(('warning', item))
 
-            last = _fetch_last_insight(pid) if pid else None
-            if not _should_create_new(pid, severity, curve_status, last):
-                continue
+    for severity, item in all_anomaly_items:
+        pid = item.get('point_id', '')
+        if not pid or pid in seen_points:
+            continue  # 同一个点只处理一次（取最严重的那条）
+        seen_points.add(pid)
 
-            ch = item.get('curve_health')
-            body = build_insight_body(item, ch)
-            suggestion = get_suggestion(severity)
+        curve_status = item.get('curve_health', {}).get('status', '')
+
+        # 查该点的最新 insight（每个点只查一次）
+        last = _fetch_last_insight(pid)
+        if not _should_create_new(pid, severity, curve_status, last):
+            continue
+
+        ch = item.get('curve_health')
+        body = build_insight_body(item, ch)
+        suggestion = get_suggestion(severity)
 
             insight = {
                 'id': str(uuid.uuid4()),
