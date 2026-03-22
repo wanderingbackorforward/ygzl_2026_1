@@ -145,6 +145,7 @@ def get_suggestion(severity_str):
     mapping = {
         'critical': SUGGESTION_TEMPLATES['critical'],
         'high': SUGGESTION_TEMPLATES['high'],
+        'warning': SUGGESTION_TEMPLATES['medium'],
         'medium': SUGGESTION_TEMPLATES['medium'],
         'low': SUGGESTION_TEMPLATES['normal'],
         'normal': SUGGESTION_TEMPLATES['normal'],
