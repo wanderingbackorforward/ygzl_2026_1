@@ -75,7 +75,10 @@ def _fetch_temp_overview() -> Dict:
         alerts = raw_stats.get('alerts', {}) if isinstance(raw_stats, dict) else {}
         trends = raw_stats.get('trends', {}) if isinstance(raw_stats, dict) else {}
 
-        alert_count = sum(alerts.values()) if isinstance(alerts, dict) else 0
+        # alert_count: 排除"正常"状态，只计算异常的
+        normal_keys = {'正常', 'normal', '稳定', 'ok'}
+        alert_count = sum(v for k, v in alerts.items()
+                         if k.lower() not in normal_keys) if isinstance(alerts, dict) else 0
         dominant_trend = max(trends, key=trends.get) if trends else None
 
         return {
