@@ -918,8 +918,15 @@ export default function SettlementV2() {
   const fetchSummary = useCallback(async () => {
     setLoading(true);
     try {
-      const url = days > 0 ? `/summary?days=${days}` : '/summary';
-      const data = await apiGet<PointSummary[]>(url);
+      let data: PointSummary[] | null = null;
+      // 先尝试带时间范围
+      if (days > 0) {
+        data = await apiGet<PointSummary[]>(`/summary?days=${days}`);
+      }
+      // 如果带 days 返回空（数据超出范围），fallback 到全量
+      if (!data || data.length === 0) {
+        data = await apiGet<PointSummary[]>('/summary');
+      }
       setPoints(data ?? []);
       if (data && data.length > 0 && !selectedId) {
         const first = data.find(p => p.alert_level === 'alert') ?? data[0];
