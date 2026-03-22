@@ -319,18 +319,35 @@ def run_patrol() -> Dict[str, Any]:
 # API 辅助
 # ------------------------------------------------------------------
 
-def get_latest_insights(limit: int = 20) -> List[Dict]:
-    """获取最新 insights 列表"""
+def get_latest_insights(limit: int = 50) -> List[Dict]:
+    """获取最新 insights 列表（分类查询，防止 patrol_summary 挤掉 anomaly）"""
+    results = []
     try:
-        r = requests.get(
+        # 1. 最新1条巡检摘要
+        r1 = requests.get(
+            _url('/rest/v1/insights'
+                 '?insight_type=eq.patrol_summary'
+                 '&order=created_at.desc'
+                 '&limit=1'),
+            headers=_headers(),
+            timeout=10,
+        )
+        r1.raise_for_status()
+        results.extend(r1.json())
+
+        # 2. 最新的 anomaly 记录（主要内容）
+        r2 = requests.get(
             _url(f'/rest/v1/insights'
-                 f'?order=created_at.desc'
+                 f'?insight_type=eq.anomaly'
+                 f'&order=created_at.desc'
                  f'&limit={limit}'),
             headers=_headers(),
             timeout=10,
         )
-        r.raise_for_status()
-        return r.json()
+        r2.raise_for_status()
+        results.extend(r2.json())
+
+        return results
     except Exception as e:
         print(f'[Agent] get insights failed: {e}')
         return []
