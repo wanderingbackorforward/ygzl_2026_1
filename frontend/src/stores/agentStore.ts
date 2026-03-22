@@ -48,7 +48,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
     set({ loading: true })
     try {
-      const data = await apiGet<Insight[]>('/agent/insights?limit=20')
+      const data = await apiGet<Insight[]>('/agent/insights?limit=50')
       set({ insights: data || [], lastFetchTime: now })
     } catch (e) {
       console.warn('[Agent] fetch insights failed:', e)
