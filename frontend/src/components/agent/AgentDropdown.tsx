@@ -1,5 +1,6 @@
 import React from 'react'
 import { useAgentStore, Insight } from '../../stores/agentStore'
+import { useNavigate } from 'react-router-dom'
 
 interface Props {
   anomalies: Insight[]
@@ -13,6 +14,7 @@ interface Props {
  */
 export function AgentDropdown({ anomalies, onClose, onSelectPoint }: Props) {
   const { acknowledge, dismiss } = useAgentStore()
+  const navigate = useNavigate()
 
   const handleAck = async (id: string) => {
     await acknowledge(id)
@@ -72,10 +74,17 @@ export function AgentDropdown({ anomalies, onClose, onSelectPoint }: Props) {
         </button>
       </div>
 
-      {anomalies.map(item => (
+      {anomalies.map(item => {
+        const isTemp = (item as any).evidence?.sense === 'temperature'
+        const borderColor = isTemp ? '#60a5fa' : sevColor(item.severity)
+        const label = isTemp ? '温度' : sevLabel(item.severity)
+        const labelColor = isTemp ? '#60a5fa' : sevColor(item.severity)
+
+        return (
         <div key={item.id} style={{
           padding: '8px 12px',
           borderBottom: '1px solid rgba(0, 229, 255, 0.06)',
+          borderLeft: `3px solid ${borderColor}`,
           transition: 'background 0.15s',
         }}
         onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,229,255,0.04)')}
@@ -90,12 +99,23 @@ export function AgentDropdown({ anomalies, onClose, onSelectPoint }: Props) {
           }}>
             <span style={{
               fontSize: 10, padding: '1px 5px', borderRadius: 3,
-              background: `${sevColor(item.severity)}22`,
-              color: sevColor(item.severity), fontWeight: 700, flexShrink: 0,
+              background: `${labelColor}22`,
+              color: labelColor, fontWeight: 700, flexShrink: 0,
             }}>
-              {sevLabel(item.severity)}
+              {label}
             </span>
-            {item.point_id && (
+            {isTemp ? (
+              <span
+                onClick={() => { navigate('/temperature'); onClose() }}
+                style={{
+                  fontSize: 12, fontWeight: 700, color: '#60a5fa',
+                  cursor: 'pointer', textDecoration: 'underline',
+                  textDecorationColor: 'rgba(96,165,250,0.3)', flexShrink: 0,
+                }}
+              >
+                查看温度详情
+              </span>
+            ) : item.point_id && (
               <span
                 onClick={() => onSelectPoint?.(item.point_id!)}
                 style={{
@@ -153,7 +173,7 @@ export function AgentDropdown({ anomalies, onClose, onSelectPoint }: Props) {
             </div>
           </div>
         </div>
-      ))}
+      )})}
 
       {anomalies.length === 0 && (
         <div style={{ padding: 16, textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>

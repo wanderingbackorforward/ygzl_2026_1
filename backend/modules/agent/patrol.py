@@ -18,6 +18,8 @@ from .templates import (
     format_trust_anchor,
     build_insight_body,
     get_suggestion,
+    temp_headline,
+    temp_body,
 )
 
 
@@ -60,6 +62,51 @@ def _fetch_recent_values(point_id: str, days: int = 7) -> List[float]:
     except Exception as e:
         print(f'[Agent] fetch values for {point_id} failed: {e}')
         return []
+
+
+def _fetch_temp_overview() -> Dict:
+    """获取温度场全局状态（v5.0 温度觉）"""
+    try:
+        from modules.db.vendor import get_repo
+        repo = get_repo()
+        raw_stats = repo.temperature_get_stats()
+
+        cur_temp = raw_stats.get('current_temperature', {}) if isinstance(raw_stats, dict) else {}
+        alerts = raw_stats.get('alerts', {}) if isinstance(raw_stats, dict) else {}
+        trends = raw_stats.get('trends', {}) if isinstance(raw_stats, dict) else {}
+
+        alert_count = sum(alerts.values()) if isinstance(alerts, dict) else 0
+        dominant_trend = max(trends, key=trends.get) if trends else None
+
+        return {
+            'avg_temp': cur_temp.get('avg'),
+            'min_temp': cur_temp.get('min'),
+            'max_temp': cur_temp.get('max'),
+            'alert_count': alert_count,
+            'dominant_trend': dominant_trend,
+            'sensor_count': cur_temp.get('sensor_count', 0),
+        }
+    except Exception as e:
+        print(f'[Agent] fetch temp overview failed: {e}')
+        return {}
+
+
+def _fetch_last_insight_by_type(insight_type: str) -> Optional[Dict]:
+    """获取某类型的最新 insight"""
+    try:
+        r = requests.get(
+            _url(f'/rest/v1/insights'
+                 f'?insight_type=eq.{insight_type}'
+                 f'&order=created_at.desc'
+                 f'&limit=1'),
+            headers=_headers(),
+            timeout=10,
+        )
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if rows else None
+    except Exception:
+        return None
 
 
 def _fetch_last_insight(point_id: str) -> Optional[Dict]:
@@ -182,6 +229,9 @@ def run_patrol() -> Dict[str, Any]:
     anomalies = result.anomalies
     total_points = stats.total_points or stats.analyzed_points or 0
 
+    # --- 第1.5步：温度场感知（v5.0 温度觉） ---
+    temp_overview = _fetch_temp_overview()
+
     # --- 第二步：形态分析叠加 ---
     # 收集所有异常点的 point_id
     anomaly_point_ids = set()
@@ -226,6 +276,7 @@ def run_patrol() -> Dict[str, Any]:
     trust_anchor = format_trust_anchor(
         checked=total_points,
         total=total_points,
+        temp_status=temp_overview,
     )
 
     # --- 第五步：生成 insights（按 point_id 去重 + 批量查历史） ---
@@ -255,6 +306,11 @@ def run_patrol() -> Dict[str, Any]:
 
         ch = item.get('curve_health')
         body = build_insight_body(item, ch)
+
+        # 跨感官弱关联：温度异常时注入上下文（v5.0）
+        if temp_overview.get('alert_count', 0) > 0 or '降' in str(temp_overview.get('dominant_trend', '')):
+            body += '同期地层温度异常，变形可能与温度变化相关。'
+
         suggestion = get_suggestion(severity)
 
         insight = {
@@ -302,6 +358,39 @@ def run_patrol() -> Dict[str, Any]:
         'dismissed': False,
     }
     all_to_write = [patrol_summary] + new_insights
+
+    # --- 温度insight生成（v5.0 温度觉） ---
+    if temp_overview.get('alert_count', 0) > 0:
+        # 去重：温度状态没变化时不重复生成
+        skip_temp = False
+        last_temp = _fetch_last_insight_by_type('temperature_alert')
+        if last_temp:
+            le = last_temp.get('evidence') or {}
+            if (le.get('alert_count') == temp_overview.get('alert_count') and
+                    le.get('dominant_trend') == temp_overview.get('dominant_trend')):
+                skip_temp = True
+
+        if not skip_temp:
+            temp_insight = {
+                'id': str(uuid.uuid4()),
+                'insight_type': 'temperature_alert',
+                'severity': 'warning',
+                'point_id': None,
+                'title': temp_headline(temp_overview),
+                'body': temp_body(temp_overview),
+                'evidence': {
+                    'avg_temp': temp_overview.get('avg_temp'),
+                    'min_temp': temp_overview.get('min_temp'),
+                    'alert_count': temp_overview.get('alert_count'),
+                    'dominant_trend': temp_overview.get('dominant_trend'),
+                    'sense': 'temperature',
+                },
+                'suggestion': '持续关注温度变化，我会跟踪与沉降的关联',
+                'acknowledged': False,
+                'dismissed': False,
+            }
+            all_to_write.append(temp_insight)
+
     _write_insights(all_to_write)
 
     return {
@@ -312,6 +401,7 @@ def run_patrol() -> Dict[str, Any]:
         'anomaly_count': len(anomalies),
         'max_severity': max_severity,
         'analysis_time': now_str,
+        'temp_overview': temp_overview,
     }
 
 
@@ -346,6 +436,18 @@ def get_latest_insights(limit: int = 50) -> List[Dict]:
         )
         r2.raise_for_status()
         results.extend(r2.json())
+
+        # 3. 最新的温度insight（v5.0 温度觉）
+        r3 = requests.get(
+            _url('/rest/v1/insights'
+                 '?insight_type=eq.temperature_alert'
+                 '&order=created_at.desc'
+                 '&limit=5'),
+            headers=_headers(),
+            timeout=10,
+        )
+        r3.raise_for_status()
+        results.extend(r3.json())
 
         return results
     except Exception as e:

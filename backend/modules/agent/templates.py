@@ -46,6 +46,23 @@ REASON_TEMPLATES = {
     'data_stale': '超过{hours}小时未感知到信号',
 }
 
+# === 温度感知模板（v5.0 温度觉） ===
+
+TEMP_STATUS_TEMPLATES = {
+    'freeze_risk': '地层接近冻结线',
+    'cooling_severe': '地层降温至{min_temp}°C',
+    'cooling': '地层降温中',
+    'warming': '地层升温中',
+    'alert_multi': '温度{n}个点异常',
+}
+
+TEMP_HEADLINE_TEMPLATES = {
+    'freeze_risk': '地层温度接近冻结线，注意冻胀风险',
+    'cooling': '感知到地层温度下降',
+    'warming': '感知到地层温度上升',
+    'alert': '地层温度波动异常（{n}个传感器）',
+}
+
 # === 建议模板（认知引导） ===
 
 SUGGESTION_TEMPLATES = {
@@ -102,15 +119,24 @@ def select_headline(point_stats, anomalies_by_severity):
         n=total_anomalies, point=worst.get('point_id', '?'))
 
 
-def format_trust_anchor(checked, total, latest_time=None, missing=0):
+def format_trust_anchor(checked, total, latest_time=None, missing=0,
+                        temp_status=None):
     """格式化信任锚（持续时态：正在感知）"""
     if missing > 0:
-        return TRUST_ANCHOR_MISSING.format(
+        base = TRUST_ANCHOR_MISSING.format(
             checked=checked, total=total, missing=missing)
-    # 沉降场状态判定
-    field_status = '稳定' if checked == total else '部分可用'
-    return TRUST_ANCHOR.format(
-        checked=checked, total=total, field_status=field_status)
+    else:
+        field_status = '稳定' if checked == total else '部分可用'
+        base = TRUST_ANCHOR.format(
+            checked=checked, total=total, field_status=field_status)
+
+    # 温度觉追加（安静即安全：正常时不提温度）
+    if temp_status and temp_status.get('alert_count', 0) > 0:
+        temp_text = _temp_status_text(temp_status)
+        if temp_text:
+            base += ' \u00b7 ' + temp_text
+
+    return base
 
 
 def build_insight_body(anomaly_item, curve_health=None):
@@ -151,3 +177,61 @@ def get_suggestion(severity_str):
         'normal': SUGGESTION_TEMPLATES['normal'],
     }
     return mapping.get(severity_str, SUGGESTION_TEMPLATES['normal'])
+
+
+# === 温度觉辅助函数（v5.0） ===
+
+def _temp_status_text(temp_status):
+    """根据温度场状态选择信任锚追加文本（工程直觉语言）"""
+    if not temp_status:
+        return ''
+    min_t = temp_status.get('min_temp')
+    trend = str(temp_status.get('dominant_trend', ''))
+    alert_n = temp_status.get('alert_count', 0)
+
+    if min_t is not None and min_t <= 0:
+        return TEMP_STATUS_TEMPLATES['freeze_risk']
+    if min_t is not None and min_t <= 5 and '降' in trend:
+        return TEMP_STATUS_TEMPLATES['cooling_severe'].format(min_temp=min_t)
+    if '降' in trend:
+        return TEMP_STATUS_TEMPLATES['cooling']
+    if '升' in trend:
+        return TEMP_STATUS_TEMPLATES['warming']
+    if alert_n > 1:
+        return TEMP_STATUS_TEMPLATES['alert_multi'].format(n=alert_n)
+    return ''
+
+
+def temp_headline(temp_overview):
+    """温度insight标题（地质直觉人格）"""
+    if not temp_overview:
+        return ''
+    min_t = temp_overview.get('min_temp')
+    trend = str(temp_overview.get('dominant_trend', ''))
+    n = temp_overview.get('alert_count', 0)
+
+    if min_t is not None and min_t <= 0:
+        return TEMP_HEADLINE_TEMPLATES['freeze_risk']
+    if '降' in trend:
+        return TEMP_HEADLINE_TEMPLATES['cooling']
+    if '升' in trend:
+        return TEMP_HEADLINE_TEMPLATES['warming']
+    return TEMP_HEADLINE_TEMPLATES['alert'].format(n=n)
+
+
+def temp_body(temp_overview):
+    """温度insight正文（工程直觉语言）"""
+    if not temp_overview:
+        return ''
+    parts = []
+    avg = temp_overview.get('avg_temp')
+    min_t = temp_overview.get('min_temp')
+    if avg is not None:
+        parts.append(f'当前地层均温{avg:.1f}C')
+    if min_t is not None:
+        parts.append(f'最低{min_t:.1f}C')
+    trend = temp_overview.get('dominant_trend', '')
+    if trend:
+        parts.append(f'整体趋势{trend}')
+    return '，'.join(parts) + '。' if parts else ''
+
