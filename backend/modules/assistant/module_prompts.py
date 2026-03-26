@@ -82,11 +82,14 @@ MODULE_CONFIGS = {
             "alert threshold: varies by season, typically above 35C or below -5C",
         ],
         "primary_tools": [
+            "get_temperature_snapshot",
+            "evaluate_temperature_risk",
+            "plan_temperature_actions",
             "query_analysis_summary",
-            "query_temperature_data",
-            "analyze_correlation",
         ],
         "secondary_tools": [
+            "query_temperature_data",
+            "analyze_correlation",
             "query_settlement_data",
             "build_knowledge_graph",
             "list_monitoring_points",
@@ -100,17 +103,20 @@ MODULE_CONFIGS = {
         },
         "guidance": (
             "When answering about temperature data:\n"
-            "- Report values in Celsius with measurement timestamp\n"
+            "- Start from the temperature intelligence snapshot instead of raw rows\n"
+            "- Explain temperature as an environmental risk driver, not just a number\n"
+            "- Evaluate risk before giving actions or recommendations\n"
             "- Analyze correlation between temperature and settlement if asked\n"
-            "- Consider seasonal patterns and daily (diurnal) cycles\n"
-            "- Flag extreme temperatures that may affect structural integrity\n"
-            "- Compare current readings against seasonal baselines\n"
-            "- Note: temperature affects settlement rate - warm periods may accelerate consolidation\n"
+            "- Consider seasonal patterns, daily cycles, freeze-thaw, and spatial gradients\n"
+            "- Recommend concrete actions when risk is warning or critical\n"
         ),
         "data_endpoints": [
             "/api/analysis/v2/temperature",
             "/api/analysis/v2/temperature/anomalies",
             "/api/analysis/v2/temperature/recommendations",
+            "/api/temperature/v2/intelligence/snapshot",
+            "/api/temperature/v2/intelligence/risk-evaluation",
+            "/api/temperature/v2/intelligence/actions",
         ],
     },
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { apiGet, apiPost, apiPatch } from '../lib/api'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 type TicketStatus = 'PENDING' | 'IN_PROGRESS' | 'SUSPENDED' | 'RESOLVED' | 'CLOSED' | 'REJECTED'
 type TicketPriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
@@ -328,6 +329,8 @@ function CreateTicketDrawer({ config, template, onClose, onSuccess }: CreateTick
 }
 
 export default function Tickets() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const [stats, setStats] = useState<TicketStats | null>(null)
@@ -338,12 +341,19 @@ export default function Tickets() {
   const [priorityFilter, setPriorityFilter] = useState<string>('')
   const [showCreateDrawer, setShowCreateDrawer] = useState(false)
   const [quickTemplate, setQuickTemplate] = useState<string | null>(null)
+  const [pageNotice, setPageNotice] = useState<string | null>(null)
 
   useEffect(() => {
     loadConfig()
     loadStats()
     loadTickets()
   }, [statusFilter, priorityFilter])
+
+  useEffect(() => {
+    if (!pageNotice) return undefined
+    const timer = window.setTimeout(() => setPageNotice(null), 2600)
+    return () => window.clearTimeout(timer)
+  }, [pageNotice])
 
   async function loadConfig() {
     try {
@@ -395,6 +405,45 @@ export default function Tickets() {
     )
   }, [tickets, searchQuery])
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const ticketIdText = params.get('ticketId')
+    const created = params.get('created')
+    const ticketId = ticketIdText ? Number(ticketIdText) : NaN
+
+    if (!ticketIdText || Number.isNaN(ticketId)) return
+
+    const matched = tickets.find((ticket) => ticket.id === ticketId)
+    if (matched) {
+      setSelectedTicket(matched)
+      if (created === '1') {
+        setPageNotice(`已定位到新工单 ${matched.ticket_number}`)
+        navigate(`/tickets?ticketId=${ticketId}`, { replace: true })
+      }
+      return
+    }
+
+    let cancelled = false
+    apiGet<Ticket>(`/tickets/${ticketId}`)
+      .then((ticket) => {
+        if (cancelled) return
+        setSelectedTicket(ticket)
+        if (created === '1') {
+          setPageNotice(`已定位到新工单 ${ticket.ticket_number}`)
+          navigate(`/tickets?ticketId=${ticketId}`, { replace: true })
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('Failed to load ticket by id:', err)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [tickets, location.search, navigate])
+
   function getStatusName(status: string) {
     return config.status?.[status]?.name || status
   }
@@ -444,6 +493,12 @@ export default function Tickets() {
 
   return (
     <div className="flex h-full flex-col bg-slate-950">
+      {pageNotice && (
+        <div className="shrink-0 border-b border-green-500/20 bg-green-500/10 px-6 py-2 text-sm text-green-200">
+          <i className="fas fa-circle-check mr-2" />
+          {pageNotice}
+        </div>
+      )}
       {/* 顶栏：统计徽章 + 快捷按钮 + 新建按钮 */}
       <div className="shrink-0 border-b border-cyan-500/20 bg-slate-900/50 px-6 py-3">
         <div className="flex items-center justify-between">

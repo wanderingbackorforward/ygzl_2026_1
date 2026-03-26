@@ -38,14 +38,25 @@ interface TempVitalSignsProps {
   stats: any;
   assessment: any;
   sensorCount: number;
+  riskItem?: any;
 }
 
-export const TempVitalSignsStrip: React.FC<TempVitalSignsProps> = ({ stats, assessment, sensorCount }) => {
+export const TempVitalSignsStrip: React.FC<TempVitalSignsProps> = ({ stats, assessment, sensorCount, riskItem }) => {
   const currentAvg = stats?.current_avg ?? stats?.avg_temperature;
   const avgRange = stats?.avg_range;
   const trendType = stats?.dominant_trend;
   const freezeThaw = stats?.freeze_thaw_cycles ?? 0;
   const overallStatus = assessment?.overall_status ?? 'green';
+  const riskLevel = riskItem?.risk_level ?? 'normal';
+  const riskScore = riskItem?.risk_score;
+  const riskStatus = riskLevel === 'critical' ? 'red'
+    : riskLevel === 'warning' ? 'yellow'
+    : riskLevel === 'watch' ? 'yellow'
+    : 'green';
+  const riskText = riskLevel === 'critical' ? '高危'
+    : riskLevel === 'warning' ? '预警'
+    : riskLevel === 'watch' ? '观察'
+    : '正常';
 
   // 温度状态
   const tempStatus = currentAvg == null ? 'green'
@@ -69,7 +80,7 @@ export const TempVitalSignsStrip: React.FC<TempVitalSignsProps> = ({ stats, asse
 
   return (
     <div className="shrink-0 px-4 py-3">
-      <div className="grid grid-cols-6 gap-3">
+      <div className="grid grid-cols-7 gap-3">
         <VitalCard
           label="当前温度"
           value={currentAvg != null ? `${Number(currentAvg).toFixed(1)}°C` : '--'}
@@ -99,6 +110,12 @@ export const TempVitalSignsStrip: React.FC<TempVitalSignsProps> = ({ stats, asse
           value={overallStatus === 'red' ? '禁止' : overallStatus === 'yellow' ? '注意' : '正常'}
           status={overallStatus as 'green' | 'yellow' | 'red'}
           subtitle={assessment?.summary?.slice(0, 8) ?? '条件评估'}
+        />
+        <VitalCard
+          label="Agent风险"
+          value={riskText}
+          status={riskStatus}
+          subtitle={riskScore != null ? `风险分 ${Number(riskScore).toFixed(0)}` : '智能评估'}
         />
         <VitalCard
           label="传感器"

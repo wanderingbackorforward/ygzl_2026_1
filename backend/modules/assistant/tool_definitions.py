@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Claude tool_use JSON Schema definitions for Agent mode.
-13 tools for querying data, anomaly detection, prediction, and knowledge graph.
+16 tools for querying data, anomaly detection, prediction, temperature intelligence, and knowledge graph.
 """
 
 AGENT_TOOLS = [
@@ -47,6 +47,58 @@ AGENT_TOOLS = [
                     "type": "integer",
                     "description": "Max number of records (default 200)",
                     "default": 200,
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "get_temperature_snapshot",
+        "description": "Load the temperature intelligence snapshot. Returns global overview, per-sensor latest state, freeze-thaw summary, and active thresholds. Use this for temperature overview questions before drilling into raw rows.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "sensor_id": {
+                    "type": "string",
+                    "description": "Optional sensor ID. If provided, returns the intelligence snapshot for that sensor.",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "evaluate_temperature_risk",
+        "description": "Evaluate unified temperature risk for one or more sensors. Combines threshold exceedance, rapid change, freeze-thaw, spatial gradient, construction assessment, and optional temperature-settlement coupling.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "sensor_id": {
+                    "type": "string",
+                    "description": "Optional sensor ID. If omitted, evaluates all available temperature sensors.",
+                },
+                "related_point_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional related settlement point IDs used for coupling analysis.",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "plan_temperature_actions",
+        "description": "Generate recommended actions for temperature risks, including monitoring escalation, field verification, construction guidance, and ticket creation suggestions.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "sensor_id": {
+                    "type": "string",
+                    "description": "Optional sensor ID. If omitted, plans actions for all evaluated sensors.",
+                },
+                "related_point_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional related settlement point IDs used for coupling analysis.",
                 },
             },
             "required": [],

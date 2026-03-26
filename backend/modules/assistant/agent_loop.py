@@ -551,6 +551,17 @@ def _make_summary(tool_name, result):
             f"latest={r.get('summary',{}).get('latest_value','?')}mm"
         ),
         "query_temperature_data": lambda r: f"{r.get('total_records',0)} temperature records",
+        "get_temperature_snapshot": lambda r: (
+            f"Temperature snapshot: sensors={len(r.get('sensors',[]))}, "
+            f"freeze_thaw={r.get('overview',{}).get('freeze_thaw_cycle_total',0)}"
+        ),
+        "evaluate_temperature_risk": lambda r: (
+            f"Temperature risk evaluated: items={r.get('count',0)}, "
+            f"top={((r.get('items') or [{}])[0]).get('risk_level','normal')}"
+        ),
+        "plan_temperature_actions": lambda r: (
+            f"Temperature actions planned: sensors={r.get('count',0)}"
+        ),
         "query_construction_events": lambda r: f"{r.get('count',0)} construction events",
         "detect_anomalies": lambda r: (
             f"Point {r.get('point_id','?')}: {r.get('anomaly_count',0)} anomalies "

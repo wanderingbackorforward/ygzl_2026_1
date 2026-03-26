@@ -119,6 +119,13 @@ def _make_summary(tool_name, result):
         return f"error: {result.get('error', 'unknown')}"
     if tool_name == "query_settlement_data":
         return f"{len(result.get('data', []))} data points"
+    if tool_name == "get_temperature_snapshot":
+        return f"{len(result.get('sensors', []))} sensors in snapshot"
+    if tool_name == "evaluate_temperature_risk":
+        top = ((result.get('items') or [{}])[0]).get('risk_level', 'normal')
+        return f"{result.get('count', 0)} sensors evaluated, top={top}"
+    if tool_name == "plan_temperature_actions":
+        return f"{result.get('count', 0)} action plans"
     if tool_name == "detect_anomalies":
         return f"{len(result.get('anomalies', []))} anomalies"
     if tool_name == "predict_settlement":

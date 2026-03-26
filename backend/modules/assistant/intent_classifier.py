@@ -165,6 +165,9 @@ AGENT_TOOL_GROUPS = {
         "query_settlement_data",
     ],
     "temperature": [
+        "get_temperature_snapshot",
+        "evaluate_temperature_risk",
+        "plan_temperature_actions",
         "query_analysis_summary",
         "query_temperature_data",
     ],

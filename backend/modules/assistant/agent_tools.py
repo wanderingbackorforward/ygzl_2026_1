@@ -166,6 +166,33 @@ def tool_query_temperature_data(point_id=None, limit=200, **kwargs):
         return {"success": False, "error": str(e)}
 
 
+def tool_get_temperature_snapshot(sensor_id=None, **kwargs):
+    try:
+        from modules.temperature_v2.intelligence import TemperatureIntelligenceService
+        service = TemperatureIntelligenceService()
+        return service.get_snapshot(sensor_id=sensor_id)
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def tool_evaluate_temperature_risk(sensor_id=None, related_point_ids=None, **kwargs):
+    try:
+        from modules.temperature_v2.intelligence import TemperatureIntelligenceService
+        service = TemperatureIntelligenceService()
+        return service.evaluate_risk(sensor_id=sensor_id, related_point_ids=related_point_ids)
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def tool_plan_temperature_actions(sensor_id=None, related_point_ids=None, **kwargs):
+    try:
+        from modules.temperature_v2.intelligence import TemperatureIntelligenceService
+        service = TemperatureIntelligenceService()
+        return service.plan_actions(sensor_id=sensor_id, related_point_ids=related_point_ids)
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 def tool_query_crack_data(point_id=None, limit=200, **kwargs):
     """Query crack monitoring data from raw_crack_data + crack_analysis_results.
     raw_crack_data is a PIVOT table: rows=measurement_date, columns=point_ids (e.g. JC-01).
@@ -767,6 +794,9 @@ TOOL_REGISTRY = {
     "list_monitoring_points": tool_list_monitoring_points,
     "query_settlement_data": tool_query_settlement_data,
     "query_temperature_data": tool_query_temperature_data,
+    "get_temperature_snapshot": tool_get_temperature_snapshot,
+    "evaluate_temperature_risk": tool_evaluate_temperature_risk,
+    "plan_temperature_actions": tool_plan_temperature_actions,
     "query_crack_data": tool_query_crack_data,
     "query_construction_events": tool_query_construction_events,
     "detect_anomalies": tool_detect_anomalies,

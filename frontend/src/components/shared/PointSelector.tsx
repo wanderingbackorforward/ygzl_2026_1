@@ -7,6 +7,11 @@ interface PointSelectorProps extends CardComponentProps {
   onSelectPoint: (pointId: string) => void;
   loading?: boolean;
   problemPointIds?: string[];
+  itemStatusMap?: Record<string, {
+    status?: 'normal' | 'watch' | 'warning' | 'critical';
+    score?: number;
+    subtitle?: string;
+  }>;
 }
 
 export const PointSelector: React.FC<PointSelectorProps> = ({
@@ -15,6 +20,7 @@ export const PointSelector: React.FC<PointSelectorProps> = ({
   onSelectPoint,
   loading = false,
   problemPointIds,
+  itemStatusMap,
 }) => {
   if (loading) {
     return (
@@ -26,6 +32,7 @@ export const PointSelector: React.FC<PointSelectorProps> = ({
 
   const items = Array.from(new Set(points.filter(id => id && id !== 'null' && id !== 'undefined')));
   const problemSet = new Set(problemPointIds || []);
+  const statusMap = itemStatusMap || {};
   return (
     <div className="point-selector">
       <div className="point-selector__header">
@@ -36,16 +43,29 @@ export const PointSelector: React.FC<PointSelectorProps> = ({
       <div className="point-selector__list">
         {items.length === 0 ? (
           <div className="point-selector__empty">暂无数据</div>
-        ) : items.map((pointId, index) => (
+        ) : items.map((pointId, index) => {
+          const itemStatus = statusMap[pointId];
+          const riskClass = itemStatus?.status ? `point-selector__item--risk-${itemStatus.status}` : '';
+          return (
           <button
             key={pointId || `sensor-${index}`}
-            className={`point-selector__item ${selectedPoint === pointId ? 'point-selector__item--active' : ''} ${problemSet.has(pointId) ? 'point-selector__item--problem' : ''}`}
+            className={`point-selector__item ${selectedPoint === pointId ? 'point-selector__item--active' : ''} ${problemSet.has(pointId) ? 'point-selector__item--problem' : ''} ${riskClass}`}
             onClick={() => onSelectPoint(pointId)}
           >
             <i className="fas fa-map-marker-alt" />
             <span>{pointId || '未知传感器'}</span>
+            {itemStatus && (
+              <div className="point-selector__meta">
+                <span className={`point-selector__badge point-selector__badge--${itemStatus.status || 'normal'}`}>
+                  {itemStatus.status === 'critical' ? '高危' : itemStatus.status === 'warning' ? '预警' : itemStatus.status === 'watch' ? '观察' : '正常'}
+                </span>
+                {typeof itemStatus.score === 'number' && (
+                  <span className="point-selector__score">{Math.round(itemStatus.score)}</span>
+                )}
+              </div>
+            )}
           </button>
-        ))}
+        )})}
       </div>
 
       <style>{`
@@ -113,6 +133,46 @@ export const PointSelector: React.FC<PointSelectorProps> = ({
           font-size: 11px;
         }
 
+        .point-selector__meta {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          margin-top: 2px;
+        }
+
+        .point-selector__badge {
+          padding: 1px 5px;
+          border-radius: 999px;
+          font-size: 10px;
+          line-height: 1.4;
+          font-weight: 600;
+        }
+
+        .point-selector__badge--normal {
+          background: rgba(34, 197, 94, 0.18);
+          color: rgba(187, 247, 208, 0.95);
+        }
+
+        .point-selector__badge--watch {
+          background: rgba(245, 158, 11, 0.18);
+          color: rgba(253, 230, 138, 0.95);
+        }
+
+        .point-selector__badge--warning {
+          background: rgba(249, 115, 22, 0.18);
+          color: rgba(254, 215, 170, 0.98);
+        }
+
+        .point-selector__badge--critical {
+          background: rgba(239, 68, 68, 0.18);
+          color: rgba(254, 202, 202, 0.98);
+        }
+
+        .point-selector__score {
+          color: rgba(148, 163, 184, 0.95);
+          font-size: 10px;
+        }
+
         .point-selector__item i {
           font-size: 14px;
           color: rgba(0, 229, 255, 0.5);
@@ -167,6 +227,19 @@ export const PointSelector: React.FC<PointSelectorProps> = ({
 
         .point-selector__item--problem.point-selector__item--active i {
           color: rgba(255, 62, 95, 0.95);
+        }
+
+        .point-selector__item--risk-watch {
+          border-color: rgba(245, 158, 11, 0.35);
+        }
+
+        .point-selector__item--risk-warning {
+          border-color: rgba(249, 115, 22, 0.45);
+        }
+
+        .point-selector__item--risk-critical {
+          border-color: rgba(239, 68, 68, 0.6);
+          background: rgba(127, 29, 29, 0.2);
         }
       `}</style>
     </div>

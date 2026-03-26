@@ -8,11 +8,13 @@ from flask import Blueprint, request, jsonify
 from modules.db.vendor import get_repo
 from .algorithms import TemperatureAlgorithms
 from .construction_guide import ConstructionGuide
+from .intelligence import TemperatureIntelligenceService
 
 temperature_v2_api = Blueprint('temperature_v2_api', __name__, url_prefix='/api')
 repo = get_repo()
 algo = TemperatureAlgorithms()
 guide = ConstructionGuide()
+intelligence = TemperatureIntelligenceService(repo=repo, algorithms=algo, guide=guide)
 
 
 def _sensor_time_series(sensor_id: str):
@@ -34,47 +36,45 @@ def _sensor_time_series(sensor_id: str):
     return dates, avg_vals, max_vals, min_vals
 
 
+def _related_point_ids_from_request():
+    raw = request.args.get('related_point_ids', '')
+    if not raw:
+        return None
+    values = [item.strip() for item in raw.split(',') if item.strip()]
+    return values or None
+
+
 @temperature_v2_api.route('/temperature/v2/overview', methods=['GET'])
 def v2_overview():
     """V2总览: KPI + 所有传感器状态"""
     try:
         summary = repo.temperature_get_summary()
-        raw_stats = repo.temperature_get_stats()
         points = repo.temperature_get_points()
-
-        # 将raw_stats转换为前端期望的扁平结构
-        cur_temp = raw_stats.get('current_temperature', {}) if isinstance(raw_stats, dict) else {}
-        trends = raw_stats.get('trends', {}) if isinstance(raw_stats, dict) else {}
-        alerts = raw_stats.get('alerts', {}) if isinstance(raw_stats, dict) else {}
-
-        cur_avg = cur_temp.get('avg')
-        cur_max = cur_temp.get('max')
-        cur_min = cur_temp.get('min')
-        avg_range = round(cur_max - cur_min, 2) if cur_max is not None and cur_min is not None else None
-
-        # 找到占比最大的趋势作为dominant_trend
-        dominant_trend = max(trends, key=trends.get) if trends else None
+        snapshot = intelligence.get_snapshot()
+        overview = snapshot.get('overview', {})
+        cur_avg = overview.get('current_avg')
+        cur_max = overview.get('current_max')
+        cur_min = overview.get('current_min')
+        avg_range = overview.get('avg_range')
 
         stats = {
             'current_avg': cur_avg,
             'current_max': cur_max,
             'current_min': cur_min,
             'avg_range': avg_range,
-            'dominant_trend': dominant_trend,
-            'freeze_thaw_cycles': 0,
-            'sensor_count': cur_temp.get('sensor_count', 0),
-            'date_range': cur_temp.get('date_range'),
-            'trends': trends,
-            'alerts': alerts,
+            'dominant_trend': overview.get('dominant_trend'),
+            'freeze_thaw_cycles': overview.get('freeze_thaw_cycle_total', 0),
+            'freeze_thaw_sensor_count': overview.get('freeze_thaw_sensor_count', 0),
+            'sensor_count': overview.get('sensor_count', 0),
+            'date_range': overview.get('date_range'),
+            'trends': overview.get('trends', {}),
+            'alerts': overview.get('alerts', {}),
         }
-
-        # 从最新数据计算施工指导
         conditions = {
             'ambient_temp': cur_avg,
             'daily_range': avg_range,
             'ground_temp': cur_min,
         }
-
         assessment = guide.full_assessment(conditions) if any(v is not None for v in conditions.values()) else None
 
         return jsonify({
@@ -84,10 +84,13 @@ def v2_overview():
                 'stats': stats,
                 'points': points if isinstance(points, list) else [],
                 'construction_assessment': assessment,
+                'thresholds': snapshot.get('thresholds', {}),
             }
         })
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
+
+
 @temperature_v2_api.route('/temperature/v2/stl/<sensor_id>', methods=['GET'])
 def v2_stl(sensor_id):
     """STL季节性分解"""
@@ -193,5 +196,65 @@ def v2_gradient():
 
         result = algo.temperature_gradient(sensor_data)
         return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+
+@temperature_v2_api.route('/temperature/v2/intelligence/snapshot', methods=['GET'])
+def v2_intelligence_snapshot():
+    try:
+        sensor_id = request.args.get('sensor_id')
+        return jsonify(intelligence.get_snapshot(sensor_id=sensor_id))
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+
+@temperature_v2_api.route('/temperature/v2/intelligence/events', methods=['GET'])
+def v2_intelligence_events():
+    try:
+        sensor_id = request.args.get('sensor_id')
+        related_point_ids = _related_point_ids_from_request()
+        return jsonify(intelligence.detect_events(sensor_id=sensor_id, related_point_ids=related_point_ids))
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+
+@temperature_v2_api.route('/temperature/v2/intelligence/risk-evaluation', methods=['GET', 'POST'])
+def v2_intelligence_risk():
+    try:
+        body = request.get_json(silent=True) or {}
+        sensor_id = body.get('sensor_id') or request.args.get('sensor_id')
+        related_point_ids = body.get('related_point_ids') or _related_point_ids_from_request()
+        return jsonify(intelligence.evaluate_risk(sensor_id=sensor_id, related_point_ids=related_point_ids))
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+
+@temperature_v2_api.route('/temperature/v2/intelligence/actions', methods=['GET', 'POST'])
+def v2_intelligence_actions():
+    try:
+        body = request.get_json(silent=True) or {}
+        sensor_id = body.get('sensor_id') or request.args.get('sensor_id')
+        related_point_ids = body.get('related_point_ids') or _related_point_ids_from_request()
+        return jsonify(intelligence.plan_actions(sensor_id=sensor_id, related_point_ids=related_point_ids))
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+
+@temperature_v2_api.route('/temperature/v2/intelligence/feedback', methods=['POST'])
+def v2_intelligence_feedback():
+    try:
+        body = request.get_json(force=True) or {}
+        sensor_id = body.get('sensor_id')
+        event_type = body.get('event_type')
+        verdict = body.get('verdict')
+        if not sensor_id or not event_type or not verdict:
+            return jsonify({'success': False, 'message': 'sensor_id、event_type、verdict 为必填项'}), 400
+        return jsonify(intelligence.record_feedback(
+            sensor_id=sensor_id,
+            event_type=event_type,
+            verdict=verdict,
+            notes=body.get('notes'),
+        ))
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
