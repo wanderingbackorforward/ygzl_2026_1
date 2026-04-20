@@ -631,6 +631,11 @@ function InsarNativeMap(
     })()
     const handleResize = () => map.invalidateSize()
     window.addEventListener('resize', handleResize)
+    let resizeObserver: ResizeObserver | null = null
+    if (mapContainerRef.current) {
+      resizeObserver = new ResizeObserver(() => map.invalidateSize())
+      resizeObserver.observe(mapContainerRef.current)
+    }
     const handleMoveEnd = () => {
       if (!useBboxRef.current) return
       const b = map.getBounds()
@@ -655,6 +660,7 @@ function InsarNativeMap(
         baseLayerCleanupRef.current = null
       }
       window.removeEventListener('resize', handleResize)
+      if (resizeObserver) resizeObserver.disconnect()
       map.off('moveend', handleMoveEnd)
       if (moveendTimerRef.current) window.clearTimeout(moveendTimerRef.current)
       if (pulseTimerRef.current) window.clearInterval(pulseTimerRef.current)
@@ -1107,54 +1113,6 @@ function InsarNativeMap(
         {error ? <div style={{ marginTop: 8, fontSize: 12, color: '#ff8b8b', whiteSpace: 'pre-wrap' }}>{error}</div> : null}
       </div>
 
-      {selected ? (
-        <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 550, width: 360, maxWidth: 'calc(100% - 24px)', maxHeight: 'calc(100% - 24px)', overflow: 'auto', padding: 12, borderRadius: 10, background: 'rgba(10,25,47,.86)', border: '1px solid rgba(64,174,255,.25)', color: '#aaddff' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <div style={{ fontWeight: 800, flex: 1 }}>点位详情</div>
-            <button type="button" onClick={() => setSelected(null)} style={{ border: '1px solid rgba(64,174,255,.35)', background: 'rgba(64,174,255,.15)', color: '#aaddff', borderRadius: 8, padding: '6px 10px', cursor: 'pointer' }}>关闭</button>
-          </div>
-          {(() => {
-            const lat = toNumberOrNull(selected.props?.lat ?? selected.props?.latitude) ?? selected.lat
-            const lng = toNumberOrNull(selected.props?.lon ?? selected.props?.lng ?? selected.props?.longitude) ?? selected.lng
-            const coordText = Number.isFinite(lat) && Number.isFinite(lng) ? `${lat.toFixed(7)}, ${lng.toFixed(7)}` : '—'
-            return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <div style={{ fontSize: 12, opacity: 15, flex: 1 }}>WGS-84：<span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace' }}>{coordText}</span></div>
-                <button
-                  type="button"
-                  disabled={coordText === '—'}
-                  onClick={async () => {
-                    if (coordText === '—') return
-                    try {
-                      await navigator.clipboard.writeText(coordText)
-                    } catch {
-                    }
-                  }}
-                  style={{
-                    border: '1px solid rgba(64,174,255,.35)',
-                    background: coordText === '—' ? 'rgba(255,255,255,.03)' : 'rgba(64,174,255,.12)',
-                    color: '#aaddff',
-                    borderRadius: 8,
-                    padding: '6px 10px',
-                    cursor: coordText === '—' ? 'not-allowed' : 'pointer',
-                    fontSize: 12,
-                    opacity: coordText === '—' ? 0.6 : 1,
-                  }}
-                >
-                  复制
-                </button>
-              </div>
-            )
-          })()}
-          <div style={{ fontSize: 12, opacity: 15, marginBottom: 6 }}>ID：{selected.id}</div>
-          <div style={{ fontSize: 12, opacity: 15, marginBottom: 6 }}>速度：{String(selected.props?.velocity ?? selected.props?.vel ?? selected.props?.rate ?? '—')} mm/年</div>
-          <div style={{ fontSize: 12, opacity: 15, marginBottom: 10 }}>分级：<span style={{ color: classifyVelocity(toNumberOrNull(selected.props?.velocity ?? selected.props?.vel ?? selected.props?.rate), thresholds).color }}>{classifyVelocity(toNumberOrNull(selected.props?.velocity ?? selected.props?.vel ?? selected.props?.rate), thresholds).label}</span></div>
-          <div style={{ height: 220, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(64,174,255,.2)', background: 'rgba(255,255,255,.08)' }}>
-            <EChartsWrapper option={seriesOption} loading={seriesLoading} />
-          </div>
-          {seriesError ? <div style={{ marginTop: 8, fontSize: 12, color: '#ff8b8b', whiteSpace: 'pre-wrap' }}>{seriesError}</div> : null}
-        </div>
-      ) : null}
 
       {selectedZone ? (
         <div style={{ position: 'absolute', bottom: 12, left: 12, zIndex: 540, width: 360, maxWidth: 'calc(100% - 24px)', maxHeight: '40%', overflow: 'auto', padding: 12, borderRadius: 10, background: 'rgba(10,25,47,.86)', border: '1px solid rgba(64,174,255,.25)', color: '#aaddff' }}>
@@ -1582,6 +1540,207 @@ export default function Insar() {
           )}
         </div>
 
+        {/* 详情面板 - 点击点位时作为flex子项出现在地图和右栏之间 */}
+        {selectedPoint && (
+          <div className="w-96 shrink-0 border-l border-slate-700 bg-slate-900 shadow-2xl">
+            <div className="flex h-full flex-col">
+              {/* 头部 */}
+              <div className="flex shrink-0 items-center justify-between border-b border-slate-700 bg-slate-800 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <i className="fas fa-map-marker-alt text-cyan-400" />
+                  <h3 className="text-base font-semibold text-white">点位详情</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  {riskSummary.top.length > 1 && (() => {
+                    const currentIndex = riskSummary.top.findIndex(p => p.id === selectedPoint.id)
+                    if (currentIndex === -1) return null
+                    const hasPrev = currentIndex > 0
+                    const hasNext = currentIndex < riskSummary.top.length - 1
+                    return (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (hasPrev) {
+                              const prevPoint = riskSummary.top[currentIndex - 1]
+                              setFocusId(null)
+                              window.setTimeout(() => {
+                                setFocusId(prevPoint.id)
+                                setSelectedPoint({ id: prevPoint.id, lat: prevPoint.lat, lng: prevPoint.lng, props: { velocity: prevPoint.velocity } })
+                              }, 0)
+                            }
+                          }}
+                          disabled={!hasPrev}
+                          className={`text-sm transition-colors ${hasPrev ? 'text-slate-400 hover:text-white' : 'text-slate-600 cursor-not-allowed'}`}
+                          title="上一个"
+                        >
+                          <i className="fas fa-chevron-left" />
+                        </button>
+                        <span className="text-xs text-slate-400">{currentIndex + 1} / {riskSummary.top.length}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (hasNext) {
+                              const nextPoint = riskSummary.top[currentIndex + 1]
+                              setFocusId(null)
+                              window.setTimeout(() => {
+                                setFocusId(nextPoint.id)
+                                setSelectedPoint({ id: nextPoint.id, lat: nextPoint.lat, lng: nextPoint.lng, props: { velocity: nextPoint.velocity } })
+                              }, 0)
+                            }
+                          }}
+                          disabled={!hasNext}
+                          className={`text-sm transition-colors ${hasNext ? 'text-slate-400 hover:text-white' : 'text-slate-600 cursor-not-allowed'}`}
+                          title="下一个"
+                        >
+                          <i className="fas fa-chevron-right" />
+                        </button>
+                      </>
+                    )
+                  })()}
+                  <button type="button" onClick={() => setSelectedPoint(null)} className="ml-2 text-slate-400 transition-colors hover:text-white">
+                    <i className="fas fa-times text-lg" />
+                  </button>
+                </div>
+              </div>
+              {/* 内容区域 */}
+              <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                {/* 点位基本信息 */}
+                <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+                  <h4 className="mb-3 text-sm font-semibold text-white">基本信息</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300">点位 ID</span>
+                      <span className="font-medium text-white">{selectedPoint.id || '未命名'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300">经度</span>
+                      <span className="font-mono text-white">{selectedPoint.lng.toFixed(6)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300">纬度</span>
+                      <span className="font-mono text-white">{selectedPoint.lat.toFixed(6)}</span>
+                    </div>
+                    {(() => {
+                      const velocity = getVelocityFromProps(selectedPoint.props, velocityField)
+                      if (velocity !== null) {
+                        const risk = riskFromVelocity(velocity, thresholds)
+                        const { label: riskLabel, color: riskColor } = (() => {
+                          if (risk === 'danger') return { label: '危险', color: 'text-red-400' }
+                          if (risk === 'warning') return { label: '预警', color: 'text-orange-400' }
+                          return { label: '正常', color: 'text-green-400' }
+                        })()
+                        return (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-300">速度</span>
+                              <span className="font-mono text-white">{velocity.toFixed(2)} mm/年</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-300">风险等级</span>
+                              <span className={`font-semibold ${riskColor}`}>{riskLabel}</span>
+                            </div>
+                          </>
+                        )
+                      }
+                      return null
+                    })()}
+                  </div>
+                </div>
+                {/* 其他属性 */}
+                {selectedPoint.props && Object.keys(selectedPoint.props).length > 0 && (
+                  <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+                    <h4 className="mb-3 text-sm font-semibold text-white">其他属性</h4>
+                    <div className="space-y-2 text-sm">
+                      {Object.entries(selectedPoint.props)
+                        .filter(([key]) => !['id', 'velocity', 'vel', 'rate', 'value'].includes(key))
+                        .slice(0, 10)
+                        .map(([key, value]) => (
+                          <div key={key} className="flex items-start justify-between gap-2">
+                            <span className="text-slate-300 truncate">{key}</span>
+                            <span className="font-mono text-xs text-white text-right break-all">
+                              {value === null || value === undefined ? '—' : String(value)}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+                {/* 时序图 */}
+                <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+                  <h4 className="mb-3 text-sm font-semibold text-white">
+                    <i className="fas fa-chart-line mr-2 text-cyan-400" />
+                    时序变化
+                  </h4>
+                  {panelSeriesLoading ? (
+                    <div className="flex h-48 items-center justify-center">
+                      <div className="text-sm text-slate-400"><i className="fas fa-spinner fa-spin mr-2" />加载中...</div>
+                    </div>
+                  ) : panelSeriesError ? (
+                    <div className="flex h-48 items-center justify-center">
+                      <div className="text-sm text-red-400"><i className="fas fa-exclamation-circle mr-2" />{panelSeriesError}</div>
+                    </div>
+                  ) : panelSeries?.series && panelSeries.series.length > 0 ? (
+                    <div className="h-48">
+                      <EChartsWrapper option={panelSeriesOption} />
+                    </div>
+                  ) : (
+                    <div className="flex h-48 items-center justify-center">
+                      <div className="text-sm text-slate-400">暂无时序数据</div>
+                    </div>
+                  )}
+                </div>
+                {/* 施工建议 */}
+                {(() => {
+                  const velocity = getVelocityFromProps(selectedPoint.props, velocityField)
+                  if (velocity === null) return null
+                  const risk = riskFromVelocity(velocity, thresholds)
+                  const measures = expertMeasuresForRisk(risk)
+                  if (measures.length === 0) return null
+                  const { label: riskLabel, color: riskColor } = (() => {
+                    if (risk === 'danger') return { label: '危险', color: 'text-red-400' }
+                    if (risk === 'warning') return { label: '预警', color: 'text-orange-400' }
+                    return { label: '正常', color: 'text-green-400' }
+                  })()
+                  return (
+                    <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+                      <h4 className="mb-3 text-sm font-semibold text-white">
+                        <i className="fas fa-clipboard-list mr-2 text-cyan-400" />
+                        施工建议
+                        <span className={`ml-2 text-xs ${riskColor}`}>({riskLabel})</span>
+                      </h4>
+                      <div className="space-y-3">
+                        {measures.map((m, idx) => (
+                          <div key={m.key} className="rounded-lg border border-slate-600 bg-slate-900/50 p-3">
+                            <div className="mb-1 flex items-start gap-2">
+                              <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-cyan-500/20 text-xs font-bold text-cyan-400">{idx + 1}</span>
+                              <span className="flex-1 text-sm font-medium text-white">{m.title}</span>
+                            </div>
+                            <p className="ml-7 text-xs leading-relaxed text-slate-300">{m.detail}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
+                {riskSummary.top.length > 1 && (
+                  <div className="mt-4 rounded-lg border border-slate-700 bg-slate-800/30 p-3">
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                      <i className="fas fa-keyboard" />
+                      <span>快捷键：</span>
+                      <kbd className="rounded bg-slate-700 px-1.5 py-0.5 font-mono text-white">←</kbd>
+                      <kbd className="rounded bg-slate-700 px-1.5 py-0.5 font-mono text-white">→</kbd>
+                      <span>切换点位</span>
+                      <kbd className="ml-2 rounded bg-slate-700 px-1.5 py-0.5 font-mono text-white">ESC</kbd>
+                      <span>关闭</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 风险概览侧边栏 */}
         <div className="w-80 shrink-0 border-l border-slate-700 bg-slate-900 overflow-y-auto">
           <div className="p-4">
@@ -1744,244 +1903,6 @@ export default function Insar() {
           </div>
         </div>
       </div>
-
-      {/* 详情面板 - 点击点位时从右侧滑出 */}
-      {selectedPoint && (
-        <div className="fixed right-80 top-0 z-40 h-full w-96 transform border-l border-slate-700 bg-slate-900 shadow-2xl transition-transform duration-300">
-          <div className="flex h-full flex-col">
-            {/* 头部 */}
-            <div className="flex shrink-0 items-center justify-between border-b border-slate-700 bg-slate-800 px-4 py-3">
-              <div className="flex items-center gap-2">
-                <i className="fas fa-map-marker-alt text-cyan-400" />
-                <h3 className="text-base font-semibold text-white">点位详情</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                {/* 导航按钮 */}
-                {riskSummary.top.length > 1 && (() => {
-                  const currentIndex = riskSummary.top.findIndex(p => p.id === selectedPoint.id)
-                  if (currentIndex === -1) return null
-                  const hasPrev = currentIndex > 0
-                  const hasNext = currentIndex < riskSummary.top.length - 1
-                  return (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (hasPrev) {
-                            const prevPoint = riskSummary.top[currentIndex - 1]
-                            setFocusId(null)
-                            window.setTimeout(() => {
-                              setFocusId(prevPoint.id)
-                              setSelectedPoint({
-                                id: prevPoint.id,
-                                lat: prevPoint.lat,
-                                lng: prevPoint.lng,
-                                props: { velocity: prevPoint.velocity }
-                              })
-                            }, 0)
-                          }
-                        }}
-                        disabled={!hasPrev}
-                        className={`text-sm transition-colors ${
-                          hasPrev ? 'text-slate-400 hover:text-white' : 'text-slate-600 cursor-not-allowed'
-                        }`}
-                        title="上一个"
-                      >
-                        <i className="fas fa-chevron-left" />
-                      </button>
-                      <span className="text-xs text-slate-400">
-                        {currentIndex + 1} / {riskSummary.top.length}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (hasNext) {
-                            const nextPoint = riskSummary.top[currentIndex + 1]
-                            setFocusId(null)
-                            window.setTimeout(() => {
-                              setFocusId(nextPoint.id)
-                              setSelectedPoint({
-                                id: nextPoint.id,
-                                lat: nextPoint.lat,
-                                lng: nextPoint.lng,
-                                props: { velocity: nextPoint.velocity }
-                              })
-                            }, 0)
-                          }
-                        }}
-                        disabled={!hasNext}
-                        className={`text-sm transition-colors ${
-                          hasNext ? 'text-slate-400 hover:text-white' : 'text-slate-600 cursor-not-allowed'
-                        }`}
-                        title="下一个"
-                      >
-                        <i className="fas fa-chevron-right" />
-                      </button>
-                    </>
-                  )
-                })()}
-                <button
-                  type="button"
-                  onClick={() => setSelectedPoint(null)}
-                  className="ml-2 text-slate-400 transition-colors hover:text-white"
-                >
-                  <i className="fas fa-times text-lg" />
-                </button>
-              </div>
-            </div>
-
-            {/* 内容区域 */}
-            <div className="min-h-0 flex-1 overflow-y-auto p-4">
-              {/* 点位基本信息 */}
-              <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-                <h4 className="mb-3 text-sm font-semibold text-white">基本信息</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-300">点位 ID</span>
-                    <span className="font-medium text-white">{selectedPoint.id || '未命名'}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-300">经度</span>
-                    <span className="font-mono text-white">{selectedPoint.lng.toFixed(6)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-300">纬度</span>
-                    <span className="font-mono text-white">{selectedPoint.lat.toFixed(6)}</span>
-                  </div>
-                  {(() => {
-                    const velocity = getVelocityFromProps(selectedPoint.props, velocityField)
-                    if (velocity !== null) {
-                      const risk = riskFromVelocity(velocity, thresholds)
-                      const { label: riskLabel, color: riskColor } = (() => {
-                        if (risk === 'danger') return { label: '危险', color: 'text-red-400' }
-                        if (risk === 'warning') return { label: '预警', color: 'text-orange-400' }
-                        return { label: '正常', color: 'text-green-400' }
-                      })()
-                      return (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-300">速度</span>
-                            <span className="font-mono text-white">{velocity.toFixed(2)} mm/年</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-300">风险等级</span>
-                            <span className={`font-semibold ${riskColor}`}>{riskLabel}</span>
-                          </div>
-                        </>
-                      )
-                    }
-                    return null
-                  })()}
-                </div>
-              </div>
-
-              {/* 其他属性 */}
-              {selectedPoint.props && Object.keys(selectedPoint.props).length > 0 && (
-                <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-                  <h4 className="mb-3 text-sm font-semibold text-white">其他属性</h4>
-                  <div className="space-y-2 text-sm">
-                    {Object.entries(selectedPoint.props)
-                      .filter(([key]) => !['id', 'velocity', 'vel', 'rate', 'value'].includes(key))
-                      .slice(0, 10)
-                      .map(([key, value]) => (
-                        <div key={key} className="flex items-start justify-between gap-2">
-                          <span className="text-slate-300 truncate">{key}</span>
-                          <span className="font-mono text-xs text-white text-right break-all">
-                            {value === null || value === undefined ? '—' : String(value)}
-                          </span>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 时序图 */}
-              <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-                <h4 className="mb-3 text-sm font-semibold text-white">
-                  <i className="fas fa-chart-line mr-2 text-cyan-400" />
-                  时序变化
-                </h4>
-                {panelSeriesLoading ? (
-                  <div className="flex h-48 items-center justify-center">
-                    <div className="text-sm text-slate-400">
-                      <i className="fas fa-spinner fa-spin mr-2" />
-                      加载中...
-                    </div>
-                  </div>
-                ) : panelSeriesError ? (
-                  <div className="flex h-48 items-center justify-center">
-                    <div className="text-sm text-red-400">
-                      <i className="fas fa-exclamation-circle mr-2" />
-                      {panelSeriesError}
-                    </div>
-                  </div>
-                ) : panelSeries?.series && panelSeries.series.length > 0 ? (
-                  <div className="h-48">
-                    <EChartsWrapper option={panelSeriesOption} />
-                  </div>
-                ) : (
-                  <div className="flex h-48 items-center justify-center">
-                    <div className="text-sm text-slate-400">暂无时序数据</div>
-                  </div>
-                )}
-              </div>
-
-              {/* 施工建议 */}
-              {(() => {
-                const velocity = getVelocityFromProps(selectedPoint.props, velocityField)
-                if (velocity === null) return null
-                const risk = riskFromVelocity(velocity, thresholds)
-                const measures = expertMeasuresForRisk(risk)
-                if (measures.length === 0) return null
-
-                const { label: riskLabel, color: riskColor } = (() => {
-                  if (risk === 'danger') return { label: '危险', color: 'text-red-400' }
-                  if (risk === 'warning') return { label: '预警', color: 'text-orange-400' }
-                  return { label: '正常', color: 'text-green-400' }
-                })()
-
-                return (
-                  <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-                    <h4 className="mb-3 text-sm font-semibold text-white">
-                      <i className="fas fa-clipboard-list mr-2 text-cyan-400" />
-                      施工建议
-                      <span className={`ml-2 text-xs ${riskColor}`}>({riskLabel})</span>
-                    </h4>
-                    <div className="space-y-3">
-                      {measures.map((m, idx) => (
-                        <div key={m.key} className="rounded-lg border border-slate-600 bg-slate-900/50 p-3">
-                          <div className="mb-1 flex items-start gap-2">
-                            <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-cyan-500/20 text-xs font-bold text-cyan-400">
-                              {idx + 1}
-                            </span>
-                            <span className="flex-1 text-sm font-medium text-white">{m.title}</span>
-                          </div>
-                          <p className="ml-7 text-xs leading-relaxed text-slate-300">{m.detail}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })()}
-
-              {/* 快捷键提示 */}
-              {riskSummary.top.length > 1 && (
-                <div className="mt-4 rounded-lg border border-slate-700 bg-slate-800/30 p-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <i className="fas fa-keyboard" />
-                    <span>快捷键：</span>
-                    <kbd className="rounded bg-slate-700 px-1.5 py-0.5 font-mono text-white">←</kbd>
-                    <kbd className="rounded bg-slate-700 px-1.5 py-0.5 font-mono text-white">→</kbd>
-                    <span>切换点位</span>
-                    <kbd className="ml-2 rounded bg-slate-700 px-1.5 py-0.5 font-mono text-white">ESC</kbd>
-                    <span>关闭</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 设置抽屉 */}
       {showSettings && (
