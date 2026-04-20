@@ -158,8 +158,10 @@ function loadAdviceStore(): AdviceStore {
   }
 }
 
+type RiskFilter = 'all' | 'danger' | 'warning' | 'normal'
+
 function InsarNativeMap(
-  { dataset, indicator, valueField, velocityFieldName, thresholds, useBbox, showZones, zoneEpsM, zoneMinPts, chainageBinSize, chainageMaxDistance, onSummaryChange, onStatsChange, onZonesChange, focusId, focusZoneId, onSelectedChange }:
+  { dataset, indicator, valueField, velocityFieldName, thresholds, useBbox, showZones, zoneEpsM, zoneMinPts, chainageBinSize, chainageMaxDistance, onSummaryChange, onStatsChange, onZonesChange, focusId, focusZoneId, onSelectedChange, riskFilter }:
   {
     dataset: string,
     indicator: Indicator,
@@ -177,7 +179,8 @@ function InsarNativeMap(
     onZonesChange?: (payload: { meta: Record<string, any> | null, top: ZoneSummary[] }) => void,
     focusId?: string | null,
     focusZoneId?: string | null,
-    onSelectedChange?: (selected: { id: string, props: Record<string, any>, lat: number, lng: number } | null) => void
+    onSelectedChange?: (selected: { id: string, props: Record<string, any>, lat: number, lng: number } | null) => void,
+    riskFilter?: RiskFilter
   }
 ) {
   const mapContainerRef = useRef<HTMLDivElement>(null)
@@ -802,12 +805,16 @@ function InsarNativeMap(
           indicator === 'threshold'
             ? classifyVelocity(toNumberOrNull(p.value ?? p.velocity ?? p.vel ?? p.rate), thresholds).color
             : valueToColor(v, maxAbs)
+        const velocity = getVelocityFromProps(p, velocityFieldName)
+        const risk = riskFromVelocity(velocity, thresholds)
+        const matchesFilter = !riskFilter || riskFilter === 'all' || risk === riskFilter
         return L.circleMarker(latlng, {
-          radius: 5,
+          radius: matchesFilter ? 5 : 3,
           color,
           fillColor: color,
-          fillOpacity: 0.75,
-          weight: 1,
+          fillOpacity: matchesFilter ? 0.75 : 0.06,
+          weight: matchesFilter ? 1 : 0.5,
+          opacity: matchesFilter ? 1 : 0.15,
           pane: 'insarPoints',
         })
       },
@@ -846,7 +853,7 @@ function InsarNativeMap(
       }
     } catch {
     }
-  }, [data, maxAbs, indicator, thresholds])
+  }, [data, maxAbs, indicator, thresholds, riskFilter, velocityFieldName])
 
   useEffect(() => {
     const map = mapRef.current
@@ -1236,6 +1243,10 @@ export default function Insar() {
   })
   const [zonesPanel, setZonesPanel] = useState<{ meta: Record<string, any> | null, top: ZoneSummary[] }>({ meta: null, top: [] })
   const [focusZoneId, setFocusZoneId] = useState<string | null>(null)
+  const [riskFilter, setRiskFilter] = useState<RiskFilter>('all')
+  const [patrolActive, setPatrolActive] = useState(false)
+  const [patrolIndex, setPatrolIndex] = useState(0)
+  const patrolAbortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     try {
@@ -1293,6 +1304,58 @@ export default function Insar() {
       animationDuration: 600,
     }
   }, [panelSeries?.id, panelSeries?.series, selectedPoint?.id])
+
+  const velocityHistOption = useMemo((): EChartsOption => {
+    const hist = riskStats?.velocityHist
+    if (!hist || !hist.counts.length) return {}
+    return {
+      tooltip: { trigger: 'axis', confine: true, textStyle: { fontSize: 11 } },
+      grid: { left: 36, right: 8, top: 8, bottom: 24 },
+      xAxis: { type: 'category', data: hist.edges.map((e) => e.toFixed(0)), axisLabel: { fontSize: 9, color: '#94a3b8' }, axisLine: { lineStyle: { color: '#334155' } } },
+      yAxis: { type: 'value', axisLabel: { fontSize: 9, color: '#94a3b8' }, splitLine: { lineStyle: { color: '#1e293b' } } },
+      series: [{
+        type: 'bar',
+        data: hist.counts.map((c, i) => ({
+          value: c,
+          itemStyle: { color: hist.edges[i] < 0 ? '#ff6b6b' : hist.edges[i] > 0 ? '#4dabf7' : '#94a3b8' },
+        })),
+        barWidth: '80%',
+      }],
+      animationDuration: 400,
+    }
+  }, [riskStats?.velocityHist])
+
+  const riskPieOption = useMemo((): EChartsOption => {
+    if (!riskSummary.total) return {}
+    return {
+      tooltip: { trigger: 'item', confine: true, textStyle: { fontSize: 11 } },
+      series: [{
+        type: 'pie',
+        radius: ['50%', '75%'],
+        center: ['50%', '50%'],
+        label: { show: false },
+        data: [
+          { value: riskSummary.danger, name: '危险', itemStyle: { color: '#ff3e5f' } },
+          { value: riskSummary.warning, name: '预警', itemStyle: { color: '#ff9e0d' } },
+          { value: riskSummary.normal, name: '正常', itemStyle: { color: '#00e676' } },
+        ].filter((d) => d.value > 0),
+        emphasis: { scaleSize: 4 },
+      }],
+      graphic: [{
+        type: 'text',
+        left: 'center',
+        top: 'center',
+        style: {
+          text: String(riskSummary.total),
+          fontSize: 18,
+          fontWeight: 'bold',
+          fill: '#e2e8f0',
+          textAlign: 'center',
+        },
+      }],
+      animationDuration: 400,
+    }
+  }, [riskSummary.total, riskSummary.danger, riskSummary.warning, riskSummary.normal])
 
   // 键盘快捷键
   useEffect(() => {
@@ -1459,6 +1522,50 @@ export default function Insar() {
     }))
   }
 
+  const startPatrol = () => {
+    const points = riskSummary.top
+    if (!points.length) return
+    if (patrolAbortRef.current) patrolAbortRef.current.abort()
+    const abort = new AbortController()
+    patrolAbortRef.current = abort
+    setPatrolActive(true)
+    setPatrolIndex(0)
+    setMode('native')
+    setIndicator('threshold')
+
+    const delay = (ms: number) => new Promise<void>((resolve, reject) => {
+      const timer = window.setTimeout(resolve, ms)
+      abort.signal.addEventListener('abort', () => { window.clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')) })
+    })
+
+    ;(async () => {
+      try {
+        const maxPoints = Math.min(points.length, 10)
+        for (let i = 0; i < maxPoints; i++) {
+          if (abort.signal.aborted) break
+          const p = points[i]
+          setPatrolIndex(i)
+          setFocusId(null)
+          await delay(50)
+          setFocusId(p.id)
+          setSelectedPoint({ id: p.id, lat: p.lat, lng: p.lng, props: { velocity: p.velocity } })
+          await delay(3000)
+        }
+      } catch (e: any) {
+        if (e?.name !== 'AbortError') console.error(e)
+      } finally {
+        setPatrolActive(false)
+        patrolAbortRef.current = null
+      }
+    })()
+  }
+
+  const stopPatrol = () => {
+    if (patrolAbortRef.current) patrolAbortRef.current.abort()
+    setPatrolActive(false)
+    patrolAbortRef.current = null
+  }
+
   return (
     <div className="flex h-screen flex-col bg-slate-950 text-white">
       {/* 顶栏 - 简化版 */}
@@ -1479,10 +1586,64 @@ export default function Insar() {
             </select>
           </div>
 
+          {/* 风险筛选按钮组 */}
+          <div className="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 p-0.5">
+            {([
+              { key: 'all' as RiskFilter, label: '全部', count: riskSummary.total, color: 'text-slate-300', activeBg: 'bg-slate-600' },
+              { key: 'danger' as RiskFilter, label: '危险', count: riskSummary.danger, color: 'text-red-400', activeBg: 'bg-red-500/20' },
+              { key: 'warning' as RiskFilter, label: '预警', count: riskSummary.warning, color: 'text-orange-400', activeBg: 'bg-orange-500/20' },
+              { key: 'normal' as RiskFilter, label: '正常', count: riskSummary.normal, color: 'text-green-400', activeBg: 'bg-green-500/20' },
+            ]).map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setRiskFilter(item.key)}
+                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  riskFilter === item.key
+                    ? `${item.activeBg} ${item.color}`
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {item.label}
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                  riskFilter === item.key ? 'bg-white/10' : 'bg-slate-700'
+                }`}>
+                  {item.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* 巡检按钮 */}
+          {patrolActive ? (
+            <button
+              type="button"
+              onClick={stopPatrol}
+              className="ml-auto flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/15 px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/25"
+            >
+              <i className="fas fa-stop" />
+              停止巡检 ({patrolIndex + 1}/{Math.min(riskSummary.top.length, 10)})
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={startPatrol}
+              disabled={!riskSummary.top.length}
+              className={`ml-auto flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                riskSummary.top.length
+                  ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20'
+                  : 'border-slate-700 bg-slate-800 text-slate-500 cursor-not-allowed'
+              }`}
+            >
+              <i className="fas fa-route" />
+              巡检
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setShowSettings(true)}
-            className="ml-auto flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-white hover:bg-slate-700"
+            className="flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-white hover:bg-slate-700"
           >
             <i className="fas fa-cog" />
             设置
@@ -1493,7 +1654,7 @@ export default function Insar() {
       {/* 主内容区域 - 地图 + 风险概览 */}
       <div className="min-h-0 flex-1 flex overflow-hidden">
         {/* 地图视图 */}
-        <div className="flex-1 min-w-0 overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-hidden relative">
           {mode === 'native' ? (
             <InsarNativeMap
               dataset={dataset}
@@ -1513,6 +1674,7 @@ export default function Insar() {
               focusId={focusId}
               focusZoneId={focusZoneId}
               onSelectedChange={setSelectedPoint}
+              riskFilter={riskFilter}
             />
           ) : (
             <div className="relative h-full w-full">
@@ -1538,9 +1700,29 @@ export default function Insar() {
               )}
             </div>
           )}
+          {/* 巡检进度条 */}
+          {patrolActive && (
+            <div className="absolute bottom-4 left-1/2 z-[600] -translate-x-1/2 flex items-center gap-3 rounded-xl border border-cyan-500/30 bg-slate-900/90 px-5 py-3 shadow-lg backdrop-blur-sm">
+              <div className="h-2 w-2 animate-pulse rounded-full bg-cyan-400" />
+              <span className="text-sm font-medium text-white">
+                巡检中 {patrolIndex + 1} / {Math.min(riskSummary.top.length, 10)}
+              </span>
+              <div className="h-1.5 w-32 overflow-hidden rounded-full bg-slate-700">
+                <div
+                  className="h-full rounded-full bg-cyan-400 transition-all duration-300"
+                  style={{ width: `${((patrolIndex + 1) / Math.min(riskSummary.top.length, 10)) * 100}%` }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={stopPatrol}
+                className="rounded-md border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-xs text-red-400 hover:bg-red-500/20"
+              >
+                停止
+              </button>
+            </div>
+          )}
         </div>
-
-        {/* 详情面板 - 点击点位时作为flex子项出现在地图和右栏之间 */}
         {selectedPoint && (
           <div className="w-96 shrink-0 border-l border-slate-700 bg-slate-900 shadow-2xl">
             <div className="flex h-full flex-col">
@@ -1766,6 +1948,26 @@ export default function Insar() {
               总点数：{riskSummary.total}
             </div>
 
+            {/* 风险占比环形图 */}
+            {riskSummary.total > 0 && (
+              <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/50 p-3">
+                <h4 className="mb-2 text-xs font-semibold text-slate-300">风险占比</h4>
+                <div style={{ height: 140 }}>
+                  <EChartsWrapper option={riskPieOption} />
+                </div>
+              </div>
+            )}
+
+            {/* 速度分布直方图 */}
+            {riskStats?.velocityHist && riskStats.velocityHist.counts.length > 0 && (
+              <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/50 p-3">
+                <h4 className="mb-2 text-xs font-semibold text-slate-300">速度分布 (mm/年)</h4>
+                <div style={{ height: 140 }}>
+                  <EChartsWrapper option={velocityHistOption} />
+                </div>
+              </div>
+            )}
+
             {/* 状态提示 */}
             {riskSummary.total > 0 && (
               <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/50 p-3">
@@ -1789,13 +1991,25 @@ export default function Insar() {
             )}
 
             {/* 高风险点列表 */}
-            {riskSummary.top.length > 0 ? (
+            {(() => {
+              const filteredTop = riskFilter === 'all' || riskFilter === 'normal'
+                ? riskSummary.top
+                : riskSummary.top.filter((p) => p.risk === riskFilter)
+              if (!filteredTop.length && riskSummary.total > 0) {
+                return (
+                  <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-center">
+                    <p className="text-sm text-slate-400">{riskFilter === 'normal' ? '正常点不在高风险列表中' : '当前筛选无高风险点'}</p>
+                  </div>
+                )
+              }
+              if (!filteredTop.length) return null
+              return (
               <div>
                 <h4 className="mb-2 text-sm font-semibold text-white">
-                  高风险点 (Top {Math.min(5, riskSummary.top.length)})
+                  高风险点 (Top {Math.min(5, filteredTop.length)})
                 </h4>
                 <div className="flex flex-col gap-2">
-                  {riskSummary.top.slice(0, 5).map((p) => {
+                  {filteredTop.slice(0, 5).map((p) => {
                     const isDanger = p.risk === 'danger'
                     const label = isDanger ? '危险' : '预警'
                     return (
@@ -1837,11 +2051,8 @@ export default function Insar() {
                   })}
                 </div>
               </div>
-            ) : riskSummary.total > 0 ? (
-              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-center">
-                <p className="text-sm text-slate-400">暂无高风险点</p>
-              </div>
-            ) : null}
+              )
+            })()}
 
             {/* 危险区列表 */}
             {showZones && zonesPanel?.top?.length > 0 && (
