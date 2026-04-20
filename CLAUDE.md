@@ -1,5 +1,14 @@
 # Claude Agent System Instructions
 
+## Git 提交与推送规则（默认行为）
+
+- **每次代码修改完成后，必须自动 commit + push**，不要等用户手动要求
+- commit 后立即 `git push`，确保远端同步
+- 如果修改涉及多个逻辑步骤，可以分多次 commit，但每次 commit 后都要 push
+- 只有用户明确说"先不要推"时才跳过 push
+
+---
+
 ## Vercel Python 依赖铁律（最高优先级，违反即全站崩溃）
 
 ### 依赖文件优先级（必须牢记）
