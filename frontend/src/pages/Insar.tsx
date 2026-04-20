@@ -161,7 +161,7 @@ function loadAdviceStore(): AdviceStore {
 type RiskFilter = 'all' | 'danger' | 'warning' | 'normal'
 
 function InsarNativeMap(
-  { dataset, indicator, valueField, velocityFieldName, thresholds, useBbox, showZones, zoneEpsM, zoneMinPts, chainageBinSize, chainageMaxDistance, onSummaryChange, onStatsChange, onZonesChange, focusId, focusZoneId, onSelectedChange, riskFilter }:
+  { dataset, indicator, valueField, velocityFieldName, thresholds, useBbox, showZones, zoneEpsM, zoneMinPts, chainageBinSize, chainageMaxDistance, onSummaryChange, onStatsChange, onZonesChange, focusId, focusZoneId, onSelectedChange, riskFilter, showRiskGrid }:
   {
     dataset: string,
     indicator: Indicator,
@@ -180,7 +180,8 @@ function InsarNativeMap(
     focusId?: string | null,
     focusZoneId?: string | null,
     onSelectedChange?: (selected: { id: string, props: Record<string, any>, lat: number, lng: number } | null) => void,
-    riskFilter?: RiskFilter
+    riskFilter?: RiskFilter,
+    showRiskGrid?: boolean
   }
 ) {
   const mapContainerRef = useRef<HTMLDivElement>(null)
@@ -190,6 +191,7 @@ function InsarNativeMap(
   const zonesLayerRef = useRef<L.GeoJSON | null>(null)
   const zonesLayerByIdRef = useRef<Map<string, any>>(new Map())
   const alertLayerRef = useRef<L.LayerGroup | null>(null)
+  const riskGridLayerRef = useRef<L.LayerGroup | null>(null)
   const tunnelLayerRef = useRef<L.GeoJSON | null>(null)
   const baseLayerRef = useRef<L.Layer | null>(null)
   const baseLayerCleanupRef = useRef<(() => void) | null>(null)
@@ -597,12 +599,15 @@ function InsarNativeMap(
       if (preferred) setBaseLayerName(preferred.name)
     })()
 
+    map.createPane('riskGrid')
     map.createPane('insarZones')
     map.createPane('insarPoints')
     map.createPane('tunnelAlignment')
+    const riskGridPane = map.getPane('riskGrid')
     const zonesPane = map.getPane('insarZones')
     const pointsPane = map.getPane('insarPoints')
     const tunnelPane = map.getPane('tunnelAlignment')
+    if (riskGridPane) riskGridPane.style.zIndex = '370'
     if (zonesPane) zonesPane.style.zIndex = '380'
     if (pointsPane) pointsPane.style.zIndex = '420'
     if (tunnelPane) tunnelPane.style.zIndex = '410'
@@ -670,6 +675,10 @@ function InsarNativeMap(
       pulseTimerRef.current = null
       pulseMarkersRef.current = []
       alertLayerRef.current = null
+      if (riskGridLayerRef.current) {
+        riskGridLayerRef.current.remove()
+        riskGridLayerRef.current = null
+      }
       if (tunnelLayerRef.current) {
         tunnelLayerRef.current.remove()
         tunnelLayerRef.current = null
@@ -854,6 +863,97 @@ function InsarNativeMap(
     } catch {
     }
   }, [data, maxAbs, indicator, thresholds, riskFilter, velocityFieldName])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    if (riskGridLayerRef.current) {
+      riskGridLayerRef.current.remove()
+      riskGridLayerRef.current = null
+    }
+
+    if (!showRiskGrid || !data?.features?.length) return
+
+    const features = data.features
+    let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180
+    const pts: { lat: number, lng: number, risk: RiskLevel }[] = []
+    for (const f of features) {
+      const ll = getLatLngFromFeature(f)
+      if (!ll) continue
+      const p = f?.properties || {}
+      const v = getVelocityFromProps(p, velocityFieldName)
+      const risk = riskFromVelocity(v, thresholds)
+      pts.push({ lat: ll.lat, lng: ll.lng, risk })
+      if (ll.lat < minLat) minLat = ll.lat
+      if (ll.lat > maxLat) maxLat = ll.lat
+      if (ll.lng < minLng) minLng = ll.lng
+      if (ll.lng > maxLng) maxLng = ll.lng
+    }
+    if (!pts.length) return
+
+    const pad = 0.001
+    minLat -= pad; maxLat += pad; minLng -= pad; maxLng += pad
+    const GRID = 20
+    const cellH = (maxLat - minLat) / GRID
+    const cellW = (maxLng - minLng) / GRID
+    if (cellH <= 0 || cellW <= 0) return
+
+    const grid: { danger: number, warning: number, normal: number }[][] = []
+    for (let r = 0; r < GRID; r++) {
+      grid[r] = []
+      for (let c = 0; c < GRID; c++) {
+        grid[r][c] = { danger: 0, warning: 0, normal: 0 }
+      }
+    }
+
+    for (const pt of pts) {
+      const r = Math.min(GRID - 1, Math.max(0, Math.floor((pt.lat - minLat) / cellH)))
+      const c = Math.min(GRID - 1, Math.max(0, Math.floor((pt.lng - minLng) / cellW)))
+      grid[r][c][pt.risk] += 1
+    }
+
+    const gridLayer = L.layerGroup()
+    for (let r = 0; r < GRID; r++) {
+      for (let c = 0; c < GRID; c++) {
+        const cell = grid[r][c]
+        const total = cell.danger + cell.warning + cell.normal
+        if (total === 0) continue
+
+        const south = minLat + r * cellH
+        const north = south + cellH
+        const west = minLng + c * cellW
+        const east = west + cellW
+
+        let color: string
+        let fillOpacity: number
+        if (cell.danger > 0) {
+          const ratio = cell.danger / total
+          color = '#ff3e5f'
+          fillOpacity = 0.12 + ratio * 0.25
+        } else if (cell.warning > 0) {
+          const ratio = cell.warning / total
+          color = '#ff9e0d'
+          fillOpacity = 0.08 + ratio * 0.18
+        } else {
+          color = '#00e676'
+          fillOpacity = 0.06
+        }
+
+        L.rectangle([[south, west], [north, east]], {
+          pane: 'riskGrid',
+          color: 'transparent',
+          weight: 0,
+          fillColor: color,
+          fillOpacity,
+          interactive: false,
+        }).addTo(gridLayer)
+      }
+    }
+
+    gridLayer.addTo(map)
+    riskGridLayerRef.current = gridLayer
+  }, [data, showRiskGrid, thresholds, velocityFieldName])
 
   useEffect(() => {
     const map = mapRef.current
@@ -1244,6 +1344,7 @@ export default function Insar() {
   const [zonesPanel, setZonesPanel] = useState<{ meta: Record<string, any> | null, top: ZoneSummary[] }>({ meta: null, top: [] })
   const [focusZoneId, setFocusZoneId] = useState<string | null>(null)
   const [riskFilter, setRiskFilter] = useState<RiskFilter>('all')
+  const [showRiskGrid, setShowRiskGrid] = useState(true)
   const [patrolActive, setPatrolActive] = useState(false)
   const [patrolIndex, setPatrolIndex] = useState(0)
   const patrolAbortRef = useRef<AbortController | null>(null)
@@ -1653,6 +1754,20 @@ export default function Insar() {
             ))}
           </div>
 
+          {/* 风险分区图层开关 */}
+          <button
+            type="button"
+            onClick={() => setShowRiskGrid((v) => !v)}
+            className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+              showRiskGrid
+                ? 'border-cyan-500/40 bg-cyan-500/15 text-cyan-400'
+                : 'border-slate-600 bg-slate-800 text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <i className="fas fa-th" />
+            风险分区
+          </button>
+
           {/* 巡检按钮 */}
           {patrolActive ? (
             <button
@@ -1714,6 +1829,7 @@ export default function Insar() {
               focusZoneId={focusZoneId}
               onSelectedChange={setSelectedPoint}
               riskFilter={riskFilter}
+              showRiskGrid={showRiskGrid}
             />
           ) : (
             <div className="relative h-full w-full">
