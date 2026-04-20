@@ -1357,6 +1357,45 @@ export default function Insar() {
     }
   }, [riskSummary.total, riskSummary.danger, riskSummary.warning, riskSummary.normal])
 
+  const chainageChartOption = useMemo((): EChartsOption => {
+    const ch = riskStats?.chainage
+    if (!ch || !ch.labels.length) return {}
+    const maxLabelCount = 8
+    const step = ch.labels.length > maxLabelCount ? Math.ceil(ch.labels.length / maxLabelCount) : 1
+    return {
+      tooltip: {
+        trigger: 'axis',
+        confine: true,
+        textStyle: { fontSize: 11 },
+        formatter: (params: any) => {
+          if (!Array.isArray(params) || !params.length) return ''
+          const seg = params[0].name
+          const lines = params.map((p: any) => `<span style="color:${p.color}">\u25CF</span> ${p.seriesName}: ${p.value}`).join('<br/>')
+          return `<div style="font-size:11px"><b>${seg}</b><br/>${lines}</div>`
+        },
+      },
+      legend: { show: true, top: 0, right: 0, textStyle: { color: '#94a3b8', fontSize: 10 }, itemWidth: 10, itemHeight: 10 },
+      grid: { left: 36, right: 8, top: 28, bottom: 24 },
+      xAxis: {
+        type: 'category',
+        data: ch.labels,
+        axisLabel: { fontSize: 8, color: '#94a3b8', rotate: 35, interval: step - 1 },
+        axisLine: { lineStyle: { color: '#334155' } },
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: { fontSize: 9, color: '#94a3b8' },
+        splitLine: { lineStyle: { color: '#1e293b' } },
+      },
+      series: [
+        { name: '危险', type: 'bar', stack: 'risk', data: ch.danger, itemStyle: { color: '#ff3e5f' }, barWidth: '70%' },
+        { name: '预警', type: 'bar', stack: 'risk', data: ch.warning, itemStyle: { color: '#ff9e0d' } },
+        { name: '正常', type: 'bar', stack: 'risk', data: ch.normal, itemStyle: { color: '#00e676', opacity: 0.5 } },
+      ],
+      animationDuration: 400,
+    }
+  }, [riskStats?.chainage])
+
   // 键盘快捷键
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1964,6 +2003,21 @@ export default function Insar() {
                 <h4 className="mb-2 text-xs font-semibold text-slate-300">速度分布 (mm/年)</h4>
                 <div style={{ height: 140 }}>
                   <EChartsWrapper option={velocityHistOption} />
+                </div>
+              </div>
+            )}
+
+            {/* 隧道里程风险分段图 */}
+            {riskStats?.chainage && riskStats.chainage.labels.length > 0 && (
+              <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/50 p-3">
+                <h4 className="mb-1 text-xs font-semibold text-slate-300">沿隧道里程风险分布</h4>
+                <div className="mb-2 flex items-center gap-3 text-[10px] text-slate-400">
+                  <span>总长 {(riskStats.chainage.length / 1000).toFixed(1)} km</span>
+                  <span>覆盖 {riskStats.chainage.total} 点</span>
+                  <span>分段 {riskStats.chainage.binSize}m</span>
+                </div>
+                <div style={{ height: 170 }}>
+                  <EChartsWrapper option={chainageChartOption} />
                 </div>
               </div>
             )}
