@@ -818,7 +818,7 @@ function InsarNativeMap(
           v !== undefined ? `<div><b>${indicator === 'keyDate' ? '位移' : (indicator === 'velocity' ? '速度' : '速度')}</b>: ${String(v)}</div>` : '',
           indicator === 'threshold' ? `<div><b>分级</b>: <span style="color:${cls.color}">${cls.label}</span></div>` : '',
         ].filter(Boolean).join('')
-        l.bindPopup(`<div style="min-width:180px">${lines || '<div>无属性</div>'}</div>`)
+        l.bindPopup(`<div style="min-width:140px;max-width:240px">${lines || '<div>无属性</div>'}</div>`, { autoPan: false, maxWidth: 260 })
         l.on('click', (e: any) => {
           const ll = e?.latlng || (typeof (l as any).getLatLng === 'function' ? (l as any).getLatLng() : null)
           setSelected({ id: String(id), props: p, lat: Number(ll?.lat) || 0, lng: Number(ll?.lng) || 0 })
@@ -883,7 +883,7 @@ function InsarNativeMap(
           p.min_velocity !== undefined ? `<div><b>min速度</b>: ${String(p.min_velocity)}</div>` : '',
           p.p95_velocity !== undefined ? `<div><b>p95速度</b>: ${String(p.p95_velocity)}</div>` : '',
         ].filter(Boolean).join('')
-        l.bindPopup(`<div style="min-width:180px">${lines || '<div>无属性</div>'}</div>`)
+        l.bindPopup(`<div style="min-width:140px;max-width:240px">${lines || '<div>无属性</div>'}</div>`, { autoPan: false, maxWidth: 260 })
         l.on('click', () => {
           const point_count = typeof p.point_count === 'number' ? p.point_count : Number(p.point_count) || 0
           const min_velocity = typeof p.min_velocity === 'number' ? p.min_velocity : (typeof p.min_velocity === 'string' ? Number(p.min_velocity) : null)
@@ -1037,7 +1037,7 @@ function InsarNativeMap(
   }, [series?.id, series?.series, selected?.id])
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '70vh' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
       <div ref={mapContainerRef} style={{ position: 'absolute', inset: 0, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(64,174,255,.3)' }} />
       <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 500, padding: 10, borderRadius: 8, background: 'rgba(10,25,47,.78)', border: '1px solid rgba(64,174,255,.25)', color: '#aaddff', width: 280, maxWidth: 'calc(100% - 24px)' }}>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>原生图层</div>
@@ -1533,9 +1533,9 @@ export default function Insar() {
       </div>
 
       {/* 主内容区域 - 地图 + 风险概览 */}
-      <div className="min-h-0 flex-1 flex">
+      <div className="min-h-0 flex-1 flex overflow-hidden">
         {/* 地图视图 */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-hidden">
           {mode === 'native' ? (
             <InsarNativeMap
               dataset={dataset}
@@ -1747,7 +1747,7 @@ export default function Insar() {
 
       {/* 详情面板 - 点击点位时从右侧滑出 */}
       {selectedPoint && (
-        <div className="fixed right-0 top-0 z-40 h-full w-96 transform border-l border-slate-700 bg-slate-900 shadow-2xl transition-transform duration-300">
+        <div className="fixed right-80 top-0 z-40 h-full w-96 transform border-l border-slate-700 bg-slate-900 shadow-2xl transition-transform duration-300">
           <div className="flex h-full flex-col">
             {/* 头部 */}
             <div className="flex shrink-0 items-center justify-between border-b border-slate-700 bg-slate-800 px-4 py-3">
