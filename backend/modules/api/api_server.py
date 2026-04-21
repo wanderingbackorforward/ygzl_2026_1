@@ -1247,7 +1247,7 @@ if __name__ == '__main__':
     # 使用Werkzeug服务器，增加超时配置
     from werkzeug.serving import run_simple
     run_simple(
-        '0.0.0.0',
+        '127.0.0.1',
         5000,
         app,
         use_reloader=False,
