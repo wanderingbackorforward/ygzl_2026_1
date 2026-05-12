@@ -1,0 +1,10 @@
+# Optional heavy ML dependencies for Aliyun/Linux.
+# Install this only after the base service is already healthy.
+# It enables Prophet and PyTorch-backed models such as Informer/STGCN/PINN.
+
+# Prophet time-series forecasting.
+prophet
+
+# PyTorch CPU wheel source. Use CPU wheels on a normal ECS without GPU/CUDA.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
