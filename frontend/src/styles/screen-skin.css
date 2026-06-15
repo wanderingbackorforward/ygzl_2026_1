@@ -112,7 +112,7 @@ body {
   line-height: 1;
   font-variant-numeric: tabular-nums;
   letter-spacing: 1px;
-  text-shadow: 0 0 16px currentColor, 0 0 5px currentColor;
+  text-shadow: 0 0 3px rgba(255,255,255,0.85), 0 0 14px currentColor, 0 0 28px currentColor;
 }
 .dt-kpi--danger  { color: #ff3b6b; }
 .dt-kpi--warning { color: #ffb020; }

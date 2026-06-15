@@ -68,6 +68,26 @@ function RankPanel({ items }: { items: { name: string; value: number; tone: 'dan
   )
 }
 
+function DimHealthBars({ scores }: { scores: { name: string; value: number }[] }) {
+  const colorOf = (v: number) => v >= 80 ? '#2cff9e' : v >= 60 ? '#ffb020' : v >= 40 ? '#ff8a3b' : '#ff3b6b'
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '2px 6px', justifyContent: 'center', height: '100%' }}>
+      {scores.map(s => {
+        const c = colorOf(s.value)
+        return (
+          <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14 }}>
+            <span style={{ width: 38, color: '#d6f4ff', flexShrink: 0 }}>{s.name}</span>
+            <span style={{ flex: 1, height: 12, borderRadius: 6, background: 'rgba(255,255,255,0.07)', overflow: 'hidden', position: 'relative' }}>
+              <span style={{ display: 'block', height: '100%', width: `${s.value}%`, borderRadius: 6, background: `linear-gradient(90deg, ${c}55, ${c})`, boxShadow: `0 0 10px ${c}cc`, transition: 'width .6s ease' }} />
+            </span>
+            <span style={{ width: 38, textAlign: 'right', color: c, fontWeight: 700, fontVariantNumeric: 'tabular-nums', textShadow: `0 0 8px ${c}99` }}>{s.value}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function CoverInner() {
   const { modules } = useModules()
   const badge = useAgentStore(s => s.badge)
@@ -101,6 +121,16 @@ function CoverInner() {
     { name: '裂缝', value: crackExpanding, tone: (crackExpanding > 0 ? 'warning' : 'normal') as const },
     { name: '工单', value: pendingCount, tone: (pendingCount > 0 ? 'warning' : 'normal') as const },
     { name: '温度', value: avgTemp == null ? 0 : Math.round(Math.abs(avgTemp - 20)), tone: 'info' as const },
+  ]
+
+  // 各维度健康度（与 RiskRadar 同口径，0-100）
+  const tempScore = avgTemp == null ? 50 : Math.max(0, Math.min(100, Math.round(100 - (Math.abs(avgTemp - 20) / 25) * 100)))
+  const vibScore = summary?.vibration?.status === 'normal' ? 90 : 30
+  const dimScores = [
+    { name: '沉降', value: Math.max(0, Math.min(100, 100 - settlementAlert * 10)) },
+    { name: '裂缝', value: Math.max(0, Math.min(100, 100 - crackExpanding * 15)) },
+    { name: '温度', value: tempScore },
+    { name: '振动', value: vibScore },
   ]
 
   const tickerItems = [
@@ -137,8 +167,11 @@ function CoverInner() {
           <ChartPanel title="裂缝状态" style={{ flex: 1 }}><CracksOverviewCard cardId="cov-cracks" /></ChartPanel>
           <ChartPanel title="振动状态" style={{ flex: 1 }}><VibrationOverviewCard cardId="cov-vib" /></ChartPanel>
         </div>
-        {/* 中栏：风险雷达（hero） */}
-        <ChartPanel title="多维风险态势" style={{ height: '100%' }}><RiskRadarCard cardId="cov-risk" /></ChartPanel>
+        {/* 中栏：风险雷达（hero） + 各维度健康度副图 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--wall-gap)', minHeight: 0, height: '100%' }}>
+          <ChartPanel title="多维风险态势" style={{ flex: 1.5 }}><RiskRadarCard cardId="cov-risk" /></ChartPanel>
+          <ChartPanel title="各维度健康度" style={{ flex: 1 }}><DimHealthBars scores={dimScores} /></ChartPanel>
+        </div>
         {/* 右栏 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--wall-gap)', minHeight: 0 }}>
           <ChartPanel title="沉降分布" style={{ flex: 1 }}><SettlementOverviewCard cardId="cov-settlement" /></ChartPanel>
