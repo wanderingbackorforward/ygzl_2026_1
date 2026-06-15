@@ -1,8 +1,10 @@
 import React, { useCallback, useMemo, useEffect, useState, useRef } from 'react';
 import GridLayout from 'react-grid-layout';
 import { useLayout } from '../../contexts/LayoutContext';
+import { useDeviceTier } from '../../contexts/DeviceTierContext';
 import { CardBase } from '../cards/CardBase';
 import { MobileCardSwitcher } from './MobileCardSwitcher';
+import { TileGrid } from './TileGrid';
 import type { CardConfig, Breakpoint, LayoutItem } from '../../types/layout';
 import { BREAKPOINTS, COLS, ROW_HEIGHT, MARGIN } from '../../types/layout';
 
@@ -65,6 +67,8 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
     resetLayout,
     setDefaultLayout,
   } = useLayout();
+
+  const { isTablet } = useDeviceTier();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1200);
@@ -183,6 +187,15 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
     return (
       <div className="dashboard-grid" ref={containerRef}>
         <MobileCardSwitcher cards={cards} />
+      </div>
+    );
+  }
+
+  // 平板 / 壁挂大屏渲染（固定响应式色块网格，无拖拽/缩放）
+  if (isTablet) {
+    return (
+      <div className="dashboard-grid" ref={containerRef}>
+        <TileGrid cards={cards} />
       </div>
     );
   }
