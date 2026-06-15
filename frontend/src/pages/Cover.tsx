@@ -4,7 +4,7 @@ import { useModules } from '../contexts/ModulesContext'
 import { useAgentStore } from '../stores/agentStore'
 import { useOverview, OverviewProvider } from '../contexts/OverviewContext'
 import type { AppModule } from '../types/modules'
-import { ScreenHeader, GlowNumber, AlertTicker } from '../components/screen'
+import { ScreenHeader, GlowNumber, AlertTicker, PullRefresh } from '../components/screen'
 import { BorderBox13, Decoration11 } from '../components/screen/datav'
 import { SafetyScoreGaugeCard } from '../components/overview/SafetyScoreGaugeCard'
 import { RiskRadarCard } from '../components/overview/RiskRadarCard'
@@ -91,7 +91,7 @@ function DimHealthBars({ scores }: { scores: { name: string; value: number }[] }
 function CoverInner() {
   const { modules } = useModules()
   const badge = useAgentStore(s => s.badge)
-  const { summary } = useOverview()
+  const { summary, refetch } = useOverview()
   const [now, setNow] = useState<Date>(() => new Date(0))
   const loadRef = useRef<number>(Date.now())
 
@@ -144,6 +144,7 @@ function CoverInner() {
 
   return (
     <div style={{ padding: 'var(--wall-gap)', minHeight: 'calc(100vh - 36px)', display: 'flex', flexDirection: 'column', gap: 'var(--wall-gap)', position: 'relative', zIndex: 1 }}>
+      <PullRefresh onRefresh={refetch} />
       <ScreenHeader title="隧道工程安全监测数字孪生" subtitle="DIGITAL TWIN · SAFETY MONITORING PLATFORM" status={`系统在线 · ${sevLabel}`} />
 
       {/* KPI 翻牌行 */}
