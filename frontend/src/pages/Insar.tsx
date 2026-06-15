@@ -9,6 +9,7 @@ import { kmlToBestLineStringFeature } from '../lib/kml'
 import { createBuiltInBaseLayers, createRasterLayer, loadOpticalRasterLayers } from '../lib/mapLayers'
 import { extractInsarContext } from '../utils/contextExtractors/insarExtractor'
 import { SegmentedControl, LargeIconButton, StatusTile, KpiRail, FullscreenFocus, TourControl } from '../components/touchkit'
+import { BottomSheet } from '../components/screen'
 
 type FeatureCollection = { type: 'FeatureCollection', features: any[] }
 type InsarMeta = { dataset?: string, cached?: boolean, feature_count?: number, total_feature_count?: number, value_field?: string, args?: Record<string, any> }
@@ -1848,8 +1849,8 @@ export default function Insar() {
           </KpiRail>
         </div>
 
-        {/* 点位详情全屏 */}
-        <FullscreenFocus
+        {/* 点位详情：底部抽屉 sheet（iPad 风） */}
+        <BottomSheet
           isOpen={!!selectedPoint}
           onClose={() => setSelectedPoint(null)}
           title={selectedPoint ? `点位 ${selectedPoint.id || ''}` : ''}
@@ -1918,7 +1919,7 @@ export default function Insar() {
               </div>
             </div>
           )}
-        </FullscreenFocus>
+        </BottomSheet>
 
         {/* 趋势全屏：饼图 + 直方图 + 里程分段 */}
         <FullscreenFocus isOpen={showTrends} onClose={() => setShowTrends(false)} title="风险分布趋势">
