@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { Decoration5 } from './datav/Decoration5'
 
 interface ScreenHeaderProps {
   title: string
@@ -40,7 +41,10 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({ title, subtitle, status, ri
       <div className="dt-flourish dt-flourish--left" />
       <div style={{ textAlign: 'center', flexShrink: 0 }}>
         <div className="dt-screen-title">{title}</div>
-        {subtitle && <div style={{ fontSize: 13, color: 'rgba(215,244,255,0.6)', letterSpacing: 3, marginTop: 4 }}>{subtitle}</div>}
+        <div style={{ width: 240, maxWidth: '40vw', margin: '2px auto 0' }}>
+          <Decoration5 height={26} dur={1.6} />
+        </div>
+        {subtitle && <div style={{ fontSize: 13, color: 'rgba(215,244,255,0.6)', letterSpacing: 3, marginTop: 2 }}>{subtitle}</div>}
       </div>
       <div className="dt-flourish dt-flourish--right" />
       <div style={{ flex: status ? 0 : 1 }} />

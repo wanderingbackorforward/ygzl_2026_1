@@ -1,3 +1,5 @@
 export { BorderBox13 } from './BorderBox13'
+export { BorderBox12 } from './BorderBox12'
 export { Decoration11 } from './Decoration11'
 export { Decoration7 } from './Decoration7'
+export { Decoration5 } from './Decoration5'
