@@ -1934,9 +1934,10 @@ export default function Insar() {
           </div>
         </FullscreenFocus>
 
-        {/* 设置全屏（控制室常用项；桌面完整设置不变） */}
+        {/* 设置全屏（与桌面设置等价的完整能力） */}
         <FullscreenFocus isOpen={showSettings} onClose={() => setShowSettings(false)} title="设置">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 760 }}>
+            {/* 显示模式 */}
             <div>
               <div className="touchkit-label" style={{ marginBottom: 10 }}>显示模式</div>
               <SegmentedControl
@@ -1949,15 +1950,35 @@ export default function Insar() {
                   ...(fieldsInfo?.d_fields?.length ? [{ key: 'keyDate', label: '关键日期' }] : []),
                 ]}
               />
+              {indicator === 'keyDate' && fieldsInfo?.d_fields?.length ? (
+                <div style={{ marginTop: 12 }}>
+                  <div className="touchkit-label" style={{ marginBottom: 8 }}>关键日期字段</div>
+                  <select value={keyDateField} onChange={e => setKeyDateField(e.target.value)} style={{ width: '100%', minHeight: 'var(--wall-min-target)', fontSize: 18, padding: '10px 14px', borderRadius: 12, background: 'rgba(0,0,0,0.3)', color: '#e6f7ff', border: '1px solid var(--wall-panel-border)' }}>
+                    {fieldsInfo.d_fields.map(f => <option key={f} value={f}>{formatKeyDateField(f)}</option>)}
+                  </select>
+                </div>
+              ) : null}
             </div>
+            {/* 阈值 */}
             <div>
-              <div className="touchkit-label" style={{ marginBottom: 10 }}>阈值预设</div>
+              <div className="touchkit-label" style={{ marginBottom: 10 }}>阈值（mm/年，负=沉降）</div>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <LargeIconButton icon="fas fa-shield-alt" label="保守" active={thresholds.strong === 6} onClick={() => setThresholds({ strong: 6, mild: 1.5 })} />
                 <LargeIconButton icon="fas fa-balance-scale" label="标准" active={thresholds.strong === 10} onClick={() => setThresholds({ strong: 10, mild: 2 })} />
                 <LargeIconButton icon="fas fa-feather" label="宽松" active={thresholds.strong === 15} onClick={() => setThresholds({ strong: 15, mild: 3 })} />
               </div>
+              <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap' }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 15, color: 'rgba(230,247,255,0.8)' }}>
+                  危险阈值
+                  <input type="number" value={thresholds.strong} step="0.5" min="0" onChange={e => setThresholds(t => ({ ...t, strong: Number(e.target.value) || 0 }))} style={{ width: 150, minHeight: 'var(--wall-min-target)', fontSize: 18, padding: '8px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.3)', color: '#e6f7ff', border: '1px solid var(--wall-panel-border)' }} />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 15, color: 'rgba(230,247,255,0.8)' }}>
+                  预警阈值
+                  <input type="number" value={thresholds.mild} step="0.5" min="0" onChange={e => setThresholds(t => ({ ...t, mild: Number(e.target.value) || 0 }))} style={{ width: 150, minHeight: 'var(--wall-min-target)', fontSize: 18, padding: '8px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.3)', color: '#e6f7ff', border: '1px solid var(--wall-panel-border)' }} />
+                </label>
+              </div>
             </div>
+            {/* 图层 */}
             <div>
               <div className="touchkit-label" style={{ marginBottom: 10 }}>图层</div>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -1965,12 +1986,32 @@ export default function Insar() {
                 <LargeIconButton icon="fas fa-object-group" label="危险区" active={showZones} onClick={() => setShowZones(v => !v)} />
                 <LargeIconButton icon="fas fa-crop" label={useBbox ? '视窗裁剪 开' : '视窗裁剪 关'} active={useBbox} onClick={() => setUseBbox(v => !v)} />
               </div>
+              {showZones ? (
+                <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 15, color: 'rgba(230,247,255,0.8)' }}>
+                    聚类半径 eps（米）
+                    <input type="number" value={zoneEpsM} step="10" min="10" onChange={e => setZoneEpsM(Number(e.target.value) || 0)} style={{ width: 150, minHeight: 'var(--wall-min-target)', fontSize: 18, padding: '8px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.3)', color: '#e6f7ff', border: '1px solid var(--wall-panel-border)' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 15, color: 'rgba(230,247,255,0.8)' }}>
+                    最小点数 minPts
+                    <input type="number" value={zoneMinPts} step="1" min="1" onChange={e => setZoneMinPts(Math.max(1, Math.round(Number(e.target.value) || 0)))} style={{ width: 150, minHeight: 'var(--wall-min-target)', fontSize: 18, padding: '8px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.3)', color: '#e6f7ff', border: '1px solid var(--wall-panel-border)' }} />
+                  </label>
+                </div>
+              ) : null}
             </div>
+            {/* 数据集 */}
             <div>
               <div className="touchkit-label" style={{ marginBottom: 10 }}>数据集</div>
               <select value={dataset} onChange={e => setDataset(e.target.value)} style={{ width: '100%', minHeight: 'var(--wall-min-target)', fontSize: 18, padding: '10px 14px', borderRadius: 12, background: 'rgba(0,0,0,0.3)', color: '#e6f7ff', border: '1px solid var(--wall-panel-border)' }}>
                 {datasets.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
+            </div>
+            {/* 外链地图 */}
+            <div>
+              <div className="touchkit-label" style={{ marginBottom: 10 }}>外部地图</div>
+              <a href="http://47.96.7.238:38089/mapLayer" target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minHeight: 'var(--wall-min-target)', padding: '0 18px', borderRadius: 12, background: 'rgba(0,229,255,.1)', border: '1px solid var(--wall-panel-border)', color: '#7df0ff', fontSize: 17, textDecoration: 'none' }}>
+                <i className="fas fa-external-link-alt" /> 在新窗口打开外链地图
+              </a>
             </div>
           </div>
         </FullscreenFocus>
