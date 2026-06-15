@@ -2,12 +2,14 @@ import React, { Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import './styles/tailwind.css'
+import './styles/wall.css'
 import Nav from './shared/Nav'
 import { OverdueTicketAlert } from './components/tickets/OverdueTicketAlert'
 import { ModulesProvider } from './contexts/ModulesContext'
 import { AuthProvider } from './contexts/AuthContext'
 import { AuthGuard } from './components/auth/AuthGuard'
 import ModuleGate from './components/modules/ModuleGate'
+import { DeviceTierProvider } from './contexts/DeviceTierContext'
 
 const IS_MOBILE = import.meta.env.VITE_MOBILE === 'true'
 
@@ -45,6 +47,7 @@ const ShieldTrajectory = lazyWithRetry(() => import('./pages/ShieldTrajectory'))
 
 function App() {
   return (
+    <DeviceTierProvider>
     <AuthProvider>
       <AuthGuard>
         <ModulesProvider>
@@ -93,6 +96,7 @@ function App() {
         </ModulesProvider>
       </AuthGuard>
     </AuthProvider>
+    </DeviceTierProvider>
   )
 }
 

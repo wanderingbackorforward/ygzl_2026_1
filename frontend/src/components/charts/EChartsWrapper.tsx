@@ -1,6 +1,8 @@
 import React, { useRef, useEffect } from 'react';
 import type { EChartsOption, ECharts } from 'echarts';
 import { registerCyberpunkTheme } from './cyberpunkTheme';
+import { useDeviceTier } from '../../contexts/DeviceTierContext';
+import { applyWallPreset } from '../../lib/echartsWallPreset';
 
 export interface EChartsWrapperProps {
   option: EChartsOption;
@@ -11,6 +13,8 @@ export interface EChartsWrapperProps {
   onChartReady?: (chart: ECharts) => void;
   notMerge?: boolean;
   lazyUpdate?: boolean;
+  /** 是否启用大屏/触控预设（tooltip 点按触发等）。缺省=随设备档：tablet 自动启用。 */
+  wall?: boolean;
 }
 
 export const EChartsWrapper: React.FC<EChartsWrapperProps> = ({
@@ -22,6 +26,7 @@ export const EChartsWrapper: React.FC<EChartsWrapperProps> = ({
   onChartReady,
   notMerge = false,
   lazyUpdate = false,
+  wall,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<ECharts | null>(null);
@@ -29,6 +34,9 @@ export const EChartsWrapper: React.FC<EChartsWrapperProps> = ({
   const echartsPromiseRef = useRef<Promise<typeof import('echarts')> | null>(null);
   const optionRef = useRef<EChartsOption>(option);
   const loadingRef = useRef<boolean>(loading);
+  const { isTablet } = useDeviceTier();
+  const wallMode = wall === undefined ? isTablet : wall;
+  const applyPreset = (o: EChartsOption) => (wallMode ? applyWallPreset(o) : o);
 
   optionRef.current = option;
   loadingRef.current = loading;
@@ -65,7 +73,7 @@ export const EChartsWrapper: React.FC<EChartsWrapperProps> = ({
       chartRef.current = chart;
       onChartReady?.(chart);
 
-      chart.setOption(optionRef.current, {
+      chart.setOption(applyPreset(optionRef.current), {
         notMerge,
         lazyUpdate,
       });
@@ -103,11 +111,12 @@ export const EChartsWrapper: React.FC<EChartsWrapperProps> = ({
   useEffect(() => {
     if (!chartRef.current || chartRef.current.isDisposed()) return;
 
-    chartRef.current.setOption(option, {
+    chartRef.current.setOption(applyPreset(option), {
       notMerge,
       lazyUpdate,
     });
-  }, [option, notMerge, lazyUpdate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [option, notMerge, lazyUpdate, wallMode]);
 
   // Handle loading state
   useEffect(() => {

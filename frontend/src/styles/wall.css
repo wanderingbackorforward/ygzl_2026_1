@@ -1,0 +1,208 @@
+/*
+ * wall.css —— 控制室 / 壁挂大屏 · 触控档（tier-tablet）设计令牌
+ *
+ * 设计语言：远观 + 偶发触控
+ *   - 大色块、低密度、少滚动
+ *   - 状态色（红/橙/绿）作为主导视觉编码
+ *   - 大号字体、大号触控目标（≥64px）
+ *   - 细节层一律走"点按放大全屏"，主屏保持一眼可读
+ *
+ * 仅在 body.tier-tablet 下激活；桌面/手机档不受影响。
+ */
+
+:root {
+  --wall-min-target: 64px;          /* 远观最小触控目标 */
+  --wall-icon-btn: 64px;            /* 图标按钮边长 */
+  --wall-font-base: 18px;
+  --wall-font-lg: 22px;
+  --wall-font-title: 30px;
+  --wall-font-kpi: 56px;            /* KPI 大数字 */
+  --wall-pad: 22px;
+  --wall-gap: 18px;
+  --wall-tile-radius: 14px;
+
+  --wall-danger: #ff3e5f;
+  --wall-warning: #ff9e0d;
+  --wall-normal: #00e676;
+  --wall-info: #00e5ff;
+
+  --wall-panel: rgba(10, 18, 30, 0.92);
+  --wall-panel-border: rgba(0, 229, 255, 0.28);
+}
+
+/* ---- 全局：大屏档字号放大 ---- */
+body.tier-tablet {
+  font-size: var(--wall-font-base);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+body.tier-tablet button,
+body.tier-tablet [role='button'] {
+  /* 远观：触控目标下限 */
+  min-height: 48px;
+}
+
+/* ---- touchkit 通用基础 ---- */
+.touchkit-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--wall-tile-radius);
+  background: var(--wall-panel);
+  border: 1px solid var(--wall-panel-border);
+  padding: var(--wall-pad);
+  overflow: hidden;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+
+.touchkit-tile--clickable {
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+.touchkit-tile--clickable:active {
+  transform: scale(0.985);
+}
+
+/* 状态色条（左侧主视觉编码） */
+.touchkit-tile__bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+}
+.touchkit-tile__bar--danger { background: var(--wall-danger); }
+.touchkit-tile__bar--warning { background: var(--wall-warning); }
+.touchkit-tile__bar--normal { background: var(--wall-normal); }
+.touchkit-tile__bar--info { background: var(--wall-info); }
+
+.touchkit-label {
+  font-size: var(--wall-font-base);
+  color: rgba(230, 247, 255, 0.78);
+  letter-spacing: 0.5px;
+}
+.touchkit-kpi {
+  font-size: var(--wall-font-kpi);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 大号图标按钮 ---- */
+.touchkit-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: var(--wall-icon-btn);
+  min-height: var(--wall-icon-btn);
+  padding: 0 18px;
+  border-radius: 12px;
+  background: rgba(0, 229, 255, 0.08);
+  border: 1px solid var(--wall-panel-border);
+  color: #e6f7ff;
+  font-size: var(--wall-font-base);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+  user-select: none;
+}
+.touchkit-icon-btn i { font-size: 22px; }
+.touchkit-icon-btn--active {
+  background: rgba(0, 229, 255, 0.2);
+  border-color: rgba(0, 229, 255, 0.7);
+  color: #ffffff;
+}
+.touchkit-icon-btn--danger {
+  background: rgba(255, 62, 95, 0.14);
+  border-color: rgba(255, 62, 95, 0.45);
+  color: #ff8b9a;
+}
+
+/* ---- 大号分段控件 ---- */
+.touchkit-segmented {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--wall-panel-border);
+}
+.touchkit-segmented__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 18px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: rgba(230, 247, 255, 0.7);
+  font-size: var(--wall-font-base);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.touchkit-segmented__item--active {
+  background: rgba(0, 229, 255, 0.22);
+  color: #ffffff;
+}
+.touchkit-segmented__count {
+  min-width: 26px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* ---- 大屏全屏聚焦层（覆盖 FullscreenModal 默认样式） ---- */
+body.tier-tablet .fullscreen-modal {
+  padding: 24px;
+}
+body.tier-tablet .fullscreen-modal__close {
+  width: 56px;
+  height: 56px;
+  font-size: 24px;
+}
+body.tier-tablet .fullscreen-modal__title {
+  font-size: 22px;
+}
+
+/* ---- Leaflet 大屏适配：放大缩放控件、关滚动条 ---- */
+body.tier-tablet .leaflet-control-zoom a {
+  width: 52px;
+  height: 52px;
+  line-height: 52px;
+  font-size: 26px;
+}
+body.tier-tablet .leaflet-bar {
+  border-radius: 10px;
+  overflow: hidden;
+}
+body.tier-tablet .leaflet-popup-content {
+  font-size: 16px;
+  margin: 14px 18px;
+}
+body.tier-tablet .leaflet-popup-content-wrapper {
+  border-radius: 12px;
+}
+
+/* ---- 大号翻页按钮（详情全屏内） ---- */
+.touchkit-nav-btn {
+  width: var(--wall-icon-btn);
+  height: var(--wall-icon-btn);
+  border-radius: 14px;
+  border: 1px solid var(--wall-panel-border);
+  background: rgba(0, 229, 255, 0.08);
+  color: #e6f7ff;
+  font-size: 26px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.touchkit-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
