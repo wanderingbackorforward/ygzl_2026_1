@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import './styles/tailwind.css'
 import './styles/wall.css'
+import './styles/screen-skin.css'
 import Nav from './shared/Nav'
 import { OverdueTicketAlert } from './components/tickets/OverdueTicketAlert'
 import { ModulesProvider } from './contexts/ModulesContext'
@@ -10,6 +11,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { AuthGuard } from './components/auth/AuthGuard'
 import ModuleGate from './components/modules/ModuleGate'
 import { DeviceTierProvider } from './contexts/DeviceTierContext'
+import { TechBackground } from './components/screen'
 
 const IS_MOBILE = import.meta.env.VITE_MOBILE === 'true'
 
@@ -71,7 +73,8 @@ function App() {
                 </div>
               }
             >
-              <div style={IS_MOBILE ? { paddingBottom: 64, background: '#03060a', minHeight: '100vh' } : { background: '#03060a', minHeight: '100vh' }}>
+              <div style={IS_MOBILE ? { paddingBottom: 64, background: 'transparent', minHeight: '100vh' } : { background: 'transparent', minHeight: '100vh' }}>
+                {!IS_MOBILE && <TechBackground />}
                 <Routes>
                   <Route path="/" element={<Navigate to="/cover" replace />} />
                   <Route path="/cover" element={<Cover />} />

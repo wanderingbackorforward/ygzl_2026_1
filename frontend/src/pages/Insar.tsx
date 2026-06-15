@@ -1738,12 +1738,12 @@ export default function Insar() {
     const selRiskLabel = selRisk === 'danger' ? { label: '危险', color: '#ff8b9a' } : selRisk === 'warning' ? { label: '预警', color: '#ffc24d' } : { label: '正常', color: '#7dff9d' }
 
     return (
-      <div className="flex h-screen flex-col bg-slate-950 text-white">
+      <div className="flex h-screen flex-col text-white" style={{ background: 'transparent' }}>
         {/* CommandBar */}
-        <div style={{ flexShrink: 0, padding: '12px 16px', borderBottom: '1px solid var(--wall-panel-border)', background: 'rgba(10,18,30,0.92)', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+        <div className="dt-panel" style={{ flexShrink: 0, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 'auto' }}>
-            <i className="fas fa-satellite" style={{ fontSize: 28, color: 'var(--wall-info)' }} />
-            <span style={{ fontSize: 'var(--wall-font-title)', fontWeight: 700 }}>InSAR 监测</span>
+            <i className="fas fa-satellite dt-glow" style={{ fontSize: 28, color: 'var(--wall-info)' }} />
+            <span className="dt-screen-title" style={{ fontSize: 'clamp(20px,2.6vw,30px)', letterSpacing: 3 }}>InSAR 监测</span>
           </div>
           <SegmentedControl
             ariaLabel="风险筛选"

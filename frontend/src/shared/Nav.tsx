@@ -146,9 +146,9 @@ export default function Nav() {
   /* ---- Web（桌面/iPad/壁挂）：低密度大号图标导航栏 ---- */
   return (
     <>
-      <nav style={{
+      <nav className="dt-nav" style={{
         padding: '10px 16px',
-        background: 'rgba(10,25,47,.92)',
+        background: 'rgba(8,16,28,.88)',
         borderBottom: '1px solid var(--wall-panel-border)',
         display: 'flex',
         alignItems: 'center',
@@ -162,6 +162,7 @@ export default function Nav() {
             <Link
               key={m.module_key}
               to={m.route_path}
+              className={active ? 'dt-nav-link--active' : undefined}
               onClick={(e) => { if (isPending) { e.preventDefault(); setPending(m) } }}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 9,

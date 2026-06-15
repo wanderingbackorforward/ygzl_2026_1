@@ -221,6 +221,23 @@ body {
   50%      { filter: drop-shadow(0 0 14px rgba(0, 229, 255, 0.9)); }
 }
 
+/* ============ 顶栏导航霓虹化 ============ */
+.dt-nav {
+  position: relative;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4), 0 0 30px rgba(0, 229, 255, 0.06);
+}
+.dt-nav::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.8) 20%, rgba(0, 229, 255, 0.8) 80%, transparent);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
+  pointer-events: none;
+}
+.dt-nav-link--active {
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.7);
+}
+
 /* ============ 升级现有 .touchkit-tile 为大屏面板外观 ============ */
 .touchkit-tile {
   background: linear-gradient(180deg, rgba(10, 22, 38, 0.82) 0%, rgba(6, 14, 26, 0.9) 100%) !important;
