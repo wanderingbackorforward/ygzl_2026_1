@@ -11,6 +11,7 @@ import { RiskRadarCard } from '../components/overview/RiskRadarCard'
 import { SettlementOverviewCard } from '../components/overview/SettlementOverviewCard'
 import { CracksOverviewCard } from '../components/overview/CracksOverviewCard'
 import { TemperatureOverviewCard } from '../components/overview/TemperatureOverviewCard'
+import { VibrationOverviewCard } from '../components/overview/VibrationOverviewCard'
 
 const DEFAULT_MODULES: AppModule[] = [
   { module_key: 'settlement', route_path: '/settlement', display_name: '沉降监测', icon_class: 'fas fa-chart-area', sort_order: 20, status: 'developed' },
@@ -34,8 +35,36 @@ function ChartPanel({ title, children, style }: { title: string; children: React
       <div style={{ display: 'flex', justifyContent: 'center', padding: '6px 0 0', flexShrink: 0 }}>
         <Decoration11>{title}</Decoration11>
       </div>
-      <div style={{ flex: 1, minHeight: 120, padding: '0 6px 6px' }}>{children}</div>
+      <div style={{ flex: 1, minHeight: 110, padding: '0 6px 6px' }}>{children}</div>
     </BorderBox13>
+  )
+}
+
+function KpiCell({ label, value, tone, unit }: { label: string; value: number; tone: 'info' | 'danger' | 'warning' | 'normal'; unit?: string }) {
+  return (
+    <BorderBox13 padding={10} style={{ minHeight: 116 }}>
+      <div style={{ fontSize: 13, color: 'rgba(215,244,255,0.82)', letterSpacing: 1 }}>{label}</div>
+      <GlowNumber value={value} tone={tone} unit={unit} />
+    </BorderBox13>
+  )
+}
+
+function RankPanel({ items }: { items: { name: string; value: number; tone: 'danger' | 'warning' | 'normal' | 'info' }[] }) {
+  const max = Math.max(1, ...items.map(i => i.value))
+  const colorOf = { danger: '#ff3b6b', warning: '#ffb020', normal: '#2cff9e', info: '#00f0ff' }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 9, padding: '2px 4px' }}>
+      {items.map((it, i) => (
+        <div key={it.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+          <span style={{ width: 18, color: '#7df0ff', fontWeight: 700, textAlign: 'center' }}>{i + 1}</span>
+          <span style={{ width: 52, color: '#d6f4ff', flexShrink: 0 }}>{it.name}</span>
+          <span style={{ flex: 1, height: 10, borderRadius: 5, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+            <span style={{ display: 'block', height: '100%', width: `${(it.value / max) * 100}%`, borderRadius: 5, background: `linear-gradient(90deg, ${colorOf[it.tone]}, ${colorOf[it.tone]}99)`, boxShadow: `0 0 8px ${colorOf[it.tone]}aa` }} />
+          </span>
+          <span style={{ width: 34, textAlign: 'right', color: colorOf[it.tone], fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{it.value}</span>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -67,6 +96,13 @@ function CoverInner() {
   const avgTemp = summary?.temperature?.avg_temp
   const safetyTone = safety >= 80 ? 'normal' : safety >= 60 ? 'warning' : 'danger'
 
+  const rankItems = [
+    { name: '沉降', value: settlementAlert, tone: (settlementAlert > 0 ? 'danger' : 'normal') as const },
+    { name: '裂缝', value: crackExpanding, tone: (crackExpanding > 0 ? 'warning' : 'normal') as const },
+    { name: '工单', value: pendingCount, tone: (pendingCount > 0 ? 'warning' : 'normal') as const },
+    { name: '温度', value: avgTemp == null ? 0 : Math.round(Math.abs(avgTemp - 20)), tone: 'info' as const },
+  ]
+
   const tickerItems = [
     '数字孪生监测管控平台运行中',
     `整体风险等级：${sevLabel}`,
@@ -80,47 +116,34 @@ function CoverInner() {
     <div style={{ padding: 'var(--wall-gap)', minHeight: 'calc(100vh - 96px)', display: 'flex', flexDirection: 'column', gap: 'var(--wall-gap)', position: 'relative', zIndex: 1 }}>
       <ScreenHeader title="隧道工程安全监测数字孪生" subtitle="DIGITAL TWIN · SAFETY MONITORING PLATFORM" status={`系统在线 · ${sevLabel}`} />
 
-      {/* KPI 行：真实数据 + 大号发光数字 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--wall-gap)' }}>
+      {/* KPI 翻牌行 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(155px, 1fr))', gap: 'var(--wall-gap)' }}>
+        <KpiCell label="安全评分" value={safety} tone={safetyTone} unit="分" />
+        <KpiCell label="监测点总数" value={totalPts} tone="info" unit="个" />
+        <KpiCell label="沉降预警" value={settlementAlert} tone={settlementAlert > 0 ? 'danger' : 'normal'} unit="处" />
+        <KpiCell label="裂缝扩展" value={crackExpanding} tone={crackExpanding > 0 ? 'warning' : 'normal'} unit="条" />
+        <KpiCell label="温度均值" value={avgTemp ?? 0} tone="info" unit="℃" />
         <BorderBox13 padding={10} style={{ minHeight: 116 }}>
-          <div style={{ fontSize: 13, color: 'rgba(215,244,255,0.82)', letterSpacing: 1 }}>安全评分</div>
-          <GlowNumber value={safety} tone={safetyTone} unit="分" />
-        </BorderBox13>
-        <BorderBox13 padding={10} style={{ minHeight: 116 }}>
-          <div style={{ fontSize: 13, color: 'rgba(215,244,255,0.82)', letterSpacing: 1 }}>监测点总数</div>
-          <GlowNumber value={totalPts} tone="info" unit="个" />
-        </BorderBox13>
-        <BorderBox13 padding={10} style={{ minHeight: 116 }}>
-          <div style={{ fontSize: 13, color: 'rgba(215,244,255,0.82)', letterSpacing: 1 }}>沉降预警</div>
-          <GlowNumber value={settlementAlert} tone={settlementAlert > 0 ? 'danger' : 'normal'} unit="处" />
-        </BorderBox13>
-        <BorderBox13 padding={10} style={{ minHeight: 116 }}>
-          <div style={{ fontSize: 13, color: 'rgba(215,244,255,0.82)', letterSpacing: 1 }}>裂缝扩展</div>
-          <GlowNumber value={crackExpanding} tone={crackExpanding > 0 ? 'warning' : 'normal'} unit="条" />
-        </BorderBox13>
-        <BorderBox13 padding={10} style={{ minHeight: 116 }}>
-          <div style={{ fontSize: 13, color: 'rgba(215,244,255,0.82)', letterSpacing: 1 }}>温度均值</div>
-          <GlowNumber value={avgTemp ?? 0} tone="info" unit="℃" />
-        </BorderBox13>
-        <BorderBox13 padding={10} style={{ minHeight: 116 }}>
-          <div style={{ fontSize: 13, color: 'rgba(215,244,255,0.82)', letterSpacing: 1 }}>当前时间</div>
-          <div className="dt-clock" style={{ fontSize: 'clamp(28px, 3.2vw, 42px)', fontWeight: 700, textShadow: '0 0 14px rgba(0,229,255,0.6)' }}>{clock}</div>
+          <div style={{ fontSize: 13, color: 'rgba(215,244,255,0.82)', letterSpacing: 1 }}>系统时间</div>
+          <div className="dt-clock" style={{ fontSize: 'clamp(30px, 3.4vw, 46px)', fontWeight: 700, textShadow: '0 0 14px rgba(0,229,255,0.6)' }}>{clock}</div>
         </BorderBox13>
       </div>
 
-      {/* 中段三栏：真实图表密集填充 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.25fr) minmax(0,1fr)', gap: 'var(--wall-gap)', height: 'clamp(360px, 48vh, 560px)' }}>
+      {/* 中段三栏：左3 / 中雷达 / 右3（对标 Figma 密度） */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr)', gap: 'var(--wall-gap)', height: 'clamp(380px, 50vh, 620px)' }}>
         {/* 左栏 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--wall-gap)', minHeight: 0 }}>
           <ChartPanel title="安全评分" style={{ flex: 1 }}><SafetyScoreGaugeCard cardId="cov-safety" /></ChartPanel>
           <ChartPanel title="裂缝状态" style={{ flex: 1 }}><CracksOverviewCard cardId="cov-cracks" /></ChartPanel>
+          <ChartPanel title="振动状态" style={{ flex: 1 }}><VibrationOverviewCard cardId="cov-vib" /></ChartPanel>
         </div>
-        {/* 中栏：风险雷达 */}
+        {/* 中栏：风险雷达（hero） */}
         <ChartPanel title="多维风险态势" style={{ height: '100%' }}><RiskRadarCard cardId="cov-risk" /></ChartPanel>
         {/* 右栏 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--wall-gap)', minHeight: 0 }}>
           <ChartPanel title="沉降分布" style={{ flex: 1 }}><SettlementOverviewCard cardId="cov-settlement" /></ChartPanel>
           <ChartPanel title="温度趋势" style={{ flex: 1 }}><TemperatureOverviewCard cardId="cov-temp" /></ChartPanel>
+          <ChartPanel title="风险排行" style={{ flex: 1 }}><RankPanel items={rankItems} /></ChartPanel>
         </div>
       </div>
 
