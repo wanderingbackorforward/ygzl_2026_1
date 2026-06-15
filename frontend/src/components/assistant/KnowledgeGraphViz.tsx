@@ -124,6 +124,36 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
     setIsDragging(false)
   }, [])
 
+  // 触屏：单指平移 + 双指捏合缩放（鼠标拖拽的触屏等价物）
+  const touchState = useRef<{ mode: 'pan' | 'pinch' | null; sx: number; sy: number; pdist: number; sscale: number }>({ mode: null, sx: 0, sy: 0, pdist: 0, sscale: 1 })
+  const tdist = (a: React.Touch, b: React.Touch) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      const t = e.touches[0]
+      touchState.current = { mode: 'pan', sx: t.clientX - transform.x, sy: t.clientY - transform.y, pdist: 0, sscale: transform.scale }
+    } else if (e.touches.length >= 2) {
+      touchState.current = { mode: 'pinch', sx: 0, sy: 0, pdist: tdist(e.touches[0], e.touches[1]), sscale: transform.scale }
+    }
+  }, [transform])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const st = touchState.current
+    if (!st.mode) return
+    if (st.mode === 'pan' && e.touches.length === 1) {
+      const t = e.touches[0]
+      setTransform(prev => ({ ...prev, x: t.clientX - st.sx, y: t.clientY - st.sy }))
+    } else if (st.mode === 'pinch' && e.touches.length >= 2) {
+      const d = tdist(e.touches[0], e.touches[1])
+      const scale = Math.max(0.3, Math.min(3, st.sscale * (d / Math.max(1, st.pdist))))
+      setTransform(prev => ({ ...prev, scale }))
+    }
+  }, [])
+
+  const handleTouchEnd = useCallback(() => {
+    touchState.current = { mode: null, sx: 0, sy: 0, pdist: 0, sscale: 1 }
+  }, [])
+
   // Zoom handler - use native event listener to avoid passive event issue
   useEffect(() => {
     const container = containerRef.current
@@ -222,11 +252,14 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
       <div
         ref={containerRef}
         className="relative cursor-grab active:cursor-grabbing"
-        style={{ height: '320px' }}
+        style={{ height: '320px', touchAction: 'none' }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         onClick={() => { setHoveredNode(null); setHoveredEdge(null) }}
       >
         <svg

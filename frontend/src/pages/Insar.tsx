@@ -572,6 +572,12 @@ function InsarNativeMap(
       zoomControl: true,
       attributionControl: false,
       preferCanvas: true,
+      // 触屏/大屏：关滚轮缩放（壁挂屏无滚轮，避免外接鼠标误触），开捏合/拖拽/tap
+      scrollWheelZoom: false,
+      touchZoom: true,
+      dragging: true,
+      tap: true,
+      doubleClickZoom: true,
     }).setView([31.245, 121.575], 14)
 
     const builtIn = createBuiltInBaseLayers()

@@ -269,3 +269,45 @@ body {
 /* ============ 手机档：关背景动画，保性能 ============ */
 body.tier-phone .dt-bg-overlay { display: none; }
 body.tier-phone .dt-radar::after { animation: none; }
+
+/* ============ 触屏人体工学（iPad / 壁挂大屏） ============ */
+/* 去除 300ms 点击延迟、禁止双击缩放、去点击高亮、禁选中文本（UI 外壳） */
+body.tier-tablet button,
+body.tier-tablet a,
+body.tier-tablet [role='button'],
+body.tier-tablet summary,
+body.tier-tablet .touchkit-tile,
+body.tier-tablet .touchkit-icon-btn,
+body.tier-tablet .touchkit-segmented__item {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* 触屏按压反馈（平板无 :hover，用 :active 替代） */
+body.tier-tablet .touchkit-tile--clickable:active {
+  transform: scale(0.985);
+  filter: brightness(1.18);
+}
+body.tier-tablet .touchkit-icon-btn:active,
+body.tier-tablet .touchkit-segmented__item:active,
+body.tier-tablet .dt-nav a:active {
+  transform: scale(0.96);
+  filter: brightness(1.2);
+}
+/* Leaflet 地图：交由其自身手势处理（pinch/drag），不被浏览器拦截 */
+body.tier-tablet .leaflet-container {
+  touch-action: none;
+}
+/* 滚动区触屏惯性（iOS 13+ 默认已支持，显式声明兜底） */
+body.tier-tablet [style*='overflow'] {
+  -webkit-overflow-scrolling: touch;
+}
+/* 输入控件保留默认手势与选择 */
+body.tier-tablet input,
+body.tier-tablet textarea,
+body.tier-tablet select {
+  touch-action: auto;
+  -webkit-user-select: text;
+  user-select: text;
+}
