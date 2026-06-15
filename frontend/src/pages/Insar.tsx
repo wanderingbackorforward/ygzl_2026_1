@@ -1145,7 +1145,7 @@ function InsarNativeMap(
       grid: { left: '10%', right: '8%', bottom: '18%', top: '18%', containLabel: true },
       xAxis: { type: 'category', data: dates, boundaryGap: false, axisLabel: { fontSize: 10, rotate: 30 } },
       yAxis: { type: 'value', name: 'mm', nameTextStyle: { fontSize: 10 }, axisLabel: { fontSize: 10 } },
-      series: [{ name: 'D', type: 'line', data: values, smooth: true, symbol: 'circle', symbolSize: 4, lineStyle: { width: 2 }, itemStyle: { color: '#00e5ff' } }],
+      series: [{ name: 'D', type: 'line', data: values, smooth: true, symbol: 'circle', symbolSize: 5, lineStyle: { width: 2.5, shadowColor: 'rgba(0,229,255,0.7)', shadowBlur: 10 }, itemStyle: { color: '#00e5ff' }, areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(0,229,255,0.35)' }, { offset: 1, color: 'rgba(0,229,255,0)' }] } } }],
       animationDuration: 600
     }
   }, [series?.id, series?.series, selected?.id])
@@ -1403,7 +1403,7 @@ export default function Insar() {
       grid: { left: '12%', right: '8%', top: '20%', bottom: '14%' },
       xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 9, rotate: 30 } },
       yAxis: { type: 'value', axisLabel: { fontSize: 10 } },
-      series: [{ name: 'D', type: 'line', data: values, smooth: true, symbol: 'circle', symbolSize: 4, lineStyle: { width: 2 }, itemStyle: { color: '#00e5ff' } }],
+      series: [{ name: 'D', type: 'line', data: values, smooth: true, symbol: 'circle', symbolSize: 5, lineStyle: { width: 2.5, shadowColor: 'rgba(0,229,255,0.7)', shadowBlur: 10 }, itemStyle: { color: '#00e5ff' }, areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(0,229,255,0.35)' }, { offset: 1, color: 'rgba(0,229,255,0)' }] } } }],
       animationDuration: 600,
     }
   }, [panelSeries?.id, panelSeries?.series, selectedPoint?.id])
