@@ -38,11 +38,11 @@ export const RiskRadarCard: React.FC<CardComponentProps> = () => {
           { name: '振动', max: 100 },
         ],
         center: ['50%', '48%'],
-        radius: '55%',
-        axisName: { color: '#00e5ff', fontSize: 13 },
-        splitArea: { areaStyle: { color: ['rgba(0,229,255,0.08)', 'rgba(0,0,0,0)'] } },
-        axisLine: { lineStyle: { color: 'rgba(0,229,255,0.25)' } },
-        splitLine: { lineStyle: { color: 'rgba(0,229,255,0.25)' } },
+        radius: '58%',
+        axisName: { color: '#7df0ff', fontSize: 13, textShadowColor: 'rgba(0,229,255,0.6)', textShadowBlur: 6 },
+        splitArea: { areaStyle: { color: ['rgba(0,229,255,0.06)', 'rgba(0,0,0,0)'] } },
+        axisLine: { lineStyle: { color: 'rgba(0,229,255,0.3)' } },
+        splitLine: { lineStyle: { color: 'rgba(0,229,255,0.3)' } },
       },
       series: [
         {
@@ -51,8 +51,16 @@ export const RiskRadarCard: React.FC<CardComponentProps> = () => {
             {
               value: [scores.settlement, scores.crack, scores.temp, scores.vibration],
               name: '各项指标健康度',
-              areaStyle: { color: 'rgba(0, 229, 255, 0.35)' },
-              itemStyle: { color: '#00e5ff' },
+              symbol: 'circle',
+              symbolSize: 7,
+              lineStyle: { width: 2.5, shadowColor: 'rgba(0,229,255,0.9)', shadowBlur: 12 },
+              areaStyle: {
+                color: { type: 'radial', x: 0.5, y: 0.5, r: 0.8, colorStops: [
+                  { offset: 0, color: 'rgba(0,229,255,0.5)' },
+                  { offset: 1, color: 'rgba(0,229,255,0.05)' },
+                ] } as any,
+              },
+              itemStyle: { color: '#00f0ff', shadowColor: 'rgba(0,229,255,0.9)', shadowBlur: 10 },
             },
           ],
         },
