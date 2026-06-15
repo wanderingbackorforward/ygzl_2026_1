@@ -143,7 +143,7 @@ function CoverInner() {
   const clock = now.getTime() ? now.toLocaleTimeString('zh-CN', { hour12: false }) : '--:--:--'
 
   return (
-    <div style={{ padding: 'var(--wall-gap)', minHeight: 'calc(100vh - 96px)', display: 'flex', flexDirection: 'column', gap: 'var(--wall-gap)', position: 'relative', zIndex: 1 }}>
+    <div style={{ padding: 'var(--wall-gap)', minHeight: 'calc(100vh - 36px)', display: 'flex', flexDirection: 'column', gap: 'var(--wall-gap)', position: 'relative', zIndex: 1 }}>
       <ScreenHeader title="隧道工程安全监测数字孪生" subtitle="DIGITAL TWIN · SAFETY MONITORING PLATFORM" status={`系统在线 · ${sevLabel}`} />
 
       {/* KPI 翻牌行 */}

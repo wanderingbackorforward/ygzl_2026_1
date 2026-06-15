@@ -73,7 +73,7 @@ function App() {
                 </div>
               }
             >
-              <div style={IS_MOBILE ? { paddingBottom: 64, background: 'transparent', minHeight: '100vh' } : { background: 'transparent', minHeight: '100vh' }}>
+              <div style={IS_MOBILE ? { paddingBottom: 64, background: 'transparent', minHeight: '100vh' } : { background: 'transparent', minHeight: '100vh', paddingLeft: 'var(--sidebar-w, 76px)' }}>
                 {!IS_MOBILE && <TechBackground />}
                 <Routes>
                   <Route path="/" element={<Navigate to="/cover" replace />} />
