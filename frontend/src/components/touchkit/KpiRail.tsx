@@ -15,15 +15,14 @@ interface KpiRailProps {
 export const KpiRail: React.FC<KpiRailProps> = ({ title, children, footer }) => {
   return (
     <div
+      className="touchkit-kpirail"
       style={{
-        width: 'clamp(280px, 30%, 420px)',
         flexShrink: 0,
         height: '100%',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
         background: 'rgba(8, 14, 24, 0.6)',
-        borderLeft: '1px solid var(--wall-panel-border)',
         padding: 'var(--wall-gap)',
         gap: 'var(--wall-gap)',
       }}

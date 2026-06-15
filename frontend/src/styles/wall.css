@@ -206,3 +206,24 @@ body.tier-tablet .leaflet-popup-content-wrapper {
   opacity: 0.3;
   cursor: not-allowed;
 }
+
+/* ---- KpiRail 宽度（CSS 化，便于手机端覆盖） ---- */
+.touchkit-kpirail {
+  width: clamp(280px, 30%, 420px);
+  border-left: 1px solid var(--wall-panel-border);
+}
+
+/* ---- InSAR 大屏布局：手机端竖向堆叠 ---- */
+body.tier-phone .insar-wall-main {
+  flex-direction: column !important;
+}
+body.tier-phone .insar-wall-main > .insar-wall-map {
+  flex: 1 1 50%;
+  min-height: 40vh;
+}
+body.tier-phone .touchkit-kpirail {
+  width: 100%;
+  border-left: none;
+  border-top: 1px solid var(--wall-panel-border);
+  max-height: 50vh;
+}
