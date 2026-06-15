@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useAgentStore } from '../stores/agentStore'
 import type { AppModule } from '../types/modules'
 import FullscreenModal from '../components/layout/FullscreenModal'
+import { useDeviceTier } from '../contexts/DeviceTierContext'
 
 const IS_MOBILE = import.meta.env.VITE_MOBILE === 'true'
 
@@ -81,6 +82,8 @@ export default function Nav() {
   const [moreOpen, setMoreOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const fetchBadge = useAgentStore(s => s.fetchBadge)
+  const badge = useAgentStore(s => s.badge)
+  const { isTablet } = useDeviceTier()
 
   // 初始拉取 badge + 每 60 秒刷新
   useEffect(() => {
@@ -265,6 +268,82 @@ export default function Nav() {
             <span>更多</span>
           </button>
         </nav>
+      </>
+    )
+  }
+
+  /* ---- Tablet / wall top nav (低密度大号图标栏) ---- */
+  if (isTablet) {
+    return (
+      <>
+        <nav style={{
+          padding: '10px 16px',
+          background: 'rgba(10,25,47,.92)',
+          borderBottom: '1px solid var(--wall-panel-border)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          flexWrap: 'wrap',
+        }}>
+          {items.map(m => {
+            const active = pathname === m.route_path
+            const isPending = m.status === 'pending'
+            return (
+              <Link
+                key={m.module_key}
+                to={m.route_path}
+                onClick={(e) => { if (isPending) { e.preventDefault(); setPending(m) } }}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 9,
+                  minHeight: 52, padding: '0 16px', borderRadius: 12,
+                  fontSize: 17, textDecoration: 'none',
+                  color: active ? '#fff' : '#b0cfee',
+                  background: active ? 'rgba(0,229,255,.22)' : (isPending ? 'rgba(250,173,20,.1)' : 'rgba(0,229,255,.06)'),
+                  border: `1px solid ${active ? 'rgba(0,229,255,.6)' : isPending ? 'rgba(250,173,20,.35)' : 'rgba(0,229,255,.2)'}`,
+                  position: 'relative',
+                }}
+              >
+                {m.icon_class && <i className={m.icon_class} style={{ fontSize: 20 }} />}
+                <span>{m.display_name}</span>
+                {m.module_key === 'settlement' && badge.has_unread && !active && (
+                  <span style={{ position:'absolute', top:6, right:6, width:9, height:9, borderRadius:'50%', background: badge.max_severity === 'critical' ? '#f87171' : '#fbbf24' }} />
+                )}
+              </Link>
+            )
+          })}
+
+          {isAuthEnabled && user && (
+            <button
+              type="button"
+              onClick={() => { if (window.confirm('确认退出登录？')) logout() }}
+              style={{
+                marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 9,
+                minHeight: 52, padding: '0 16px', borderRadius: 12,
+                background: 'rgba(100,255,218,.1)', border: '1px solid rgba(100,255,218,.3)',
+                color: '#64ffda', fontSize: 16, cursor: 'pointer',
+              }}
+            >
+              <i className="fas fa-user-circle" style={{ fontSize: 20 }} />
+              <span>{user.displayName}</span>
+              <i className="fas fa-sign-out-alt" style={{ fontSize: 16, opacity: 0.8 }} />
+            </button>
+          )}
+        </nav>
+        <FullscreenModal
+          isOpen={!!pending}
+          onClose={() => setPending(null)}
+          title={pending?.pending_popup_title || '模块待开发'}
+        >
+          <div style={{ color: '#aaddff', fontSize: 16, lineHeight: 1.7, maxWidth: 900 }}>
+            <div style={{ marginBottom: 16 }}>{pending?.pending_popup_body || '该模块正在开发中'}</div>
+            <button
+              onClick={() => setPending(null)}
+              style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid rgba(64,174,255,.6)', background: 'rgba(64,174,255,.12)', color: '#aaddff', cursor: 'pointer', fontSize: 16 }}
+            >
+              我知道了
+            </button>
+          </div>
+        </FullscreenModal>
       </>
     )
   }

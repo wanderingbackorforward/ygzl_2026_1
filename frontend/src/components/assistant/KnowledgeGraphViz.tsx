@@ -227,6 +227,7 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onClick={() => { setHoveredNode(null); setHoveredEdge(null) }}
       >
         <svg
           ref={svgRef}
@@ -289,6 +290,7 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
                     strokeWidth={10}
                     onMouseEnter={() => setHoveredEdge(edge)}
                     onMouseLeave={() => setHoveredEdge(null)}
+                    onClick={(e) => { e.stopPropagation(); setHoveredEdge(prev => (prev === edge ? null : edge)); setHoveredNode(null) }}
                     style={{ cursor: 'pointer' }}
                   />
                 </g>
@@ -325,7 +327,10 @@ export default function KnowledgeGraphViz({ nodes, edges, stats }: KnowledgeGrap
                   onMouseEnter={() => setHoveredNode(node)}
                   onMouseLeave={() => setHoveredNode(null)}
                   style={{ cursor: isPaper && node.attrs?.url ? 'pointer' : 'default' }}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setHoveredNode(prev => (prev?.id === node.id ? null : node))
+                    setHoveredEdge(null)
                     if (isPaper && node.attrs?.url) {
                       window.open(node.attrs.url, '_blank', 'noreferrer')
                     }
