@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import type { CardConfig } from '../../types/layout'
 import { FullscreenFocus } from '../touchkit/FullscreenFocus'
+import { BorderBox13 } from '../screen/datav/BorderBox13'
 
 /**
  * 单卡片错误边界：避免一张坏卡片拖垮整面墙。
@@ -68,40 +69,42 @@ export const TileGrid: React.FC<TileGridProps> = ({ cards }) => {
         }}
       >
         {cards.map(card => (
-          <div
+          <BorderBox13
             key={card.id}
-            className="touchkit-tile"
-            style={{ minHeight: 'var(--wall-min-target)', padding: 0, overflow: 'hidden' }}
+            style={{ minHeight: 'var(--wall-min-target)' }}
+            padding={0}
           >
-            {/* 头部 */}
-            <div
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '12px 16px', flexShrink: 0,
-                borderBottom: '1px solid rgba(255,255,255,0.06)',
-                background: 'rgba(0,229,255,0.05)',
-              }}
-            >
-              {card.icon && <i className={card.icon} style={{ fontSize: 20, color: 'var(--wall-info)' }} />}
-              <span style={{ flex: 1, fontSize: 'var(--wall-font-lg)', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {card.title}
-              </span>
-              <button
-                type="button"
-                className="touchkit-icon-btn"
-                onClick={() => setFocusId(card.id)}
-                title="展开"
-                aria-label={`展开 ${card.title}`}
-                style={{ minHeight: 44, minWidth: 44, padding: '0 12px' }}
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+              {/* 头部 */}
+              <div
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '12px 16px', flexShrink: 0,
+                  borderBottom: '1px solid rgba(0,229,255,0.12)',
+                  background: 'linear-gradient(90deg, rgba(0,229,255,0.1), transparent 70%)',
+                }}
               >
-                <i className="fas fa-expand" />
-              </button>
+                {card.icon && <i className={card.icon} style={{ fontSize: 20, color: 'var(--wall-info)', textShadow: '0 0 8px rgba(0,229,255,0.6)' }} />}
+                <span style={{ flex: 1, fontSize: 'var(--wall-font-lg)', fontWeight: 600, color: '#eafcff', letterSpacing: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textShadow: '0 0 8px rgba(0,229,255,0.4)' }}>
+                  {card.title}
+                </span>
+                <button
+                  type="button"
+                  className="touchkit-icon-btn"
+                  onClick={() => setFocusId(card.id)}
+                  title="展开"
+                  aria-label={`展开 ${card.title}`}
+                  style={{ minHeight: 44, minWidth: 44, padding: '0 12px' }}
+                >
+                  <i className="fas fa-expand" />
+                </button>
+              </div>
+              {/* 主体 */}
+              <div style={{ flex: 1, minHeight: 160, padding: 12, overflow: 'auto' }}>
+                {renderBody(card, {})}
+              </div>
             </div>
-            {/* 主体 */}
-            <div style={{ flex: 1, minHeight: 160, padding: 12, overflow: 'auto' }}>
-              {renderBody(card, {})}
-            </div>
-          </div>
+          </BorderBox13>
         ))}
       </div>
 

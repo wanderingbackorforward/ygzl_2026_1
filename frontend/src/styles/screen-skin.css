@@ -212,6 +212,10 @@ body {
   50%      { opacity: 1;   transform: translate(-50%, -50%) scale(1.25); }
 }
 
+/* ============ DataV 边框顶部虚线流动 ============ */
+.dv-dash-flow { animation: dv-dash 1.2s linear infinite; }
+@keyframes dv-dash { to { stroke-dashoffset: -30; } }
+
 /* ============ 通用呼吸辉光 ============ */
 .dt-glow {
   animation: dt-glow 3s ease-in-out infinite;
