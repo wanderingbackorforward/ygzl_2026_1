@@ -8,6 +8,8 @@ import { classifyVelocity, formatKeyDateField, toNumberOrNull, type Thresholds }
 import { kmlToBestLineStringFeature } from '../lib/kml'
 import { createBuiltInBaseLayers, createRasterLayer, loadOpticalRasterLayers } from '../lib/mapLayers'
 import { extractInsarContext } from '../utils/contextExtractors/insarExtractor'
+import { useDeviceTier } from '../contexts/DeviceTierContext'
+import { SegmentedControl, LargeIconButton, StatusTile, KpiRail, FullscreenFocus, TourControl } from '../components/touchkit'
 
 type FeatureCollection = { type: 'FeatureCollection', features: any[] }
 type InsarMeta = { dataset?: string, cached?: boolean, feature_count?: number, total_feature_count?: number, value_field?: string, args?: Record<string, any> }
@@ -1348,6 +1350,8 @@ export default function Insar() {
   const [patrolActive, setPatrolActive] = useState(false)
   const [patrolIndex, setPatrolIndex] = useState(0)
   const patrolAbortRef = useRef<AbortController | null>(null)
+  const { isTablet } = useDeviceTier()
+  const [showTrends, setShowTrends] = useState(false)
 
   useEffect(() => {
     try {
@@ -1704,6 +1708,274 @@ export default function Insar() {
     if (patrolAbortRef.current) patrolAbortRef.current.abort()
     setPatrolActive(false)
     patrolAbortRef.current = null
+  }
+
+  // ===== 平板 / 壁挂大屏布局（控制室）=====
+  if (isTablet) {
+    const topList = riskSummary.top
+    const patrolTotal = Math.min(topList.length, 10)
+    const currentIdx = selectedPoint ? topList.findIndex(p => p.id === selectedPoint.id) : -1
+    const goTopPoint = (delta: number) => {
+      if (currentIdx < 0) return
+      const ni = currentIdx + delta
+      if (ni < 0 || ni >= topList.length) return
+      const p = topList[ni]
+      setFocusId(null)
+      window.setTimeout(() => {
+        setFocusId(p.id)
+        setSelectedPoint({ id: p.id, lat: p.lat, lng: p.lng, props: { velocity: p.velocity } })
+      }, 0)
+    }
+    const focusTopPoint = (p: RiskPoint) => {
+      setMode('native'); setIndicator('threshold'); setFocusId(null)
+      window.setTimeout(() => {
+        setFocusId(p.id)
+        setSelectedPoint({ id: p.id, lat: p.lat, lng: p.lng, props: { velocity: p.velocity } })
+      }, 0)
+    }
+    const filteredTop = riskFilter === 'all' || riskFilter === 'normal' ? topList : topList.filter(p => p.risk === riskFilter)
+
+    const selVelocity = selectedPoint ? getVelocityFromProps(selectedPoint.props, velocityField) : null
+    const selRisk: RiskLevel = selVelocity !== null ? riskFromVelocity(selVelocity, thresholds) : 'normal'
+    const selRiskLabel = selRisk === 'danger' ? { label: '危险', color: '#ff8b9a' } : selRisk === 'warning' ? { label: '预警', color: '#ffc24d' } : { label: '正常', color: '#7dff9d' }
+
+    return (
+      <div className="flex h-screen flex-col bg-slate-950 text-white">
+        {/* CommandBar */}
+        <div style={{ flexShrink: 0, padding: '12px 16px', borderBottom: '1px solid var(--wall-panel-border)', background: 'rgba(10,18,30,0.92)', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 'auto' }}>
+            <i className="fas fa-satellite" style={{ fontSize: 28, color: 'var(--wall-info)' }} />
+            <span style={{ fontSize: 'var(--wall-font-title)', fontWeight: 700 }}>InSAR 监测</span>
+          </div>
+          <SegmentedControl
+            ariaLabel="风险筛选"
+            value={riskFilter}
+            onChange={(k) => setRiskFilter(k as RiskFilter)}
+            items={[
+              { key: 'all', label: '全部', count: riskSummary.total },
+              { key: 'danger', label: '危险', count: riskSummary.danger, tone: 'danger', icon: 'fas fa-exclamation-triangle' },
+              { key: 'warning', label: '预警', count: riskSummary.warning, tone: 'warning' },
+              { key: 'normal', label: '正常', count: riskSummary.normal, tone: 'normal' },
+            ]}
+          />
+          <LargeIconButton icon="fas fa-th" label="风险分区" active={showRiskGrid} onClick={() => setShowRiskGrid(v => !v)} />
+          <TourControl
+            active={patrolActive}
+            index={patrolIndex}
+            total={patrolTotal}
+            onToggle={patrolActive ? stopPatrol : startPatrol}
+            disabled={!topList.length}
+          />
+          <LargeIconButton icon="fas fa-cog" label="设置" active={showSettings} onClick={() => setShowSettings(true)} />
+        </div>
+
+        {/* 主区：地图 + KpiRail */}
+        <div className="min-h-0 flex-1 flex overflow-hidden">
+          <div className="flex-1 min-w-0 overflow-hidden relative">
+            <InsarNativeMap
+              dataset={dataset}
+              indicator={indicator}
+              valueField={valueField}
+              velocityFieldName={velocityField}
+              thresholds={thresholds}
+              useBbox={useBbox}
+              showZones={showZones}
+              zoneEpsM={zoneEpsM}
+              zoneMinPts={zoneMinPts}
+              chainageBinSize={chainageBinSize}
+              chainageMaxDistance={chainageMaxDistance}
+              onSummaryChange={setRiskSummary}
+              onStatsChange={setRiskStats}
+              onZonesChange={setZonesPanel}
+              focusId={focusId}
+              focusZoneId={focusZoneId}
+              onSelectedChange={setSelectedPoint}
+              riskFilter={riskFilter}
+              showRiskGrid={showRiskGrid}
+            />
+          </div>
+
+          <KpiRail
+            title="风险概览"
+            footer={
+              <div>
+                <div style={{ fontSize: 'var(--wall-font-lg)', fontWeight: 700, color: '#fff', marginBottom: 10 }}>
+                  高风险点（{filteredTop.length}）
+                </div>
+                {filteredTop.length ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {filteredTop.slice(0, 20).map(p => {
+                      const isDanger = p.risk === 'danger'
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => focusTopPoint(p)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+                            padding: '12px 14px', borderRadius: 12, textAlign: 'left',
+                            background: 'rgba(10,18,30,0.85)',
+                            border: `1px solid ${isDanger ? 'rgba(255,62,95,0.4)' : 'rgba(255,158,13,0.4)'}`,
+                            color: '#fff', cursor: 'pointer', minHeight: 'var(--wall-min-target)',
+                          }}
+                        >
+                          <span style={{ width: 5, height: 28, borderRadius: 3, flexShrink: 0, background: isDanger ? 'var(--wall-danger)' : 'var(--wall-warning)' }} />
+                          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 16 }}>
+                            {p.id || '未命名'}
+                          </span>
+                          <span style={{ flexShrink: 0, fontSize: 16, fontVariantNumeric: 'tabular-nums', color: isDanger ? '#ff8b9a' : '#ffc24d' }}>
+                            {p.velocity.toFixed(1)}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div style={{ padding: 20, textAlign: 'center', color: 'rgba(230,247,255,0.5)' }}>暂无高风险点</div>
+                )}
+              </div>
+            }
+          >
+            <StatusTile label="危险" value={riskSummary.danger} tone="danger" icon="fas fa-exclamation-triangle" sub="处" />
+            <StatusTile label="预警" value={riskSummary.warning} tone="warning" icon="fas fa-exclamation-circle" sub="处" />
+            <StatusTile label="正常" value={riskSummary.normal} tone="normal" icon="fas fa-check-circle" sub="处" />
+            <StatusTile label="总点数" value={riskSummary.total} tone="info" icon="fas fa-map-marker-alt" />
+            <StatusTile label="速度分布 / 里程分段" value={<i className="fas fa-chart-bar" />} tone="info" onClick={() => setShowTrends(true)} />
+          </KpiRail>
+        </div>
+
+        {/* 点位详情全屏 */}
+        <FullscreenFocus
+          isOpen={!!selectedPoint}
+          onClose={() => setSelectedPoint(null)}
+          title={selectedPoint ? `点位 ${selectedPoint.id || ''}` : ''}
+          onPrev={currentIdx > 0 ? () => goTopPoint(-1) : undefined}
+          onNext={currentIdx >= 0 && currentIdx < topList.length - 1 ? () => goTopPoint(1) : undefined}
+          prevDisabled={currentIdx <= 0}
+          nextDisabled={currentIdx < 0 || currentIdx >= topList.length - 1}
+        >
+          {selectedPoint && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.2fr)', gap: 20, height: '100%' }}>
+              {/* 左：读数 + 建议 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, overflow: 'auto', minWidth: 0 }}>
+                <div className="touchkit-tile" style={{ minHeight: 0 }}>
+                  <span className={`touchkit-tile__bar touchkit-tile__bar--${selRisk}`} />
+                  <div className="touchkit-label">点位 ID</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4, wordBreak: 'break-all' }}>{selectedPoint.id || '未命名'}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 20px', marginTop: 14, fontSize: 16 }}>
+                    <div><div style={{ opacity: 0.6 }}>经度</div><div style={{ fontFamily: 'monospace' }}>{selectedPoint.lng.toFixed(6)}</div></div>
+                    <div><div style={{ opacity: 0.6 }}>纬度</div><div style={{ fontFamily: 'monospace' }}>{selectedPoint.lat.toFixed(6)}</div></div>
+                    {selVelocity !== null && (
+                      <>
+                        <div><div style={{ opacity: 0.6 }}>速度</div><div style={{ fontFamily: 'monospace' }}>{selVelocity.toFixed(2)} mm/年</div></div>
+                        <div><div style={{ opacity: 0.6 }}>风险</div><div style={{ color: selRiskLabel.color, fontWeight: 700 }}>{selRiskLabel.label}</div></div>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {selVelocity !== null && (() => {
+                  const measures = expertMeasuresForRisk(selRisk)
+                  if (!measures.length) return null
+                  return (
+                    <div className="touchkit-tile" style={{ minHeight: 0 }}>
+                      <div className="touchkit-label" style={{ marginBottom: 10 }}>
+                        <i className="fas fa-clipboard-list" style={{ marginRight: 8 }} />
+                        施工建议 <span style={{ color: selRiskLabel.color }}>({selRiskLabel.label})</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {measures.map((m, idx) => (
+                          <div key={m.key} style={{ padding: 12, borderRadius: 10, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                              <span style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 999, background: 'rgba(0,229,255,0.18)', color: '#7df0ff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14 }}>{idx + 1}</span>
+                              <div style={{ fontSize: 16, fontWeight: 600 }}>{m.title}</div>
+                            </div>
+                            <div style={{ marginLeft: 36, marginTop: 4, fontSize: 14, color: 'rgba(230,247,255,0.7)', lineHeight: 1.5 }}>{m.detail}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+              {/* 右：时序图 */}
+              <div className="touchkit-tile" style={{ minHeight: 0, padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '16px 20px', fontSize: 'var(--wall-font-lg)', fontWeight:600, flexShrink: 0 }}>时序变化</div>
+                <div style={{ flex: 1, minHeight: 0, padding: 12 }}>
+                  {panelSeriesLoading ? (
+                    <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: 'rgba(230,247,255,0.6)' }}><i className="fas fa-spinner fa-spin" style={{ marginRight: 8 }} />加载中…</div>
+                  ) : panelSeriesError ? (
+                    <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: '#ff8b9a' }}>{panelSeriesError}</div>
+                  ) : panelSeries?.series?.length ? (
+                    <EChartsWrapper option={panelSeriesOption} style={{ height: '100%' }} />
+                  ) : (
+                    <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: 'rgba(230,247,255,0.5)' }}>暂无时序数据</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </FullscreenFocus>
+
+        {/* 趋势全屏：饼图 + 直方图 + 里程分段 */}
+        <FullscreenFocus isOpen={showTrends} onClose={() => setShowTrends(false)} title="风险分布趋势">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+            <div className="touchkit-tile" style={{ minHeight: 260 }}>
+              <div className="touchkit-label" style={{ marginBottom: 8 }}>风险占比</div>
+              {riskSummary.total > 0 ? <div style={{ height: 220 }}><EChartsWrapper option={riskPieOption} /></div> : <div style={{ color: 'rgba(230,247,255,0.5)' }}>暂无数据</div>}
+            </div>
+            <div className="touchkit-tile" style={{ minHeight: 260 }}>
+              <div className="touchkit-label" style={{ marginBottom: 8 }}>速度分布（mm/年）</div>
+              {riskStats?.velocityHist ? <div style={{ height: 220 }}><EChartsWrapper option={velocityHistOption} /></div> : <div style={{ color: 'rgba(230,247,255,0.5)' }}>暂无数据</div>}
+            </div>
+            <div className="touchkit-tile" style={{ minHeight: 260, gridColumn: '1 / -1' }}>
+              <div className="touchkit-label" style={{ marginBottom: 8 }}>沿隧道里程风险分布</div>
+              {riskStats?.chainage ? <div style={{ height: 260 }}><EChartsWrapper option={chainageChartOption} /></div> : <div style={{ color: 'rgba(230,247,255,0.5)' }}>暂无数据</div>}
+            </div>
+          </div>
+        </FullscreenFocus>
+
+        {/* 设置全屏（控制室常用项；桌面完整设置不变） */}
+        <FullscreenFocus isOpen={showSettings} onClose={() => setShowSettings(false)} title="设置">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 760 }}>
+            <div>
+              <div className="touchkit-label" style={{ marginBottom: 10 }}>显示模式</div>
+              <SegmentedControl
+                ariaLabel="显示模式"
+                value={indicator}
+                onChange={(k) => setIndicator(k as Indicator)}
+                items={[
+                  { key: 'velocity', label: '速度' },
+                  { key: 'threshold', label: '阈值分级' },
+                  ...(fieldsInfo?.d_fields?.length ? [{ key: 'keyDate', label: '关键日期' }] : []),
+                ]}
+              />
+            </div>
+            <div>
+              <div className="touchkit-label" style={{ marginBottom: 10 }}>阈值预设</div>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <LargeIconButton icon="fas fa-shield-alt" label="保守" active={thresholds.strong === 6} onClick={() => setThresholds({ strong: 6, mild: 1.5 })} />
+                <LargeIconButton icon="fas fa-balance-scale" label="标准" active={thresholds.strong === 10} onClick={() => setThresholds({ strong: 10, mild: 2 })} />
+                <LargeIconButton icon="fas fa-feather" label="宽松" active={thresholds.strong === 15} onClick={() => setThresholds({ strong: 15, mild: 3 })} />
+              </div>
+            </div>
+            <div>
+              <div className="touchkit-label" style={{ marginBottom: 10 }}>图层</div>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <LargeIconButton icon="fas fa-th" label="风险分区" active={showRiskGrid} onClick={() => setShowRiskGrid(v => !v)} />
+                <LargeIconButton icon="fas fa-object-group" label="危险区" active={showZones} onClick={() => setShowZones(v => !v)} />
+                <LargeIconButton icon="fas fa-crop" label={useBbox ? '视窗裁剪 开' : '视窗裁剪 关'} active={useBbox} onClick={() => setUseBbox(v => !v)} />
+              </div>
+            </div>
+            <div>
+              <div className="touchkit-label" style={{ marginBottom: 10 }}>数据集</div>
+              <select value={dataset} onChange={e => setDataset(e.target.value)} style={{ width: '100%', minHeight: 'var(--wall-min-target)', fontSize: 18, padding: '10px 14px', borderRadius: 12, background: 'rgba(0,0,0,0.3)', color: '#e6f7ff', border: '1px solid var(--wall-panel-border)' }}>
+                {datasets.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+          </div>
+        </FullscreenFocus>
+      </div>
+    )
   }
 
   return (
