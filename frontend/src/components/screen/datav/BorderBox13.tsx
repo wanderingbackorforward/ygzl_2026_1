@@ -17,7 +17,7 @@ interface BorderBox13Props {
 
 export const BorderBox13: React.FC<BorderBox13Props> = ({
   color = ['#2cf7fe', '#1dc1f5'],
-  backgroundColor = 'rgba(8, 16, 28, 0.55)',
+  backgroundColor = 'rgba(16, 32, 66, 0.72)',
   children,
   className,
   style,
@@ -51,6 +51,7 @@ export const BorderBox13: React.FC<BorderBox13Props> = ({
             stroke={color[0]}
             strokeWidth={1}
             d={`M 5 20 L 5 10 L 12 3 L 60 3 L 68 10 L ${w - 20} 10 L ${w - 5} 25 L ${w - 5} ${h - 5} L 20 ${h - 5} L 5 ${h - 20} L 5 20`}
+            style={{ filter: `drop-shadow(0 0 7px ${color[0]}) drop-shadow(0 0 2px ${color[0]})` }}
           />
           {/* 顶部虚线流动装饰 */}
           <path

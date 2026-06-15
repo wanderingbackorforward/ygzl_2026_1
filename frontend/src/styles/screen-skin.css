@@ -8,12 +8,12 @@
 
 /* ============ 全局科技背景 ============ */
 body {
-  background-color: #03060a;
+  background-color: #060d1c;
   background-image:
-    radial-gradient(ellipse 90% 55% at 50% -12%, rgba(0, 229, 255, 0.14), transparent 60%),
-    radial-gradient(ellipse 70% 45% at 50% 115%, rgba(110, 60, 255, 0.12), transparent 60%),
-    linear-gradient(rgba(0, 229, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 229, 255, 0.035) 1px, transparent 1px);
+    radial-gradient(ellipse 90% 55% at 50% -12%, rgba(0, 200, 255, 0.20), transparent 60%),
+    radial-gradient(ellipse 70% 45% at 50% 115%, rgba(80, 60, 255, 0.16), transparent 60%),
+    linear-gradient(rgba(0, 229, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 229, 255, 0.05) 1px, transparent 1px);
   background-size: 100% 100%, 100% 100%, 46px 46px, 46px 46px;
   background-attachment: fixed;
   background-repeat: no-repeat, no-repeat, repeat, repeat;
@@ -46,10 +46,10 @@ body {
 /* ============ 科幻面板（核心签名） ============ */
 .dt-panel {
   position: relative;
-  background: linear-gradient(180deg, rgba(10, 22, 38, 0.82) 0%, rgba(6, 14, 26, 0.9) 100%);
-  border: 1px solid rgba(0, 229, 255, 0.24);
+  background: linear-gradient(180deg, rgba(22, 44, 86, 0.78) 0%, rgba(12, 24, 52, 0.88) 100%);
+  border: 1px solid rgba(0, 229, 255, 0.36);
   border-radius: 4px;
-  box-shadow: 0 6px 26px rgba(0, 0, 0, 0.45), inset 0 0 36px rgba(0, 229, 255, 0.035);
+  box-shadow: 0 6px 26px rgba(0, 0, 0, 0.5), 0 0 18px rgba(0, 229, 255, 0.1), inset 0 0 36px rgba(0, 229, 255, 0.06);
 }
 /* 顶部高光条 */
 .dt-panel::before {
@@ -106,16 +106,16 @@ body {
 .dt-kpi {
   font-family: 'Rajdhani', 'Microsoft YaHei', sans-serif;
   font-weight: 700;
-  font-size: clamp(34px, 4.6vw, 60px);
+  font-size: clamp(42px, 5.4vw, 88px);
   line-height: 1;
   font-variant-numeric: tabular-nums;
   letter-spacing: 1px;
-  text-shadow: 0 0 14px currentColor, 0 0 4px currentColor;
+  text-shadow: 0 0 16px currentColor, 0 0 5px currentColor;
 }
-.dt-kpi--danger  { color: #ff5c7a; }
-.dt-kpi--warning { color: #ffc24d; }
-.dt-kpi--normal  { color: #6dff9e; }
-.dt-kpi--info    { color: #5fe9ff; }
+.dt-kpi--danger  { color: #ff3b6b; }
+.dt-kpi--warning { color: #ffb020; }
+.dt-kpi--normal  { color: #2cff9e; }
+.dt-kpi--info    { color: #00f0ff; }
 
 /* ============ 大屏标题栏装饰 ============ */
 .dt-screen-title {
@@ -244,10 +244,10 @@ body {
 
 /* ============ 升级现有 .touchkit-tile 为大屏面板外观 ============ */
 .touchkit-tile {
-  background: linear-gradient(180deg, rgba(10, 22, 38, 0.82) 0%, rgba(6, 14, 26, 0.9) 100%) !important;
-  border: 1px solid rgba(0, 229, 255, 0.24) !important;
+  background: linear-gradient(180deg, rgba(22, 44, 86, 0.78) 0%, rgba(12, 24, 52, 0.88) 100%) !important;
+  border: 1px solid rgba(0, 229, 255, 0.36) !important;
   border-radius: 4px !important;
-  box-shadow: 0 6px 26px rgba(0, 0, 0, 0.45), inset 0 0 36px rgba(0, 229, 255, 0.035) !important;
+  box-shadow: 0 6px 26px rgba(0, 0, 0, 0.5), 0 0 18px rgba(0, 229, 255, 0.1), inset 0 0 36px rgba(0, 229, 255, 0.06) !important;
 }
 .touchkit-tile .touchkit-kpi {
   text-shadow: 0 0 14px currentColor, 0 0 4px currentColor;
