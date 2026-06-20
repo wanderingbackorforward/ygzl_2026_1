@@ -378,6 +378,7 @@ export async function fetchDLStatus() {
         vibration: { weights_loaded: false },
         crack: { weights_loaded: false },
         tbm: { weights_loaded: false },
+        vibration_freq: { weights_loaded: false },
       },
     })
   );
@@ -457,6 +458,26 @@ export async function fetchTBMPrediction(tbmId: string, predLen: number = 4) {
       tbm_id: tbmId,
       historical: [],
       forecast: { dates: [], targets: [], values: [], lower_bound: [], upper_bound: [] },
+    })
+  );
+}
+
+/**
+ * 振动频域 AI 异常检测 (1D-CNN 频谱分类器, 8 通道)
+ * 调用训练好的权重 /api/ml/dl/predict/vibration_freq/<channel_id>
+ * 低置信度 = 异常
+ */
+export async function fetchVibrationFreqPrediction(channelId: string | number) {
+  const cid = String(channelId);
+  return fetchWithFallback(
+    `${API_BASE}/ml/dl/predict/vibration_freq/${cid}`,
+    undefined,
+    () => ({
+      success: false,
+      message: '振动频域 AI 未训练',
+      channel_id: cid,
+      prediction: { confidence: 0, anomaly_score: 1, is_anomaly: true },
+      spectrum_data: [],
     })
   );
 }

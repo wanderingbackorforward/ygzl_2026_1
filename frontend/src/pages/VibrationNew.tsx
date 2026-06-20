@@ -11,6 +11,7 @@ import { FrequencyMetricsChart } from '../components/charts/vibration/FrequencyM
 import { WaveformCrestFactorChart } from '../components/charts/vibration/WaveformCrestFactorChart';
 import { PulseGapFactorChart } from '../components/charts/vibration/PulseGapFactorChart';
 import { FeatureRadarChart } from '../components/charts/vibration/FeatureRadarChart';
+import { VibrationFreqAIPrediction } from '../components/charts/vibration/VibrationFreqAIPrediction';
 import type { CardConfig } from '../types/layout';
 import '../styles/variables.css';
 import '../styles/cards.css';
@@ -52,6 +53,7 @@ const VIBRATION_CARDS: CardConfig[] = [
   { id: 'waveform-crest', title: '波形/峰值因子', icon: 'fas fa-chart-bar', component: WaveformCrestFactorChart, defaultLayout: { x: 0, y: 7, w: 6, h: 4, minW: 4, minH: 3 } },
   { id: 'pulse-gap', title: '脉冲/间隙因子', icon: 'fas fa-chart-bar', component: PulseGapFactorChart, defaultLayout: { x: 6, y: 7, w: 6, h: 4, minW: 4, minH: 3 } },
   { id: 'feature-radar', title: '特征雷达图', icon: 'fas fa-bullseye', component: FeatureRadarChart, defaultLayout: { x: 0, y: 11, w: 12, h: 4, minW: 6, minH: 3 } },
+  { id: 'vibration-freq-ai', title: 'AI 频域异常检测', icon: 'fas fa-microchip', component: VibrationFreqAIPrediction, defaultLayout: { x: 0, y: 15, w: 12, h: 5, minW: 6, minH: 4 } },
 ];
 
 const VibrationDashboard: React.FC = () => {
@@ -70,6 +72,7 @@ const VibrationDashboard: React.FC = () => {
       case 'waveform-crest': return <WaveformCrestFactorChart cardId="waveform-crest-fullscreen" />;
       case 'pulse-gap': return <PulseGapFactorChart cardId="pulse-gap-fullscreen" />;
       case 'feature-radar': return <FeatureRadarChart cardId="feature-radar-fullscreen" />;
+      case 'vibration-freq-ai': return <VibrationFreqAIPrediction cardId="vibration-freq-ai-fullscreen" />;
       case 'vibration-ai': return <VibrationAIPrediction cardId="vibration-ai-fullscreen" />;
       default: return null;
     }
