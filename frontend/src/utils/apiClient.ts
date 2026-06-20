@@ -377,6 +377,7 @@ export async function fetchDLStatus() {
         temperature: { weights_loaded: false },
         vibration: { weights_loaded: false },
         crack: { weights_loaded: false },
+        tbm: { weights_loaded: false },
       },
     })
   );
@@ -437,6 +438,25 @@ export async function fetchCrackPrediction(pointId: string, predLen: number = 10
       point_id: pointId,
       historical: [],
       forecast: { dates: [], values: [], lower_bound: [], upper_bound: [] },
+    })
+  );
+}
+
+/**
+ * TBM 盾构机轨迹 AI 预测 (多变量 LSTM + per-TBM embedding, 5min 步长)
+ * 调用训练好的权重 /api/ml/dl/predict/tbm/<tbm_id>
+ * 输出 4 个偏差目标: tail/head x vertical/horizontal
+ */
+export async function fetchTBMPrediction(tbmId: string, predLen: number = 4) {
+  return fetchWithFallback(
+    `${API_BASE}/ml/dl/predict/tbm/${tbmId}?pred_len=${predLen}`,
+    undefined,
+    () => ({
+      success: false,
+      message: 'TBM AI 预测未训练',
+      tbm_id: tbmId,
+      historical: [],
+      forecast: { dates: [], targets: [], values: [], lower_bound: [], upper_bound: [] },
     })
   );
 }

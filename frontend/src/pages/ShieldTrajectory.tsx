@@ -5,6 +5,7 @@ import type {
   PredictionResult, RiskBinsResponse,
 } from '../components/trajectory/types'
 import TrajectoryMap from '../components/trajectory/TrajectoryMap'
+import TBMAIPrediction from '../components/trajectory/TBMAIPrediction'
 
 type Project = { project_id: string; name: string }
 type Alignment = { alignment_id: string; project_id: string; name: string; geojson?: unknown }
@@ -241,6 +242,8 @@ export default function ShieldTrajectory() {
             <DeviationProfileLazy records={records} selectedRing={selectedRing}
               onRingSelect={handleRingClick} prediction={prediction} />
             <DeviationStatsLazy summary={summary} correction={correction} records={records} />
+            {/* AI 轨迹预测 (TBMNet) */}
+            <TBMAIPrediction />
           </div>
         )}
 
