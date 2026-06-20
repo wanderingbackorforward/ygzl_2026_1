@@ -23,7 +23,7 @@ import { CrackPriorityList } from '../components/charts/cracks/CrackPriorityList
 // V2 Diagnostics Drawer
 import { CrackDiagnosticsDrawer } from '../components/charts/cracks/CrackDiagnosticsDrawer';
 // V2 AI Prediction (CrackLSTM 31-point shared model)
-import { CrackAIPrediction } from '../components/charts/cracks/CrackAIPrediction';
+import CrackAIPrediction from '../components/charts/cracks/CrackAIPrediction';
 import type { CardConfig } from '../types/layout';
 import '../styles/variables.css';
 import '../styles/cards.css';

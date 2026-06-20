@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useCracks } from '../../contexts/CracksContext';
-import { fetchCrackPrediction, fetchPredictionHistory, fetchDLStatus } from '../../utils/apiClient';
+import { useCracks } from '../../../contexts/CracksContext';
+import { fetchCrackPrediction, fetchPredictionHistory, fetchDLStatus } from '../../../utils/apiClient';
 
 interface ForecastPoint {
   date: string;

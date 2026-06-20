@@ -11,7 +11,7 @@ import { FrequencyMetricsChart } from '../components/charts/vibration/FrequencyM
 import { WaveformCrestFactorChart } from '../components/charts/vibration/WaveformCrestFactorChart';
 import { PulseGapFactorChart } from '../components/charts/vibration/PulseGapFactorChart';
 import { FeatureRadarChart } from '../components/charts/vibration/FeatureRadarChart';
-import { VibrationFreqAIPrediction } from '../components/charts/vibration/VibrationFreqAIPrediction';
+import VibrationFreqAIPrediction from '../components/charts/vibration/VibrationFreqAIPrediction';
 import type { CardConfig } from '../types/layout';
 import '../styles/variables.css';
 import '../styles/cards.css';

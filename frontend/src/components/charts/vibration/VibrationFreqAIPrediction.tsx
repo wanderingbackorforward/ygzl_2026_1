@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useVibration } from '../../contexts/VibrationContext';
-import { fetchVibrationFreqPrediction, fetchDLStatus } from '../../utils/apiClient';
+import { useVibration } from '../../../contexts/VibrationContext';
+import { fetchVibrationFreqPrediction, fetchDLStatus } from '../../../utils/apiClient';
 
 interface PredictionResult {
   success: boolean;
