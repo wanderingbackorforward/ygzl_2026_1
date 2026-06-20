@@ -83,8 +83,8 @@ export const CorrelationDashboard: React.FC<CorrelationDashboardProps> = ({
             <i className="fas fa-chart-line" />
           </div>
           <div style={styles.statContent}>
-            <div style={styles.statValue}>DID / SCM</div>
-            <div style={styles.statLabel}>因果推断方法</div>
+            <div style={styles.statValue}>施工影响量化</div>
+            <div style={styles.statLabel}>分析方法</div>
           </div>
         </div>
 
@@ -111,7 +111,7 @@ export const CorrelationDashboard: React.FC<CorrelationDashboardProps> = ({
             onClick={() => setAnalysisType('causal')}
           >
             <i className="fas fa-project-diagram" style={{ marginRight: '6px' }} />
-            因果分析
+            施工事件影响
           </button>
           <button
             style={{

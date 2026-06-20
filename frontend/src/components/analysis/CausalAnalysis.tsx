@@ -92,7 +92,7 @@ export const CausalAnalysis: React.FC<CausalAnalysisProps> = ({
       {/* 配置面板 */}
       <div style={styles.configPanel}>
         <div style={styles.configHeader}>
-          <h3 style={styles.configTitle}>因果分析配置</h3>
+          <h3 style={styles.configTitle}>施工影响分析配置</h3>
           <div style={styles.configSubtitle}>
             分析施工事件对沉降的真实影响
           </div>
@@ -245,7 +245,7 @@ export const CausalAnalysis: React.FC<CausalAnalysisProps> = ({
           <div style={styles.emptyIcon}>
             <i className="fas fa-project-diagram" />
           </div>
-          <div style={styles.emptyTitle}>因果分析</div>
+          <div style={styles.emptyTitle}>施工影响分析</div>
           <div style={styles.emptyMessage}>
             配置参数后点击"开始分析"按钮，量化施工事件对沉降的真实影响
           </div>

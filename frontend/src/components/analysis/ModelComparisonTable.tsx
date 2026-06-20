@@ -129,15 +129,19 @@ export const ModelComparisonTable: React.FC<ModelComparisonTableProps> = ({
 };
 
 const modelNameMap: Record<string, string> = {
-  arima: 'ARIMA',
-  sarima: 'SARIMA',
-  prophet: 'Prophet',
-  lstm: 'LSTM',
-  informer: 'Informer',
-  stgcn: 'STGCN',
-  pinn: 'PINN',
-  ensemble: 'Ensemble',
+  arima: '自回归模型',
+  sarima: '季节性自回归',
+  prophet: '趋势预测',
+  lstm: '神经网络',
+  informer: '智能预测',
+  stgcn: '空间关联预测',
+  pinn: '物理模型预测',
+  ensemble: '综合预测',
   linear: '线性回归',
+  holt: '霍尔特趋势',
+  exponential: '指数平滑',
+  naive: '朴素预测',
+  moving_average: '移动平均',
 };
 
 const styles: Record<string, React.CSSProperties> = {

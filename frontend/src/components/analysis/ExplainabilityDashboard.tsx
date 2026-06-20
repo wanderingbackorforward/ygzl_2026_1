@@ -22,7 +22,7 @@ export const ExplainabilityDashboard: React.FC = () => {
           onClick={() => setSubTab('causal')}
         >
           <i className="fas fa-share-alt" style={{ marginRight: '6px' }} />
-          因果发现
+          点位间因果检验
         </button>
       </div>
 
@@ -137,8 +137,8 @@ const SHAPPanel: React.FC = () => {
           <i className="fas fa-info-circle" style={{ color: '#ffa940', fontSize: '16px', marginTop: '2px', flexShrink: 0 }} />
           <div style={{ color: '#e2e8f0' }}>
             <span style={{ fontWeight: 'bold', color: '#fff' }}>演示模式：</span>
-            SHAP 可解释性分析需要较大算力（依赖 shap 库），当前云端环境暂未部署，显示的是模拟数据。
-            Granger 因果检验使用真实监测数据，请切换到"因果发现"标签页查看。
+            特征重要性分析需要较大算力，当前云端环境暂未部署，显示的是模拟数据。
+            点位间因果检验使用真实监测数据，请切换到「点位间因果检验」标签页查看。
           </div>
         </div>
       )}
@@ -267,7 +267,7 @@ const CausalDiscoverPanel: React.FC = () => {
           onClick={runDiscover}
           disabled={loading || selectedPoints.length < 2}
         >
-          {loading ? '分析中...' : '运行 Granger 因果检验'}
+          {loading ? '分析中...' : '运行因果检验'}
         </button>
       </div>
 

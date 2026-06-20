@@ -2,6 +2,24 @@ import React, { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
 import type { PredictionResult } from '../../types/analysis';
 
+// 统计模型名称中文映射
+const MODEL_NAME_CN: Record<string, string> = {
+  arima: '自回归模型',
+  sarima: '季节性自回归',
+  prophet: '趋势预测',
+  lstm: '神经网络',
+  informer: '智能预测',
+  stgcn: '空间关联预测',
+  pinn: '物理模型预测',
+  ensemble: '综合预测',
+  linear: '线性回归',
+  holt: '霍尔特趋势',
+  exponential: '指数平滑',
+  naive: '朴素预测',
+  moving_average: '移动平均',
+};
+const toModelCN = (name: string) => MODEL_NAME_CN[name?.toLowerCase()] || name || '-';
+
 interface PredictionChartProps {
   prediction: PredictionResult;
   historicalData?: Array<{ date: string; value: number }>;
@@ -49,7 +67,7 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
       backgroundColor: 'transparent',
       title: {
         text: `${prediction.point_id} 沉降预测`,
-        subtext: `模型: ${prediction.selected_model.toUpperCase()}`,
+        subtext: `模型: ${toModelCN(prediction.selected_model)}`,
         left: 'center',
         textStyle: {
           color: '#fff',

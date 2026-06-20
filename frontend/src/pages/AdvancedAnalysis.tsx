@@ -9,41 +9,78 @@ import '../styles/variables.css';
 type TabType = 'anomaly' | 'recommendation' | 'prediction' | 'deeplearning' | 'correlation' | 'explainability' | 'knowledgegraph' | 'profile' | 'joint' | 'events';
 type JointMetric = 'settlement' | 'crack' | 'correlation';
 
-// 分析模块分组
-const analysisGroups = [
+interface TabItem {
+  id: TabType;
+  label: string;
+  icon: string;
+  desc: string;
+  hint?: string;
+}
+
+interface AnalysisGroup {
+  label: string;
+  icon: string;
+  items: TabItem[];
+}
+
+// 分析模块分组 —— 4 大类,逻辑清晰,消除重复感
+const analysisGroups: AnalysisGroup[] = [
   {
     label: '发现问题',
+    icon: 'search',
     items: [
-      { id: 'anomaly' as TabType, label: '异常检测', icon: 'exclamation-triangle', desc: '哪些监测点有问题？ —— 自动扫描全部25个点位，找出沉降异常的点，按严重程度标红/橙/黄/绿' },
-      { id: 'recommendation' as TabType, label: '处置建议', icon: 'clipboard-list', desc: '发现问题后该怎么办？ —— 根据异常等级自动生成处置方案：紧急巡检 / 加密监测 / 持续跟踪' },
+      { id: 'anomaly', label: '异常检测', icon: 'exclamation-triangle', desc: '哪些监测点有问题？自动扫描全部 25 个点位，按严重程度标红/橙/黄/绿' },
+      { id: 'recommendation', label: '处置建议', icon: 'clipboard-list', desc: '发现问题后怎么办？根据异常等级自动生成处置方案：紧急巡检 / 加密监测 / 持续跟踪' },
     ],
   },
   {
     label: '预测未来',
+    icon: 'chart-line',
     items: [
-      { id: 'prediction' as TabType, label: '趋势预测', icon: 'chart-area', desc: '未来会怎样？ —— 预测每个点位未来7~30天的沉降趋势，提前发现可能超限的风险点' },
-      { id: 'deeplearning' as TabType, label: 'AI 预测中心', icon: 'brain', desc: '用 AI 模型做更精准的预测 —— 共 8 个 AI 模型,覆盖沉降/温度/振动/裂缝/盾构 5 类监测数据,点击查看模型总览' },
+      {
+        id: 'prediction',
+        label: '沉降趋势预测',
+        icon: 'chart-area',
+        desc: '统计模型自动选优，预测 25 个点位未来 30 天的沉降趋势，提前发现超限风险',
+        hint: '本页使用统计模型（自动选优），速度快。如需更高精度的深度学习模型，请切换到「AI 预测中心」',
+      },
+      {
+        id: 'deeplearning',
+        label: 'AI 预测中心',
+        icon: 'brain',
+        desc: '8 个 AI 模型总览 + 深度学习沉降预测（智能 / 空间关联 / 物理模型 / 综合）',
+        hint: '本页使用深度学习模型，精度更高。如需快速统计预测，请切换到「沉降趋势预测」',
+      },
     ],
   },
   {
-    label: '追溯原因',
+    label: '分析原因',
+    icon: 'project-diagram',
     items: [
-      { id: 'correlation' as TabType, label: '因果与空间', icon: 'project-diagram', desc: '施工导致了哪些影响？ —— 量化某次施工事件对沉降的真实影响，以及哪些点位之间会互相影响' },
-      { id: 'explainability' as TabType, label: '影响因素分析', icon: 'chart-bar', desc: '什么因素影响最大？ —— 找出影响沉降的关键因素排序，以及哪个点位的变化会引起另一个点位变化' },
+      {
+        id: 'correlation',
+        label: '施工影响分析',
+        icon: 'hard-hat',
+        desc: '量化施工事件对沉降的真实影响 + 空间关联热力图 + 多因素关联分析',
+        hint: '本页侧重「施工事件导致了多少沉降」。如需分析各因素影响大小排序，请切换到「影响因素排序」',
+      },
+      {
+        id: 'explainability',
+        label: '影响因素排序',
+        icon: 'chart-bar',
+        desc: 'SHAP 特征重要性排序 + Granger 因果检验，找出哪些因素影响最大、哪个点位引起另一个点位变化',
+        hint: '本页侧重「哪些因素影响最大」。如需量化施工事件的具体影响，请切换到「施工影响分析」',
+      },
     ],
   },
   {
-    label: '综合分析',
+    label: '数据工具',
+    icon: 'database',
     items: [
-      { id: 'knowledgegraph' as TabType, label: '知识图谱', icon: 'share-alt', desc: '文献知识管理 —— 上传文献/笔记，系统自动提取实体和关系构建知识图谱，基于图谱内容进行智能问答，答案附带来源引用' },
-    ],
-  },
-  {
-    label: '基础图表',
-    items: [
-      { id: 'profile' as TabType, label: '纵断面', icon: 'chart-line', desc: '查看沉降剖面 —— 沿线路方向展示所有点位的沉降分布，支持按时间回放动画' },
-      { id: 'joint' as TabType, label: '沉降+裂缝', icon: 'link', desc: '多指标联合查看 —— 同时展示沉降和裂缝数据，观察两者之间是否存在联动关系' },
-      { id: 'events' as TabType, label: '施工事件', icon: 'calendar-alt', desc: '管理施工记录 —— 记录和管理施工事件（如爆破、开挖），为因果分析提供数据支撑' },
+      { id: 'profile', label: '纵断面', icon: 'chart-line', desc: '沿线路方向展示所有点位的沉降剖面，支持按时间回放动画' },
+      { id: 'joint', label: '沉降+裂缝', icon: 'link', desc: '同时展示沉降和裂缝数据，观察两者是否存在联动关系' },
+      { id: 'events', label: '施工事件', icon: 'calendar-alt', desc: '记录和管理施工事件（如爆破、开挖），为因果分析提供数据支撑' },
+      { id: 'knowledgegraph', label: '知识图谱', icon: 'share-alt', desc: '上传文献/笔记，系统自动提取实体和关系构建知识图谱，基于图谱智能问答' },
     ],
   },
 ];
@@ -53,7 +90,7 @@ const AdvancedAnalysis: React.FC = () => {
   const [jointMetric, setJointMetric] = useState<JointMetric>('settlement');
 
   // 获取当前激活的标签信息
-  const getActiveTabInfo = () => {
+  const getActiveTabInfo = (): { group: string; item: TabItem } | null => {
     for (const group of analysisGroups) {
       const item = group.items.find(i => i.id === activeTab);
       if (item) return { group: group.label, item };
@@ -66,75 +103,98 @@ const AdvancedAnalysis: React.FC = () => {
   return (
     <div style={styles.container}>
       <MockModeIndicator />
-      <div style={styles.header}>
-        <div style={styles.headerTop}>
-          <h1 style={styles.title}>高级分析</h1>
-
-          {/* 下拉选择器 */}
-          <div style={styles.selectorContainer}>
-            <label style={styles.selectorLabel}>分析模块:</label>
-            <select
-              value={activeTab}
-              onChange={e => setActiveTab(e.target.value as TabType)}
-              style={styles.selector}
-            >
-              {analysisGroups.map(group => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.items.map(item => (
-                    <option key={item.id} value={item.id}>
-                      {item.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-
-            {/* 当前选中的模块信息 */}
-            {activeInfo && (
-              <div style={styles.activeInfo}>
-                <i className={`fas fa-${activeInfo.item.icon}`} style={styles.activeIcon} />
-                <span style={styles.activeText}>{activeInfo.item.label}</span>
-                <span style={styles.activeGroup}>({activeInfo.group})</span>
+      <div style={styles.body}>
+        {/* ── 左侧边栏导航 ── */}
+        <aside style={styles.sidebar}>
+          <div style={styles.sidebarHeader}>
+            <i className="fas fa-cogs" style={styles.sidebarHeaderIcon} />
+            <span style={styles.sidebarHeaderText}>高级分析</span>
+          </div>
+          <nav style={styles.nav}>
+            {analysisGroups.map(group => (
+              <div key={group.label} style={styles.navGroup}>
+                <div style={styles.navGroupHeader}>
+                  <i className={`fas fa-${group.icon}`} style={styles.navGroupIcon} />
+                  <span style={styles.navGroupLabel}>{group.label}</span>
+                </div>
+                {group.items.map(item => {
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      style={{
+                        ...styles.navCard,
+                        ...(isActive ? styles.navCardActive : {}),
+                      }}
+                      onClick={() => setActiveTab(item.id)}
+                    >
+                      <i className={`fas fa-${item.icon}`} style={{ ...styles.navCardIcon, ...(isActive ? styles.navCardIconActive : {}) }} />
+                      <span style={{ ...styles.navCardLabel, ...(isActive ? styles.navCardLabelActive : {}) }}>
+                        {item.label}
+                      </span>
+                      {isActive && <i className="fas fa-chevron-right" style={styles.navCardArrow} />}
+                    </button>
+                  );
+                })}
               </div>
-            )}
-          </div>
-        </div>
+            ))}
+          </nav>
+        </aside>
 
-        {/* 当前模块功能描述 */}
-        {activeInfo && activeInfo.item.desc && (
-          <div style={styles.descBar}>
-            <i className="fas fa-info-circle" style={styles.descIcon} />
-            <span style={styles.descText}>{activeInfo.item.desc}</span>
-          </div>
-        )}
-        {activeTab === 'joint' && (
-          <div style={styles.headerSub}>
-            <span style={styles.subLabel}>指标</span>
-            <select
-              value={jointMetric}
-              onChange={e => setJointMetric(e.target.value as JointMetric)}
-              style={styles.subSelect}
-            >
-              <option value="settlement">沉降</option>
-              <option value="crack">裂缝宽度</option>
-              <option value="correlation">相关性/联动</option>
-            </select>
-            <span style={styles.subHint}>切换到"相关性/联动"可查看相关性摘要与联动结果</span>
-          </div>
-        )}
-      </div>
+        {/* ── 右侧内容区 ── */}
+        <main style={styles.main}>
+          {/* 当前模块描述栏 */}
+          {activeInfo && (
+            <div style={styles.descBar}>
+              <div style={styles.descBarLeft}>
+                <i className={`fas fa-${activeInfo.item.icon}`} style={styles.descIcon} />
+                <div style={styles.descContent}>
+                  <div style={styles.descTitleRow}>
+                    <span style={styles.descTitle}>{activeInfo.item.label}</span>
+                    <span style={styles.descGroup}>{activeInfo.group}</span>
+                  </div>
+                  <span style={styles.descText}>{activeInfo.item.desc}</span>
+                </div>
+              </div>
+              {activeTab === 'joint' && (
+                <div style={styles.jointSelector}>
+                  <span style={styles.jointLabel}>指标</span>
+                  <select
+                    value={jointMetric}
+                    onChange={e => setJointMetric(e.target.value as JointMetric)}
+                    style={styles.jointSelect}
+                  >
+                    <option value="settlement">沉降</option>
+                    <option value="crack">裂缝宽度</option>
+                    <option value="correlation">相关性/联动</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
 
-      <div style={styles.content}>
-        {activeTab === 'anomaly' && <AnomalyTab />}
-        {activeTab === 'recommendation' && <RecommendationTab />}
-        {activeTab === 'prediction' && <PredictionTab />}
-        {activeTab === 'deeplearning' && <DeepLearningTab />}
-        {activeTab === 'correlation' && <CorrelationTab />}
-        {activeTab === 'explainability' && <ExplainabilityTab />}
-        {activeTab === 'knowledgegraph' && <KnowledgeGraphTab />}
-        {activeTab === 'profile' && <ProfileTab />}
-        {activeTab === 'joint' && <JointTab metric={jointMetric} />}
-        {activeTab === 'events' && <EventsTab />}
+          {/* 交叉引用提示 —— 消除"重复"困惑 */}
+          {activeInfo?.item.hint && (
+            <div style={styles.hintBar}>
+              <i className="fas fa-lightbulb" style={styles.hintIcon} />
+              <span style={styles.hintText}>{activeInfo.item.hint}</span>
+            </div>
+          )}
+
+          {/* 内容区 */}
+          <div style={styles.content}>
+            {activeTab === 'anomaly' && <AnomalyTab />}
+            {activeTab === 'recommendation' && <RecommendationTab />}
+            {activeTab === 'prediction' && <PredictionTab />}
+            {activeTab === 'deeplearning' && <DeepLearningTab />}
+            {activeTab === 'correlation' && <CorrelationTab />}
+            {activeTab === 'explainability' && <ExplainabilityTab />}
+            {activeTab === 'knowledgegraph' && <KnowledgeGraphTab />}
+            {activeTab === 'profile' && <ProfileTab />}
+            {activeTab === 'joint' && <JointTab metric={jointMetric} />}
+            {activeTab === 'events' && <EventsTab />}
+          </div>
+        </main>
       </div>
     </div>
   );
@@ -358,34 +418,204 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#fff',
     fontFamily: 'system-ui, -apple-system, sans-serif',
   },
-  header: {
+  // ── 主体布局: 左侧边栏 + 右侧内容 ──
+  body: {
+    display: 'flex',
+    flex: 1,
+    minHeight: 0,
+  },
+  // ── 侧边栏 ──
+  sidebar: {
+    width: '220px',
+    flexShrink: 0,
     display: 'flex',
     flexDirection: 'column',
-    gap: '10px',
-    padding: '16px 24px',
-    borderBottom: '1px solid rgba(74, 158, 255, 0.2)',
-    backgroundColor: 'rgba(20, 20, 40, 0.8)',
+    backgroundColor: 'rgba(15, 15, 30, 0.95)',
+    borderRight: '1px solid rgba(74, 158, 255, 0.15)',
   },
-  headerTop: {
+  sidebarHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '18px 20px',
+    borderBottom: '1px solid rgba(74, 158, 255, 0.15)',
+  },
+  sidebarHeaderIcon: {
+    fontSize: '18px',
+    color: '#4a9eff',
+  },
+  sidebarHeaderText: {
+    fontSize: '16px',
+    fontWeight: 'bold',
+    background: 'linear-gradient(90deg, #4a9eff, #00d4ff)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+  },
+  nav: {
+    flex: 1,
+    overflowY: 'auto',
+    padding: '12px 10px',
+  },
+  navGroup: {
+    marginBottom: '16px',
+  },
+  navGroupHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '6px 10px 8px',
+  },
+  navGroupIcon: {
+    fontSize: '11px',
+    color: 'rgba(74, 158, 255, 0.5)',
+  },
+  navGroupLabel: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: 'rgba(74, 158, 255, 0.6)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+  navCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    width: '100%',
+    padding: '10px 12px',
+    backgroundColor: 'transparent',
+    border: '1px solid transparent',
+    borderRadius: '8px',
+    color: '#ccc',
+    fontSize: '13px',
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    textAlign: 'left' as const,
+    marginBottom: '2px',
+  },
+  navCardActive: {
+    backgroundColor: 'rgba(74, 158, 255, 0.12)',
+    border: '1px solid rgba(74, 158, 255, 0.4)',
+    color: '#4a9eff',
+  },
+  navCardIcon: {
+    fontSize: '14px',
+    color: 'rgba(170, 170, 190, 0.6)',
+    width: '18px',
+    textAlign: 'center' as const,
+    flexShrink: 0,
+  },
+  navCardIconActive: {
+    color: '#4a9eff',
+  },
+  navCardLabel: {
+    flex: 1,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const,
+  },
+  navCardLabelActive: {
+    color: '#4a9eff',
+    fontWeight: 600,
+  },
+  navCardArrow: {
+    fontSize: '10px',
+    color: '#4a9eff',
+    flexShrink: 0,
+  },
+  // ── 右侧主内容区 ──
+  main: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    minWidth: 0,
+  },
+  // ── 描述栏 ──
+  descBar: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: '16px',
+    padding: '14px 20px',
+    backgroundColor: 'rgba(20, 20, 40, 0.8)',
+    borderBottom: '1px solid rgba(74, 158, 255, 0.15)',
+    flexShrink: 0,
   },
-  headerSub: {
+  descBarLeft: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '12px',
+    flex: 1,
+    minWidth: 0,
+  },
+  descIcon: {
+    fontSize: '20px',
+    color: '#4a9eff',
+    flexShrink: 0,
+    marginTop: '2px',
+  },
+  descContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    minWidth: 0,
+  },
+  descTitleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  descTitle: {
+    fontSize: '16px',
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  descGroup: {
+    fontSize: '11px',
+    color: 'rgba(74, 158, 255, 0.6)',
+    padding: '2px 8px',
+    backgroundColor: 'rgba(74, 158, 255, 0.1)',
+    borderRadius: '10px',
+    flexShrink: 0,
+  },
+  descText: {
+    fontSize: '13px',
+    color: 'rgba(255, 255, 255, 0.7)',
+    lineHeight: 1.5,
+  },
+  // ── 交叉引用提示栏 ──
+  hintBar: {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
-    padding: '10px 12px',
-    backgroundColor: 'rgba(30, 30, 50, 0.6)',
-    borderRadius: '8px',
-    border: '1px solid rgba(74, 158, 255, 0.18)',
+    padding: '10px 20px',
+    backgroundColor: 'rgba(255, 169, 64, 0.08)',
+    borderBottom: '1px solid rgba(255, 169, 64, 0.15)',
+    flexShrink: 0,
   },
-  subLabel: {
+  hintIcon: {
+    fontSize: '14px',
+    color: '#ffa940',
+    flexShrink: 0,
+  },
+  hintText: {
+    fontSize: '12px',
+    color: 'rgba(255, 169, 64, 0.85)',
+    lineHeight: 1.5,
+  },
+  // ── joint 子选择器 ──
+  jointSelector: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flexShrink: 0,
+  },
+  jointLabel: {
     fontSize: '12px',
     color: '#888',
-    whiteSpace: 'nowrap',
+    whiteSpace: 'nowrap' as const,
   },
-  subSelect: {
+  jointSelect: {
     padding: '6px 10px',
     backgroundColor: 'rgba(20, 20, 40, 0.8)',
     border: '1px solid rgba(74, 158, 255, 0.3)',
@@ -394,91 +624,11 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '12px',
     outline: 'none',
   },
-  subHint: {
-    fontSize: '12px',
-    color: '#666',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  title: {
-    margin: 0,
-    fontSize: '24px',
-    fontWeight: 'bold',
-    background: 'linear-gradient(90deg, #4a9eff, #00d4ff)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-  },
-  selectorContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-  },
-  selectorLabel: {
-    fontSize: '14px',
-    fontWeight: '500',
-    color: '#888',
-    whiteSpace: 'nowrap',
-  },
-  selector: {
-    padding: '10px 16px',
-    backgroundColor: 'rgba(30, 30, 50, 0.8)',
-    border: '1px solid rgba(74, 158, 255, 0.3)',
-    borderRadius: '8px',
-    color: '#fff',
-    fontSize: '14px',
-    fontWeight: '500',
-    outline: 'none',
-    cursor: 'pointer',
-    minWidth: '200px',
-    transition: 'all 0.2s',
-  },
-  activeInfo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '8px 16px',
-    backgroundColor: 'rgba(74, 158, 255, 0.15)',
-    borderRadius: '20px',
-    border: '1px solid rgba(74, 158, 255, 0.3)',
-  },
-  activeIcon: {
-    fontSize: '14px',
-    color: '#4a9eff',
-  },
-  activeText: {
-    fontSize: '14px',
-    fontWeight: 'bold',
-    color: '#4a9eff',
-  },
-  activeGroup: {
-    fontSize: '12px',
-    color: '#888',
-  },
-  descBar: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    padding: '10px 16px',
-    backgroundColor: 'rgba(74, 158, 255, 0.08)',
-    borderRadius: '8px',
-    border: '1px solid rgba(74, 158, 255, 0.15)',
-  },
-  descIcon: {
-    fontSize: '14px',
-    color: '#4a9eff',
-    flexShrink: 0,
-  },
-  descText: {
-    fontSize: '13px',
-    color: '#fff',
-    lineHeight: '1.5',
-  },
+  // ── 内容区 ──
   content: {
     flex: 1,
     minHeight: 0,
     overflowY: 'auto',
-    padding: '20px',
   },
   tabContent: {
     height: '100%',
@@ -549,13 +699,6 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     height: '100%',
     color: '#888',
-  },
-  empty: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-    color: '#666',
   },
   emptyContainer: {
     display: 'flex',
