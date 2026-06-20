@@ -1226,12 +1226,193 @@ def predict_tbm(tbm_id: str = 'TBM001', pred_len: int = 4) -> Dict:
     }
 
 
+# ==================== 振动频域异常检测 (1D-CNN 频谱分类器) ====================
+
+class SpectrumClassifier(nn.Module):
+    """与 train_vibration_freq.py 一致的 1D-CNN 频谱分类器"""
+    def __init__(self, n_freq: int = 500, n_channels: int = 8, hidden: int = 64):
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Conv1d(1, 16, kernel_size=7, padding=3), nn.GELU(),
+            nn.MaxPool1d(2),
+            nn.Conv1d(16, 32, kernel_size=5, padding=2), nn.GELU(),
+            nn.MaxPool1d(2),
+            nn.Conv1d(32, 64, kernel_size=3, padding=1), nn.GELU(),
+            nn.MaxPool1d(2),
+            nn.Conv1d(64, hidden, kernel_size=3, padding=1), nn.GELU(),
+            nn.AdaptiveAvgPool1d(1),
+        )
+        self.head = nn.Sequential(
+            nn.Linear(hidden, 32), nn.GELU(),
+            nn.Linear(32, n_channels),
+        )
+
+    def forward(self, x):
+        x = x.unsqueeze(1)  # (B, 1, n_freq)
+        h = self.encoder(x).squeeze(-1)
+        return self.head(h)
+
+
+def _fetch_vibration_freq_from_supabase(channel_id: str):
+    """从 Supabase vibration_frequency_data 拉取指定通道的 500 点频谱"""
+    try:
+        import requests
+        from supabase_store import SUPABASE_URL, ANON_KEY
+        HEADERS = {
+            'apikey': ANON_KEY,
+            'Authorization': f'Bearer {ANON_KEY}',
+            'Content-Type': 'application/json',
+        }
+        all_rows = []
+        offset = 0
+        while True:
+            url = (f"{SUPABASE_URL}/rest/v1/vibration_frequency_data"
+                   f"?select=frequency,amplitude&channel_id=eq.{channel_id}"
+                   f"&order=frequency&limit=1000&offset={offset}")
+            r = requests.get(url, headers=HEADERS, timeout=30)
+            r.raise_for_status()
+            rows = r.json()
+            if not rows:
+                break
+            all_rows.extend(rows)
+            if len(rows) < 1000:
+                break
+            offset += len(rows)
+        if not all_rows:
+            return None
+        all_rows.sort(key=lambda x: float(x['frequency']))
+        amps = np.array([float(r['amplitude']) for r in all_rows], dtype=np.float32)
+        freqs = np.array([float(r['frequency']) for r in all_rows], dtype=np.float32)
+        return freqs, amps
+    except Exception as e:
+        print(f"[dl_inference] 拉取振动频域数据失败: {e}")
+        return None
+
+
+def predict_vibration_freq(channel_id: str = '1') -> Dict:
+    """
+    振动频域异常检测: 给定通道 ID, 从 Supabase 拉频谱,
+    用 SpectrumClassifier 分类, 低置信度 = 异常。
+    """
+    if 'vibration_freq' not in _MODEL_CACHE:
+        meta = _fetch_model_from_supabase('vibration_freq')
+        if not meta:
+            return {'success': False, 'message': 'vibration_freq 模型未在 Supabase 注册'}
+        weight_path = _get_weight_path('vibration_freq', meta)
+        if not weight_path:
+            return {'success': False, 'message': 'vibration_freq 权重加载失败'}
+        cfg = meta.get('config', {})
+        N_FREQ = int(cfg.get('n_freq', 500))
+        N_CHANNELS = int(cfg.get('n_channels', 8))
+
+        ckpt = torch.load(weight_path, map_location=_DEVICE, weights_only=False)
+        channel_ids = ckpt.get('channel_ids') or cfg.get('channel_ids', [])
+        max_per_freq = np.array(ckpt.get('max_per_freq', [1.0] * N_FREQ), dtype=np.float32)
+
+        model = SpectrumClassifier(
+            n_freq=N_FREQ, n_channels=N_CHANNELS,
+            hidden=int(cfg.get('hidden', 64)),
+        ).to(_DEVICE)
+        model.load_state_dict(ckpt['state_dict'])
+        model.eval()
+        _MODEL_CACHE['vibration_freq'] = (model, {
+            'n_freq': N_FREQ, 'n_channels': N_CHANNELS,
+            'channel_ids': channel_ids,
+            'max_per_freq': max_per_freq,
+        })
+        _CONFIG_CACHE['vibration_freq'] = cfg
+
+    model, cstate = _MODEL_CACHE['vibration_freq']
+    channel_ids = cstate['channel_ids']
+    max_per_freq = cstate['max_per_freq']
+
+    fetched = _fetch_vibration_freq_from_supabase(channel_id)
+    if fetched is None:
+        return {'success': False, 'message': f'通道 {channel_id} 频谱数据拉取失败'}
+    freqs, amps = fetched
+    if len(amps) < cstate['n_freq']:
+        return {'success': False, 'message': f'通道 {channel_id} 频谱点不足 (仅 {len(amps)} 点, 需 {cstate["n_freq"]})'}
+
+    # 归一化
+    amps_norm = amps / np.maximum(max_per_freq, 1e-8)
+    x = torch.from_numpy(amps_norm).float().unsqueeze(0).to(_DEVICE)
+
+    with torch.no_grad():
+        logits = model(x).squeeze(0).cpu().numpy()
+        probs = torch.softmax(torch.from_numpy(logits), dim=0).numpy()
+
+    pred_idx = int(np.argmax(probs))
+    pred_channel = channel_ids[pred_idx] if channel_ids else str(pred_idx + 1)
+    confidence = float(probs[pred_idx])
+    # 异常分数: 1 - 置信度
+    anomaly_score = round(1.0 - confidence, 4)
+    # 异常阈值: 置信度 < 0.5 判定为异常
+    is_anomaly = confidence < 0.5
+
+    # 所有通道的概率
+    all_probs = {channel_ids[i]: round(float(probs[i]), 4) for i in range(len(channel_ids))} if channel_ids else {}
+
+    # 频谱统计
+    spectrum_stats = {
+        'n_points': len(amps),
+        'freq_min': round(float(freqs.min()), 2),
+        'freq_max': round(float(freqs.max()), 2),
+        'amp_min': round(float(amps.min()), 6),
+        'amp_max': round(float(amps.max()), 6),
+        'amp_mean': round(float(amps.mean()), 6),
+        'amp_std': round(float(amps.std()), 6),
+    }
+
+    # 频谱数据 (降采样到 100 点用于前端显示)
+    step = max(1, len(amps) // 100)
+    spectrum_data = [
+        {'frequency': round(float(freqs[i]), 1), 'amplitude': round(float(amps[i]), 6)}
+        for i in range(0, len(amps), step)
+    ]
+
+    # 写回 Supabase
+    try:
+        _save_prediction(
+            'vibration_freq', 'vibration_channel', channel_id,
+            forecast_steps=[str(channel_id)],
+            forecast_values=[{'predicted_channel': pred_channel, 'confidence': round(confidence, 4)}],
+            lower_bound=[{'anomaly_score': anomaly_score}],
+            upper_bound=[{'is_anomaly': is_anomaly}],
+            historical=spectrum_data[:50],
+        )
+    except Exception:
+        pass
+
+    return {
+        'success': True,
+        'channel_id': channel_id,
+        'selected_model': 'vibration_freq',
+        'model_variant': 'supabase_trained',
+        'model_info': {
+            'model_type': 'SpectrumClassifier (1D-CNN, 8-class)',
+            'n_freq': cstate['n_freq'],
+            'n_channels': cstate['n_channels'],
+            'device': str(_DEVICE),
+            'storage': 'supabase:ml-models/vibration_freq/',
+        },
+        'prediction': {
+            'predicted_channel': pred_channel,
+            'confidence': round(confidence, 4),
+            'anomaly_score': anomaly_score,
+            'is_anomaly': is_anomaly,
+            'all_probabilities': all_probs,
+        },
+        'spectrum_stats': spectrum_stats,
+        'spectrum_data': spectrum_data,
+    }
+
+
 # ==================== 模型状态 + 历史查询 ====================
 
 def get_trained_models_status() -> Dict:
     """查询所有训练好的模型状态(从 Supabase)"""
     status = {'success': True, 'models': {}, 'device': str(_DEVICE)}
-    for name in ['informer', 'stgcn', 'pinn', 'temperature', 'vibration', 'crack', 'tbm']:
+    for name in ['informer', 'stgcn', 'pinn', 'temperature', 'vibration', 'crack', 'tbm', 'vibration_freq']:
         meta = _fetch_model_from_supabase(name)
         if meta:
             status['models'][name] = {

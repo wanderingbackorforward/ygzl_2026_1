@@ -1230,6 +1230,26 @@ def api_dl_predict_tbm(tbm_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+@ml_api.route('/dl/predict/vibration_freq/<channel_id>', methods=['GET'])
+def api_dl_predict_vibration_freq(channel_id):
+    """
+    用训练好的 SpectrumClassifier 对指定通道的振动频谱进行分类 + 异常检测
+    从 Supabase vibration_frequency_data 拉频谱 -> 1D-CNN 分类 -> 低置信度 = 异常
+
+    参数:
+        channel_id: 通道号 1-8
+    """
+    try:
+        inf = _get_dl_inference()
+        if inf is None:
+            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+        return jsonify(inf.predict_vibration_freq(channel_id))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @ml_api.route('/dl/history/<model_name>/<target_id>', methods=['GET'])
 def api_dl_prediction_history(model_name, target_id):
     """
