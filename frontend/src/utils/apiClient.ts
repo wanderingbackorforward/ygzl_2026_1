@@ -375,6 +375,8 @@ export async function fetchDLStatus() {
         stgcn: { weights_loaded: false },
         pinn: { weights_loaded: false },
         temperature: { weights_loaded: false },
+        vibration: { weights_loaded: false },
+        crack: { weights_loaded: false },
       },
     })
   );
@@ -418,6 +420,24 @@ export async function fetchVibrationPrediction(channelId: string | number) {
     `${API_BASE}/ml/dl/predict/vibration/${cid}`,
     undefined,
     () => ({ success: false, message: '后端未启用', channel_id: cid })
+  );
+}
+
+/**
+ * 裂缝 AI 预测 (CrackLSTM 共享网络, 31 个监测点, 6h 步长)
+ * 调用训练好的权重 /api/ml/dl/predict/crack/<point_id>
+ */
+export async function fetchCrackPrediction(pointId: string, predLen: number = 10) {
+  return fetchWithFallback(
+    `${API_BASE}/ml/dl/predict/crack/${pointId}?pred_len=${predLen}`,
+    undefined,
+    () => ({
+      success: false,
+      message: '裂缝 AI 预测未训练',
+      point_id: pointId,
+      historical: [],
+      forecast: { dates: [], values: [], lower_bound: [], upper_bound: [] },
+    })
   );
 }
 

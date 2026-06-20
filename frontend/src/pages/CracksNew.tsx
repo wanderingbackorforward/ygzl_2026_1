@@ -22,6 +22,8 @@ import { CrackConfidenceBandChart } from '../components/charts/cracks/CrackConfi
 import { CrackPriorityList } from '../components/charts/cracks/CrackPriorityList';
 // V2 Diagnostics Drawer
 import { CrackDiagnosticsDrawer } from '../components/charts/cracks/CrackDiagnosticsDrawer';
+// V2 AI Prediction (CrackLSTM 31-point shared model)
+import { CrackAIPrediction } from '../components/charts/cracks/CrackAIPrediction';
 import type { CardConfig } from '../types/layout';
 import '../styles/variables.css';
 import '../styles/cards.css';
@@ -130,6 +132,13 @@ const CracksDashboard: React.FC = () => {
             <div style={{ height: 320 }}>
               <CrackConfidenceBandChart cardId="v2-confidence" />
             </div>
+          </SectionCard>
+        </div>
+
+        {/* ════════ Layer 5: AI 裂缝预测 (CrackLSTM) ════════ */}
+        <div className="p-4">
+          <SectionCard title="AI 裂缝预测" icon="fa-microchip">
+            <CrackAIPrediction cardId="v2-ai-crack" />
           </SectionCard>
         </div>
 
