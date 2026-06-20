@@ -785,12 +785,234 @@ def predict_vibration(channel_id: str = '1') -> Dict:
     }
 
 
+# ==================== 裂缝预测 (Shared LSTM + Per-Point Embedding) ====================
+
+class CrackLSTM(nn.Module):
+    """与 train_crack.py 一致的共享 LSTM + per-point 嵌入"""
+    def __init__(self, n_points: int, hidden: int = 64, layers: int = 2,
+                 seq_len: int = 30, pred_len: int = 10, emb_dim: int = 8):
+        super().__init__()
+        self.point_emb = nn.Embedding(n_points, emb_dim)
+        self.lstm = nn.LSTM(input_size=1 + emb_dim, hidden_size=hidden, num_layers=layers,
+                            batch_first=True, dropout=0.1)
+        self.head = nn.Sequential(
+            nn.Linear(hidden, 64), nn.GELU(),
+            nn.Linear(64, pred_len),
+        )
+
+    def forward(self, x, point_idx):
+        # x: (B, seq_len), point_idx: (B,)
+        B, L = x.shape
+        emb = self.point_emb(point_idx)              # (B, emb)
+        emb_rep = emb.unsqueeze(1).expand(-1, L, -1)  # (B, L, emb)
+        x_in = torch.cat([x.unsqueeze(-1), emb_rep], dim=-1)  # (B, L, 1+emb)
+        h, _ = self.lstm(x_in)
+        return self.head(h[:, -1, :])                # (B, pred_len)
+
+
+def _fetch_crack_series_from_supabase(point_id: str, limit: int = 200):
+    """
+    从 Supabase raw_crack_data 拉取指定点最近 limit 条观测, 按时间升序。
+    返回: (dates[np.datetime64[ns], N], values[float32, N]) 或 None
+    """
+    try:
+        import requests
+        from supabase_store import SUPABASE_URL, ANON_KEY
+        HEADERS = {
+            'apikey': ANON_KEY,
+            'Authorization': f'Bearer {ANON_KEY}',
+            'Content-Type': 'application/json',
+        }
+        url = (f"{SUPABASE_URL}/rest/v1/raw_crack_data"
+               f"?select=measurement_date,{point_id}&order=measurement_date.desc&limit={limit}")
+        r = requests.get(url, headers=HEADERS, timeout=30)
+        r.raise_for_status()
+        rows = r.json()
+        if not rows:
+            return None
+        rows.reverse()  # 升序
+        dates = np.array([np.datetime64(r['measurement_date']) for r in rows], dtype='datetime64[ns]')
+        vals = np.array([float(r.get(point_id) or np.nan) for r in rows], dtype=np.float32)
+        return dates, vals
+    except Exception as e:
+        print(f"[dl_inference] 拉取裂缝数据失败: {e}")
+        return None
+
+
+def _fetch_crack_point_meta(point_id: str) -> Dict:
+    """从 crack_monitoring_points 拉取该点的元信息 (trend_type, slope, r_value...)"""
+    try:
+        import requests
+        from supabase_store import SUPABASE_URL, ANON_KEY
+        HEADERS = {
+            'apikey': ANON_KEY,
+            'Authorization': f'Bearer {ANON_KEY}',
+            'Content-Type': 'application/json',
+        }
+        url = f"{SUPABASE_URL}/rest/v1/crack_monitoring_points?point_id=eq.{point_id}&limit=1"
+        r = requests.get(url, headers=HEADERS, timeout=15)
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if rows else {}
+    except Exception as e:
+        print(f"[dl_inference] 拉取裂缝点元信息失败: {e}")
+        return {}
+
+
+def predict_crack(point_id: str = 'F1-1', pred_len: int = 10) -> Dict:
+    """
+    裂缝预测: 给定监测点 (F1-1 ... F9-3), 从 Supabase 拉最近 SEQ_LEN 个观测,
+    用共享 CrackLSTM 预测未来 pred_len 个 6h 步。
+    """
+    if 'crack' not in _MODEL_CACHE:
+        meta = _fetch_model_from_supabase('crack')
+        if not meta:
+            return {'success': False, 'message': 'crack 模型未在 Supabase 注册'}
+        weight_path = _get_weight_path('crack', meta)
+        if not weight_path:
+            return {'success': False, 'message': 'crack 权重加载失败'}
+        cfg = meta.get('config', {})
+        SEQ_LEN = int(cfg.get('seq_len', 30))
+        PRED_LEN = int(cfg.get('pred_len', 10))
+        N_POINTS = int(cfg.get('n_points', 31))
+
+        ckpt = torch.load(weight_path, map_location=_DEVICE, weights_only=False)
+        point_ids = ckpt.get('point_ids') or cfg.get('point_ids', [])
+        point_scales = np.array(ckpt.get('point_scales', [1.0] * len(point_ids)), dtype=np.float32)
+
+        model = CrackLSTM(
+            n_points=len(point_ids) if point_ids else N_POINTS,
+            hidden=int(cfg.get('hidden', 64)),
+            layers=int(cfg.get('layers', 2)),
+            seq_len=SEQ_LEN, pred_len=PRED_LEN,
+            emb_dim=int(cfg.get('emb_dim', 8)),
+        ).to(_DEVICE)
+        model.load_state_dict(ckpt['state_dict'])
+        model.eval()
+        _MODEL_CACHE['crack'] = (model, {
+            'seq_len': SEQ_LEN, 'pred_len': PRED_LEN,
+            'point_ids': point_ids, 'point_scales': point_scales,
+        })
+        _CONFIG_CACHE['crack'] = cfg
+
+    model, cstate = _MODEL_CACHE['crack']
+    SEQ_LEN = cstate['seq_len']
+    PRED_LEN = cstate['pred_len']
+    point_ids = cstate['point_ids']
+    point_scales = cstate['point_scales']
+
+    # 点 ID 必须在训练范围内
+    if point_ids and point_id not in point_ids:
+        return {'success': False, 'message': f'监测点 {point_id} 不在训练范围 (共 {len(point_ids)} 个点)'}
+    point_idx = point_ids.index(point_id) if point_ids else 0
+    scale = float(point_scales[point_idx]) if point_scales is not None else 1.0
+
+    # 拉最近 SEQ_LEN + 10 条观测 (多拉点余量)
+    fetched = _fetch_crack_series_from_supabase(point_id, limit=SEQ_LEN + 20)
+    if fetched is None:
+        return {'success': False, 'message': f'点 {point_id} 观测数据拉取失败'}
+    dates, vals = fetched
+    # 缺失值前向填充
+    if np.isnan(vals).any():
+        last = None
+        for i in range(len(vals)):
+            if not np.isnan(vals[i]):
+                last = vals[i]
+            elif last is not None:
+                vals[i] = last
+        if np.isnan(vals[0]):
+            # 全空(极端): 用 0
+            vals = np.nan_to_num(vals, nan=0.0)
+    if len(vals) < SEQ_LEN:
+        return {'success': False, 'message': f'点 {point_id} 数据不足 (仅 {len(vals)} 条, 需 ≥{SEQ_LEN})'}
+
+    # 用最近 SEQ_LEN 个观测 (训练时是去趋势的, 推理也用同样的去趋势)
+    last_seq = vals[-SEQ_LEN:].astype(np.float32)
+    base = float(last_seq[0])                          # 还原基准
+    detrended = (last_seq - base) / max(scale, 1e-3)   # 归一化
+    x = torch.from_numpy(detrended).float().unsqueeze(0).to(_DEVICE)
+    pidx_t = torch.LongTensor([point_idx]).to(_DEVICE)
+
+    with torch.no_grad():
+        pred_n = model(x, pidx_t).squeeze(0).cpu().numpy()  # (pred_len,)
+    # 反归一化 + 加回基准
+    pred_vals = pred_n * scale + base
+    pred_vals = [round(float(v), 4) for v in pred_vals]
+    PRED_LEN = min(PRED_LEN, len(pred_vals))
+
+    # 历史观测 (取最近 SEQ_LEN + 10 条)
+    hist_n = min(len(vals), SEQ_LEN + 20)
+    hist_vals = [round(float(v), 4) for v in vals[-hist_n:]]
+    hist_dates = [str(d)[:19] for d in dates[-hist_n:]]
+
+    # 未来时间戳 (按 interval=6h 步进)
+    interval_hours = _CONFIG_CACHE.get('crack', {}).get('interval_hours', 6)
+    if isinstance(_CONFIG_CACHE.get('crack', {}).get('interval'), str) and 'h' in _CONFIG_CACHE['crack'].get('interval', ''):
+        try:
+            interval_hours = int(''.join(filter(str.isdigit, _CONFIG_CACHE['crack']['interval'])))
+        except Exception:
+            interval_hours = 6
+    last_date = dates[-1]
+    fc_dates = []
+    for i in range(1, PRED_LEN + 1):
+        fc_dates.append(str(last_date + np.timedelta64(i * interval_hours, 'h'))[:19])
+
+    # 置信区间 (经验: pred MAE 0.0021mm, 95% CI 约 4x MAE)
+    std_err = float(np.std(vals[-SEQ_LEN:])) * 0.3 + 0.001
+    lower = [round(float(v - 1.96 * std_err), 4) for v in pred_vals]
+    upper = [round(float(v + 1.96 * std_err), 4) for v in pred_vals]
+
+    # 写回 Supabase
+    try:
+        _save_prediction(
+            'crack', 'crack_point', point_id,
+            forecast_steps=fc_dates, forecast_values=pred_vals,
+            lower_bound=lower, upper_bound=upper,
+            historical=[{'date': d, 'value': v} for d, v in zip(hist_dates, hist_vals)],
+        )
+    except Exception:
+        pass
+
+    # 拉点元信息 (trend_type, slope...)
+    point_meta = _fetch_crack_point_meta(point_id)
+    meta_safe = {}
+    for k in ('location', 'description', 'trend_type', 'trend_slope',
+              'r_value', 'p_value', 'initial_value', 'last_value',
+              'total_change', 'average_change_rate', 'change_type', 'status'):
+        if k in point_meta:
+            v = point_meta[k]
+            if isinstance(v, (int, float, str)) or v is None:
+                meta_safe[k] = v
+
+    return {
+        'success': True,
+        'point_id': point_id,
+        'selected_model': 'crack',
+        'model_variant': 'supabase_trained',
+        'model_info': {
+            'model_type': 'CrackLSTM (共享 LSTM + per-point embedding)',
+            'seq_len': SEQ_LEN, 'pred_len': PRED_LEN,
+            'n_points': len(point_ids),
+            'interval_hours': interval_hours,
+            'device': str(_DEVICE),
+            'storage': 'supabase:ml-models/crack/',
+        },
+        'meta': meta_safe,
+        'historical': [{'date': d, 'value': v} for d, v in zip(hist_dates, hist_vals)],
+        'forecast': {
+            'dates': fc_dates,
+            'values': pred_vals,
+            'lower_bound': lower, 'upper_bound': upper,
+        },
+    }
+
+
 # ==================== 模型状态 + 历史查询 ====================
 
 def get_trained_models_status() -> Dict:
     """查询所有训练好的模型状态(从 Supabase)"""
     status = {'success': True, 'models': {}, 'device': str(_DEVICE)}
-    for name in ['informer', 'stgcn', 'pinn', 'temperature', 'vibration']:
+    for name in ['informer', 'stgcn', 'pinn', 'temperature', 'vibration', 'crack']:
         meta = _fetch_model_from_supabase(name)
         if meta:
             status['models'][name] = {

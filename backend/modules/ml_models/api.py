@@ -1184,6 +1184,29 @@ def api_dl_predict_vibration(channel_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+@ml_api.route('/dl/predict/crack/<point_id>', methods=['GET'])
+def api_dl_predict_crack(point_id):
+    """
+    用训练好的 CrackLSTM 预测指定监测点的裂缝宽度
+    从 Supabase raw_crack_data 拉最近 30 条观测 -> 预测后 10 个 6h 步
+    拉 crack_monitoring_points 拿点的 trend/slope/r_value 等元信息
+
+    参数:
+        point_id: 监测点 ID (F1-1 ... F9-3)
+        pred_len: 预测步数 (默认 10, 最多 30)
+    """
+    try:
+        inf = _get_dl_inference()
+        if inf is None:
+            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+        pred_len = int(request.args.get('pred_len', 10))
+        return jsonify(inf.predict_crack(point_id, pred_len))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @ml_api.route('/dl/history/<model_name>/<target_id>', methods=['GET'])
 def api_dl_prediction_history(model_name, target_id):
     """
