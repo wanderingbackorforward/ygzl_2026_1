@@ -70,6 +70,7 @@ const VibrationDashboard: React.FC = () => {
       case 'waveform-crest': return <WaveformCrestFactorChart cardId="waveform-crest-fullscreen" />;
       case 'pulse-gap': return <PulseGapFactorChart cardId="pulse-gap-fullscreen" />;
       case 'feature-radar': return <FeatureRadarChart cardId="feature-radar-fullscreen" />;
+      case 'vibration-ai': return <VibrationAIPrediction cardId="vibration-ai-fullscreen" />;
       default: return null;
     }
   }, [fullscreenCard]);

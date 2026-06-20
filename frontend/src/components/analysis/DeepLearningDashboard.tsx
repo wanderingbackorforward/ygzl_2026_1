@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { PredictionChart } from './PredictionChart';
 import type { PredictionResult } from '../../types/analysis';
 import {
@@ -6,6 +6,7 @@ import {
   fetchSTGCNPrediction,
   fetchPINNPrediction,
   fetchEnsemblePrediction,
+  fetchDLStatus,
 } from '../../utils/apiClient';
 
 type ModelType = 'informer' | 'stgcn' | 'pinn' | 'ensemble';
@@ -20,12 +21,20 @@ const MODEL_INFO: Record<ModelType, { label: string; desc: string; icon: string 
 export const DeepLearningDashboard: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState<ModelType>('informer');
   const [selectedPoint, setSelectedPoint] = useState('S1');
-  const [steps, setSteps] = useState(30);
+  const [steps, setSteps] = useState(8);
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
   const [stgcnData, setStgcnData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modelMeta, setModelMeta] = useState<any>(null);
+  const [dlStatus, setDlStatus] = useState<any>(null);
+
+  // 加载时查询训练模型状态
+  useEffect(() => {
+    fetchDLStatus()
+      .then(s => setDlStatus(s))
+      .catch(() => setDlStatus({ success: false, models: {} }));
+  }, []);
 
   const pointIds = Array.from({ length: 25 }, (_, i) => `S${i + 1}`);
 
@@ -77,28 +86,41 @@ export const DeepLearningDashboard: React.FC = () => {
 
   return (
     <div style={styles.container}>
-      {/* 实验性功能提示横幅 */}
+      {/* 训练好的模型状态卡片 */}
       <div style={{
         display: 'flex', alignItems: 'flex-start', gap: '12px',
         padding: '14px 18px', marginBottom: '16px',
-        backgroundColor: 'rgba(255, 169, 64, 0.12)',
-        border: '1px solid rgba(255, 169, 64, 0.4)',
-        borderRadius: '8px', color: '#ffa940', fontSize: '13px', lineHeight: '1.6',
+        backgroundColor: 'rgba(82, 196, 26, 0.10)',
+        border: '1px solid rgba(82, 196, 26, 0.4)',
+        borderRadius: '8px', color: '#95de64', fontSize: '13px', lineHeight: '1.6',
       }}>
-        <i className="fas fa-flask" style={{ fontSize: '18px', marginTop: '2px', flexShrink: 0 }} />
-        <div>
-          <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '4px', color: '#fff' }}>
-            <i className="fas fa-info-circle" style={{ marginRight: '6px', color: '#ffa940' }} />
-            实验性功能
+        <i className="fas fa-microchip" style={{ fontSize: '18px', marginTop: '2px', flexShrink: 0 }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '6px', color: '#fff' }}>
+            <i className="fas fa-check-circle" style={{ marginRight: '6px', color: '#95de64' }} />
+            训练好的深度学习模型 (基于真实 Supabase 监测数据)
           </div>
-          <div style={{ color: '#e2e8f0' }}>
-            深度学习模型（Informer / STGCN / PINN / Ensemble）需要 GPU 算力，当前云端环境暂未部署。
-            显示的是基于算法逻辑的模拟演算结果，仅供功能预览和界面体验。
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', color: '#e2e8f0' }}>
+            {['informer', 'stgcn', 'pinn'].map(m => {
+              const info = dlStatus?.models?.[m];
+              const loaded = info?.weights_loaded;
+              const mae = info?.metrics?.MAE;
+              return (
+                <span key={m} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <i className={`fas fa-${loaded ? 'check-circle' : 'times-circle'}`}
+                     style={{ color: loaded ? '#95de64' : '#ff7a7a' }} />
+                  <span style={{ color: '#fff', fontWeight: 500 }}>{m.toUpperCase()}</span>
+                  {loaded && mae != null ? (
+                    <span style={{ opacity: 0.85 }}>MAE={mae.toFixed(3)}mm</span>
+                  ) : (
+                    <span style={{ opacity: 0.6 }}>未加载</span>
+                  )}
+                </span>
+              );
+            })}
           </div>
-          <div style={{ marginTop: '6px', color: '#e2e8f0' }}>
-            如需基于真实数据的预测分析，请使用
-            <span style={{ color: '#4a9eff', fontWeight: 'bold' }}> "趋势预测" </span>
-            模块（ARIMA/SARIMA 模型已在云端部署并使用真实监测数据）。
+          <div style={{ marginTop: '6px', color: '#e2e8f0', fontSize: '12px' }}>
+            数据源: Supabase (dt-terrain-settlement-dev) | 25 个监测点 × 52 周 | 周频预测
           </div>
         </div>
       </div>
@@ -139,12 +161,12 @@ export const DeepLearningDashboard: React.FC = () => {
         </div>
 
         <div style={styles.paramGroup}>
-          <label style={styles.paramLabel}>预测步数:</label>
+          <label style={styles.paramLabel}>预测步数(周):</label>
           <select value={steps} onChange={e => setSteps(Number(e.target.value))} style={styles.select}>
-            <option value={7}>7 天</option>
-            <option value={15}>15 天</option>
-            <option value={30}>30 天</option>
-            <option value={60}>60 天</option>
+            <option value={4}>4 周</option>
+            <option value={8}>8 周</option>
+            <option value={12}>12 周</option>
+            <option value={24}>24 周</option>
           </select>
         </div>
 

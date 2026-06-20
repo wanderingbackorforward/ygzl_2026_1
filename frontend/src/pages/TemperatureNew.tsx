@@ -105,6 +105,13 @@ const TemperatureSecondaryAnalysisCard: React.FC = () => {
 
 const TEMPERATURE_CARDS: CardConfig[] = [
   {
+    id: 'ai-prediction',
+    title: 'AI 预测',
+    icon: 'fas fa-microchip',
+    component: React.lazy(() => import('../components/temperature/TemperatureAIPrediction')),
+    defaultLayout: { x: 0, y: 0, w: 12, h: 6, minW: 6, minH: 4 },
+  },
+  {
     id: 'secondary-analysis',
     title: '二级分析',
     icon: 'fas fa-microscope',

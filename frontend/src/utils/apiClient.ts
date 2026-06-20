@@ -232,7 +232,7 @@ export async function fetchPINNPrediction(
   physicsWeight: number = 0.1
 ) {
   return fetchWithFallback(
-    `${API_BASE}/ml/predict/pinn/${pointId}?steps=${forecastDays}&physics_weight=${physicsWeight}`,
+    `${API_BASE}/ml/dl/predict/pinn/${pointId}?steps=${forecastDays}`,
     undefined,
     () => generateMockPrediction(pointId, forecastDays)
   );
@@ -334,7 +334,7 @@ export async function fetchMLHealth() {
 }
 
 /**
- * Informer 长序列预测
+ * Informer 单点预测 (优先调用训练好的权重 /api/ml/dl/predict/informer/)
  */
 export async function fetchInformerPrediction(
   pointId: string,
@@ -342,20 +342,82 @@ export async function fetchInformerPrediction(
   seqLen: number = 96
 ) {
   return fetchWithFallback(
-    `${API_BASE}/ml/predict/informer/${pointId}?steps=${steps}&seq_len=${seqLen}`,
+    `${API_BASE}/ml/dl/predict/informer/${pointId}?steps=${steps}`,
     undefined,
     () => generateMockInformerPrediction(pointId, steps, seqLen)
   );
 }
 
 /**
- * STGCN 多点联合预测
+ * STGCN 多点联合预测 (优先调用训练好的权重 /api/ml/dl/predict/stgcn)
  */
 export async function fetchSTGCNPrediction(steps: number = 30) {
   return fetchWithFallback(
-    `${API_BASE}/ml/predict/stgcn?steps=${steps}`,
+    `${API_BASE}/ml/dl/predict/stgcn?steps=${steps}`,
     undefined,
     () => generateMockSTGCNPrediction(steps)
+  );
+}
+
+/**
+ * 查询训练好的深度学习模型状态 (/api/ml/dl/status)
+ * 返回: { informer: {weights_loaded, metrics, config}, stgcn: ..., pinn: ... }
+ */
+export async function fetchDLStatus() {
+  return fetchWithFallback(
+    `${API_BASE}/ml/dl/status`,
+    undefined,
+    () => ({
+      success: false,
+      message: '深度学习训练模型未加载',
+      models: {
+        informer: { weights_loaded: false },
+        stgcn: { weights_loaded: false },
+        pinn: { weights_loaded: false },
+        temperature: { weights_loaded: false },
+      },
+    })
+  );
+}
+
+/**
+ * 温度传感器 AI 预测 (多任务 Informer, 共享 251 个传感器)
+ * 调用训练好的权重 /api/ml/dl/predict/temperature/<sid>
+ */
+export async function fetchTemperaturePrediction(sid: number, steps: number = 2) {
+  return fetchWithFallback(
+    `${API_BASE}/ml/dl/predict/temperature/${sid}?steps=${steps}`,
+    undefined,
+    () => ({
+      success: false,
+      message: '温度 AI 预测未训练',
+      sid,
+      forecast: { dates: [], values: [], lower_bound: [], upper_bound: [] },
+    })
+  );
+}
+
+/**
+ * 查询某模型对某监测点/传感器的历史预测 (从 Supabase 持久化记录)
+ */
+export async function fetchPredictionHistory(modelName: string, targetId: string, limit: number = 10) {
+  return fetchWithFallback(
+    `${API_BASE}/ml/dl/history/${modelName}/${targetId}?limit=${limit}`,
+    undefined,
+    () => ({ success: false, message: '后端未启用', count: 0, predictions: [] })
+  );
+}
+
+/**
+ * 振动波形 + 16 维特征 AI 预测 (1D-CNN 双输出头, 通道级)
+ * 调用训练好的权重 /api/ml/dl/predict/vibration/<channel_id>
+ */
+export async function fetchVibrationPrediction(channelId: string | number) {
+  const cid = String(channelId);
+  return fetchWithFallback(
+    `${API_BASE}/ml/dl/predict/vibration/${cid}`,
+    undefined,
+    () => ({ success: false, message: '后端未启用', channel_id: cid })
   );
 }
 
