@@ -5,7 +5,7 @@ import SettlementV2 from './SettlementV2';
 type Tab = 'new' | 'v2';
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'v2', label: 'V2驾驶舱' },
+  { key: 'v2', label: '驾驶舱' },
   { key: 'new', label: '仪表盘' },
 ];
 

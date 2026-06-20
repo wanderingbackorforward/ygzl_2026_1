@@ -12,6 +12,21 @@ const MOBILE_TAB_KEYS = ['cover', 'settlement', 'temperature', 'cracks', 'overvi
 const MOBILE_HIDDEN_KEYS = ['modules', 'three']
 const COLLAPSE_KEY = 'nav-sidebar-expanded'
 
+// 显示名覆盖 —— 无论后端返回什么,前端统一用通俗中文
+const DISPLAY_NAME_OVERRIDES: Record<string, string> = {
+  insar: '卫星雷达',
+  'shield-trajectory': '盾构掘进',
+  advanced: '智能分析',
+  overview: '数据总览',
+}
+
+// 导航分组 —— 项目经理直觉: 看现状 / 做分析 / 管工作
+const NAV_GROUPS: { label: string; keys: string[] }[] = [
+  { label: '实时监测', keys: ['settlement', 'temperature', 'cracks', 'vibration', 'insar'] },
+  { label: '智能分析', keys: ['advanced', 'overview', 'three', 'shield-trajectory'] },
+  { label: '运维管理', keys: ['tickets'] },
+]
+
 export default function Nav() {
   const { pathname } = useLocation()
   const { modules } = useModules()
@@ -44,12 +59,12 @@ export default function Nav() {
       { module_key: 'temperature', route_path: '/temperature', display_name: '温度', icon_class: 'fas fa-temperature-half', sort_order: 30, status: 'developed' },
       { module_key: 'cracks', route_path: '/cracks', display_name: '裂缝', icon_class: 'fas fa-bug', sort_order: 40, status: 'developed' },
       { module_key: 'vibration', route_path: '/vibration', display_name: '振动', icon_class: 'fas fa-wave-square', sort_order: 50, status: 'developed' },
-      { module_key: 'insar', route_path: '/insar', display_name: 'InSAR', icon_class: 'fas fa-satellite', sort_order: 60, status: 'developed' },
-      { module_key: 'advanced', route_path: '/advanced', display_name: '高级分析', icon_class: 'fas fa-microscope', sort_order: 65, status: 'developed' },
+      { module_key: 'insar', route_path: '/insar', display_name: '卫星雷达', icon_class: 'fas fa-satellite', sort_order: 60, status: 'developed' },
+      { module_key: 'advanced', route_path: '/advanced', display_name: '智能分析', icon_class: 'fas fa-microscope', sort_order: 65, status: 'developed' },
       { module_key: 'overview', route_path: '/overview', display_name: '数据总览', icon_class: 'fas fa-chart-line', sort_order: 70, status: 'developed' },
       { module_key: 'three', route_path: '/three', display_name: '三维模型', icon_class: 'fas fa-cubes', sort_order: 80, status: 'developed' },
       { module_key: 'tickets', route_path: '/tickets', display_name: '工单', icon_class: 'fas fa-ticket-simple', sort_order: 90, status: 'developed' },
-      { module_key: 'shield-trajectory', route_path: '/shield-trajectory', display_name: '盾构轨迹', icon_class: 'fas fa-route', sort_order: 95, status: 'developed' },
+      { module_key: 'shield-trajectory', route_path: '/shield-trajectory', display_name: '盾构掘进', icon_class: 'fas fa-route', sort_order: 95, status: 'developed' },
     ]
   }, [modules])
 
@@ -121,38 +136,82 @@ export default function Nav() {
           {expanded && <span style={{ fontSize: 14 }}>收起</span>}
         </button>
 
-        {/* 模块列表 */}
-        <nav style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, padding: '0 12px' }}>
-          {items.map(m => {
-            const active = pathname === m.route_path
-            const isPending = m.status === 'pending'
+        {/* 模块列表 —— 分组导航 */}
+        <nav style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, padding: '0 12px' }}>
+          {(() => {
+            // 应用显示名覆盖
+            const itemsNamed = items.map(m => ({
+              ...m,
+              display_name: DISPLAY_NAME_OVERRIDES[m.module_key] || m.display_name,
+            }))
+            // 首页单独放顶部
+            const coverItem = itemsNamed.find(m => m.module_key === 'cover')
+            const restItems = itemsNamed.filter(m => m.module_key !== 'cover')
+            // 按组分类
+            const groupedKeys = NAV_GROUPS.flatMap(g => g.keys)
+            const ungrouped = restItems.filter(m => !groupedKeys.includes(m.module_key))
+
+            const renderItem = (m: AppModule) => {
+              const active = pathname === m.route_path
+              const isPending = m.status === 'pending'
+              return (
+                <Link
+                  key={m.module_key}
+                  to={m.route_path}
+                  onClick={e => { if (isPending) { e.preventDefault(); setPending(m) } }}
+                  title={m.display_name}
+                  aria-label={m.display_name}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    minHeight: 48, padding: expanded ? '0 14px' : '0', borderRadius: 12,
+                    justifyContent: expanded ? 'flex-start' : 'center',
+                    textDecoration: 'none', position: 'relative',
+                    color: active ? '#fff' : '#9fc7e8',
+                    background: active ? 'linear-gradient(90deg, rgba(0,229,255,.25), rgba(0,229,255,.06))' : 'transparent',
+                    border: active ? '1px solid rgba(0,229,255,.5)' : '1px solid transparent',
+                    boxShadow: active ? '0 0 14px rgba(0,229,255,.18)' : 'none',
+                  }}
+                >
+                  {active && <span style={{ position: 'absolute', left: -12, top: 8, bottom: 8, width: 3, borderRadius: 3, background: '#00f0ff', boxShadow: '0 0 8px #00f0ff' }} />}
+                  {m.icon_class && <i className={m.icon_class} style={{ fontSize: 19, minWidth: 20, textAlign: 'center', color: active ? '#7df0ff' : undefined }} />}
+                  {expanded && <span style={{ fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.display_name}</span>}
+                  {m.module_key === 'settlement' && badge.has_unread && !active && (
+                    <span style={{ position: 'absolute', top: 10, right: expanded ? 12 : 8, width: 8, height: 8, borderRadius: '50%', background: badge.max_severity === 'critical' ? '#f87171' : '#fbbf24' }} />
+                  )}
+                </Link>
+              )
+            }
+
             return (
-              <Link
-                key={m.module_key}
-                to={m.route_path}
-                onClick={e => { if (isPending) { e.preventDefault(); setPending(m) } }}
-                title={m.display_name}
-                aria-label={m.display_name}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  minHeight: 52, padding: expanded ? '0 14px' : '0', borderRadius: 12,
-                  justifyContent: expanded ? 'flex-start' : 'center',
-                  textDecoration: 'none', position: 'relative',
-                  color: active ? '#fff' : '#9fc7e8',
-                  background: active ? 'linear-gradient(90deg, rgba(0,229,255,.25), rgba(0,229,255,.06))' : 'transparent',
-                  border: active ? '1px solid rgba(0,229,255,.5)' : '1px solid transparent',
-                  boxShadow: active ? '0 0 14px rgba(0,229,255,.18)' : 'none',
-                }}
-              >
-                {active && <span style={{ position: 'absolute', left: -12, top: 8, bottom: 8, width: 3, borderRadius: 3, background: '#00f0ff', boxShadow: '0 0 8px #00f0ff' }} />}
-                {m.icon_class && <i className={m.icon_class} style={{ fontSize: 19, minWidth: 20, textAlign: 'center', color: active ? '#7df0ff' : undefined }} />}
-                {expanded && <span style={{ fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.display_name}</span>}
-                {m.module_key === 'settlement' && badge.has_unread && !active && (
-                  <span style={{ position: 'absolute', top: 10, right: expanded ? 12 : 8, width: 8, height: 8, borderRadius: '50%', background: badge.max_severity === 'critical' ? '#f87171' : '#fbbf24' }} />
-                )}
-              </Link>
+              <>
+                {/* 首页 */}
+                {coverItem && renderItem(coverItem)}
+
+                {/* 分组 */}
+                {NAV_GROUPS.map(group => {
+                  const groupItems = group.keys
+                    .map(key => restItems.find(m => m.module_key === key))
+                    .filter(Boolean) as AppModule[]
+                  if (groupItems.length === 0) return null
+                  return (
+                    <div key={group.label} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {expanded ? (
+                        <div style={{ fontSize: 10, color: 'rgba(100,200,255,.4)', padding: '10px 14px 4px', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                          {group.label}
+                        </div>
+                      ) : (
+                        <div style={{ height: 1, margin: '6px 8px', background: 'rgba(0,229,255,.12)' }} />
+                      )}
+                      {groupItems.map(renderItem)}
+                    </div>
+                  )
+                })}
+
+                {/* 未分组的项 */}
+                {ungrouped.map(renderItem)}
+              </>
             )
-          })}
+          })()}
         </nav>
 
         {/* 底部：用户/登出 */}

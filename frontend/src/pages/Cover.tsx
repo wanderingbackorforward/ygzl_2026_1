@@ -18,12 +18,12 @@ const DEFAULT_MODULES: AppModule[] = [
   { module_key: 'temperature', route_path: '/temperature', display_name: '温度场', icon_class: 'fas fa-temperature-half', sort_order: 30, status: 'developed' },
   { module_key: 'cracks', route_path: '/cracks', display_name: '裂缝监测', icon_class: 'fas fa-bug', sort_order: 40, status: 'developed' },
   { module_key: 'vibration', route_path: '/vibration', display_name: '振动监测', icon_class: 'fas fa-wave-square', sort_order: 50, status: 'developed' },
-  { module_key: 'insar', route_path: '/insar', display_name: 'InSAR 形变', icon_class: 'fas fa-satellite', sort_order: 60, status: 'developed' },
-  { module_key: 'advanced', route_path: '/advanced', display_name: '高级分析', icon_class: 'fas fa-microscope', sort_order: 65, status: 'developed' },
+  { module_key: 'insar', route_path: '/insar', display_name: '卫星雷达', icon_class: 'fas fa-satellite', sort_order: 60, status: 'developed' },
+  { module_key: 'advanced', route_path: '/advanced', display_name: '智能分析', icon_class: 'fas fa-microscope', sort_order: 65, status: 'developed' },
   { module_key: 'overview', route_path: '/overview', display_name: '数据总览', icon_class: 'fas fa-chart-line', sort_order: 70, status: 'developed' },
   { module_key: 'three', route_path: '/three', display_name: '三维模型', icon_class: 'fas fa-cubes', sort_order: 80, status: 'developed' },
   { module_key: 'tickets', route_path: '/tickets', display_name: '工单管理', icon_class: 'fas fa-ticket-simple', sort_order: 90, status: 'developed' },
-  { module_key: 'shield-trajectory', route_path: '/shield-trajectory', display_name: '盾构轨迹', icon_class: 'fas fa-route', sort_order: 95, status: 'developed' },
+  { module_key: 'shield-trajectory', route_path: '/shield-trajectory', display_name: '盾构掘进', icon_class: 'fas fa-route', sort_order: 95, status: 'developed' },
 ]
 
 const SEV_LABEL: Record<string, string> = { critical: '存在危急预警', warning: '有预警待处理', info: '运行正常' }
@@ -137,7 +137,7 @@ function CoverInner() {
     '数字孪生监测管控平台运行中',
     `整体风险等级：${sevLabel}`,
     `待处理预警 ${pendingCount} 条 · 沉降预警 ${settlementAlert} · 裂缝扩展 ${crackExpanding}`,
-    'InSAR 形变 · 沉降 · 温度 · 裂缝 · 振动 多源实时感知',
+    '卫星雷达 · 沉降 · 温度 · 裂缝 · 振动 多源实时感知',
   ]
 
   const clock = now.getTime() ? now.toLocaleTimeString('zh-CN', { hour12: false }) : '--:--:--'
@@ -145,7 +145,7 @@ function CoverInner() {
   return (
     <div style={{ padding: 'var(--wall-gap)', minHeight: 'calc(100vh - 36px)', display: 'flex', flexDirection: 'column', gap: 'var(--wall-gap)', position: 'relative', zIndex: 1 }}>
       <PullRefresh onRefresh={refetch} />
-      <ScreenHeader title="隧道工程安全监测数字孪生" subtitle="DIGITAL TWIN · SAFETY MONITORING PLATFORM" status={`系统在线 · ${sevLabel}`} />
+      <ScreenHeader title="隧道工程安全监测数字孪生" subtitle="隧道安全监测管控平台" status={`系统在线 · ${sevLabel}`} />
 
       {/* KPI 翻牌行 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(155px, 1fr))', gap: 'var(--wall-gap)' }}>

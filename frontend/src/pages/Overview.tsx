@@ -100,7 +100,7 @@ const OverviewDashboard: React.FC = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ fontSize: 20, fontWeight: 800, color: '#e6f7ff' }}>项目监测数据汇总中心</div>
-          <div style={{ fontSize: 14, letterSpacing: 2, color: '#e2e8f0' }}>PROJECT DATA AGGREGATION & MONITORING</div>
+          <div style={{ fontSize: 14, letterSpacing: 2, color: '#e2e8f0' }}>项目监测数据汇总</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button

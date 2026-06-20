@@ -1173,7 +1173,7 @@ function InsarNativeMap(
               <option key={x.name} value={x.name}>{x.name}</option>
             ))}
           </select>
-          <div style={{ marginTop: 6, opacity: 1 }}>光学配置：{opticalCount} 层（来自 /static/data/optical/layers.json）</div>
+          <div style={{ marginTop: 6, opacity: 1 }}>光学配置：{opticalCount} 层</div>
           {baseLayerError ? <div style={{ marginTop: 6, color: '#ff8b8b', opacity: 15, whiteSpace: 'pre-wrap' }}>{baseLayerError}</div> : null}
         </div>
         <div style={{ fontSize: 12, opacity: 1, marginBottom: 6 }}>点数：{featureCount}{meta?.total_feature_count ? ` / ${meta.total_feature_count}` : ''}{meta?.cached ? '（缓存）' : ''}</div>
@@ -1750,7 +1750,7 @@ export default function Insar() {
         <div className="dt-panel" style={{ flexShrink: 0, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 'auto' }}>
             <i className="fas fa-satellite dt-glow" style={{ fontSize: 28, color: 'var(--wall-info)' }} />
-            <span className="dt-screen-title" style={{ fontSize: 'clamp(20px,2.6vw,30px)', letterSpacing: 3 }}>InSAR 监测</span>
+            <span className="dt-screen-title" style={{ fontSize: 'clamp(20px,2.6vw,30px)', letterSpacing: 3 }}>卫星雷达监测</span>
           </div>
           <SegmentedControl
             ariaLabel="风险筛选"

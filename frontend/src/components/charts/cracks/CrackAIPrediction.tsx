@@ -255,7 +255,7 @@ const CrackAIPrediction: React.FC<{ cardId?: string }> = () => {
             background: 'rgba(82, 196, 26, 0.15)', border: '1px solid rgba(82, 196, 26, 0.4)', color: '#95de64',
           }}>
             <i className="fas fa-check-circle" style={{ marginRight: 4 }} />
-            Val MAE = {crackMae.toFixed(4)} mm
+            预测误差: {crackMae.toFixed(4)} mm
           </div>
         )}
       </div>
@@ -263,7 +263,7 @@ const CrackAIPrediction: React.FC<{ cardId?: string }> = () => {
       {!crackReady && (
         <div style={{ fontSize: 12, color: 'rgba(255, 169, 64, 0.9)', marginBottom: 12 }}>
           <i className="fas fa-exclamation-triangle" style={{ marginRight: 4 }} />
-          裂缝模型未在 Supabase 注册。请先运行 <code>train_crack.py</code> + <code>upload_crack.py</code>。
+          AI 模型尚未部署,请联系技术团队。
         </div>
       )}
 

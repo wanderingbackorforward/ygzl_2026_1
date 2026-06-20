@@ -124,11 +124,11 @@ const CracksDashboard: React.FC = () => {
 
         {/* ════════ Layer 4: GB Standards + Confidence Band ════════ */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4 pb-0">
-          <SectionCard title="GB 50292 等级分布" icon="fa-th-large">
+          <SectionCard title="裂缝等级分布" icon="fa-th-large">
             <CrackGradeCards cardId="v2-grades" />
           </SectionCard>
 
-          <SectionCard title="置信带趋势" icon="fa-chart-area" className="lg:col-span-2">
+          <SectionCard title="趋势预测区间" icon="fa-chart-area" className="lg:col-span-2">
             <div style={{ height: 320 }}>
               <CrackConfidenceBandChart cardId="v2-confidence" />
             </div>
@@ -151,7 +151,7 @@ const CracksDashboard: React.FC = () => {
             >
               <i className="fas fa-microscope" />
               打开深度诊断: {selectedPointId}
-              <span className="text-xs opacity-70">(小波分解 / Hurst指数 / CUSUM / 熵 / 蠕变 / 热分离 / 沉降因果)</span>
+              <span className="text-xs opacity-70">(多维度裂缝深度分析)</span>
             </button>
           </div>
         )}
@@ -163,7 +163,7 @@ const CracksDashboard: React.FC = () => {
             className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-3"
           >
             <i className={`fas fa-chevron-${showV1 ? 'down' : 'right'} text-xs`} />
-            <span>{showV1 ? '收起' : '展开'} V1 详细图表 ({V1_LEGACY_CARDS.length} 个)</span>
+            <span>{showV1 ? '收起' : '展开'}详细数据 ({V1_LEGACY_CARDS.length} 个)</span>
           </button>
 
           {showV1 && (

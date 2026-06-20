@@ -161,7 +161,7 @@ const VibrationFreqAIPrediction: React.FC<{ cardId?: string }> = () => {
             background: 'rgba(82, 196, 26, 0.15)', border: '1px solid rgba(82, 196, 26, 0.4)', color: '#95de64',
           }}>
             <i className="fas fa-check-circle" style={{ marginRight: 4 }} />
-            Val Acc = {(freqAcc * 100).toFixed(1)}%
+            准确率: {(freqAcc * 100).toFixed(1)}%
           </div>
         )}
       </div>

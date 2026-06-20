@@ -76,7 +76,7 @@ const TemperatureAIPrediction: React.FC<{ cardId: string }> = () => {
             background: 'rgba(82, 196, 26, 0.15)', border: '1px solid rgba(82, 196, 26, 0.4)', color: '#95de64',
           }}>
             <i className="fas fa-check-circle" style={{ marginRight: 4 }} />
-            MAE = {tempMae.toFixed(4)}°C
+            预测误差: {tempMae.toFixed(4)}°C
           </div>
         )}
       </div>
@@ -84,7 +84,7 @@ const TemperatureAIPrediction: React.FC<{ cardId: string }> = () => {
       {!tempReady && (
         <div style={{ fontSize: 12, color: 'rgba(255, 169, 64, 0.9)', marginBottom: 12 }}>
           <i className="fas fa-exclamation-triangle" style={{ marginRight: 4 }} />
-          温度模型未在 Supabase 注册。请先运行 <code>train_temperature.py</code> + <code>upload_to_supabase.py</code>。
+          AI 模型尚未部署,请联系技术团队。
         </div>
       )}
 

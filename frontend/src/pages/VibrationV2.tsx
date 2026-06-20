@@ -464,7 +464,7 @@ export const VibrationV2: React.FC = () => {
 
                 {/* 分隔线 */}
                 <div className="border-t border-slate-700 pt-4">
-                  <h3 className="mb-4 text-sm font-semibold text-white">PPV 预测工具</h3>
+                  <h3 className="mb-4 text-sm font-semibold text-white">振动速度预测</h3>
                   <SadovskyCalculator
                     siteType={siteType}
                     onSiteTypeChange={setSiteType}

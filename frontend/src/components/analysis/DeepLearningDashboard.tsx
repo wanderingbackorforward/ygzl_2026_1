@@ -26,34 +26,34 @@ const ALL_AI_MODELS: {
   {
     group: '地表沉降',
     models: [
-      { name: 'informer', label: '智能预测', desc: '适合长期趋势分析', page: '当前页面 ↓', metricKey: 'MAE', metricLabel: 'MAE' },
-      { name: 'stgcn', label: '空间关联预测', desc: '考虑点位间相互影响', page: '当前页面 ↓', metricKey: 'MAE', metricLabel: 'MAE' },
-      { name: 'pinn', label: '物理模型预测', desc: '结合物理规律,更可靠', page: '当前页面 ↓', metricKey: 'MAE', metricLabel: 'MAE' },
+      { name: 'informer', label: '智能预测', desc: '适合长期趋势分析', page: '当前页面 ↓', metricKey: 'MAE', metricLabel: '误差' },
+      { name: 'stgcn', label: '空间关联预测', desc: '考虑点位间相互影响', page: '当前页面 ↓', metricKey: 'MAE', metricLabel: '误差' },
+      { name: 'pinn', label: '物理模型预测', desc: '结合物理规律,更可靠', page: '当前页面 ↓', metricKey: 'MAE', metricLabel: '误差' },
     ],
   },
   {
     group: '温度监测',
     models: [
-      { name: 'temperature', label: 'AI 温度预测', desc: '基于 251 个传感器历史数据', page: '温度监测页', metricKey: 'MAE', metricLabel: 'MAE' },
+      { name: 'temperature', label: 'AI 温度预测', desc: '基于 251 个传感器历史数据', page: '温度监测页', metricKey: 'MAE', metricLabel: '误差' },
     ],
   },
   {
     group: '振动监测',
     models: [
-      { name: 'vibration', label: 'AI 波形预测', desc: '预测振动波形和统计特征', page: '振动监测页', metricKey: 'val_mae_real', metricLabel: 'MAE' },
+      { name: 'vibration', label: 'AI 波形预测', desc: '预测振动波形和统计特征', page: '振动监测页', metricKey: 'val_mae_real', metricLabel: '误差' },
       { name: 'vibration_freq', label: 'AI 振动诊断', desc: '自动识别异常频谱模式', page: '振动监测页', metricKey: 'val_accuracy', metricLabel: '准确率' },
     ],
   },
   {
     group: '裂缝监测',
     models: [
-      { name: 'crack', label: 'AI 裂缝预测', desc: '预测未来 2.5 天裂缝变化', page: '裂缝监测页', metricKey: 'val_mae_real', metricLabel: 'MAE' },
+      { name: 'crack', label: 'AI 裂缝预测', desc: '预测未来 2.5 天裂缝变化', page: '裂缝监测页', metricKey: 'val_mae_real', metricLabel: '误差' },
     ],
   },
   {
     group: '盾构掘进',
     models: [
-      { name: 'tbm', label: 'AI 盾构姿态预测', desc: '预测未来 20 分钟姿态偏差', page: '盾构轨迹页', metricKey: 'val_mae_real', metricLabel: 'MAE' },
+      { name: 'tbm', label: 'AI 盾构姿态预测', desc: '预测未来 20 分钟姿态偏差', page: '盾构轨迹页', metricKey: 'val_mae_real', metricLabel: '误差' },
     ],
   },
 ];
@@ -265,7 +265,7 @@ export const DeepLearningDashboard: React.FC = () => {
       {/* STGCN multi-point preview */}
       {selectedModel === 'stgcn' && stgcnData && stgcnData.predictions && (
         <div style={styles.stgcnGrid}>
-          <div style={styles.sectionTitle}>STGCN 多点联合预测总览</div>
+          <div style={styles.sectionTitle}>多点联合预测总览</div>
           <div style={styles.pointGrid}>
             {Object.keys(stgcnData.predictions).slice(0, 10).map((pid: string) => {
               const pData = stgcnData.predictions[pid];

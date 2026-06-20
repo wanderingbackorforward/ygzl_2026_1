@@ -148,7 +148,7 @@ function HeroBar({ points, loading, days, onDaysChange, onSelectPoint }: HeroBar
       label: '平均日沉降速率',
       value: `${avgRate.toFixed(4)} mm/d`,
       color: Math.abs(avgRate) > 0.08 ? '#f87171' : Math.abs(avgRate) > 0.03 ? '#fbbf24' : '#34d399',
-      sub: '线性回归',
+      sub: '趋势拟合',
     },
   ];
 

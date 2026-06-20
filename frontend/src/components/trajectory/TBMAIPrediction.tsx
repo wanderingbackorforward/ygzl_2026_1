@@ -163,7 +163,7 @@ const TBMAIPrediction: React.FC = () => {
             background: 'rgba(82, 196, 26, 0.15)', border: '1px solid rgba(82, 196, 26, 0.4)', color: '#95de64',
           }}>
             <i className="fas fa-check-circle" style={{ marginRight: 4 }} />
-            Val MAE = {tbmMae.toFixed(4)}
+            预测误差: {tbmMae.toFixed(4)}
           </div>
         )}
       </div>

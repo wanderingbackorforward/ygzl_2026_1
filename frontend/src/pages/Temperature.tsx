@@ -9,7 +9,7 @@ export default function Temperature() {
   const [mode, setMode] = useState<TempMode>('v2');
 
   const modes: { key: TempMode; label: string }[] = [
-    { key: 'v2', label: 'V2驾驶舱' },
+    { key: 'v2', label: '驾驶舱' },
     { key: 'new', label: '仪表盘' },
   ];
 

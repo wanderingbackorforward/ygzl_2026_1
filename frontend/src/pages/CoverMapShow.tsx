@@ -277,8 +277,8 @@ export default function CoverMapShow() {
 
           <div className="space-y-3">
             <div className="flex justify-between text-xs">
-              <span className="text-gray-400">BIM模型精度</span>
-              <span className="text-cyan-300 font-tech">LOD 400</span>
+              <span className="text-gray-400">模型精度</span>
+              <span className="text-cyan-300 font-tech">精细级</span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-gray-400">传感器在线率</span>
@@ -446,13 +446,13 @@ export default function CoverMapShow() {
                       {mobileZoneTab === 'overview' && (
                         <div className="p-4 space-y-4">
                           <div className="bg-blue-900/20 p-3 rounded border border-blue-500/20">
-                            <p className="text-[10px] text-blue-300 font-bold mb-1 uppercase">工程概况 SCOPE</p>
+                            <p className="text-[10px] text-blue-300 font-bold mb-1 uppercase">工程概况</p>
                             <p className="text-xs text-gray-300 leading-relaxed text-justify">{activeZone.scope}</p>
                           </div>
 
                           <div>
                             <div className="flex justify-between items-center mb-2">
-                              <span className="text-[10px] text-gray-500 font-bold uppercase">智慧建造亮点 HIGHLIGHTS</span>
+                              <span className="text-[10px] text-gray-500 font-bold uppercase">智慧建造亮点</span>
                               <i className="fas fa-cube text-cyan-500 text-xs" />
                             </div>
                             <div className="grid grid-cols-2 gap-2">
@@ -556,13 +556,13 @@ export default function CoverMapShow() {
 
               <div className="flex-1 p-6 flex flex-col gap-4 relative z-10 custom-scroll">
                 <div className="bg-blue-900/20 p-3 rounded border border-blue-500/20">
-                  <p className="text-[10px] text-blue-300 font-bold mb-1 uppercase">工程概况 SCOPE</p>
+                  <p className="text-[10px] text-blue-300 font-bold mb-1 uppercase">工程概况</p>
                   <p className="text-xs text-gray-300 leading-relaxed text-justify">{activeZone.scope}</p>
                 </div>
 
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] text-gray-500 font-bold uppercase">智慧建造亮点 HIGHLIGHTS</span>
+                    <span className="text-[10px] text-gray-500 font-bold uppercase">智慧建造亮点</span>
                     <i className="fas fa-cube text-cyan-500 text-xs" />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -597,8 +597,7 @@ export default function CoverMapShow() {
             <div className="flip-card-back glass-panel">
               <div className="h-16 bg-blue-900/20 flex items-center justify-between px-6 border-b border-cyan-500/30">
                 <div>
-                  <h3 className="text-sm font-bold text-white">技术指标与设备矩阵</h3>
-                  <p className="text-[10px] text-cyan-400">DATA MATRIX</p>
+                  <h3 className="text-sm font-bold text-white">技术指标与设备</h3>
                 </div>
                 <i className="fas fa-database text-cyan-500 text-lg opacity-50" />
               </div>

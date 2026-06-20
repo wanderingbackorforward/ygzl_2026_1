@@ -172,15 +172,14 @@ const VibrationAIPrediction: React.FC<Props> = ({ cardId }) => {
                 <Metric label="峰值" value={`${Math.max(...forecast.amplitude).toFixed(3)}`} />
                 <Metric label="谷值" value={`${Math.min(...forecast.amplitude).toFixed(3)}`} />
                 <Metric label="均值" value={`${(forecast.amplitude.reduce((a: number, b: number) => a + b, 0) / forecast.amplitude.length).toFixed(3)}`} />
-                <Metric label="RMS" value={`${Math.sqrt(forecast.amplitude.reduce((a: number, b: number) => a + b * b, 0) / forecast.amplitude.length).toFixed(3)}`} />
+                <Metric label="有效值" value={`${Math.sqrt(forecast.amplitude.reduce((a: number, b: number) => a + b * b, 0) / forecast.amplitude.length).toFixed(3)}`} />
               </div>
             </div>
           )}
 
           {showHistory && (
             <div style={{ background: '#082f49', padding: 10, borderRadius: 6, marginTop: 12, fontSize: 11, color: '#bae6fd' }}>
-              预测已写入 Supabase <code>ml_predictions</code> 表 (model_name='vibration', target_id='{channelId}')。
-              可通过 <code>GET /api/ml/dl/history/vibration/{channelId}</code> 查询历史。
+              预测记录已保存。
             </div>
           )}
         </>

@@ -153,7 +153,7 @@ const SecondaryAnalysisCard: React.FC = () => {
 };
 
 const SETTLEMENT_CARDS: CardConfig[] = [
-  { id: 'secondary-analysis', title: '二级分析', icon: 'fas fa-microscope', component: SecondaryAnalysisCard, defaultLayout: { x: 0, y: 0, w: 12, h: 6, minW: 6, minH: 4 } },
+  { id: 'secondary-analysis', title: '综合分析', icon: 'fas fa-microscope', component: SecondaryAnalysisCard, defaultLayout: { x: 0, y: 0, w: 12, h: 6, minW: 6, minH: 4 } },
   { id: 'point-selector', title: '监测点选择', icon: 'fas fa-map-marker-alt', component: PointSelectorCard, defaultLayout: { x: 0, y: 6, w: 12, h: 2, minW: 6, minH: 2 } },
   { id: 'trend-chart', title: '趋势分析', icon: 'fas fa-chart-bar', component: TrendChart, defaultLayout: { x: 0, y: 8, w: 7, h: 4, minW: 4, minH: 3 } },
   { id: 'point-details', title: '监测点详情', icon: 'fas fa-info-circle', component: PointDetailsCard, defaultLayout: { x: 7, y: 8, w: 5, h: 2, minW: 3, minH: 2 } },

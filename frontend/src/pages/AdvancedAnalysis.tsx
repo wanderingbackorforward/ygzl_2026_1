@@ -42,14 +42,14 @@ const analysisGroups: AnalysisGroup[] = [
         label: '沉降趋势预测',
         icon: 'chart-area',
         desc: '统计模型自动选优，预测 25 个点位未来 30 天的沉降趋势，提前发现超限风险',
-        hint: '本页使用统计模型（自动选优），速度快。如需更高精度的深度学习模型，请切换到「AI 预测中心」',
+        hint: '本页使用统计模型,速度快。如需更高精度的 AI 模型,请切换到「AI 预测中心」',
       },
       {
         id: 'deeplearning',
         label: 'AI 预测中心',
         icon: 'brain',
-        desc: '8 个 AI 模型总览 + 深度学习沉降预测（智能 / 空间关联 / 物理模型 / 综合）',
-        hint: '本页使用深度学习模型，精度更高。如需快速统计预测，请切换到「沉降趋势预测」',
+        desc: '8 个 AI 模型总览 + 沉降预测（智能 / 空间关联 / 物理模型 / 综合）',
+        hint: '本页使用 AI 模型,精度更高。如需快速统计预测,请切换到「沉降趋势预测」',
       },
     ],
   },
@@ -68,7 +68,7 @@ const analysisGroups: AnalysisGroup[] = [
         id: 'explainability',
         label: '影响因素排序',
         icon: 'chart-bar',
-        desc: 'SHAP 特征重要性排序 + Granger 因果检验，找出哪些因素影响最大、哪个点位引起另一个点位变化',
+        desc: '分析各因素对沉降的影响程度排序,找出关键影响因素和点位间的因果关系',
         hint: '本页侧重「哪些因素影响最大」。如需量化施工事件的具体影响，请切换到「施工影响分析」',
       },
     ],
@@ -108,7 +108,7 @@ const AdvancedAnalysis: React.FC = () => {
         <aside style={styles.sidebar}>
           <div style={styles.sidebarHeader}>
             <i className="fas fa-cogs" style={styles.sidebarHeaderIcon} />
-            <span style={styles.sidebarHeaderText}>高级分析</span>
+            <span style={styles.sidebarHeaderText}>智能分析</span>
           </div>
           <nav style={styles.nav}>
             {analysisGroups.map(group => (
@@ -304,7 +304,7 @@ const ProfileTab: React.FC = () => {
               </div>
               <div style={styles.emptyTitle}>暂无纵断面数据</div>
               <div style={styles.emptyHint}>
-                请确保 processed_settlement_data 表中有沉降数据
+                暂无沉降数据,请联系技术团队确认数据采集
               </div>
             </div>
           )}

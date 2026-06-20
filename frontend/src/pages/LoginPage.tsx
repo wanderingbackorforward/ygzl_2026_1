@@ -78,7 +78,7 @@ export default function LoginPage() {
             数字孪生沉降监测系统
           </h1>
           <p style={{ margin: 0, fontSize: 14, color: '#8ba0b6' }}>
-            Digital Twin Terrain Settlement Monitoring
+            隧道工程安全监测系统
           </p>
         </div>
 

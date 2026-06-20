@@ -19,7 +19,7 @@ export default function ShieldTrajectory() {
   const [projectId, setProjectId] = useState('')
   const [alignments, setAlignments] = useState<Alignment[]>([])
   const [alignmentId, setAlignmentId] = useState('')
-  const [machineId, setMachineId] = useState('TBM-01')
+  const [machineId, setMachineId] = useState('盾构机-01')
 
   // -- data --
   const [records, setRecords] = useState<DeviationRecord[]>([])
@@ -203,7 +203,7 @@ export default function ShieldTrajectory() {
             {alignments.map((a) => <option key={a.alignment_id} value={a.alignment_id}>{a.name}</option>)}
           </select>
           <input className="w-24 rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-white"
-            value={machineId} onChange={(e) => setMachineId(e.target.value)} placeholder="机号" />
+            value={machineId} onChange={(e) => setMachineId(e.target.value)} placeholder="盾构机号" />
           <div className="ml-4 flex gap-1">
             {TABS.map((t) => (
               <button key={t} onClick={() => setTab(t)}

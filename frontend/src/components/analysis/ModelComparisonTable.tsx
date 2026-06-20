@@ -40,11 +40,11 @@ export const ModelComparisonTable: React.FC<ModelComparisonTableProps> = ({
           <thead>
             <tr style={styles.headerRow}>
               <th style={styles.th}>模型</th>
-              <th style={styles.th}>MAE</th>
-              <th style={styles.th}>RMSE</th>
-              <th style={styles.th}>MAPE (%)</th>
-              <th style={styles.th}>AIC</th>
-              <th style={styles.th}>BIC</th>
+              <th style={styles.th}>平均误差</th>
+              <th style={styles.th}>均方根误差</th>
+              <th style={styles.th}>百分比误差 (%)</th>
+              <th style={styles.th} title="赤池信息准则 (Akaike Information Criterion)">AIC</th>
+              <th style={styles.th} title="贝叶斯信息准则 (Bayesian Information Criterion)">BIC</th>
             </tr>
           </thead>
           <tbody>
@@ -107,15 +107,15 @@ export const ModelComparisonTable: React.FC<ModelComparisonTableProps> = ({
       <div style={styles.footer}>
         <div style={styles.legend}>
           <div style={styles.legendItem}>
-            <span style={styles.legendLabel}>MAE:</span>
+            <span style={styles.legendLabel}>平均误差:</span>
             <span style={styles.legendText}>平均绝对误差</span>
           </div>
           <div style={styles.legendItem}>
-            <span style={styles.legendLabel}>RMSE:</span>
+            <span style={styles.legendLabel}>均方根误差:</span>
             <span style={styles.legendText}>均方根误差</span>
           </div>
           <div style={styles.legendItem}>
-            <span style={styles.legendLabel}>MAPE:</span>
+            <span style={styles.legendLabel}>百分比误差:</span>
             <span style={styles.legendText}>平均绝对百分比误差</span>
           </div>
           <div style={styles.legendItem}>

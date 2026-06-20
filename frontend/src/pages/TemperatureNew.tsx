@@ -113,7 +113,7 @@ const TEMPERATURE_CARDS: CardConfig[] = [
   },
   {
     id: 'secondary-analysis',
-    title: '二级分析',
+    title: '综合分析',
     icon: 'fas fa-microscope',
     component: TemperatureSecondaryAnalysisCard,
     defaultLayout: { x: 0, y: 0, w: 12, h: 6, minW: 6, minH: 4 },

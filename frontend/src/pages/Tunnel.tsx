@@ -363,12 +363,12 @@ export default function Tunnel() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <div className="text-xs text-slate-400">TBM 机号（可选）</div>
+          <div className="text-xs text-slate-400">盾构机号（可选）</div>
           <input
             className="bg-slate-900 border border-slate-700 rounded px-2 py-1"
             value={machineId}
             onChange={(e) => setMachineId(e.target.value)}
-            placeholder="TBM-01"
+            placeholder="盾构机-01"
           />
         </div>
 
