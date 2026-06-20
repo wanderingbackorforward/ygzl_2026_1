@@ -5,7 +5,27 @@ static/StreamingAssets/aa/WebGL/*.bundle
 static/glb/*.glb
 
 # 忽略临时上传目录中的大文件
-temp_uploads/**/*.mdb
+temp_uploads/
+
+# ML 训练产物与数据(权重已存 Supabase,数据来自 Supabase)
+backend/modules/ml_models/data/*.csv
+backend/modules/ml_models/data/*.parquet
+backend/modules/ml_models/data/*.npy
+backend/modules/ml_models/data/*.npz
+backend/modules/ml_models/data/*.xlsx
+backend/modules/ml_models/trained_models/*.pth
+backend/modules/ml_models/trained_models/*.pt
+backend/modules/ml_models/trained_models/*.pkl
+backend/modules/ml_models/trained_models/*.npz
+backend/modules/ml_models/trained_models/.cache/
+backend/modules/ml_models/weights/**/*.pt
+backend/modules/ml_models/weights/**/*.pth
+backend/modules/ml_models/*.log
+backend/modules/ml_models/train_*.log
+backend/modules/ml_models/reports/*.log
+
+# 忽略临时上传目录中的大文件
+**/*.mdb
 temp_uploads/vibration/**/*.csv
 
 # 忽略大型Excel文件
