@@ -66,7 +66,7 @@ const TemperatureAIPrediction: React.FC<{ cardId: string }> = () => {
             <i className="fas fa-microchip" style={{ color: '#00ffe1', marginRight: 8 }} />
             AI 温度预测
             <span style={{ fontSize: 11, color: 'rgba(230,247,255,0.6)', marginLeft: 8 }}>
-              MultiTask Informer (251 传感器共享)
+              基于 251 个传感器的历史数据,预测未来温度变化
             </span>
           </h3>
         </div>

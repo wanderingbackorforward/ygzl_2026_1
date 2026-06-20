@@ -245,7 +245,7 @@ const CrackAIPrediction: React.FC<{ cardId?: string }> = () => {
             <i className="fas fa-microchip" style={{ color: '#00ffe1', marginRight: 8 }} />
             AI 裂缝预测
             <span style={{ fontSize: 11, color: 'rgba(230,247,255,0.6)', marginLeft: 8 }}>
-              CrackLSTM (31 点共享 + per-point embedding, 6h 步长)
+              基于 31 个监测点的历史趋势,预测未来 2.5 天的裂缝变化
             </span>
           </h3>
         </div>

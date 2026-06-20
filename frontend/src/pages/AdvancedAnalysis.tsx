@@ -22,7 +22,7 @@ const analysisGroups = [
     label: '预测未来',
     items: [
       { id: 'prediction' as TabType, label: '趋势预测', icon: 'chart-area', desc: '未来会怎样？ —— 预测每个点位未来7~30天的沉降趋势，提前发现可能超限的风险点' },
-      { id: 'deeplearning' as TabType, label: '深度学习预测', icon: 'brain', desc: '更高精度预测 —— 用深度学习模型做更精准的预测，适合复杂地质条件下的长期预测' },
+      { id: 'deeplearning' as TabType, label: 'AI 预测中心', icon: 'brain', desc: '用 AI 模型做更精准的预测 —— 共 8 个 AI 模型,覆盖沉降/温度/振动/裂缝/盾构 5 类监测数据,点击查看模型总览' },
     ],
   },
   {

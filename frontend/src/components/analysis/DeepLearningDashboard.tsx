@@ -12,11 +12,51 @@ import {
 type ModelType = 'informer' | 'stgcn' | 'pinn' | 'ensemble';
 
 const MODEL_INFO: Record<ModelType, { label: string; desc: string; icon: string }> = {
-  informer: { label: 'Informer', desc: 'Transformer 长序列预测', icon: 'brain' },
-  stgcn: { label: 'STGCN', desc: '时空图卷积网络', icon: 'project-diagram' },
-  pinn: { label: 'PINN', desc: '物理信息神经网络', icon: 'atom' },
-  ensemble: { label: 'Ensemble', desc: '集成学习融合预测', icon: 'layer-group' },
+  informer: { label: '智能预测', desc: '适合长期趋势分析', icon: 'brain' },
+  stgcn: { label: '空间关联预测', desc: '考虑点位间相互影响', icon: 'project-diagram' },
+  pinn: { label: '物理模型预测', desc: '结合物理规律,更可靠', icon: 'atom' },
+  ensemble: { label: '综合预测', desc: '融合多种模型,最稳健', icon: 'layer-group' },
 };
+
+// 全部 8 个 AI 模型总览 (按监测类型分组, 通俗描述)
+const ALL_AI_MODELS: {
+  group: string;
+  models: { name: string; label: string; desc: string; page: string; metricKey?: string; metricLabel?: string }[];
+}[] = [
+  {
+    group: '地表沉降',
+    models: [
+      { name: 'informer', label: '智能预测', desc: '适合长期趋势分析', page: '当前页面 ↓', metricKey: 'MAE', metricLabel: 'MAE' },
+      { name: 'stgcn', label: '空间关联预测', desc: '考虑点位间相互影响', page: '当前页面 ↓', metricKey: 'MAE', metricLabel: 'MAE' },
+      { name: 'pinn', label: '物理模型预测', desc: '结合物理规律,更可靠', page: '当前页面 ↓', metricKey: 'MAE', metricLabel: 'MAE' },
+    ],
+  },
+  {
+    group: '温度监测',
+    models: [
+      { name: 'temperature', label: 'AI 温度预测', desc: '基于 251 个传感器历史数据', page: '温度监测页', metricKey: 'MAE', metricLabel: 'MAE' },
+    ],
+  },
+  {
+    group: '振动监测',
+    models: [
+      { name: 'vibration', label: 'AI 波形预测', desc: '预测振动波形和统计特征', page: '振动监测页', metricKey: 'val_mae_real', metricLabel: 'MAE' },
+      { name: 'vibration_freq', label: 'AI 振动诊断', desc: '自动识别异常频谱模式', page: '振动监测页', metricKey: 'val_accuracy', metricLabel: '准确率' },
+    ],
+  },
+  {
+    group: '裂缝监测',
+    models: [
+      { name: 'crack', label: 'AI 裂缝预测', desc: '预测未来 2.5 天裂缝变化', page: '裂缝监测页', metricKey: 'val_mae_real', metricLabel: 'MAE' },
+    ],
+  },
+  {
+    group: '盾构掘进',
+    models: [
+      { name: 'tbm', label: 'AI 盾构姿态预测', desc: '预测未来 20 分钟姿态偏差', page: '盾构轨迹页', metricKey: 'val_mae_real', metricLabel: 'MAE' },
+    ],
+  },
+];
 
 export const DeepLearningDashboard: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState<ModelType>('informer');
@@ -86,43 +126,56 @@ export const DeepLearningDashboard: React.FC = () => {
 
   return (
     <div style={styles.container}>
-      {/* 训练好的模型状态卡片 */}
+      {/* AI 模型总览 (8 个模型, 5 类监测) */}
       <div style={{
-        display: 'flex', alignItems: 'flex-start', gap: '12px',
-        padding: '14px 18px', marginBottom: '16px',
-        backgroundColor: 'rgba(82, 196, 26, 0.10)',
-        border: '1px solid rgba(82, 196, 26, 0.4)',
-        borderRadius: '8px', color: '#95de64', fontSize: '13px', lineHeight: '1.6',
+        marginBottom: '16px',
+        padding: '14px 18px',
+        backgroundColor: 'rgba(0, 20, 40, 0.4)',
+        border: '1px solid rgba(0, 255, 255, 0.25)',
+        borderRadius: '8px',
       }}>
-        <i className="fas fa-microchip" style={{ fontSize: '18px', marginTop: '2px', flexShrink: 0 }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '6px', color: '#fff' }}>
-            <i className="fas fa-check-circle" style={{ marginRight: '6px', color: '#95de64' }} />
-            训练好的深度学习模型 (基于真实 Supabase 监测数据)
-          </div>
-          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', color: '#e2e8f0' }}>
-            {['informer', 'stgcn', 'pinn'].map(m => {
-              const info = dlStatus?.models?.[m];
-              const loaded = info?.weights_loaded;
-              const mae = info?.metrics?.MAE;
-              return (
-                <span key={m} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                  <i className={`fas fa-${loaded ? 'check-circle' : 'times-circle'}`}
-                     style={{ color: loaded ? '#95de64' : '#ff7a7a' }} />
-                  <span style={{ color: '#fff', fontWeight: 500 }}>{m.toUpperCase()}</span>
-                  {loaded && mae != null ? (
-                    <span style={{ opacity: 0.85 }}>MAE={mae.toFixed(3)}mm</span>
-                  ) : (
-                    <span style={{ opacity: 0.6 }}>未加载</span>
-                  )}
-                </span>
-              );
-            })}
-          </div>
-          <div style={{ marginTop: '6px', color: '#e2e8f0', fontSize: '12px' }}>
-            数据源: Supabase (dt-terrain-settlement-dev) | 25 个监测点 × 52 周 | 周频预测
-          </div>
+        <div style={{ fontWeight: 'bold', fontSize: 14, marginBottom: 10, color: '#fff' }}>
+          <i className="fas fa-microchip" style={{ marginRight: 8, color: '#00ffe1' }} />
+          AI 预测模型总览
+          <span style={{ fontSize: 11, color: 'rgba(230,247,255,0.6)', marginLeft: 8, fontWeight: 'normal' }}>
+            共 8 个模型,覆盖 5 类监测数据
+          </span>
         </div>
+        {ALL_AI_MODELS.map(group => (
+          <div key={group.group} style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 11, color: 'rgba(230,247,255,0.5)', marginBottom: 4 }}>{group.group}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 6 }}>
+              {group.models.map(m => {
+                const info = dlStatus?.models?.[m.name];
+                const loaded = info?.weights_loaded;
+                const metricVal = info?.metrics?.[m.metricKey || 'MAE'];
+                return (
+                  <div key={m.name} style={{
+                    padding: '6px 10px',
+                    background: loaded ? 'rgba(82, 196, 26, 0.06)' : 'rgba(255, 122, 122, 0.06)',
+                    border: `1px solid ${loaded ? 'rgba(82, 196, 26, 0.25)' : 'rgba(255, 122, 122, 0.25)'}`,
+                    borderRadius: 5,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 1 }}>
+                      <i className={`fas fa-${loaded ? 'check-circle' : 'times-circle'}`}
+                         style={{ color: loaded ? '#95de64' : '#ff7a7a', fontSize: 10 }} />
+                      <span style={{ fontSize: 12, color: '#fff', fontWeight: 500 }}>{m.label}</span>
+                    </div>
+                    <div style={{ fontSize: 10, color: 'rgba(230,247,255,0.45)', marginBottom: 1 }}>{m.desc}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9 }}>
+                      <span style={{ color: loaded && metricVal != null ? '#95de64' : 'rgba(230,247,255,0.35)' }}>
+                        {loaded && metricVal != null
+                          ? `${m.metricLabel}=${m.metricKey === 'val_accuracy' ? (metricVal * 100).toFixed(1) + '%' : Number(metricVal).toFixed(4)}`
+                          : loaded ? '已就绪' : '未加载'}
+                      </span>
+                      <span style={{ color: 'rgba(74, 158, 255, 0.6)' }}>{m.page}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Model selector */}

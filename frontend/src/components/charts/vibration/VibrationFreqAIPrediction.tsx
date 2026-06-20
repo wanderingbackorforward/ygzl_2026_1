@@ -150,9 +150,9 @@ const VibrationFreqAIPrediction: React.FC<{ cardId?: string }> = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
         <h3 style={{ margin: 0, fontSize: 14, color: '#fff' }}>
           <i className="fas fa-microchip" style={{ color: '#00ffe1', marginRight: 8 }} />
-          AI 频域异常检测
+          AI 振动诊断
           <span style={{ fontSize: 11, color: 'rgba(230,247,255,0.6)', marginLeft: 8 }}>
-            SpectrumClassifier (1D-CNN, 8 通道)
+            自动识别振动频谱模式,检测异常信号
           </span>
         </h3>
         {freqReady && freqAcc != null && (

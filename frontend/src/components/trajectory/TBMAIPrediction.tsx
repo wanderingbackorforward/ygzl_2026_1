@@ -152,9 +152,9 @@ const TBMAIPrediction: React.FC = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
         <h3 style={{ margin: 0, fontSize: 14, color: '#fff' }}>
           <i className="fas fa-microchip" style={{ color: '#00ffe1', marginRight: 8 }} />
-          AI 盾构轨迹预测
+          AI 盾构姿态预测
           <span style={{ fontSize: 11, color: 'rgba(230,247,255,0.6)', marginLeft: 8 }}>
-            TBMNet (多变量 LSTM + per-TBM embedding, 5min 步长)
+            基于掘进参数(推力/扭矩/转速),预测未来 20 分钟的姿态偏差
           </span>
         </h3>
         {tbmReady && tbmMae != null && (
