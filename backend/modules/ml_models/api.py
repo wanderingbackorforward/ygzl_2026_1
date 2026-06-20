@@ -1207,6 +1207,29 @@ def api_dl_predict_crack(point_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+@ml_api.route('/dl/predict/tbm/<tbm_id>', methods=['GET'])
+def api_dl_predict_tbm(tbm_id):
+    """
+    用训练好的 TBMNet 预测指定盾构机的轨迹偏差
+    从 Supabase tbm_trajectory_data 拉最近 8 条 5min 观测 -> 预测后 4 个 5min 步
+    输出 4 个偏差目标: tail/head x vertical/horizontal
+
+    参数:
+        tbm_id: 盾构机 ID (TBM001, TBM20251009001750, ...)
+        pred_len: 预测步数 (默认 4)
+    """
+    try:
+        inf = _get_dl_inference()
+        if inf is None:
+            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+        pred_len = int(request.args.get('pred_len', 4))
+        return jsonify(inf.predict_tbm(tbm_id, pred_len))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @ml_api.route('/dl/history/<model_name>/<target_id>', methods=['GET'])
 def api_dl_prediction_history(model_name, target_id):
     """

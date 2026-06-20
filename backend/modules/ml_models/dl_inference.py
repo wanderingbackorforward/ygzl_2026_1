@@ -1007,12 +1007,231 @@ def predict_crack(point_id: str = 'F1-1', pred_len: int = 10) -> Dict:
     }
 
 
+# ==================== TBM 轨迹预测 (Multi-variate LSTM + per-TBM embedding) ====================
+
+class TBMNet(nn.Module):
+    """与 train_tbm.py 一致的多变量 LSTM + per-TBM 嵌入"""
+    def __init__(self, n_tbms: int, n_features: int = 14, n_targets: int = 4,
+                 hidden: int = 64, layers: int = 2,
+                 seq_len: int = 8, pred_len: int = 4, emb_dim: int = 8):
+        super().__init__()
+        self.n_targets = n_targets
+        self.pred_len = pred_len
+        self.tbm_emb = nn.Embedding(n_tbms, emb_dim)
+        self.lstm = nn.LSTM(input_size=n_features + emb_dim, hidden_size=hidden,
+                            num_layers=layers, batch_first=True, dropout=0.1)
+        self.head = nn.Sequential(
+            nn.Linear(hidden, 64), nn.GELU(),
+            nn.Linear(64, n_targets * pred_len),
+        )
+
+    def forward(self, x, tbm_idx):
+        B, L, F = x.shape
+        emb = self.tbm_emb(tbm_idx)
+        emb_rep = emb.unsqueeze(1).expand(-1, L, -1)
+        x_in = torch.cat([x, emb_rep], dim=-1)
+        h, _ = self.lstm(x_in)
+        out = self.head(h[:, -1, :])
+        return out.view(B, self.pred_len, self.n_targets)
+
+
+def _fetch_tbm_series_from_supabase(tbm_id: str, limit: int = 50):
+    """
+    从 Supabase tbm_trajectory_data 拉取指定 TBM 最近 limit 条观测, 按时间升序。
+    返回: (times[list[str]], features[np.float32, N, 14], targets[np.float32, N, 4]) 或 None
+    """
+    FEATURES = [
+        "thrust_force", "cutter_torque", "cutter_speed", "cutout_pressure",
+        "penetration_rate", "advance_speed", "mud_flow_in", "mud_flow_out",
+        "pressure_down", "pressure_up", "pressure_right_up", "pressure_right_down",
+        "pressure_left_down", "pressure_left_up",
+    ]
+    TARGETS = [
+        "tail_vertical_deviation", "tail_horizontal_deviation",
+        "head_vertical_deviation", "head_horizontal_deviation",
+    ]
+    try:
+        import requests
+        from supabase_store import SUPABASE_URL, ANON_KEY
+        HEADERS = {
+            'apikey': ANON_KEY,
+            'Authorization': f'Bearer {ANON_KEY}',
+            'Content-Type': 'application/json',
+        }
+        cols = ",".join(["measurement_time"] + FEATURES + TARGETS)
+        url = (f"{SUPABASE_URL}/rest/v1/tbm_trajectory_data"
+               f"?select={cols}&point_id=eq.{tbm_id}"
+               f"&order=measurement_time.desc&limit={limit}")
+        r = requests.get(url, headers=HEADERS, timeout=30)
+        r.raise_for_status()
+        rows = r.json()
+        if not rows:
+            return None
+        rows.reverse()
+        times = [r['measurement_time'] for r in rows]
+        feats = np.array([[float(r.get(f) or 0) for f in FEATURES] for r in rows], dtype=np.float32)
+        targs = np.array([[float(r.get(t) or 0) for t in TARGETS] for r in rows], dtype=np.float32)
+        return times, feats, targs
+    except Exception as e:
+        print(f"[dl_inference] 拉取 TBM 数据失败: {e}")
+        return None
+
+
+def predict_tbm(tbm_id: str = 'TBM001', pred_len: int = 4) -> Dict:
+    """
+    TBM 轨迹预测: 给定盾构机 ID, 从 Supabase 拉最近 SEQ_LEN 条观测,
+    用 TBMNet 预测未来 pred_len 个 5min 步的 4 个偏差目标。
+    """
+    if 'tbm' not in _MODEL_CACHE:
+        meta = _fetch_model_from_supabase('tbm')
+        if not meta:
+            return {'success': False, 'message': 'tbm 模型未在 Supabase 注册'}
+        weight_path = _get_weight_path('tbm', meta)
+        if not weight_path:
+            return {'success': False, 'message': 'tbm 权重加载失败'}
+        cfg = meta.get('config', {})
+        SEQ_LEN = int(cfg.get('seq_len', 8))
+        PRED_LEN = int(cfg.get('pred_len', 4))
+        N_TBMS = int(cfg.get('n_tbms', 5))
+
+        ckpt = torch.load(weight_path, map_location=_DEVICE, weights_only=False)
+        tbm_ids = ckpt.get('tbm_ids') or cfg.get('tbm_ids', [])
+        feat_mean = np.array(ckpt.get('feat_mean', [0]*14), dtype=np.float32)
+        feat_scale = np.array(ckpt.get('feat_scale', [1]*14), dtype=np.float32)
+        targ_mean = np.array(ckpt.get('targ_mean', [0]*4), dtype=np.float32)
+        targ_scale = np.array(ckpt.get('targ_scale', [1]*4), dtype=np.float32)
+
+        model = TBMNet(
+            n_tbms=len(tbm_ids) if tbm_ids else N_TBMS,
+            n_features=int(cfg.get('n_features', 14)),
+            n_targets=int(cfg.get('n_targets', 4)),
+            hidden=int(cfg.get('hidden', 64)),
+            layers=int(cfg.get('layers', 2)),
+            seq_len=SEQ_LEN, pred_len=PRED_LEN,
+            emb_dim=int(cfg.get('emb_dim', 8)),
+        ).to(_DEVICE)
+        model.load_state_dict(ckpt['state_dict'])
+        model.eval()
+        _MODEL_CACHE['tbm'] = (model, {
+            'seq_len': SEQ_LEN, 'pred_len': PRED_LEN,
+            'tbm_ids': tbm_ids,
+            'feat_mean': feat_mean, 'feat_scale': feat_scale,
+            'targ_mean': targ_mean, 'targ_scale': targ_scale,
+        })
+        _CONFIG_CACHE['tbm'] = cfg
+
+    model, cstate = _MODEL_CACHE['tbm']
+    SEQ_LEN = cstate['seq_len']
+    PRED_LEN = cstate['pred_len']
+    tbm_ids = cstate['tbm_ids']
+    feat_mean = cstate['feat_mean']
+    feat_scale = cstate['feat_scale']
+    targ_mean = cstate['targ_mean']
+    targ_scale = cstate['targ_scale']
+
+    if tbm_ids and tbm_id not in tbm_ids:
+        return {'success': False, 'message': f'TBM {tbm_id} 不在训练范围 (共 {len(tbm_ids)} 台)'}
+    tbm_idx = tbm_ids.index(tbm_id) if tbm_ids else 0
+
+    fetched = _fetch_tbm_series_from_supabase(tbm_id, limit=SEQ_LEN + 10)
+    if fetched is None:
+        return {'success': False, 'message': f'TBM {tbm_id} 观测数据拉取失败'}
+    times, feats, targs = fetched
+    if len(feats) < SEQ_LEN:
+        return {'success': False, 'message': f'TBM {tbm_id} 数据不足 (仅 {len(feats)} 条, 需 ≥{SEQ_LEN})'}
+
+    last_seq = feats[-SEQ_LEN:].astype(np.float32)
+    # 归一化
+    last_norm = (last_seq - feat_mean) / np.maximum(feat_scale, 1e-8)
+    x = torch.from_numpy(last_norm).float().unsqueeze(0).to(_DEVICE)
+    tidx_t = torch.LongTensor([tbm_idx]).to(_DEVICE)
+
+    with torch.no_grad():
+        pred_n = model(x, tidx_t).squeeze(0).cpu().numpy()  # (pred_len, 4)
+    # 反归一化
+    pred_real = pred_n * targ_scale + targ_mean
+    target_names = [
+        "tail_vertical_deviation", "tail_horizontal_deviation",
+        "head_vertical_deviation", "head_horizontal_deviation",
+    ]
+    pred_dicts = []
+    for i in range(PRED_LEN):
+        pred_dicts.append({
+            'step': i + 1,
+            'values': {target_names[j]: round(float(pred_real[i, j]), 4) for j in range(4)},
+        })
+
+    # 历史观测 (取最近 SEQ_LEN + 4 条)
+    hist_n = min(len(targs), SEQ_LEN + 4)
+    hist_times = times[-hist_n:]
+    hist_targets = targs[-hist_n:]
+    historical = []
+    for i in range(hist_n):
+        historical.append({
+            'date': hist_times[i],
+            'values': {target_names[j]: round(float(hist_targets[i, j]), 4) for j in range(4)},
+        })
+
+    # 未来时间戳 (5min 步进)
+    from datetime import datetime, timedelta
+    try:
+        last_dt = datetime.strptime(times[-1], "%Y-%m-%d %H:%M:%S")
+    except Exception:
+        last_dt = datetime.now()
+    fc_dates = [(last_dt + timedelta(minutes=5 * (i + 1))).strftime("%Y-%m-%d %H:%M:%S")
+                for i in range(PRED_LEN)]
+
+    # 置信区间 (经验: pred MAE 0.656, 95% CI 约 2x MAE)
+    std_err = float(np.std(targs[-SEQ_LEN:])) * 0.5 + 0.1
+    forecast = {
+        'dates': fc_dates,
+        'targets': target_names,
+        'values': [{t: round(float(pred_real[i, j]), 4) for j, t in enumerate(target_names)}
+                    for i in range(PRED_LEN)],
+        'lower_bound': [{t: round(float(pred_real[i, j] - 1.96 * std_err), 4) for j, t in enumerate(target_names)}
+                         for i in range(PRED_LEN)],
+        'upper_bound': [{t: round(float(pred_real[i, j] + 1.96 * std_err), 4) for j, t in enumerate(target_names)}
+                         for i in range(PRED_LEN)],
+    }
+
+    # 写回 Supabase
+    try:
+        _save_prediction(
+            'tbm', 'tbm_point', tbm_id,
+            forecast_steps=fc_dates,
+            forecast_values=[v['values'] for v in pred_dicts],
+            lower_bound=forecast['lower_bound'],
+            upper_bound=forecast['upper_bound'],
+            historical=[{'date': h['date'], 'value': h['values']} for h in historical],
+        )
+    except Exception:
+        pass
+
+    return {
+        'success': True,
+        'tbm_id': tbm_id,
+        'selected_model': 'tbm',
+        'model_variant': 'supabase_trained',
+        'model_info': {
+            'model_type': 'TBMNet (Multi-variate LSTM + per-TBM embedding)',
+            'seq_len': SEQ_LEN, 'pred_len': PRED_LEN,
+            'n_tbms': len(tbm_ids),
+            'n_features': 14, 'n_targets': 4,
+            'interval': '5min',
+            'device': str(_DEVICE),
+            'storage': 'supabase:ml-models/tbm/',
+        },
+        'historical': historical,
+        'forecast': forecast,
+    }
+
+
 # ==================== 模型状态 + 历史查询 ====================
 
 def get_trained_models_status() -> Dict:
     """查询所有训练好的模型状态(从 Supabase)"""
     status = {'success': True, 'models': {}, 'device': str(_DEVICE)}
-    for name in ['informer', 'stgcn', 'pinn', 'temperature', 'vibration', 'crack']:
+    for name in ['informer', 'stgcn', 'pinn', 'temperature', 'vibration', 'crack', 'tbm']:
         meta = _fetch_model_from_supabase(name)
         if meta:
             status['models'][name] = {
