@@ -243,7 +243,7 @@ const CrackAIPrediction: React.FC<{ cardId?: string }> = () => {
         <div>
           <h3 style={{ margin: 0, fontSize: 14, color: '#fff' }}>
             <i className="fas fa-microchip" style={{ color: '#00ffe1', marginRight: 8 }} />
-            AI 裂缝预测
+            裂缝预测
             <span style={{ fontSize: 11, color: 'rgba(230,247,255,0.6)', marginLeft: 8 }}>
               基于 31 个监测点的历史趋势,预测未来 2.5 天的裂缝变化
             </span>
@@ -255,7 +255,7 @@ const CrackAIPrediction: React.FC<{ cardId?: string }> = () => {
             background: 'rgba(82, 196, 26, 0.15)', border: '1px solid rgba(82, 196, 26, 0.4)', color: '#95de64',
           }}>
             <i className="fas fa-check-circle" style={{ marginRight: 4 }} />
-            预测误差: {crackMae.toFixed(4)} mm
+            预测可信度: {crackMae < 0.5 ? '高' : crackMae < 1.0 ? '中' : '低'}
           </div>
         )}
       </div>
@@ -263,7 +263,7 @@ const CrackAIPrediction: React.FC<{ cardId?: string }> = () => {
       {!crackReady && (
         <div style={{ fontSize: 12, color: 'rgba(255, 169, 64, 0.9)', marginBottom: 12 }}>
           <i className="fas fa-exclamation-triangle" style={{ marginRight: 4 }} />
-          AI 模型尚未部署,请联系技术团队。
+          预测功能尚未启用,请联系技术团队。
         </div>
       )}
 

@@ -19,7 +19,7 @@ const DEFAULT_MODULES: AppModule[] = [
   { module_key: 'cracks', route_path: '/cracks', display_name: '裂缝监测', icon_class: 'fas fa-bug', sort_order: 40, status: 'developed' },
   { module_key: 'vibration', route_path: '/vibration', display_name: '振动监测', icon_class: 'fas fa-wave-square', sort_order: 50, status: 'developed' },
   { module_key: 'insar', route_path: '/insar', display_name: '卫星雷达', icon_class: 'fas fa-satellite', sort_order: 60, status: 'developed' },
-  { module_key: 'advanced', route_path: '/advanced', display_name: '智能分析', icon_class: 'fas fa-microscope', sort_order: 65, status: 'developed' },
+  { module_key: 'advanced', route_path: '/advanced', display_name: '安全分析', icon_class: 'fas fa-microscope', sort_order: 65, status: 'developed' },
   { module_key: 'overview', route_path: '/overview', display_name: '数据总览', icon_class: 'fas fa-chart-line', sort_order: 70, status: 'developed' },
   { module_key: 'three', route_path: '/three', display_name: '三维模型', icon_class: 'fas fa-cubes', sort_order: 80, status: 'developed' },
   { module_key: 'tickets', route_path: '/tickets', display_name: '工单管理', icon_class: 'fas fa-ticket-simple', sort_order: 90, status: 'developed' },

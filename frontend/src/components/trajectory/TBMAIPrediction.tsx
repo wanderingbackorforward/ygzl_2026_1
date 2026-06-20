@@ -152,7 +152,7 @@ const TBMAIPrediction: React.FC = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
         <h3 style={{ margin: 0, fontSize: 14, color: '#fff' }}>
           <i className="fas fa-microchip" style={{ color: '#00ffe1', marginRight: 8 }} />
-          AI 盾构姿态预测
+          盾构姿态预测
           <span style={{ fontSize: 11, color: 'rgba(230,247,255,0.6)', marginLeft: 8 }}>
             基于掘进参数(推力/扭矩/转速),预测未来 20 分钟的姿态偏差
           </span>
@@ -163,7 +163,7 @@ const TBMAIPrediction: React.FC = () => {
             background: 'rgba(82, 196, 26, 0.15)', border: '1px solid rgba(82, 196, 26, 0.4)', color: '#95de64',
           }}>
             <i className="fas fa-check-circle" style={{ marginRight: 4 }} />
-            预测误差: {tbmMae.toFixed(4)}
+            预测可信度: {tbmMae < 0.5 ? '高' : tbmMae < 1.0 ? '中' : '低'}
           </div>
         )}
       </div>
@@ -171,7 +171,7 @@ const TBMAIPrediction: React.FC = () => {
       {!tbmReady && (
         <div style={{ fontSize: 12, color: 'rgba(255, 169, 64, 0.9)', marginBottom: 10 }}>
           <i className="fas fa-exclamation-triangle" style={{ marginRight: 4 }} />
-          TBM 模型未在 Supabase 注册。
+          预测功能尚未启用,请联系技术团队。
         </div>
       )}
 

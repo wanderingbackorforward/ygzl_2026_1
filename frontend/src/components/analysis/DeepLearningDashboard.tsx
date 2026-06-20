@@ -136,7 +136,7 @@ export const DeepLearningDashboard: React.FC = () => {
       }}>
         <div style={{ fontWeight: 'bold', fontSize: 14, marginBottom: 10, color: '#fff' }}>
           <i className="fas fa-microchip" style={{ marginRight: 8, color: '#00ffe1' }} />
-          AI 预测模型总览
+          预测模型总览
           <span style={{ fontSize: 11, color: 'rgba(230,247,255,0.6)', marginLeft: 8, fontWeight: 'normal' }}>
             共 8 个模型,覆盖 5 类监测数据
           </span>
@@ -165,7 +165,9 @@ export const DeepLearningDashboard: React.FC = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9 }}>
                       <span style={{ color: loaded && metricVal != null ? '#95de64' : 'rgba(230,247,255,0.35)' }}>
                         {loaded && metricVal != null
-                          ? `${m.metricLabel}=${m.metricKey === 'val_accuracy' ? (metricVal * 100).toFixed(1) + '%' : Number(metricVal).toFixed(4)}`
+                          ? m.metricKey === 'val_accuracy'
+                            ? `可信度: ${metricVal > 0.8 ? '高' : metricVal > 0.6 ? '中' : '低'}`
+                            : `可信度: ${Number(metricVal) < 0.5 ? '高' : Number(metricVal) < 1.0 ? '中' : '低'}`
                           : loaded ? '已就绪' : '未加载'}
                       </span>
                       <span style={{ color: 'rgba(74, 158, 255, 0.6)' }}>{m.page}</span>

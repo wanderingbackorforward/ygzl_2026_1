@@ -118,7 +118,7 @@ const VibrationAIPrediction: React.FC<Props> = ({ cardId }) => {
           {fullWave && (
             <div style={{ background: '#0f172a', padding: 10, borderRadius: 6, marginBottom: 12 }}>
               <div style={{ color: '#94a3b8', fontSize: 11, marginBottom: 6 }}>
-                波形预测 (前 50 点真实, 后 50 点 AI 预测)
+                波形预测 (前 50 点为实测, 后 50 点为预测)
               </div>
               <WaveformChart
                 time={fullWave.time_s}
@@ -187,7 +187,7 @@ const VibrationAIPrediction: React.FC<Props> = ({ cardId }) => {
 
       {!result && !error && !loading && (
         <div style={{ color: '#64748b', textAlign: 'center', padding: 24, fontSize: 12 }}>
-          选择通道并点击 "运行预测" 启动 AI 推理
+          选择传感器并点击 "运行预测" 开始预测
         </div>
       )}
     </div>
@@ -222,7 +222,7 @@ const WaveformChart: React.FC<{ time: number[]; real: number[]; pred: number[] }
       {/* 分隔线 */}
       <line x1={pad + 50 * xStep} x2={pad + 50 * xStep} y1={pad} y2={h - pad} stroke="#475569" strokeDasharray="2,2" />
       <text x={pad + 2} y={h - 2} fontSize="9" fill="#94a3b8">真实 (前 50)</text>
-      <text x={pad + 50 * xStep + 4} y={pad + 10} fontSize="9" fill="#67e8f9">AI 预测 (后 50)</text>
+      <text x={pad + 50 * xStep + 4} y={pad + 10} fontSize="9" fill="#67e8f9">预测 (后 50)</text>
     </svg>
   );
 };

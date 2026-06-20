@@ -23,64 +23,64 @@ interface AnalysisGroup {
   items: TabItem[];
 }
 
-// 分析模块分组 —— 4 大类,逻辑清晰,消除重复感
+// 分析模块分组 —— 按项目经理决策流程: 看现状 → 防风险 → 查原因 → 查数据
 const analysisGroups: AnalysisGroup[] = [
   {
-    label: '发现问题',
-    icon: 'search',
+    label: '当前状况',
+    icon: 'clipboard-check',
     items: [
-      { id: 'anomaly', label: '异常检测', icon: 'exclamation-triangle', desc: '哪些监测点有问题？自动扫描全部 25 个点位，按严重程度标红/橙/黄/绿' },
-      { id: 'recommendation', label: '处置建议', icon: 'clipboard-list', desc: '发现问题后怎么办？根据异常等级自动生成处置方案：紧急巡检 / 加密监测 / 持续跟踪' },
+      { id: 'anomaly', label: '安全排查', icon: 'search', desc: '自动扫描全部 25 个监测点,列出有问题的点位和严重程度' },
+      { id: 'recommendation', label: '处置方案', icon: 'clipboard-list', desc: '针对发现的问题,给出具体的处置措施和紧急程度' },
     ],
   },
   {
-    label: '预测未来',
-    icon: 'chart-line',
+    label: '风险预警',
+    icon: 'exclamation-circle',
     items: [
       {
         id: 'prediction',
-        label: '沉降趋势预测',
+        label: '沉降预警',
         icon: 'chart-area',
-        desc: '统计模型自动选优，预测 25 个点位未来 30 天的沉降趋势，提前发现超限风险',
-        hint: '本页使用统计模型,速度快。如需更高精度的 AI 模型,请切换到「AI 预测中心」',
+        desc: '预测未来 30 天各点位的沉降变化,提前发现可能超限的点位',
+        hint: '本页提供快速预测。如需更全面的预测(温度/振动/裂缝/盾构),请查看「综合预测」',
       },
       {
         id: 'deeplearning',
-        label: 'AI 预测中心',
+        label: '综合预测',
         icon: 'brain',
-        desc: '8 个 AI 模型总览 + 沉降预测（智能 / 空间关联 / 物理模型 / 综合）',
-        hint: '本页使用 AI 模型,精度更高。如需快速统计预测,请切换到「沉降趋势预测」',
+        desc: '汇总全部 8 个预测模型,覆盖沉降、温度、振动、裂缝、盾构 5 类监测数据',
+        hint: '本页展示所有预测模型的汇总结果。如需专门查看沉降预测,请回到「沉降预警」',
       },
     ],
   },
   {
-    label: '分析原因',
+    label: '原因分析',
     icon: 'project-diagram',
     items: [
       {
         id: 'correlation',
-        label: '施工影响分析',
+        label: '施工影响',
         icon: 'hard-hat',
-        desc: '量化施工事件对沉降的真实影响 + 空间关联热力图 + 多因素关联分析',
-        hint: '本页侧重「施工事件导致了多少沉降」。如需分析各因素影响大小排序，请切换到「影响因素排序」',
+        desc: '评估施工活动(如开挖、降水)对周边沉降的实际影响程度',
+        hint: '本页回答「施工导致了多少沉降」。如需找出主要影响因素,请查看「因素排查」',
       },
       {
         id: 'explainability',
-        label: '影响因素排序',
-        icon: 'chart-bar',
-        desc: '分析各因素对沉降的影响程度排序,找出关键影响因素和点位间的因果关系',
-        hint: '本页侧重「哪些因素影响最大」。如需量化施工事件的具体影响，请切换到「施工影响分析」',
+        label: '因素排查',
+        icon: 'list-ol',
+        desc: '排查各项因素对沉降的影响程度,找出主要原因和相互关联的点位',
+        hint: '本页回答「什么因素影响最大」。如需评估施工的具体影响,请查看「施工影响」',
       },
     ],
   },
   {
-    label: '数据工具',
+    label: '工程数据',
     icon: 'database',
     items: [
-      { id: 'profile', label: '纵断面', icon: 'chart-line', desc: '沿线路方向展示所有点位的沉降剖面，支持按时间回放动画' },
-      { id: 'joint', label: '沉降+裂缝', icon: 'link', desc: '同时展示沉降和裂缝数据，观察两者是否存在联动关系' },
-      { id: 'events', label: '施工事件', icon: 'calendar-alt', desc: '记录和管理施工事件（如爆破、开挖），为因果分析提供数据支撑' },
-      { id: 'knowledgegraph', label: '知识图谱', icon: 'share-alt', desc: '上传文献/笔记，系统自动提取实体和关系构建知识图谱，基于图谱智能问答' },
+      { id: 'profile', label: '全线剖面', icon: 'chart-line', desc: '沿隧道线路方向展示所有监测点的沉降剖面,支持按日期回放' },
+      { id: 'joint', label: '关联分析', icon: 'link', desc: '同时查看沉降和裂缝数据,判断两者是否有关联' },
+      { id: 'events', label: '施工记录', icon: 'calendar-alt', desc: '记录和管理施工事件(如爆破、开挖),为原因分析提供依据' },
+      { id: 'knowledgegraph', label: '工程知识库', icon: 'book', desc: '上传工程文献和技术笔记,系统自动整理为可检索的知识库' },
     ],
   },
 ];
@@ -108,7 +108,7 @@ const AdvancedAnalysis: React.FC = () => {
         <aside style={styles.sidebar}>
           <div style={styles.sidebarHeader}>
             <i className="fas fa-cogs" style={styles.sidebarHeaderIcon} />
-            <span style={styles.sidebarHeaderText}>智能分析</span>
+            <span style={styles.sidebarHeaderText}>安全分析</span>
           </div>
           <nav style={styles.nav}>
             {analysisGroups.map(group => (
