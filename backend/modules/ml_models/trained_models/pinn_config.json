@@ -1,0 +1,21 @@
+{
+  "model": "pinn",
+  "features": [
+    "week_idx",
+    "avg_temperature",
+    "crack_mean"
+  ],
+  "hidden_dims": [
+    128,
+    256,
+    256,
+    128,
+    64
+  ],
+  "epochs": 400,
+  "physics_weight": 0.01,
+  "device": "cuda",
+  "train_time_sec": 5.2,
+  "version": "v2",
+  "optimizer": "Adam+CosineLR"
+}

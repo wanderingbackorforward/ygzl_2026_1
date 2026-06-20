@@ -57,39 +57,30 @@ class ProbAttention(nn.Module):
         self.out_projection = nn.Linear(d_model, d_model)
 
     def forward(self, queries, keys, values, attn_mask=None):
+        """
+        标准缩放点积注意力 (保持序列长度不变, 兼容残差连接)。
+        原ProbSparse在短序列下无收益且存在维度bug, 此处退化为标准注意力。
+        """
         B, L, _ = queries.shape
         _, S, _ = keys.shape
         H = self.n_heads
 
-        # 投影
-        queries = self.query_projection(queries).view(B, L, H, self.d_k)
-        keys = self.key_projection(keys).view(B, S, H, self.d_k)
-        values = self.value_projection(values).view(B, S, H, self.d_k)
+        # 投影并分头: (B, L, H, d_k)
+        q = self.query_projection(queries).view(B, L, H, self.d_k)
+        k = self.key_projection(keys).view(B, S, H, self.d_k)
+        v = self.value_projection(values).view(B, S, H, self.d_k)
 
-        # ProbSparse采样
-        U_part = self.factor * np.ceil(np.log(S)).astype('int').item()
-        u = min(U_part, L)
-
-        # 计算采样的Q-K分数
-        queries_sample = queries[:, torch.randperm(L)[:u], :, :]
-        scores_sample = torch.einsum("blhd,bshd->bhls", queries_sample, keys)
-
-        # 找到Top-k个最重要的查询
-        M = scores_sample.max(-1)[0] - torch.div(scores_sample.sum(-1), S)
-        M_top = M.topk(u, sorted=False)[1]
-
-        # 计算注意力
-        queries_reduce = queries[torch.arange(B)[:, None, None], M_top, :, :]
-        scores = torch.einsum("blhd,bshd->bhls", queries_reduce, keys)
+        # 缩放点积注意力: scores (B, H, L, S)
+        scores = torch.einsum("blhd,bshd->bhls", q, k) / math.sqrt(self.d_k)
 
         if attn_mask is not None:
             scores = scores.masked_fill(attn_mask, -1e9)
 
         attn = F.softmax(scores, dim=-1)
-        context = torch.einsum("bhls,bshd->blhd", attn, values)
+        context = torch.einsum("bhls,bshd->blhd", attn, v)  # (B, L, H, d_k)
 
-        # 输出投影
-        context = context.contiguous().view(B, u, self.d_model)
+        # 输出投影 (保持长度 L)
+        context = context.contiguous().view(B, L, self.d_model)
         output = self.out_projection(context)
 
         return output, attn

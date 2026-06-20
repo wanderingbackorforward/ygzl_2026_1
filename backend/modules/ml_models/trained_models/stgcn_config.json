@@ -1,0 +1,9 @@
+{
+  "model": "stgcn",
+  "seq_len": 24,
+  "pred_len": 8,
+  "num_nodes": 25,
+  "epochs": 100,
+  "device": "cuda",
+  "train_time_sec": 2.1
+}

@@ -1,0 +1,8 @@
+{
+  "val_forecast_mae": 0.005664526747494209,
+  "val_feature_mae": 1.9037984565990727,
+  "epochs": 400,
+  "n_samples": 208,
+  "n_channels": 8,
+  "device": "cuda"
+}

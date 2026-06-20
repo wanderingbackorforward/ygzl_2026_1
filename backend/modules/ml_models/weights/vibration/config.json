@@ -1,0 +1,29 @@
+{
+  "model_type": "VibrationNet",
+  "task": "waveform_forecast + feature_regression",
+  "input_len": 50,
+  "pred_len": 50,
+  "n_features": 16,
+  "feature_names": [
+    "mean_value",
+    "standard_deviation",
+    "kurtosis",
+    "root_mean_square",
+    "wave_form_factor",
+    "peak_factor",
+    "center_frequency",
+    "frequency_variance",
+    "pulse_factor",
+    "clearance_factor",
+    "waveform_center",
+    "time_width",
+    "mean_square_frequency",
+    "root_mean_square_frequency",
+    "frequency_standard_deviation",
+    "peak_value"
+  ],
+  "d_model": 64,
+  "sampling_rate_hz": 1000,
+  "time_resolution_s": 0.1,
+  "duration_s": 10.0
+}
