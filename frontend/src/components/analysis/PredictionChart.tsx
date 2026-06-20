@@ -24,12 +24,15 @@ interface PredictionChartProps {
   prediction: PredictionResult;
   historicalData?: Array<{ date: string; value: number }>;
   height?: number;
+  /** 阈值线, 例如 [{ value: -25, name: '预警 -25mm', color: '#faad14' }] */
+  thresholdLines?: Array<{ value: number; name: string; color: string }>;
 }
 
 export const PredictionChart: React.FC<PredictionChartProps> = ({
   prediction,
   historicalData = [],
   height = 400,
+  thresholdLines = [],
 }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<echarts.ECharts | null>(null);
@@ -196,6 +199,22 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
           symbol: 'diamond',
           symbolSize: 5,
           showSymbol: false,
+          // 阈值线 (预警/危险)
+          markLine: thresholdLines.length > 0 ? {
+            symbol: 'none',
+            silent: true,
+            data: thresholdLines.map(t => ({
+              yAxis: t.value,
+              lineStyle: { color: t.color, type: 'dashed', width: 1.5 },
+              label: {
+                formatter: t.name,
+                color: t.color,
+                position: 'insideEndTop',
+                fontSize: 11,
+                fontWeight: 'bold' as const,
+              },
+            })),
+          } : undefined,
         },
         // 置信区间上界
         {
@@ -246,7 +265,7 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, [prediction, historicalData]);
+  }, [prediction, historicalData, thresholdLines]);
 
   // 清理
   useEffect(() => {

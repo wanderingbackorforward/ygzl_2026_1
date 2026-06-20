@@ -53,7 +53,7 @@ const VIBRATION_CARDS: CardConfig[] = [
   { id: 'waveform-crest', title: '振动强度', icon: 'fas fa-chart-bar', component: WaveformCrestFactorChart, defaultLayout: { x: 0, y: 7, w: 6, h: 4, minW: 4, minH: 3 } },
   { id: 'pulse-gap', title: '冲击特征', icon: 'fas fa-chart-bar', component: PulseGapFactorChart, defaultLayout: { x: 6, y: 7, w: 6, h: 4, minW: 4, minH: 3 } },
   { id: 'feature-radar', title: '综合特征图', icon: 'fas fa-bullseye', component: FeatureRadarChart, defaultLayout: { x: 0, y: 11, w: 12, h: 4, minW: 6, minH: 3 } },
-  { id: 'vibration-freq-ai', title: 'AI 振动诊断', icon: 'fas fa-microchip', component: VibrationFreqAIPrediction, defaultLayout: { x: 0, y: 15, w: 12, h: 5, minW: 6, minH: 4 } },
+  { id: 'vibration-freq-ai', title: '振动诊断', icon: 'fas fa-microchip', component: VibrationFreqAIPrediction, defaultLayout: { x: 0, y: 15, w: 12, h: 5, minW: 6, minH: 4 } },
 ];
 
 const VibrationDashboard: React.FC = () => {
