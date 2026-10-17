@@ -1,0 +1,35 @@
+# Linux/Ubuntu production dependencies for Aliyun single-machine deployment.
+# Do not use backend/requirements.txt on Linux: it was exported from a local
+# Windows/Anaconda environment and contains file:///C:/... package references.
+
+Flask==3.0.3
+Flask-Cors==4.0.1
+gunicorn==22.0.0
+python-dotenv==1.0.1
+requests==2.32.3
+
+# Data processing
+numpy==1.26.4
+pandas==2.2.2
+scipy==1.13.1
+scikit-learn==1.5.1
+statsmodels==0.14.2
+openpyxl==3.1.5
+xlrd==2.0.1
+
+# Database clients
+SQLAlchemy==2.0.31
+mysql-connector-python==9.0.0
+PyMySQL==1.1.1
+psycopg2-binary==2.9.9
+
+# Optional modules used by advanced analysis / assistant / graph features
+networkx==3.3
+python-dateutil==2.9.0.post0
+pytz==2024.1
+PyYAML==6.0.2
+
+# Optional ML / explainability dependencies. Keep them here so imports do not
+# fail on the VM, but avoid heavy GPU-only packages.
+shap==0.46.0
+joblib==1.4.2
