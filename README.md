@@ -100,7 +100,7 @@ cd frontend && npm ci && npm run dev
 | 沉降 | `/settlement` |
 | 温度 | `/temperature` |
 | 裂缝 | `/cracks` |
-| 振动 | `/vibration`（legacy: `/vibration-legacy`） |
+| 振动 | `/vibration` |
 | InSAR | `/insar` |
 | 数据总览 | `/overview` |
 | 高级分析 | `/advanced` |
@@ -110,7 +110,7 @@ cd frontend && npm ci && npm run dev
 | 盾构 | `/shield-trajectory` |
 | 模块管理 | `/modules` |
 
-部分模块仍并存 `*New` / `*V2` 实现；收敛为每域单页是后续清理项。
+监测域前端已收敛为每域单一正式实现（沉降/温度/振动以 V2 驾驶舱为准；裂缝为原 New 仪表盘）。
 
 ## Vercel（次要 / 遗留）
 
