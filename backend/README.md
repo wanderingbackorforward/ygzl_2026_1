@@ -25,3 +25,26 @@ From repo root, or `pip install -r requirements.txt` while cwd is `backend/`.
 - `requirements.anaconda-windows.export.txt` — archived broken Anaconda dump; ignore
 - `requirements_ml_upgrade.txt` — optional ML extras
 - Repo `api/requirements.txt` — Vercel only (secondary)
+
+## Dual tracks (intentional; do not merge casually)
+
+Two pairs of similarly named packages are **both live**. Prefer documenting and
+routing new code to the intended one; only delete after grep+import proof.
+
+### `modules/database` vs `modules/db`
+
+| Package | Role |
+|---------|------|
+| `modules/database` | Low-level MySQL helpers (`db_config`, connections). Used by data import/processing and by `modules/db` itself. |
+| `modules/db` | Repository / vendor layer (`get_repo`, `repos/`). Used by tickets, analysis_v2, temperature_v2, tunnel, api_server, agent patrol. |
+
+New feature code that needs app data should go through `modules.db.vendor.get_repo` unless it is a batch ETL script that already uses `db_config`.
+
+### `modules/assistant` vs `modules/agent`
+
+| Package | Role | HTTP prefix |
+|---------|------|-------------|
+| `modules/assistant` | Chat / LLM floating assistant (conversations, tools, streaming) | `/api/assistant` |
+| `modules/agent` | Patrol / insights / badge / cron (ops agent) | `/api/agent` |
+
+Different products. Both blueprints are registered from `modules/api/api_server.py`. Do not collapse them without an explicit product decision.
