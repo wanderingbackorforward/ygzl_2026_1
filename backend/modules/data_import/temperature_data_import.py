@@ -1,6 +1,5 @@
 import pandas as pd
 import pyodbc
-import mysql.connector
 from sqlalchemy import create_engine, text
 import os
 import sys
@@ -9,7 +8,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 # 导入数据库配置
-from modules.database.db_config import db_config
+from modules.database.db_config import sqlalchemy_url
 
 def import_mdb_to_mysql(mdb_path):
     """从MDB文件导入温度数据到MySQL数据库"""
@@ -26,9 +25,8 @@ def import_mdb_to_mysql(mdb_path):
         access_conn = pyodbc.connect(conn_str)
         access_cursor = access_conn.cursor()
         
-        # 创建MySQL数据库连接
-        engine = create_engine(
-            f"mysql+pymysql://{db_config['user']}:{db_config['password']}@{db_config['host']}/{db_config['database']}")
+        # 创建MySQL数据库连接（env-aware SQLAlchemy URL from db_config facade）
+        engine = create_engine(sqlalchemy_url())
         
         # 1. 导入传感器信息
         print("正在导入传感器信息...")

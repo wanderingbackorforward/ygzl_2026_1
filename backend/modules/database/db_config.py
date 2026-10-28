@@ -95,3 +95,43 @@ def get_db_cursor():
     finally:
         cursor.close()
         conn.close()
+
+
+def mysql_connect(*, include_database: bool = True):
+    """Fail-fast ``mysql.connector.connect`` using ``db_config``.
+
+    Prefer this over ``get_db_connection()`` in ETL scripts that should raise
+    on failure (``get_db_connection`` returns ``None`` and prints).
+
+    When ``include_database`` is False, connects without selecting a schema —
+    required before ``CREATE DATABASE`` (see ``ensure_mysql_database``).
+    """
+    cfg = dict(db_config)
+    if not include_database:
+        cfg.pop('database', None)
+    return mysql.connector.connect(**cfg)
+
+
+def ensure_mysql_database() -> bool:
+    """``CREATE DATABASE IF NOT EXISTS`` for ``MYSQL_DATABASE``.
+
+    **MySQL-only DDL.** Other vendors (e.g. ``DB_VENDOR=supabase_http``) cannot
+    create schemas this way; keep this helper isolated so ETL importers do not
+    scatter raw ``CREATE DATABASE`` statements. Online API code must use
+    ``get_repo()`` instead and assume the database already exists.
+
+    Returns True on success, False on error (prints the reason).
+    """
+    try:
+        conn = mysql_connect(include_database=False)
+        cursor = conn.cursor()
+        database = str(db_config['database'])
+        # Identifier from env/config only — not user input.
+        cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{database}`")
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+    except Exception as err:
+        print(f"确保数据库存在时出错: {err}")
+        return False

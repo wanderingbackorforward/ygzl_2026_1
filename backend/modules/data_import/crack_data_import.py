@@ -1,5 +1,4 @@
 import pandas as pd
-import mysql.connector
 from sqlalchemy import create_engine
 import os
 import sys
@@ -8,7 +7,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 # 导入数据库配置
-from modules.database.db_config import db_config
+from modules.database.db_config import db_config, sqlalchemy_url, mysql_connect, ensure_mysql_database
 
 
 def check_tables_exist():
@@ -19,13 +18,8 @@ def check_tables_exist():
     dict: 包含每个表是否存在的信息
     """
     try:
-        # 连接到MySQL
-        conn = mysql.connector.connect(
-            host=db_config['host'],
-            user=db_config['user'],
-            password=db_config['password'],
-            database=db_config['database']
-        )
+        # 连接到MySQL（fail-fast facade）
+        conn = mysql_connect()
 
         cursor = conn.cursor()
 
@@ -55,29 +49,8 @@ def check_tables_exist():
 
 
 def ensure_database_exists():
-    """检查并确保数据库存在"""
-    try:
-        # 检查数据库是否存在，如果不存在则创建
-        conn = mysql.connector.connect(
-            host=db_config['host'],
-            user=db_config['user'],
-            password=db_config['password']
-        )
-
-        cursor = conn.cursor()
-
-        # 创建数据库（如果不存在）
-        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {db_config['database']}")
-
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-        return True
-
-    except Exception as e:
-        print(f"确保数据库存在时出错: {str(e)}")
-        return False
+    """检查并确保数据库存在（MySQL-only DDL via ensure_mysql_database）。"""
+    return ensure_mysql_database()
 
 
 def import_crack_excel(excel_path):
@@ -134,9 +107,8 @@ def import_crack_excel(excel_path):
             print("确保日期格式为 '年/月/日 时:分' 例如 '19/01/01 00:00'")
             return False
 
-        # 创建数据库连接
-        engine = create_engine(
-            f"mysql+pymysql://{db_config['user']}:{db_config['password']}@{db_config['host']}/{db_config['database']}")
+        # 创建数据库连接（env-aware SQLAlchemy URL from db_config facade）
+        engine = create_engine(sqlalchemy_url())
 
         # 连接到数据库
         conn = engine.connect()
@@ -184,13 +156,8 @@ def create_database_tables(missing_tables=None):
     missing_tables: 需要创建的表列表，如果为None则创建所有表
     """
     try:
-        # 连接到MySQL
-        conn = mysql.connector.connect(
-            host=db_config['host'],
-            user=db_config['user'],
-            password=db_config['password'],
-            database=db_config['database']
-        )
+        # 连接到MySQL（fail-fast facade）
+        conn = mysql_connect()
 
         cursor = conn.cursor()
 
@@ -268,21 +235,9 @@ def create_database_tables(missing_tables=None):
 def initialize_database():
     """检查并初始化数据库结构"""
     try:
-        # 检查数据库是否存在，如果不存在则创建
-        conn = mysql.connector.connect(
-            host=db_config['host'],
-            user=db_config['user'],
-            password=db_config['password']
-        )
-
-        cursor = conn.cursor()
-
-        # 创建数据库（如果不存在）
-        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {db_config['database']}")
-
-        conn.commit()
-        cursor.close()
-        conn.close()
+        # MySQL-only: CREATE DATABASE IF NOT EXISTS (isolated in ensure_mysql_database)
+        if not ensure_mysql_database():
+            return False
 
         # 创建所需表
         create_database_tables()
