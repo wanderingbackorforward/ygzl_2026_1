@@ -36,7 +36,7 @@ except ImportError:
     pass
 
 # 导入沉降需要的模块
-from modules.database.db_config import db_config
+from modules.database.db_config import db_config, get_db_connection, sqlalchemy_url
 from modules.db.vendor import get_repo
 import requests
 repo = get_repo()
@@ -132,16 +132,6 @@ temperature_api = Blueprint('temperature_api', __name__, url_prefix='/api')
 # =========================================================
 # 辅助函数
 # =========================================================
-def get_db_connection():
-    """创建数据库连接"""
-    try:
-        # 使用从 db_config 模块导入的配置
-        conn = mysql.connector.connect(**db_config)
-        return conn
-    except mysql.connector.Error as err:
-        print(f"数据库连接错误: {err}")
-        return None
-
 # 允许的文件类型
 ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
 
@@ -679,7 +669,7 @@ def upload_crack_data():
         temp_dir = 'temp_uploads'; os.makedirs(temp_dir, exist_ok=True)
         upload_path = os.path.join(temp_dir, secure_filename(file.filename)) # 使用secure_filename
         file.save(upload_path)
-        engine = create_engine(f"mysql+mysqlconnector://{db_config['user']}:{db_config['password']}@{db_config['host']}") # 使用mysqlconnector
+        engine = create_engine(sqlalchemy_url("mysqlconnector", include_database=False)) # 使用mysqlconnector
         conn = engine.connect()
         try: conn.execute(f"USE {db_config['database']}"); database_exists = True
         except: database_exists = False

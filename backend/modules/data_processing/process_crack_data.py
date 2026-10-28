@@ -10,7 +10,7 @@ import datetime
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 # 导入数据库配置
-from modules.database.db_config import db_config
+from modules.database.db_config import sqlalchemy_url
 
 
 def process_crack_data():
@@ -25,7 +25,7 @@ def process_crack_data():
     try:
         # 创建数据库连接
         engine = create_engine(
-            f"mysql+pymysql://{db_config['user']}:{db_config['password']}@{db_config['host']}/{db_config['database']}")
+            sqlalchemy_url("pymysql"))
 
         # 从数据库读取原始数据
         query = "SELECT * FROM raw_crack_data ORDER BY measurement_date"

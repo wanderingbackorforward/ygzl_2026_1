@@ -65,3 +65,9 @@ components with zero importers after grep.
 `/static/*` is served from `frontend/dist/static` after `npm run build` (see
 `deploy/aliyun/nginx.conf` and `backend/wsgi.py` static_folder override). Do not
 assume `backend/static/` exists.
+
+## MySQL ETL config
+
+Batch ETL still uses `modules.database.db_config` (MySQL). Optional env:
+`MYSQL_HOST` / `MYSQL_PORT` / `MYSQL_USER` / `MYSQL_PASSWORD` / `MYSQL_DATABASE`.
+Prefer `get_repo()` for new online API code. See `backend/README.md` § ETL.
