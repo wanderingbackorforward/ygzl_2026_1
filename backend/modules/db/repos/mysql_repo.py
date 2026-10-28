@@ -1,11 +1,10 @@
-import mysql.connector
 import pandas as pd
 import numpy as np
-from modules.database.db_config import db_config
+from modules.database.db_config import mysql_connect
 
 class MySQLRepo:
     def get_all_points(self):
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         cur = conn.cursor(dictionary=True)
         cur.execute("""
             SELECT mp.*, sa.alert_level, sa.trend_type
@@ -18,7 +17,7 @@ class MySQLRepo:
         return rows
 
     def get_point_detail(self, point_id):
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         ts = pd.read_sql(
             """
             SELECT measurement_date, value, daily_change, cumulative_change
@@ -41,7 +40,7 @@ class MySQLRepo:
         return {'timeSeriesData': ts, 'analysisData': ana_dict}
 
     def get_summary(self):
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         cur = conn.cursor(dictionary=True)
         cur.execute("""
             SELECT * FROM settlement_analysis
@@ -53,7 +52,7 @@ class MySQLRepo:
         return rows
 
     def get_trends(self):
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         cur = conn.cursor(dictionary=True)
         cur.execute("""
             SELECT trend_type, COUNT(*) as count
@@ -66,7 +65,7 @@ class MySQLRepo:
         return rows
 
     def crack_get_monitoring_points(self):
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         df = pd.read_sql("SELECT * FROM crack_monitoring_points WHERE status = 'active'", conn)
         if 'monitoring_start_date' in df.columns:
             df['monitoring_start_date'] = pd.to_datetime(df['monitoring_start_date']).dt.strftime('%Y-%m-%d %H:%M:%S')
@@ -77,7 +76,7 @@ class MySQLRepo:
         return res
 
     def crack_get_data(self):
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         df = pd.read_sql("SELECT * FROM raw_crack_data ORDER BY measurement_date", conn)
         if 'measurement_date' in df.columns:
             df['measurement_date'] = pd.to_datetime(df['measurement_date']).dt.strftime('%Y-%m-%d %H:%M:%S')
@@ -86,7 +85,7 @@ class MySQLRepo:
         return res
 
     def crack_get_analysis_results(self):
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         df = pd.read_sql(
             """
             SELECT
@@ -112,7 +111,7 @@ class MySQLRepo:
         return res
 
     def crack_get_trend_data(self):
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         df = pd.read_sql("SELECT * FROM raw_crack_data ORDER BY measurement_date", conn)
         if 'id' in df.columns:
             df.drop(columns=['id'], inplace=True)
@@ -123,14 +122,14 @@ class MySQLRepo:
         return {'dates': dates, 'series': series}
 
     def temperature_get_points(self):
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         df = pd.read_sql("SELECT * FROM temperature_monitoring_points WHERE status = 'active'", conn)
         res = df.replace({np.nan: None}).to_dict(orient='records')
         conn.close()
         return res
 
     def temperature_get_summary(self):
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         df = pd.read_sql("SELECT * FROM temperature_analysis ORDER BY CAST(REGEXP_REPLACE(sensor_id, '[^0-9]+', '') AS UNSIGNED), sensor_id", conn)
         if 'last_updated' in df.columns:
             df['last_updated'] = pd.to_datetime(df['last_updated']).dt.strftime('%Y-%m-%d %H:%M:%S')
@@ -139,7 +138,7 @@ class MySQLRepo:
         return res
 
     def temperature_get_data(self, sensor_id):
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         df = pd.read_sql("SELECT * FROM processed_temperature_data WHERE SID = %s ORDER BY measurement_date", conn, params=(sensor_id,))
         if 'measurement_date' in df.columns:
             df['measurement_date'] = pd.to_datetime(df['measurement_date']).dt.strftime('%Y-%m-%d')
@@ -172,7 +171,7 @@ class MySQLRepo:
         return {'timeSeriesData': df.to_dict(orient='records'), 'analysisData': analysis}
 
     def temperature_get_data_multi(self, sensor_ids):
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         result = {}
         for sensor_id in sensor_ids:
             df = pd.read_sql("SELECT * FROM processed_temperature_data WHERE SID = %s ORDER BY measurement_date", conn, params=(sensor_id,))
@@ -195,7 +194,7 @@ class MySQLRepo:
         return result
 
     def temperature_get_processed_window(self, days: int = 90):
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         days = int(days) if days is not None else 90
         days = 1 if days <= 0 else days
         df = pd.read_sql(
@@ -226,14 +225,14 @@ class MySQLRepo:
         return df.to_dict(orient='records')
 
     def temperature_get_trends(self):
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         df = pd.read_sql("SELECT trend_type, COUNT(*) as count FROM temperature_analysis GROUP BY trend_type", conn)
         res = df.replace({np.nan: None}).to_dict(orient='records')
         conn.close()
         return res
 
     def temperature_get_stats(self):
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         latest_df = pd.read_sql("SELECT AVG(avg_temperature) as current_avg_temp, MAX(avg_temperature) as current_max_temp, MIN(avg_temperature) as current_min_temp FROM processed_temperature_data WHERE measurement_date = (SELECT MAX(measurement_date) FROM processed_temperature_data)", conn)
         sensor_count_df = pd.read_sql("SELECT COUNT(DISTINCT sensor_id) as sensor_count FROM temperature_analysis", conn)
         date_range_df = pd.read_sql("SELECT MIN(measurement_date) as min_date, MAX(measurement_date) as max_date FROM processed_temperature_data", conn)
@@ -258,7 +257,7 @@ class MySQLRepo:
         return stats
 
     def tunnel_ensure_schema(self):
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         cur = conn.cursor()
         cur.execute(
             """
@@ -341,7 +340,7 @@ class MySQLRepo:
 
     def tunnel_projects_list(self):
         self.tunnel_ensure_schema()
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         df = pd.read_sql(
             "SELECT project_id, name, description, created_at FROM tunnel_projects ORDER BY created_at DESC",
             conn,
@@ -354,7 +353,7 @@ class MySQLRepo:
 
     def tunnel_project_create(self, payload):
         self.tunnel_ensure_schema()
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         cur = conn.cursor(dictionary=True)
         cur.execute(
             """
@@ -377,7 +376,7 @@ class MySQLRepo:
 
     def tunnel_alignments_list(self, project_id=None):
         self.tunnel_ensure_schema()
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         if project_id:
             df = pd.read_sql(
                 """
@@ -406,7 +405,7 @@ class MySQLRepo:
 
     def tunnel_alignment_create(self, payload):
         self.tunnel_ensure_schema()
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         cur = conn.cursor(dictionary=True)
         cur.execute(
             """
@@ -439,7 +438,7 @@ class MySQLRepo:
 
     def tunnel_alignment_get(self, alignment_id):
         self.tunnel_ensure_schema()
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         df = pd.read_sql(
             """
             SELECT alignment_id, project_id, name, geojson, srid, created_at
@@ -460,7 +459,7 @@ class MySQLRepo:
 
     def tunnel_point_mappings_list(self, project_id, alignment_id=None):
         self.tunnel_ensure_schema()
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         if alignment_id:
             df = pd.read_sql(
                 """
@@ -498,7 +497,7 @@ class MySQLRepo:
 
     def tunnel_point_mapping_upsert(self, payload):
         self.tunnel_ensure_schema()
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         cur = conn.cursor(dictionary=True)
         cur.execute(
             """
@@ -552,7 +551,7 @@ class MySQLRepo:
 
     def tbm_telemetry_upsert(self, payload):
         self.tunnel_ensure_schema()
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         cur = conn.cursor(dictionary=True)
         cur.execute(
             """
@@ -628,7 +627,7 @@ class MySQLRepo:
 
     def tbm_telemetry_list(self, project_id, machine_id=None, start=None, end=None, limit=5000):
         self.tunnel_ensure_schema()
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         limit = int(limit) if limit is not None else 5000
         limit = 1 if limit <= 0 else min(limit, 20000)
         clauses = ["project_id = %s"]
@@ -666,7 +665,7 @@ class MySQLRepo:
 
     def tbm_telemetry_list_by_chainage(self, project_id, machine_id=None, start_chainage=None, end_chainage=None, limit=5000):
         self.tunnel_ensure_schema()
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         limit = int(limit) if limit is not None else 5000
         limit = 1 if limit <= 0 else min(limit, 20000)
         clauses = ["project_id = %s", "chainage_m IS NOT NULL"]
@@ -704,7 +703,7 @@ class MySQLRepo:
 
     def tbm_progress(self, project_id, machine_id):
         self.tunnel_ensure_schema()
-        conn = mysql.connector.connect(**db_config)
+        conn = mysql_connect()
         df = pd.read_sql(
             """
             SELECT

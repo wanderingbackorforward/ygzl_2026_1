@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine
 from datetime import datetime, timedelta
-import mysql.connector
 import os
 import sys
 
@@ -11,7 +10,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 # 导入数据库配置
-from modules.database.db_config import db_config, sqlalchemy_url
+from modules.database.db_config import get_db_connection, sqlalchemy_url
 from modules.db.vendor import get_repo
 
 # 预测配置
@@ -411,8 +410,8 @@ def get_point_prediction(point_id, prediction_days=30):
             'model_quality': prediction['model_quality']
         }
 
-    # 使用 mysql.connector 直接查询
-    conn = mysql.connector.connect(**db_config)
+    # 使用门面 get_db_connection() 查询
+    conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     # 读取处理后的数据
@@ -583,8 +582,8 @@ def get_all_predictions_summary():
         results.sort(key=lambda x: x['risk_score'], reverse=True)
         return results
 
-    # 使用 mysql.connector 直接查询
-    conn = mysql.connector.connect(**db_config)
+    # 使用门面 get_db_connection() 查询
+    conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     # 使用基础字段查询，兼容旧数据库
