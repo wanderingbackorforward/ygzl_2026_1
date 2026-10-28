@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 # 导入数据库配置
-from modules.database.db_config import db_config
+from modules.database.db_config import sqlalchemy_url
 
 def process_data():
     """处理和分析温度数据"""
@@ -17,7 +17,7 @@ def process_data():
 
     # 创建数据库连接
     engine = create_engine(
-        f"mysql+pymysql://{db_config['user']}:{db_config['password']}@{db_config['host']}/{db_config['database']}")
+        sqlalchemy_url("pymysql"))
 
     # 1. 读取原始温度数据
     query = "SELECT * FROM raw_temperature_data ORDER BY measurement_date"

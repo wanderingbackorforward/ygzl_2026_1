@@ -117,12 +117,6 @@ function getVelocityFromProps(p: any, velocityFieldName?: string) {
   return byField ?? toNumberOrNull(p?.velocity ?? p?.vel ?? p?.rate ?? p?.value)
 }
 
-function riskLabel(level: RiskLevel) {
-  if (level === 'danger') return { label: '危险', color: '#ff3e5f' }
-  if (level === 'warning') return { label: '预警', color: '#ff9e0d' }
-  return { label: '正常', color: '#00e676' }
-}
-
 function expertMeasuresForRisk(level: RiskLevel): ExpertMeasure[] {
   if (level === 'danger') {
     return [

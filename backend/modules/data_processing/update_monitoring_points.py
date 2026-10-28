@@ -7,7 +7,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 # 导入数据库配置
-from modules.database.db_config import db_config
+from modules.database.db_config import get_db_connection
 
 def update_monitoring_points():
     """更新监测点的3D坐标信息"""
@@ -15,7 +15,10 @@ def update_monitoring_points():
 
     try:
         # 连接到MySQL
-        conn = mysql.connector.connect(**db_config)
+        conn = get_db_connection()
+        if conn is None:
+            print("无法建立数据库连接")
+            return False
         cursor = conn.cursor()
 
         # 获取所有监测点
