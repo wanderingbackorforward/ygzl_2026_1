@@ -33,6 +33,18 @@ if frontend_dist.exists():
     api_server.WEB_DIST_DIR = str(frontend_dist)
     api_server.WEB_INDEX_PATH = str(frontend_dist / "index.html")
 
+# Serve Vite-copied public assets (three_test.html, data/, tiles/, …).
+# Flask default static_folder points at missing backend/static; without this,
+# /static/* 404s when gunicorn is reached directly (deploy_safe) or via nginx proxy.
+_static_candidates = (
+    frontend_dist / "static",
+    PROJECT_ROOT / "frontend" / "public" / "static",
+)
+for _static in _static_candidates:
+    if _static.is_dir():
+        api_server.app.static_folder = str(_static)
+        break
+
 app = api_server.app
 
 if __name__ == "__main__":

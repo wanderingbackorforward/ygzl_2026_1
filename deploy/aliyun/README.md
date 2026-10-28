@@ -6,6 +6,22 @@
 
 不要用 `backend/start_system.py` 作为长期生产进程（它会起子进程并尝试打开浏览器）。
 
+
+## 两条部署路径（勿混用路径/服务名）
+
+| 路径 | 目录 | 服务名 | 入口 |
+|------|------|--------|------|
+| **A. 独占 ECS（推荐生产）** | `/opt/ygzl_2026_1` | `ygzl`（本目录 `ygzl.service`） | Nginx:80 → gunicorn `127.0.0.1:5000` |
+| **B. 共享机旁路** | `/opt/ygzl_2026_1_aliyun` | `ygzl-aliyun`（`deploy_safe.sh` 生成） | gunicorn 直接监听高位端口（默认 `18080`），**不改**现有 Nginx |
+
+下文第 3–11 节按 **路径 A** 书写。路径 B 直接跑：
+
+```bash
+sudo bash deploy/aliyun/deploy_safe.sh
+# 可选：APP_DIR=/opt/... SERVICE_NAME=... PUBLIC_PORT=18081 BRANCH=master
+```
+
+
 ## 1. 结构
 
 | 路径 | 作用 |
@@ -162,9 +178,16 @@ curl http://127.0.0.1:5000/health
 
 Nginx `location /` 需有 `try_files $uri $uri/ /index.html;`。
 
+### `/static/` 404（三维 / 瓦片 / 数据）
+
+生产构建后静态文件在 **`frontend/dist/static/`**（由 Vite 从 `frontend/public/static/` 拷贝）。
+
+- 路径 A：`nginx.conf` 优先从 `frontend/dist` 提供 `/static/`，缺失再回源 gunicorn。
+- 路径 B（仅 gunicorn）：`backend/wsgi.py` 会把 Flask `static_folder` 指到 `frontend/dist/static`（或回退 `frontend/public/static`）。
+
 ### 大静态资源
 
-部分资源可能未进 git 或体积很大；按需上传到服务器或改走 OSS/CDN。当前仓库内 `frontend/public/static/` 资产先保持不动。
+drone / InSAR 等大文件体积很大；按需上传到服务器或改走 OSS/CDN。仓库内 `frontend/public/static/` 大数据目录本轮**不搬迁**。
 
 ## 12. 更新
 
@@ -184,3 +207,16 @@ systemctl reload nginx
 - `deploy_from_current_dir.sh`：从当前工作树同步到 `/opt/...` 而不 git clone  
 
 共享机上若已有其它站点，优先读脚本注释，避免占用 80/443/5000。
+
+## 14. 部署前自检清单
+
+- [ ] Ubuntu 22.04；已装 git / nginx / python3-venv / Node 20
+- [ ] `git checkout master && git pull`
+- [ ] 根目录 `.env` 已从 `.env.example` 复制，至少填好 `DB_VENDOR` + Supabase 三项 + `SUPABASE_USE_HTTP=1`
+- [ ] `pip install -r backend/requirements.txt`（**不要**装 `requirements.anaconda-windows.export.txt`）
+- [ ] `cd frontend && npm ci && npm run build`，存在 `frontend/dist/index.html` 与 `frontend/dist/static/three_test.html`
+- [ ] 路径 A：已安装 `ygzl.service`，`curl 127.0.0.1:5000/health` 成功；Nginx `nginx -t` 通过；安全组放行 80
+- [ ] 浏览器打开站点：`/cover` 可进；`/three` iframe 能加载；API 经 `/api/` 正常
+- [ ] Supabase 项目网络可达（若域名解析失败，业务接口会挂，但 `/health` 仍应返回）
+
+仍可能阻塞真实验收：Supabase 连通性、邮件/LLM 密钥、大资源是否已在服务器上。

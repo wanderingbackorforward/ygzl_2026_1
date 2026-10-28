@@ -226,7 +226,10 @@ def serve_glb(filename):
 def index():
     if os.path.exists(WEB_INDEX_PATH):
         return send_from_directory(WEB_DIST_DIR, 'index.html')
-    return app.send_static_file('cover.html')
+    return (
+        '<!doctype html><meta charset=utf-8><title>YGZL</title>'
+        '<p>frontend/dist missing — run <code>npm ci && npm run build</code> in frontend/</p>'
+    ), 503
 
 # 为 React 构建产物提供静态资源访问（如 /assets/*）
 @app.route('/assets/<path:filename>')
@@ -239,14 +242,18 @@ def react_assets(filename):
 SPA_ROUTES = {
     'cover',
     'settlement', 'temperature', 'cracks', 'vibration',
-    'insar', 'overview', 'three', 'tickets', 'tunnel'
+    'insar', 'overview', 'three', 'tickets', 'tunnel',
+    'advanced', 'shield-trajectory', 'modules', 'vibration-legacy',
 }
 
 # 为每个 SPA 路由创建专门的处理函数，避免 catch-all 拦截 API 请求
 def _serve_spa():
     if os.path.exists(WEB_INDEX_PATH):
         return send_from_directory(WEB_DIST_DIR, 'index.html')
-    return app.send_static_file('cover.html')
+    return (
+        '<!doctype html><meta charset=utf-8><title>YGZL</title>'
+        '<p>frontend/dist missing — run <code>npm ci && npm run build</code> in frontend/</p>'
+    ), 503
 
 # 注册 SPA 路由
 for _route in SPA_ROUTES:
