@@ -1,5 +1,7 @@
 export type Thresholds = { strong: number, mild: number }
 
+export type RiskLevel = 'normal' | 'warning' | 'danger'
+
 export function formatKeyDateField(field: string) {
   const m = field.match(/^[dD]_(\d{8})$/)
   if (!m) return field
@@ -29,3 +31,20 @@ export function classifyVelocity(v: number | null, thresholds: Thresholds) {
   return { label: `显著抬升 (≥ ${strong})`, color: '#bf5af2' }
 }
 
+/** Resolve velocity from feature properties, preferring an explicit field name. */
+export function getVelocityFromProps(p: any, velocityFieldName?: string): number | null {
+  const byField = velocityFieldName ? toNumberOrNull(p?.[velocityFieldName]) : null
+  return byField ?? toNumberOrNull(p?.velocity ?? p?.vel ?? p?.rate ?? p?.value)
+}
+
+/**
+ * Map velocity to risk buckets used by filters / grids.
+ * Null/NaN → 'normal' (non-alerting) so map filters stay ternary; callers that
+ * need an "unknown" count should check null before calling this.
+ */
+export function riskFromVelocity(v: number | null, thresholds: Thresholds): RiskLevel {
+  if (v === null || !Number.isFinite(v)) return 'normal'
+  if (v <= -thresholds.strong) return 'danger'
+  if (v <= -thresholds.mild) return 'warning'
+  return 'normal'
+}

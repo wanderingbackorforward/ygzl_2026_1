@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css'
 import { API_BASE, STATIC_BASE } from '../lib/api'
 import type { EChartsOption } from 'echarts'
 import EChartsWrapper from '../components/charts/EChartsWrapper'
-import { classifyVelocity, formatKeyDateField, toNumberOrNull, type Thresholds } from '../lib/insar'
+import { classifyVelocity, formatKeyDateField, getVelocityFromProps, riskFromVelocity, toNumberOrNull, type RiskLevel, type Thresholds } from '../lib/insar'
 import { kmlToBestLineStringFeature } from '../lib/kml'
 import { createBuiltInBaseLayers, createRasterLayer, loadOpticalRasterLayers } from '../lib/mapLayers'
 import { extractInsarContext } from '../utils/contextExtractors/insarExtractor'
@@ -17,7 +17,6 @@ type InsarMeta = { dataset?: string, cached?: boolean, feature_count?: number, t
 type Indicator = 'velocity' | 'keyDate' | 'threshold'
 type FieldsInfo = { dataset: string, fields: string[], d_fields: string[], velocity_fields: string[], recommended_value_field: string }
 type SeriesData = { dataset: string, id: string, series: { date: string, value: number | null }[], properties?: Record<string, any> }
-type RiskLevel = 'normal' | 'warning' | 'danger'
 type RiskPoint = { id: string, lat: number, lng: number, velocity: number, risk: RiskLevel }
 type RiskSummary = { total: number, danger: number, warning: number, normal: number, unknown: number, top: RiskPoint[] }
 type VelocityHistogram = { edges: number[], counts: number[], maxAbs: number, total: number }
@@ -69,13 +68,6 @@ function valueToColor(value: number | null, maxAbs: number) {
   return rgbToHex(lerp(255, 60, t), lerp(255, 150, t), lerp(255, 255, t))
 }
 
-function riskFromVelocity(v: number | null, thresholds: Thresholds): RiskLevel {
-  if (v === null || !Number.isFinite(v)) return 'normal'
-  if (v <= -thresholds.strong) return 'danger'
-  if (v <= -thresholds.mild) return 'warning'
-  return 'normal'
-}
-
 function getFeatureId(feature: any, props: any) {
   const id = feature?.id ?? props?.id
   return id === undefined || id === null ? '' : String(id)
@@ -110,11 +102,6 @@ function extractLineCoords(feature: any) {
     return best
   }
   return null
-}
-
-function getVelocityFromProps(p: any, velocityFieldName?: string) {
-  const byField = velocityFieldName ? toNumberOrNull(p?.[velocityFieldName]) : null
-  return byField ?? toNumberOrNull(p?.velocity ?? p?.vel ?? p?.rate ?? p?.value)
 }
 
 function expertMeasuresForRisk(level: RiskLevel): ExpertMeasure[] {
@@ -267,7 +254,6 @@ function InsarNativeMap(
       const velocity = getVelocityFromProps(p, velocityFieldName)
       if (velocity === null) {
         unknown += 1
-        normal += 1
         continue
       }
       const risk = riskFromVelocity(velocity, thresholds)
@@ -833,7 +819,7 @@ function InsarNativeMap(
         const p: any = (feature as any)?.properties || {}
         const v = p.value ?? (p.value_field ? p[p.value_field] : undefined)
         const id = (feature as any)?.id ?? p.id ?? ''
-        const velocity = toNumberOrNull(p.velocity ?? p.vel ?? p.rate)
+        const velocity = getVelocityFromProps(p, velocityFieldName)
         const cls = classifyVelocity(velocity, thresholds)
         const idKey = id === undefined || id === null ? '' : String(id)
         if (idKey) layerByIdRef.current.set(idKey, l)
@@ -1441,6 +1427,7 @@ export default function Insar() {
           { value: riskSummary.danger, name: '危险', itemStyle: { color: '#ff3e5f' } },
           { value: riskSummary.warning, name: '预警', itemStyle: { color: '#ff9e0d' } },
           { value: riskSummary.normal, name: '正常', itemStyle: { color: '#00e676' } },
+          { value: riskSummary.unknown, name: '未知', itemStyle: { color: '#7c8a9a' } },
         ].filter((d) => d.value > 0),
         emphasis: { scaleSize: 4 },
       }],
@@ -1458,7 +1445,7 @@ export default function Insar() {
       }],
       animationDuration: 400,
     }
-  }, [riskSummary.total, riskSummary.danger, riskSummary.warning, riskSummary.normal])
+  }, [riskSummary.total, riskSummary.danger, riskSummary.warning, riskSummary.normal, riskSummary.unknown])
 
   const chainageChartOption = useMemo((): EChartsOption => {
     const ch = riskStats?.chainage

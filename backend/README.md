@@ -74,7 +74,7 @@ Maintenance scripts at `backend/*.py` (`init_assistant_db`, ticket encoding fixe
 
 | Area | Status |
 |------|--------|
-| `modules/database/db_config.py` | Env-aware facade + `sqlalchemy_url()` / `get_db_connection()` |
+| `modules/database/db_config.py` | Env-aware facade + `sqlalchemy_url()` / fail-fast `get_db_connection()` (= `mysql_connect`) |
 | `data_processing/process_{settlement,crack,temperature}_data.py` | Engine URL via `sqlalchemy_url("pymysql")` |
 | `data_processing/update_monitoring_points.py` | Uses `get_db_connection()` |
 | `modules/api/api_server.py` | Shared `get_db_connection` / `sqlalchemy_url` (no local duplicate) |

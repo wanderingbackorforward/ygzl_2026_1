@@ -7,11 +7,9 @@ from numpy.fft import fft, fftfreq
 from datetime import datetime
 from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
-import mysql.connector
-from mysql.connector import pooling
 import time
 import threading
-from modules.database.db_config import db_config
+from modules.database.db_config import get_db_connection
 
 # 创建Blueprint
 vibration_bp = Blueprint('vibration', __name__, url_prefix='/api/vibration')
@@ -592,7 +590,3 @@ def calculate_all_features(signal, fs):
         "peak_value": peak_value(signal)
     }
     return features
-
-# 获取数据库连接
-def get_db_connection():
-    return mysql.connector.connect(**db_config) 
