@@ -47,3 +47,15 @@ Do not merge or delete either pair without grep+build proof and an explicit deci
 ## Docs
 
 Active guides under `docs/`; historical plans under `docs/archive/` (see `docs/README.md`).
+
+## Cover vs Overview (`/cover` vs `/overview`)
+
+Two different pages, not duplicates:
+
+| Route | Page | Cards / UI |
+|-------|------|------------|
+| `/cover` | `Cover.tsx` | `components/overview/*` (SafetyScore, RiskRadar, domain overview cards) + OverviewContext |
+| `/overview` | `OverviewV2.tsx` | Inline diagnosis UI + `components/overview-v2/SciencePanel` |
+
+Do not reintroduce a shared cardRegistry between them. Prefer deleting only
+components with zero importers after grep.

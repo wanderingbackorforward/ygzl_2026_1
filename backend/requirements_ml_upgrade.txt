@@ -1,5 +1,19 @@
-# 科研创新升级 - 阶段1深度学习依赖
-# 制定时间: 2026-03-09
+# Optional ML / research extras — NOT installed by Aliyun production deploy.
+#
+# When to use:
+#   Local or dedicated GPU/CPU research box for 科研创新 / deep-learning experiments
+#   (torch, darts, shap, etc.). Install AFTER the canonical requirements:
+#     pip install -r backend/requirements.txt
+#     pip install -r backend/requirements_ml_upgrade.txt
+#
+# When NOT to use:
+#   Aliyun production (gunicorn/wsgi), Vercel serverless, or routine API bring-up.
+#   Production uses backend/requirements.txt only (see deploy/aliyun/).
+#
+# Status: optional extras for ML upgrade path; keep in-tree. Not obsolete —
+# do not merge into requirements.txt (would bloat prod image).
+#
+# Original note: 科研创新升级 - 阶段1深度学习依赖 (2026-03-09)
 
 # ===== 核心深度学习框架 =====
 # PyTorch (CPU版本,如果有GPU请安装CUDA版本)

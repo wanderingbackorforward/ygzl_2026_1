@@ -23,7 +23,7 @@ From repo root, or `pip install -r requirements.txt` while cwd is `backend/`.
 - `requirements.txt` — canonical (Aliyun + local)
 - `requirements.aliyun.txt` — alias (`-r requirements.txt`) for older scripts
 - `requirements.anaconda-windows.export.txt` — archived broken Anaconda dump; ignore
-- `requirements_ml_upgrade.txt` — optional ML extras
+- `requirements_ml_upgrade.txt` — optional ML/research extras only (install after `requirements.txt`; never for Aliyun/Vercel prod — see file header)
 - Repo `api/requirements.txt` — Vercel only (secondary)
 
 ## Dual tracks (intentional; do not merge casually)
