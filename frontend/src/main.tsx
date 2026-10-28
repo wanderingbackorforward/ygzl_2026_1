@@ -34,8 +34,7 @@ const FloatingAssistant = lazyWithRetry(() => import('./components/assistant/Flo
 const Settlement = lazyWithRetry(() => import('./pages/Settlement'))
 const Temperature = lazyWithRetry(() => import('./pages/Temperature'))
 const Cracks = lazyWithRetry(() => import('./pages/Cracks'))
-const Vibration = lazyWithRetry(() => import('./pages/Vibration'))
-const VibrationV2 = lazyWithRetry(() => import('./pages/VibrationV2'))
+const Vibration = lazyWithRetry(() => import('./pages/VibrationV2'))
 const Insar = lazyWithRetry(() => import('./pages/Insar'))
 const Overview = lazyWithRetry(() => import('./pages/OverviewV2'))
 const ThreeModel = lazyWithRetry(() => import('./pages/ThreeModel'))
@@ -45,7 +44,6 @@ const ModuleAdmin = lazyWithRetry(() => import('./pages/ModuleAdmin'))
 const Tunnel = lazyWithRetry(() => import('./pages/Tunnel'))
 const AdvancedAnalysis = lazyWithRetry(() => import('./pages/AdvancedAnalysis'))
 const ShieldTrajectory = lazyWithRetry(() => import('./pages/ShieldTrajectory'))
-
 
 function App() {
   return (
@@ -82,8 +80,8 @@ function App() {
                   <Route path="/settlement" element={<ModuleGate moduleKey="settlement"><Settlement /></ModuleGate>} />
                   <Route path="/temperature" element={<ModuleGate moduleKey="temperature"><Temperature /></ModuleGate>} />
                   <Route path="/cracks" element={<ModuleGate moduleKey="cracks"><Cracks /></ModuleGate>} />
-                  <Route path="/vibration" element={<ModuleGate moduleKey="vibration"><VibrationV2 /></ModuleGate>} />
-                  <Route path="/vibration-legacy" element={<ModuleGate moduleKey="vibration"><Vibration /></ModuleGate>} />
+                  <Route path="/vibration" element={<ModuleGate moduleKey="vibration"><Vibration /></ModuleGate>} />
+                  <Route path="/vibration-legacy" element={<Navigate to="/vibration" replace />} />
                   <Route path="/insar" element={<ModuleGate moduleKey="insar"><Insar /></ModuleGate>} />
                   <Route path="/overview" element={<ModuleGate moduleKey="overview"><Overview /></ModuleGate>} />
                   <Route path="/three" element={<ModuleGate moduleKey="three"><ThreeModel /></ModuleGate>} />

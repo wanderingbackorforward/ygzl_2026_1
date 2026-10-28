@@ -31,5 +31,6 @@
 
 ## Frontend note
 
-Several monitoring domains still have parallel `*New` / `*V2` pages. Converging
-to one formal page per domain is a follow-up; do not drive-by delete live routes.
+Each monitoring domain has one formal page (SettlementV2 / Temperature V2 cockpit /
+VibrationV2 / Cracks). Do not reintroduce dual-tab New+V2 switchers or `/vibration-legacy`
+implementations without an explicit product decision.
