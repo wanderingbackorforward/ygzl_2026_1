@@ -9,10 +9,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import numpy as np
 import pandas as pd
-import mysql.connector
 from datetime import datetime
 
-from modules.database.db_config import db_config
+from modules.database.db_config import get_db_connection
 from modules.ml_models.anomaly_detector import detect_anomalies_for_point
 from modules.ml_models.time_series_predictor import predict_settlement
 from modules.ml_models.spatial_correlation import analyze_spatial_correlation
@@ -24,28 +23,15 @@ except:
     PROPHET_AVAILABLE = False
 
 
-def get_db_connection():
-    """创建数据库连接"""
-    try:
-        conn = mysql.connector.connect(**db_config)
-        return conn
-    except Exception as e:
-        print(f"[错误] 数据库连接失败: {str(e)}")
-        return None
-
-
 def test_anomaly_detection():
     """测试异常检测模块"""
     print("\n" + "="*60)
     print("[测试1] 异常检测模块")
     print("="*60)
 
-    conn = get_db_connection()
-    if not conn:
-        print("[失败] 无法连接数据库")
-        return False
-
+    conn = None
     try:
+        conn = get_db_connection()
         # 获取第一个监测点
         cursor = conn.cursor()
         cursor.execute("SELECT DISTINCT point_id FROM processed_settlement_data LIMIT 1")
@@ -84,7 +70,8 @@ def test_anomaly_detection():
         print(f"[错误] {str(e)}")
         return False
     finally:
-        conn.close()
+        if conn is not None:
+            conn.close()
 
 
 def test_time_series_prediction():
@@ -93,12 +80,9 @@ def test_time_series_prediction():
     print("[测试2] 时间序列预测模块")
     print("="*60)
 
-    conn = get_db_connection()
-    if not conn:
-        print("[失败] 无法连接数据库")
-        return False
-
+    conn = None
     try:
+        conn = get_db_connection()
         # 获取第一个监测点
         cursor = conn.cursor()
         cursor.execute("SELECT DISTINCT point_id FROM processed_settlement_data LIMIT 1")
@@ -141,7 +125,8 @@ def test_time_series_prediction():
         print(f"[错误] {str(e)}")
         return False
     finally:
-        conn.close()
+        if conn is not None:
+            conn.close()
 
 
 def test_prophet_prediction():
@@ -154,12 +139,9 @@ def test_prophet_prediction():
         print("[跳过] Prophet未安装")
         return None
 
-    conn = get_db_connection()
-    if not conn:
-        print("[失败] 无法连接数据库")
-        return False
-
+    conn = None
     try:
+        conn = get_db_connection()
         # 获取第一个监测点
         cursor = conn.cursor()
         cursor.execute("SELECT DISTINCT point_id FROM processed_settlement_data LIMIT 1")
@@ -191,7 +173,8 @@ def test_prophet_prediction():
         print(f"[错误] {str(e)}")
         return False
     finally:
-        conn.close()
+        if conn is not None:
+            conn.close()
 
 
 def test_auto_model_selection():
@@ -200,12 +183,9 @@ def test_auto_model_selection():
     print("[测试4] 自动模型选择")
     print("="*60)
 
-    conn = get_db_connection()
-    if not conn:
-        print("[失败] 无法连接数据库")
-        return False
-
+    conn = None
     try:
+        conn = get_db_connection()
         # 获取第一个监测点
         cursor = conn.cursor()
         cursor.execute("SELECT DISTINCT point_id FROM processed_settlement_data LIMIT 1")
@@ -250,7 +230,8 @@ def test_auto_model_selection():
         print(f"[错误] {str(e)}")
         return False
     finally:
-        conn.close()
+        if conn is not None:
+            conn.close()
 
 
 def test_spatial_correlation():
@@ -259,12 +240,9 @@ def test_spatial_correlation():
     print("[测试5] 空间关联分析")
     print("="*60)
 
-    conn = get_db_connection()
-    if not conn:
-        print("[失败] 无法连接数据库")
-        return False
-
+    conn = None
     try:
+        conn = get_db_connection()
         print("[执行] 分析监测点空间关联...")
         result = analyze_spatial_correlation(conn, distance_threshold=50.0)
 
@@ -287,7 +265,8 @@ def test_spatial_correlation():
         print(f"[错误] {str(e)}")
         return False
     finally:
-        conn.close()
+        if conn is not None:
+            conn.close()
 
 
 def main():
