@@ -1,11 +1,27 @@
-最小运行步骤：
+# Backend
 
-1. 安装依赖：pip install -r backend/requirements.txt
-2. 运行：python backend/start_system.py
+## Install (Aliyun / local Linux)
 
-说明：
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+```
 
-- 仅包含必要源码与前端脚本，构建产物与大资源未纳入
-- 若依赖路径需要调整，请将 backend 加入 PYTHONPATH 或在启动脚本中相对导入
+From repo root, or `pip install -r requirements.txt` while cwd is `backend/`.
 
- 
+## Run
+
+| Mode | Command |
+|------|---------|
+| **Production (Aliyun)** | gunicorn via `deploy/aliyun/ygzl.service` → `wsgi:app` |
+| Local API only | `gunicorn -b 127.0.0.1:5000 wsgi:app` (cwd=`backend/`) |
+| Local launcher (dev) | `python backend/start_system.py` (opens browser; not for production) |
+
+## Requirements map
+
+- `requirements.txt` — canonical (Aliyun + local)
+- `requirements.aliyun.txt` — alias (`-r requirements.txt`) for older scripts
+- `requirements.anaconda-windows.export.txt` — archived broken Anaconda dump; ignore
+- `requirements_ml_upgrade.txt` — optional ML extras
+- Repo `api/requirements.txt` — Vercel only (secondary)
