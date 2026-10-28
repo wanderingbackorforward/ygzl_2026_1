@@ -9,3 +9,6 @@
 - 数据库与外部服务密钥只在受控.env。此次不将本机SUPABASE_DB_URL覆盖到云端（DB_VENDOR仍为supabase_http）；凭据相同与数据源可用是两件事。
 - 统一同步规则：按有效领先内容逐文件合并；发布前备份并验证，不能只比较最后提交时间。
 - 详细清单与验证：`D:/mine/myprojects/宁扬项目施组/docs/云端同步_20261018/`；云端回退材料：`/root/deployment-sync-backups/20261018/`。
+
+
+> Note (2026-10-29): Aliyun templates are on `master`. Prefer `backend/requirements.txt`. Historical Anaconda export archived as `requirements.anaconda-windows.export.txt`.

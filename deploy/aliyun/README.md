@@ -1,62 +1,69 @@
-# 阿里云单机部署说明
+# 阿里云单机部署说明（生产主路径）
 
-这份说明用于把本项目部署到一台 Ubuntu 22.04 阿里云 ECS 上。
+把本项目部署到一台 **Ubuntu 22.04** 阿里云 ECS。默认使用仓库 **`master`** 分支。
 
-## 1. 结构判断
+生产进程：**gunicorn** 加载 `backend/wsgi.py` 中的 `app`（`wsgi:app`），前面用 Nginx 托管 `frontend/dist` 并反代 API。
 
-当前项目是典型的前后端分离结构：
+不要用 `backend/start_system.py` 作为长期生产进程（它会起子进程并尝试打开浏览器）。
 
-- `frontend/`：React + Vite 前端，生产构建输出到 `frontend/dist`。
-- `backend/`：Flask 后端，API 主入口在 `backend/modules/api/api_server.py`。
-- `backend/wsgi.py`：本分支新增的生产入口，用于给 gunicorn 暴露 Flask `app`。
-- `deploy/aliyun/`：本分支新增的部署模板，包括 systemd 和 Nginx 配置。
+## 1. 结构
 
-不要在生产环境使用 `backend/start_system.py` 作为长期进程。它会启动子进程并尝试打开浏览器，更适合本地开发。
+| 路径 | 作用 |
+|------|------|
+| `frontend/` | Vite 前端 → `frontend/dist` |
+| `backend/modules/api/api_server.py` | Flask 应用主体 |
+| `backend/wsgi.py` | ★ gunicorn 生产入口 |
+| `backend/requirements.txt` | ★ 规范依赖（Linux） |
+| `backend/requirements.aliyun.txt` | 兼容别名（`-r requirements.txt`） |
+| `deploy/aliyun/` | systemd / nginx / 部署脚本 |
+
+仓库根目录即项目根；不存在旧文档里的 `python_scripts/` 包装层。
 
 ## 2. 服务器初始化
 
 ```bash
 apt update
-apt install -y git curl nginx python3 python3-venv python3-pip nodejs npm
-node -v
-npm -v
-python3 --version
+apt install -y git curl nginx python3 python3-venv python3-pip
 ```
 
-建议 Node.js 使用 20.x。如果 apt 默认版本过低，可以安装 NodeSource 20.x：
+建议 Node.js **20.x**：
 
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 apt install -y nodejs
-node -v
+node -v   # v20.x
 ```
 
-## 3. 拉取代码
+## 3. 拉取代码（master）
 
 ```bash
 cd /opt
 git clone https://github.com/wanderingbackorforward/ygzl_2026_1.git
 cd /opt/ygzl_2026_1
-git checkout deploy/aliyun-single-machine
+git checkout master
+git pull origin master
 ```
 
-如果服务器上已经 clone 过：
+已有 clone：
 
 ```bash
 cd /opt/ygzl_2026_1
 git fetch origin
-git checkout deploy/aliyun-single-machine
-git pull
+git checkout master
+git pull origin master
 ```
 
-## 4. 配置环境变量
+> 历史分支名 `deploy/aliyun-single-machine` 已合入 `master`，新部署请用 **master**。  
+> 脚本默认：`deploy/aliyun/deploy_safe.sh` 中 `BRANCH=master`。
+
+## 4. 环境变量
 
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-至少确认这些变量：
+至少：
 
 ```bash
 DB_VENDOR=supabase_http
@@ -66,21 +73,23 @@ SUPABASE_SERVICE_ROLE=your-service-role-key
 SUPABASE_USE_HTTP=1
 ```
 
-如果暂时不用邮件/企业微信/DeepSeek 等功能，可以先不填对应 key；相关模块应优雅降级，若启动时报缺失依赖或配置，再按日志补。
+邮件 / DeepSeek 等可先留空；模块应降级，缺配置时再按日志补。完整字段见仓库根 `.env.example`。
 
 ## 5. 安装后端依赖
-
-不要使用 `backend/requirements.txt`，它是 Windows/Anaconda 环境导出的，包含大量 `file:///C:/...` 路径，在 Ubuntu 上不可用。
-
-使用本分支新增的 Linux 部署依赖：
 
 ```bash
 cd /opt/ygzl_2026_1
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip setuptools wheel
-pip install -r backend/requirements.aliyun.txt
+pip install -r backend/requirements.txt
+# 等价：pip install -r backend/requirements.aliyun.txt
 ```
+
+**禁止**安装：
+
+- `backend/requirements.anaconda-windows.export.txt`（旧 Windows/Anaconda 导出，含 `file:///C:/...`）
+- `api/requirements.txt`（那是 Vercel 用的精简集，不是本机完整依赖）
 
 ## 6. 构建前端
 
@@ -88,23 +97,18 @@ pip install -r backend/requirements.aliyun.txt
 cd /opt/ygzl_2026_1/frontend
 npm ci
 npm run build
-```
-
-构建成功后应出现：
-
-```bash
 ls /opt/ygzl_2026_1/frontend/dist
 ```
 
-## 7. 配置权限
+## 7. 权限
 
 ```bash
 chown -R www-data:www-data /opt/ygzl_2026_1
 ```
 
-如果你后续还要用 root 直接 `git pull`，可以先不执行这一步；但 systemd 用 `www-data` 运行时，需要保证运行用户能读代码和 `.env`。
+若仍用 root `git pull`，需保证运行用户能读代码与 `.env`。
 
-## 8. 配置 systemd 后端服务
+## 8. systemd
 
 ```bash
 cp /opt/ygzl_2026_1/deploy/aliyun/ygzl.service /etc/systemd/system/ygzl.service
@@ -114,104 +118,69 @@ systemctl start ygzl
 systemctl status ygzl --no-pager
 ```
 
-查看日志：
+日志与健康检查：
 
 ```bash
 journalctl -u ygzl -n 100 --no-pager
-journalctl -u ygzl -f
-```
-
-本机健康检查：
-
-```bash
 curl http://127.0.0.1:5000/health
 ```
 
-## 9. 配置 Nginx
+服务文件要点：`WorkingDirectory=.../backend`，`ExecStart=.../gunicorn ... wsgi:app`。
+
+## 9. Nginx
 
 ```bash
 cp /opt/ygzl_2026_1/deploy/aliyun/nginx.conf /etc/nginx/sites-available/ygzl
 ln -sf /etc/nginx/sites-available/ygzl /etc/nginx/sites-enabled/ygzl
-rm -f /etc/nginx/sites-enabled/default
-nginx -t
-systemctl reload nginx
+# 按需：rm -f /etc/nginx/sites-enabled/default
+nginx -t && systemctl reload nginx
 ```
 
-外部访问：
+将 `nginx.conf` / 文档中的示例公网 IP 换成你的 ECS IP 或域名。不要对公网直接开放 5000。
 
-```bash
-curl http://120.55.70.218/health
-```
+## 10. 安全组
 
-浏览器访问：
-
-```text
-http://120.55.70.218/
-```
-
-## 10. 阿里云安全组
-
-在阿里云 ECS 控制台确认安全组放行：
-
-- TCP 22：SSH
-- TCP 80：HTTP
-- TCP 443：HTTPS，后续配置域名证书时再用
-
-不要直接对公网开放 5000 端口。5000 只给本机 Nginx 反向代理访问。
+- TCP 22：SSH  
+- TCP 80：HTTP  
+- TCP 443：HTTPS（证书就绪后再开）  
 
 ## 11. 常见问题
 
-### 11.1 pip 安装失败
+### pip 失败
 
-优先确认你装的是：
+确认安装的是 `backend/requirements.txt`（或 `requirements.aliyun.txt` 别名），不是 Anaconda 导出文件。
 
-```bash
-pip install -r backend/requirements.aliyun.txt
-```
-
-不是：
-
-```bash
-pip install -r backend/requirements.txt
-```
-
-### 11.2 前端页面能打开，但 API 失败
-
-检查：
+### 页面开了但 API 失败
 
 ```bash
 systemctl status ygzl --no-pager
 journalctl -u ygzl -n 100 --no-pager
 curl http://127.0.0.1:5000/health
-curl http://127.0.0.1:5000/api/source
 ```
 
-### 11.3 页面刷新 404
+### 刷新 404
 
-确认 Nginx 里有：
+Nginx `location /` 需有 `try_files $uri $uri/ /index.html;`。
 
-```nginx
-location / {
-    try_files $uri $uri/ /index.html;
-}
-```
+### 大静态资源
 
-这行是给 React Router 的 SPA 路由兜底用的。
+部分资源可能未进 git 或体积很大；按需上传到服务器或改走 OSS/CDN。当前仓库内 `frontend/public/static/` 资产先保持不动。
 
-### 11.4 静态 3D/视频资源找不到
-
-项目 `.gitignore` 当前忽略了很多大静态资源，例如 `static/glb/`、`static/videos/`。如果线上需要这些资源，需要手动上传到服务器对应目录，或改成对象存储 OSS/CDN。
-
-## 12. 更新部署
-
-后续代码更新后：
+## 12. 更新
 
 ```bash
 cd /opt/ygzl_2026_1
-git pull
+git pull origin master
 source .venv/bin/activate
-pip install -r backend/requirements.aliyun.txt
+pip install -r backend/requirements.txt
 cd frontend && npm ci && npm run build
 systemctl restart ygzl
 systemctl reload nginx
 ```
+
+## 13. 旁路脚本
+
+- `deploy_safe.sh`：在共享机器上用高位端口旁路部署（默认 `BRANCH=master`）
+- `deploy_from_current_dir.sh`：从当前工作树同步到 `/opt/...` 而不 git clone  
+
+共享机上若已有其它站点，优先读脚本注释，避免占用 80/443/5000。

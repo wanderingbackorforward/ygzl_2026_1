@@ -7,7 +7,7 @@ set -euo pipefail
 # It does NOT bind to 80/443/5000 by default.
 
 REPO_URL="${REPO_URL:-https://github.com/wanderingbackorforward/ygzl_2026_1.git}"
-BRANCH="${BRANCH:-deploy/aliyun-single-machine}"
+BRANCH="${BRANCH:-master}"
 APP_DIR="${APP_DIR:-/opt/ygzl_2026_1_aliyun}"
 SERVICE_NAME="${SERVICE_NAME:-ygzl-aliyun}"
 APP_USER="${APP_USER:-ygzl}"
@@ -112,7 +112,7 @@ install_python_deps() {
   "$PYTHON_BIN" -m venv .venv
   . "$APP_DIR/.venv/bin/activate"
   pip install --upgrade pip setuptools wheel
-  pip install -r backend/requirements.aliyun.txt
+  pip install -r backend/requirements.txt
 }
 
 build_frontend() {

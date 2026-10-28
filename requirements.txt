@@ -1,16 +1,5 @@
-Flask
-Flask-Cors
-Werkzeug
-mysql-connector-python
-requests
-numpy
-pandas
-SQLAlchemy
-pyshp
-scikit-learn
-statsmodels
-torch
-scipy
-shap
-neo4j
-networkx
+# Convenience meta-file for local installs from repo root.
+# Canonical list: backend/requirements.txt
+# Aliyun production: pip install -r backend/requirements.txt
+# Vercel serverless: api/requirements.txt (do not use this file on Vercel)
+-r backend/requirements.txt

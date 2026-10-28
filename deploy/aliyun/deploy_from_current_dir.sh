@@ -89,7 +89,7 @@ log "Installing Python dependencies"
 "$PYTHON_BIN" -m venv .venv
 . "$APP_DIR/.venv/bin/activate"
 pip install --upgrade pip setuptools wheel
-pip install -r backend/requirements.aliyun.txt
+pip install -r backend/requirements.txt
 
 log "Building frontend"
 cd "$APP_DIR/frontend"
