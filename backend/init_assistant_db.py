@@ -10,16 +10,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from modules.database.db_config import get_db_connection
 
+
 def init_assistant_tables():
     """初始化悬浮小助手数据库表"""
-    conn = get_db_connection()
-    if not conn:
-        print("[错误] 无法连接数据库")
-        return False
-
-    cursor = conn.cursor()
-
+    conn = None
+    cursor = None
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
         # 读取 SQL 文件
         sql_file = os.path.join(os.path.dirname(__file__), 'modules', 'assistant', 'schema.sql')
         with open(sql_file, 'r', encoding='utf-8') as f:
@@ -38,13 +37,26 @@ def init_assistant_tables():
         return True
 
     except Exception as e:
-        conn.rollback()
+        if conn is not None:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
         print(f"[错误] 初始化失败: {e}")
         return False
 
     finally:
-        cursor.close()
-        conn.close()
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
 
 if __name__ == '__main__':
     print("开始初始化悬浮小助手数据库表...")

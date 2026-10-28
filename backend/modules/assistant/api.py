@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+"""Chat / LLM assistant API (``/api/assistant``).
+
+Independent from the ops patrol Agent (``modules.agent`` / ``/api/agent``).
+Keep both blueprints registered; do not soft-redirect chat traffic to patrol
+routes or vice versa.
+"""
 import json
 import os
 import time

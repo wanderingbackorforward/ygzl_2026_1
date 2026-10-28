@@ -14,11 +14,8 @@ def update_monitoring_points():
     print("开始更新监测点坐标信息...")
 
     try:
-        # 连接到MySQL
+        # 连接到MySQL（失败抛错，由下方 except 处理）
         conn = get_db_connection()
-        if conn is None:
-            print("无法建立数据库连接")
-            return False
         cursor = conn.cursor()
 
         # 获取所有监测点

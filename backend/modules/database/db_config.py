@@ -69,22 +69,34 @@ def sqlalchemy_url(driver: str = 'pymysql', include_database: bool = True) -> st
     return base
 
 
-def get_db_connection():
-    """Create a mysql.connector connection using ``db_config``."""
-    try:
-        return mysql.connector.connect(**db_config)
-    except mysql.connector.Error as err:
-        print(f"数据库连接错误: {err}")
-        return None
+def mysql_connect(*, include_database: bool = True):
+    """Fail-fast ``mysql.connector.connect`` using ``db_config``.
+
+    Raises ``mysql.connector.Error`` on failure (never returns ``None``).
+
+    When ``include_database`` is False, connects without selecting a schema —
+    required before ``CREATE DATABASE`` (see ``ensure_mysql_database``).
+    """
+    cfg = dict(db_config)
+    if not include_database:
+        cfg.pop('database', None)
+    return mysql.connector.connect(**cfg)
+
+
+def get_db_connection(*, include_database: bool = True):
+    """Create a mysql.connector connection using ``db_config``.
+
+    Historical name kept for call sites. Delegates to ``mysql_connect`` and
+    **raises** on failure — does not silently return ``None`` (that pattern
+    caused overlooked outages in API/ETL paths).
+    """
+    return mysql_connect(include_database=include_database)
 
 
 @contextmanager
 def get_db_cursor():
     """Yield a dict cursor; commit on success, rollback on error."""
     conn = get_db_connection()
-    if conn is None:
-        raise Exception("无法建立数据库连接")
-
     try:
         cursor = conn.cursor(dictionary=True)
         yield cursor
@@ -95,21 +107,6 @@ def get_db_cursor():
     finally:
         cursor.close()
         conn.close()
-
-
-def mysql_connect(*, include_database: bool = True):
-    """Fail-fast ``mysql.connector.connect`` using ``db_config``.
-
-    Prefer this over ``get_db_connection()`` in ETL scripts that should raise
-    on failure (``get_db_connection`` returns ``None`` and prints).
-
-    When ``include_database`` is False, connects without selecting a schema —
-    required before ``CREATE DATABASE`` (see ``ensure_mysql_database``).
-    """
-    cfg = dict(db_config)
-    if not include_database:
-        cfg.pop('database', None)
-    return mysql.connector.connect(**cfg)
 
 
 def ensure_mysql_database() -> bool:

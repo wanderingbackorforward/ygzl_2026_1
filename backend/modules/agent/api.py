@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Agent 巡检 API 蓝图
+Agent 巡检 API 蓝图（/api/agent）
+
 提供巡检触发、insights 查询、已读标记等接口。
+
+与 ``modules.assistant``（/api/assistant 聊天助手）是两套独立 API，
+前端分别由 agentStore / FloatingAssistant 调用；请勿互相代理或合并路由。
 """
 
 import os

@@ -79,12 +79,12 @@ from modules.advanced_analysis.api import advanced_bp
 from modules.assistant.api import assistant_bp
 from modules.module_registry.api.module_api import module_bp
 
-# Agent 巡检模块
+# Agent 巡检模块（/api/agent）— 与 modules.assistant（/api/assistant 聊天）独立，勿混用
 try:
     from modules.agent.api import agent_bp
-    print("[SUCCESS] Agent API imported successfully")
+    print("[SUCCESS] Agent patrol API imported successfully")
 except Exception as e:
-    print(f"[WARNING] Failed to import agent API: {e}")
+    print(f"[WARNING] Failed to import agent patrol API: {e}")
     agent_bp = None
 
 # 机器学习模块（条件导入，避免在缺少依赖时影响其他API）
@@ -895,12 +895,11 @@ def save_viewpoint():
     if not isinstance(tgt, list) or len(tgt) != 3 or not all(isinstance(n, (int, float)) for n in tgt):
          return jsonify({'success': False, 'message': 'target 数据格式错误 (应为包含3个数字的列表)'}), 400
 
-    conn = get_db_connection() # 使用已有的辅助函数
-    if not conn:
-         return jsonify({'success': False, 'message': '数据库连接失败'}), 500
-
-    cursor = conn.cursor()
+    conn = None
+    cursor = None
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         # 使用 INSERT ... ON DUPLICATE KEY UPDATE 保存或更新
         # 要求 viewpoints 表的 point_id 是 PRIMARY KEY 或 UNIQUE KEY
         sql = """
@@ -912,29 +911,29 @@ def save_viewpoint():
         """
         cursor.execute(sql, (point_id, pos[0], pos[1], pos[2], tgt[0], tgt[1], tgt[2]))
         conn.commit()
-        print(f"视角数据已保存/更新: {point_id}") # 在后端打印日志
+        print(f"视角数据已保存/更新: {point_id}")
         return jsonify({'success': True, 'message': f'视角 {point_id} 已保存/更新'})
 
     except mysql.connector.Error as err:
-        conn.rollback()
+        if conn is not None:
+            conn.rollback()
         print(f"数据库错误 (保存视角): {err}")
         return jsonify({'success': False, 'message': '数据库操作失败'}), 500
     finally:
-        if cursor:
+        if cursor is not None:
             cursor.close()
-        if conn and conn.is_connected():
+        if conn is not None and conn.is_connected():
             conn.close()
 
 @app.route('/api/viewpoints', methods=['GET'])
 def get_viewpoints():
     print("[API] GET /api/viewpoints")
     """获取所有已保存的视角数据"""
-    conn = get_db_connection() # 使用已有的辅助函数
-    if not conn:
-         return jsonify({'success': False, 'message': '数据库连接失败'}), 500
-
-    cursor = conn.cursor(dictionary=True) # 返回字典形式的结果
+    conn = None
+    cursor = None
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT point_id, pos_x, pos_y, pos_z, tgt_x, tgt_y, tgt_z FROM viewpoints ORDER BY point_id")
         viewpoints_data = cursor.fetchall()
 
@@ -942,24 +941,19 @@ def get_viewpoints():
         formatted_viewpoints = {}
         for row in viewpoints_data:
             formatted_viewpoints[row['point_id']] = {
-                # 确保从数据库读出的也是浮点数，或者在查询时转换
                 'position': [float(row['pos_x']), float(row['pos_y']), float(row['pos_z'])],
                 'target': [float(row['tgt_x']), float(row['tgt_y']), float(row['tgt_z'])]
             }
 
-        # 使用 json.dumps 处理 Decimal（如果数据库字段是 Decimal 且未在上面转为 float）
-        # 如果上面已转为float，可以直接 jsonify
-        # 注意: 之前的 get_summary 返回了 json string, 这里保持一致也用 json.dumps
         return json_dumps_response({'success': True, 'data': formatted_viewpoints})
-
 
     except mysql.connector.Error as err:
         print(f"数据库错误 (获取视角): {err}")
         return jsonify({'success': False, 'message': '数据库查询失败'}), 500
     finally:
-        if cursor:
+        if cursor is not None:
             cursor.close()
-        if conn and conn.is_connected():
+        if conn is not None and conn.is_connected():
             conn.close()
 
 # =========================================================
@@ -1079,18 +1073,14 @@ def get_overview_summary():
         # --- 振动数据 ---
         try:
             conn = get_db_connection()
-            if conn:
-                try:
-                    cursor = conn.cursor(dictionary=True)
-                    cursor.execute("SELECT COUNT(*) as cnt FROM vibration_datasets")
-                    row = cursor.fetchone()
-                    dataset_count = row['cnt'] if row else 0
-                    cursor.close()
-                    conn.close()
-                except Exception:
-                    dataset_count = 0
-            else:
-                dataset_count = 0
+            try:
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute("SELECT COUNT(*) as cnt FROM vibration_datasets")
+                row = cursor.fetchone()
+                dataset_count = row['cnt'] if row else 0
+                cursor.close()
+            finally:
+                conn.close()
             result['vibration'] = {
                 'total_datasets': dataset_count,
                 'status': 'normal'
@@ -1132,6 +1122,9 @@ app.register_blueprint(analysis_v2_bp)
 # 注册温度V2 API蓝图
 if temperature_v2_api is not None:
     app.register_blueprint(temperature_v2_api)
+# Chat / LLM floating assistant — NOT the same as Agent patrol below.
+# Prefix: /api/assistant  (conversations, streaming, enrich, summarize)
+# Soft note: modules/assistant/*agent_*.py are tool-loop helpers for chat, not patrol.
 app.register_blueprint(assistant_bp)
 # 模块管理路由已迁移到 module_bp 蓝图（见下方 app.register_blueprint(module_bp)）
 app.register_blueprint(insar_bp)
@@ -1147,10 +1140,13 @@ if ml_api is not None:
 else:
     print("[WARNING] ML API not registered due to missing dependencies")
 
-# 注册Agent巡检API蓝图
+# Ops patrol / insights / badge / cron — separate product surface from chat assistant.
+# Prefix: /api/agent  (do not merge or alias onto /api/assistant; frontend agentStore depends on this)
 if agent_bp is not None:
     app.register_blueprint(agent_bp)
-    print("[INFO] Agent API registered successfully")
+    print("[INFO] Agent patrol API registered successfully (/api/agent)")
+else:
+    print("[WARNING] Agent patrol API not registered (import failed)")
 
 # 健康检查路由
 @app.route('/api/health')
@@ -1190,8 +1186,8 @@ if __name__ == '__main__':
     try:
         print("正在初始化振动数据库表...")
         conn = get_db_connection()
-        if conn: # 检查连接是否成功
-            cursor = conn.cursor()
+        cursor = conn.cursor()
+        try:
             schema_path = os.path.join(os.path.dirname(__file__), 'schema', 'vibration_schema.sql')
             if os.path.exists(schema_path):
                 with open(schema_path, 'r', encoding='utf-8') as f:
@@ -1212,10 +1208,9 @@ if __name__ == '__main__':
                 print("振动数据库表初始化完成")
             else:
                 print(f"警告：找不到振动表结构文件 {schema_path}")
+        finally:
             cursor.close()
             conn.close()
-        else:
-            print("错误：无法连接数据库，跳过振动表初始化。")
     except Exception as e:
         print(f"初始化振动数据库表时出错: {str(e)}")
 
