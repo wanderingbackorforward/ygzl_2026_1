@@ -48,3 +48,24 @@ New feature code that needs app data should go through `modules.db.vendor.get_re
 | `modules/agent` | Patrol / insights / badge / cron (ops agent) | `/api/agent` |
 
 Different products. Both blueprints are registered from `modules/api/api_server.py`. Do not collapse them without an explicit product decision.
+
+## ETL / data import guidance
+
+Batch ETL under `modules/data_import/` and `modules/data_processing/` historically
+talks to **MySQL** via `modules.database.db_config` (SQLAlchemy / mysql.connector).
+Online API code prefers `modules.db.vendor.get_repo()` (vendor-agnostic; works with
+`DB_VENDOR=supabase_http` on Aliyun).
+
+| Task | Prefer |
+|------|--------|
+| New HTTP/API feature | `from modules.db.vendor import get_repo` |
+| Existing MySQL batch ETL scripts | `db_config` is OK until migrated |
+| Hybrid (see `process_settlement_data.py`) | MySQL for bulk tables + `get_repo()` for vendor writes |
+
+Do **not** wholesale rewrite ETL to `get_repo` without verifying each script against
+the active `DB_VENDOR`. Aliyun production defaults to Supabase HTTP — MySQL-only
+ETL will not hit that backend until credentials/`DB_VENDOR=mysql` are set.
+
+Maintenance scripts at `backend/*.py` (`init_assistant_db`, ticket encoding fixes,
+`test_ml_modules`, `fallback_app`) are **manual/ops utilities**, not imported by
+`wsgi:app`. Keep them; do not delete without an explicit decision.

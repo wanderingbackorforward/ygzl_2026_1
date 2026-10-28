@@ -1276,7 +1276,6 @@ function InsarNativeMap(
 }
 
 export default function Insar() {
-  const [mode, setMode] = useState<'native' | 'iframe'>('native')
   const [dataset, setDataset] = useState('yanggaozhong')
   const [datasets, setDatasets] = useState<string[]>(['yanggaozhong'])
   const [indicator, setIndicator] = useState<Indicator>('velocity')
@@ -1679,7 +1678,6 @@ export default function Insar() {
     patrolAbortRef.current = abort
     setPatrolActive(true)
     setPatrolIndex(0)
-    setMode('native')
     setIndicator('threshold')
 
     const delay = (ms: number) => new Promise<void>((resolve, reject) => {
@@ -1732,7 +1730,7 @@ export default function Insar() {
       }, 0)
     }
     const focusTopPoint = (p: RiskPoint) => {
-      setMode('native'); setIndicator('threshold'); setFocusId(null)
+      setIndicator('threshold'); setFocusId(null)
       window.setTimeout(() => {
         setFocusId(p.id)
         setSelectedPoint({ id: p.id, lat: p.lat, lng: p.lng, props: { velocity: p.velocity } })

@@ -1,3 +1,5 @@
+> **Superseded as runbook.** For current steps use [`README.md`](./README.md) (2026-10+). This file is a historical snapshot of the 2026-10-18 shared-host sync (`APP_DIR=/opt/ygzl_2026_1_aliyun`, port 18080). Path A production templates now default to `/opt/ygzl_2026_1` + `ygzl.service` + Nginx:80.
+
 # 阿里云当前部署状态（2026-10-18）
 
 - 本机 `D:/mine/myprojects/ygzl_2026_1`；云端 `/opt/ygzl_2026_1_aliyun`。当前云端目录没有 .git，不能直接照模板 git pull。

@@ -14,5 +14,5 @@ router (Cover / domain pages / Insar native). Deleted after grep:
 - HTML: `cover|cracks|drone|insar|overview|settlement|temperature|tickets|vibration.html`
 - JS companions: charts/cover/cracks/drone/overview/settlement_*/temperature/tickets/tunnel/vibration/main/unity-loader/three_viewer.js (non-enhanced), chart-debug/zoom
 
-Insar `mode: 'iframe'` state remains in `Insar.tsx` but never loads a static HTML
-shell (default + all setters are `'native'`). Left untouched this round.
+Insar dead `mode: 'iframe'` state was removed in cleanup round 5 (never rendered
+an iframe / static HTML shell).

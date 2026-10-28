@@ -59,3 +59,9 @@ Two different pages, not duplicates:
 
 Do not reintroduce a shared cardRegistry between them. Prefer deleting only
 components with zero importers after grep.
+
+## Static assets on Aliyun
+
+`/static/*` is served from `frontend/dist/static` after `npm run build` (see
+`deploy/aliyun/nginx.conf` and `backend/wsgi.py` static_folder override). Do not
+assume `backend/static/` exists.
