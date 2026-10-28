@@ -9,7 +9,7 @@
  * - 随机性：施工扰动
  * - 异常点：模拟真实异常情况
  */
-export function generateRealisticSettlement(
+function generateRealisticSettlement(
   pointId: string,
   days: number = 90
 ): { date: string; value: number }[] {

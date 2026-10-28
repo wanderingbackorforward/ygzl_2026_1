@@ -309,29 +309,6 @@ export async function fetchSHAPExplanation(
 /**
  * ML模块健康检查
  */
-export async function fetchMLHealth() {
-  return fetchWithFallback(
-    `${API_BASE}/ml/health`,
-    undefined,
-    () => ({
-      success: true,
-      modules: {
-        anomaly_detector: true,
-        time_series_predictor: true,
-        prophet: true,
-        informer: true,
-        stgcn: true,
-        pinn: true,
-        ensemble: true,
-        shap: true,
-        spatial_correlation: true,
-        causal_inference: true,
-        model_selector: true,
-      },
-      message: 'ML模块运行正常',
-    })
-  );
-}
 
 /**
  * Informer 单点预测 (优先调用训练好的权重 /api/ml/dl/predict/informer/)
@@ -388,18 +365,6 @@ export async function fetchDLStatus() {
  * 温度传感器 AI 预测 (多任务 Informer, 共享 251 个传感器)
  * 调用训练好的权重 /api/ml/dl/predict/temperature/<sid>
  */
-export async function fetchTemperaturePrediction(sid: number, steps: number = 2) {
-  return fetchWithFallback(
-    `${API_BASE}/ml/dl/predict/temperature/${sid}?steps=${steps}`,
-    undefined,
-    () => ({
-      success: false,
-      message: '温度 AI 预测未训练',
-      sid,
-      forecast: { dates: [], values: [], lower_bound: [], upper_bound: [] },
-    })
-  );
-}
 
 /**
  * 查询某模型对某监测点/传感器的历史预测 (从 Supabase 持久化记录)
@@ -416,14 +381,6 @@ export async function fetchPredictionHistory(modelName: string, targetId: string
  * 振动波形 + 16 维特征 AI 预测 (1D-CNN 双输出头, 通道级)
  * 调用训练好的权重 /api/ml/dl/predict/vibration/<channel_id>
  */
-export async function fetchVibrationPrediction(channelId: string | number) {
-  const cid = String(channelId);
-  return fetchWithFallback(
-    `${API_BASE}/ml/dl/predict/vibration/${cid}`,
-    undefined,
-    () => ({ success: false, message: '后端未启用', channel_id: cid })
-  );
-}
 
 /**
  * 裂缝 AI 预测 (CrackLSTM 共享网络, 31 个监测点, 6h 步长)
@@ -467,20 +424,6 @@ export async function fetchTBMPrediction(tbmId: string, predLen: number = 4) {
  * 调用训练好的权重 /api/ml/dl/predict/vibration_freq/<channel_id>
  * 低置信度 = 异常
  */
-export async function fetchVibrationFreqPrediction(channelId: string | number) {
-  const cid = String(channelId);
-  return fetchWithFallback(
-    `${API_BASE}/ml/dl/predict/vibration_freq/${cid}`,
-    undefined,
-    () => ({
-      success: false,
-      message: '振动频域 AI 未训练',
-      channel_id: cid,
-      prediction: { confidence: 0, anomaly_score: 1, is_anomaly: true },
-      spectrum_data: [],
-    })
-  );
-}
 
 /**
  * 因果发现 (Granger)
@@ -589,13 +532,6 @@ export async function deleteKGDocument(docId: string) {
 /**
  * 重新处理文献（提取实体和关系）
  */
-export async function processKGDocument(docId: string) {
-  return fetchWithFallback(
-    `${API_BASE}/ml/kg/documents/${docId}/process`,
-    { method: 'POST' },
-    () => ({ success: false, message: 'API unavailable' })
-  );
-}
 
 /**
  * 多因素关联分析（温度-沉降-裂缝）
