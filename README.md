@@ -22,7 +22,7 @@
 ├── deploy/aliyun/       # ★ 阿里云部署模板（README / systemd / nginx / 脚本）
 ├── mobile/              # Capacitor APK 构建脚本
 ├── scripts/             # 运维/数据工具脚本
-├── docs/                # 历史计划与实施记录（多数已过时，以本 README 为准）
+├── docs/                # 现行运维说明；过时计划见 docs/archive/（见 docs/README.md）
 ├── supabase/            # SQL 迁移
 ├── vercel.json          # Vercel 配置（次要）
 ├── .env.example         # 环境变量模板

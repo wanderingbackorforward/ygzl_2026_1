@@ -29,7 +29,7 @@ import '../styles/variables.css';
 import '../styles/cards.css';
 import '../styles/grid.css';
 
-/* ── V1 legacy cards — only these go into DashboardGrid ── */
+/* ── Detailed charts (collapsible; still used in product UX) ── */
 const PointSelectorCard: React.FC = () => {
   const { points, pointsLoading, selectedPointId, selectPoint } = useCracks();
   return (
@@ -43,7 +43,7 @@ const PointSelectorCard: React.FC = () => {
   );
 };
 
-const V1_LEGACY_CARDS: CardConfig[] = [
+const DETAIL_CARDS: CardConfig[] = [
   { id: 'crack-point-selector', title: '监测点选择', icon: 'fas fa-map-marker-alt', component: PointSelectorCard, defaultLayout: { x: 0, y: 0, w: 6, h: 2, minW: 3, minH: 2 } },
   { id: 'crack-main-trend', title: '主趋势', icon: 'fas fa-chart-line', component: CrackMainTrendChart, defaultLayout: { x: 0, y: 2, w: 6, h: 4, minW: 4, minH: 3 } },
   { id: 'crack-average-trend', title: '平均趋势', icon: 'fas fa-chart-line', component: CrackAverageTrendChart, defaultLayout: { x: 6, y: 0, w: 3, h: 4, minW: 3, minH: 3 } },
@@ -73,7 +73,7 @@ const SectionCard: React.FC<{
 
 /* ── Main Dashboard ── */
 const CracksDashboard: React.FC = () => {
-  const [showV1, setShowV1] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [fullscreenCard, setFullscreenCard] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { selectedPointId } = useCracks();
@@ -85,14 +85,14 @@ const CracksDashboard: React.FC = () => {
 
   const fullscreenContent = useMemo(() => {
     if (!fullscreenCard) return null;
-    const card = V1_LEGACY_CARDS.find(c => c.id === fullscreenCard);
+    const card = DETAIL_CARDS.find(c => c.id === fullscreenCard);
     if (!card) return null;
     const CardComponent = card.component;
     return <CardComponent cardId={`${fullscreenCard}-fullscreen`} {...card.props} />;
   }, [fullscreenCard]);
 
   const fullscreenTitle = useMemo(
-    () => V1_LEGACY_CARDS.find(c => c.id === fullscreenCard)?.title || '',
+    () => DETAIL_CARDS.find(c => c.id === fullscreenCard)?.title || '',
     [fullscreenCard]
   );
 
@@ -156,27 +156,27 @@ const CracksDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* ════════ V1 Legacy Cards — collapsible ════════ */}
+        {/* ════════ Detailed charts — collapsible ════════ */}
         <div className="px-4 pt-6 pb-4">
           <button
-            onClick={() => setShowV1(!showV1)}
+            onClick={() => setShowDetails(!showDetails)}
             className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-3"
           >
-            <i className={`fas fa-chevron-${showV1 ? 'down' : 'right'} text-xs`} />
-            <span>{showV1 ? '收起' : '展开'}详细数据 ({V1_LEGACY_CARDS.length} 个)</span>
+            <i className={`fas fa-chevron-${showDetails ? 'down' : 'right'} text-xs`} />
+            <span>{showDetails ? '收起' : '展开'}详细数据 ({DETAIL_CARDS.length} 个)</span>
           </button>
 
-          {showV1 && (
+          {showDetails && (
             <DashboardGrid
-              pageId="cracks-v1"
-              cards={V1_LEGACY_CARDS}
+              pageId="cracks-detail"
+              cards={DETAIL_CARDS}
               onCardFullscreen={handleCardFullscreen}
             />
           )}
         </div>
       </div>
 
-      {/* ════════ Fullscreen Modal (for V1 cards) ════════ */}
+      {/* ════════ Fullscreen Modal (detail cards) ════════ */}
       <FullscreenModal isOpen={!!fullscreenCard} onClose={handleCloseFullscreen} title={fullscreenTitle}>
         <div style={{ width: '100%', height: '100%', minHeight: 400 }}>{fullscreenContent}</div>
       </FullscreenModal>

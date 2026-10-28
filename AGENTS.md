@@ -34,3 +34,16 @@
 Each monitoring domain has one formal page (SettlementV2 / Temperature V2 cockpit /
 VibrationV2 / Cracks). Do not reintroduce dual-tab New+V2 switchers or `/vibration-legacy`
 implementations without an explicit product decision.
+
+## Backend dual tracks
+
+See `backend/README.md` § Dual tracks. Short version:
+
+- `modules/database` = MySQL `db_config`; `modules/db` = `get_repo` vendor/repos (both used).
+- `modules/assistant` = `/api/assistant` chat; `modules/agent` = `/api/agent` patrol/insights (both used).
+
+Do not merge or delete either pair without grep+build proof and an explicit decision.
+
+## Docs
+
+Active guides under `docs/`; historical plans under `docs/archive/` (see `docs/README.md`).
