@@ -12,6 +12,7 @@ import {
 } from '../utils/diagnosisEngine';
 import type { EChartsOption } from 'echarts';
 import { TerzaghiIndicator, MoranIndicator, AnomalyConfidenceRadar } from '../components/overview-v2/SciencePanel';
+import { PageHeader, KpiCard } from '../components/common/ui';
 import './OverviewV2.css';
 
 // ─────────────────────────────────────────────
@@ -32,6 +33,15 @@ interface AnalysisData {
   anomalies: any[];
   recommendations: any[];
   summary: Record<string, any>;
+}
+
+// 四指标口径来自 /api/overview/summary（见 指标口径.md 第 2 节）
+interface OverviewSummary {
+  settlement?: { total_points?: number; max_value?: number; alert_count?: number };
+  cracks?: { total_points?: number; expanding_count?: number; shrinking_count?: number; stable_count?: number };
+  temperature?: { total_sensors?: number; avg_temp?: number; min_temp?: number; max_temp?: number };
+  vibration?: { total_datasets?: number };
+  safety_score?: number;
 }
 
 // ─────────────────────────────────────────────
@@ -217,11 +227,7 @@ function EvidenceCanvas({ result }: { result: DiagnosisResult | null }) {
   }, [result]);
 
   return (
-    <div style={{
-      flex: 1, minHeight: 0, borderRadius: 12, overflow: 'hidden',
-      background: 'rgba(0,15,30,0.7)',
-      border: '1px solid rgba(0,229,255,0.1)',
-    }}>
+    <div className="ds-panel" style={{ flex: 1, minHeight: 0 }}>
       <div style={{
         padding: '10px 16px 0', display: 'flex', alignItems: 'center', gap: 8,
       }}>
@@ -326,10 +332,10 @@ function ManagerOverview({ points }: { points: PointSummary[] }) {
   }, [points]);
 
   const statItems = [
-    { label: '监测总数', value: stats.total, color: '#06b6d4' },
-    { label: '报警', value: stats.alert, color: stats.alert > 0 ? '#ef4444' : '#22c55e' },
-    { label: '预警', value: stats.warn, color: stats.warn > 0 ? '#eab308' : '#22c55e' },
-    { label: '加速中', value: stats.increasing, color: stats.increasing > 0 ? '#f97316' : '#22c55e' },
+    { label: '监测总数', value: stats.total, tone: 'info' as const },
+    { label: '报警', value: stats.alert, tone: stats.alert > 0 ? ('danger' as const) : ('ok' as const) },
+    { label: '预警', value: stats.warn, tone: stats.warn > 0 ? ('warn' as const) : ('ok' as const) },
+    { label: '加速中', value: stats.increasing, tone: stats.increasing > 0 ? ('warn' as const) : ('ok' as const) },
   ];
 
   return (
@@ -337,13 +343,7 @@ function ManagerOverview({ points }: { points: PointSummary[] }) {
       {/* 统计摘要网格 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
         {statItems.map(s => (
-          <div key={s.label} style={{
-            background: 'rgba(255,255,255,0.03)', borderRadius: 8,
-            padding: '8px 10px', textAlign: 'center',
-          }}>
-            <div style={{ color: s.color, fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{s.value}</div>
-            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, marginTop: 2 }}>{s.label}</div>
-          </div>
+          <KpiCard key={s.label} label={s.label} value={s.value} tone={s.tone} compact />
         ))}
       </div>
 
@@ -365,9 +365,9 @@ function ManagerOverview({ points }: { points: PointSummary[] }) {
       {/* 30天预测分布 */}
       <div style={{
         background: 'rgba(255,255,255,0.03)', borderRadius: 10,
-        padding: '10px 12px', borderLeft: '3px solid #3b82f6',
+        padding: '10px 12px', borderLeft: '3px solid var(--ds-info)',
       }}>
-        <div style={{ color: '#fff', fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
+        <div style={{ color: 'var(--ds-text)', fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
           30天预测分布
         </div>
         <div style={{ height: 140 }}>
@@ -403,11 +403,7 @@ function ActionPanel({ result, points }: { result: DiagnosisResult | null; point
   );
 
   return (
-    <div style={{
-      width: 340, flexShrink: 0, display: 'flex', flexDirection: 'column',
-      background: 'rgba(0,15,30,0.7)', border: '1px solid rgba(0,229,255,0.1)',
-      borderRadius: 12, overflow: 'hidden',
-    }}>
+    <div className="ds-panel" style={{ width: 340, flexShrink: 0 }}>
       {/* 角色切换栏 */}
       <div style={{
         display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)',
@@ -485,19 +481,23 @@ function ActionPanel({ result, points }: { result: DiagnosisResult | null; point
 // 页面主体 — 数据加载 + 布局组装
 // ─────────────────────────────────────────────
 export default function OverviewV2() {
+  const navigate = useNavigate();
   const [points, setPoints] = useState<PointSummary[]>([]);
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
+  const [overview, setOverview] = useState<OverviewSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [pts, anal] = await Promise.all([
+      const [pts, anal, ov] = await Promise.all([
         apiGet<PointSummary[]>('/summary').catch(() => []),
         apiGet<AnalysisData>('/analysis/v2/settlement').catch(() => null),
+        apiGet<OverviewSummary>('/overview/summary').catch(() => null),
       ]);
       setPoints(pts || []);
       setAnalysis(anal);
+      setOverview(ov);
     } catch {
       // 静默降级
     } finally {
@@ -531,13 +531,93 @@ export default function OverviewV2() {
     return diagnose(input);
   }, [points, analysis, loading]);
 
+  const settlement = overview?.settlement;
+  const cracks = overview?.cracks;
+  const temperature = overview?.temperature;
+  const vibration = overview?.vibration;
+
+  const kpiItems = [
+    {
+      key: 'settlement',
+      label: '沉降 · 异常点',
+      value: settlement?.alert_count ?? '—',
+      unit: '个',
+      tone: (settlement?.alert_count ?? 0) > 0 ? ('danger' as const) : ('ok' as const),
+      sub: settlement
+        ? `${settlement.total_points ?? 0} 点 · 最高监测 ${Number(settlement.max_value ?? 0).toFixed(2)} mm`
+        : '接口不可用',
+      onClick: () => navigate('/settlement?from=overview'),
+    },
+    {
+      key: 'temperature',
+      label: '温度 · 监测点',
+      value: temperature?.total_sensors ?? '—',
+      unit: '个',
+      tone: 'info' as const,
+      sub: temperature
+        ? `均值 ${Number(temperature.avg_temp ?? 0).toFixed(1)}℃ · 最高 ${Number(temperature.max_temp ?? 0).toFixed(1)}℃`
+        : '接口不可用',
+      onClick: () => navigate('/temperature?from=overview'),
+    },
+    {
+      key: 'cracks',
+      label: '裂缝 · 扩展',
+      value: cracks?.expanding_count ?? '—',
+      unit: '条',
+      tone: (cracks?.expanding_count ?? 0) > 0 ? ('warn' as const) : ('ok' as const),
+      sub: cracks
+        ? `${cracks.total_points ?? 0} 条 · 收缩 ${cracks.shrinking_count ?? 0} / 稳定 ${cracks.stable_count ?? 0}`
+        : '接口不可用',
+      onClick: () => navigate('/cracks?from=overview'),
+    },
+    {
+      key: 'vibration',
+      label: '振动 · 数据集',
+      value: vibration?.total_datasets ?? '—',
+      unit: '个',
+      tone: 'muted' as const,
+      sub: '演示数据 · 仅波形展示',
+      onClick: () => navigate('/vibration?from=overview'),
+    },
+  ];
+
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', height: '100%',
-      background: '#0a1628',
-    }}>
+    <div className="ds-page">
+      <PageHeader
+        eyebrow="今天有没有事"
+        title="数据总览"
+        description="四类监测指标的最新状态；点异常进入对应指标页，再进高级分析"
+        meta={
+          <span className="ds-chip ds-chip--accent">
+            安全评分 {overview?.safety_score ?? '—'}
+          </span>
+        }
+        actions={
+          <button type="button" className="ds-btn" onClick={() => navigate('/advanced')}>
+            高级分析 →
+          </button>
+        }
+      />
+
+      {/* 四指标 KPI（信息架构第 2 节第一区块） */}
+      <div style={{ flexShrink: 0, padding: '12px 16px 0' }}>
+        <div className="ds-kpi-grid">
+          {kpiItems.map(item => (
+            <KpiCard
+              key={item.key}
+              label={item.label}
+              value={item.value}
+              unit={item.unit}
+              sub={item.sub}
+              tone={item.tone}
+              onClick={item.onClick}
+            />
+          ))}
+        </div>
+      </div>
+
       {/* 第一层：诊断带（固定顶部） */}
-      <div style={{ flexShrink: 0 }}>
+      <div style={{ flexShrink: 0, marginTop: 10 }}>
         <DiagnosisBanner result={diagnosis} loading={loading} />
       </div>
 

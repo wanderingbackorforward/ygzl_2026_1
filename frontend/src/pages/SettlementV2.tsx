@@ -4,6 +4,7 @@ import { apiGet } from '../lib/api';
 import { EChartsWrapper } from '../components/charts/EChartsWrapper';
 import { useJointData } from '../hooks/useAdvancedAnalysis';
 import { AgentHeroCell } from '../components/agent/AgentHeroCell';
+import { PageHeader, KpiCard, ChartCard } from '../components/common/ui';
 import type { EChartsOption } from 'echarts';
 
 // ─────────────────────────────────────────────
@@ -120,9 +121,11 @@ function HeroBar({ points, loading, days, onDaysChange, onSelectPoint, selectedI
   const navigate = useNavigate();
   if (loading) {
     return (
-      <div style={{ background: 'rgba(0,30,60,0.9)', borderBottom: '1px solid rgba(0,229,255,0.15)', padding: '10px 20px', display: 'flex', gap: 32, alignItems: 'center' }}>
-        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>加载中...</span>
-      </div>
+      <PageHeader
+        eyebrow="沉降 · 哪个点不对"
+        title="沉降监测"
+        description="正在加载点位与纵断面…"
+      />
     );
   }
 
@@ -134,114 +137,99 @@ function HeroBar({ points, loading, days, onDaysChange, onSelectPoint, selectedI
   const normalCount = points.length - alertCount - warnCount;
 
   // KPI: 去掉"报警/预警"（Agent已覆盖），换成监测点总览和正常率
-  const compactKpis = [
+  const compactKpis: Array<{
+    label: string;
+    value: string;
+    unit: string;
+    tone: 'info' | 'ok' | 'warn' | 'danger';
+    sub: string;
+  }> = [
     {
       label: '监测点',
       value: `${points.length}`,
-      color: '#00e5ff',
-      sub: `${normalCount}正常 ${alertCount + warnCount}异常`,
+      unit: '个',
+      tone: 'info',
+      sub: `${normalCount} 正常 / ${alertCount + warnCount} 异常`,
     },
     {
       label: '最大累计沉降',
-      value: `${maxSettlement.toFixed(2)} mm`,
-      color: maxSettlement < -5 ? '#f87171' : maxSettlement < -3 ? '#fbbf24' : '#34d399',
+      value: maxSettlement.toFixed(2),
+      unit: 'mm',
+      tone: maxSettlement < -5 ? 'danger' : maxSettlement < -3 ? 'warn' : 'ok',
       sub: maxPoint ? maxPoint.point_id : '--',
     },
     {
       label: '平均日沉降速率',
-      value: `${avgRate.toFixed(4)} mm/d`,
-      color: Math.abs(avgRate) > 0.08 ? '#f87171' : Math.abs(avgRate) > 0.03 ? '#fbbf24' : '#34d399',
+      value: avgRate.toFixed(4),
+      unit: 'mm/d',
+      tone: Math.abs(avgRate) > 0.08 ? 'danger' : Math.abs(avgRate) > 0.03 ? 'warn' : 'ok',
       sub: '线性回归',
     },
   ];
 
   return (
-    <div style={{
-      background: 'linear-gradient(90deg, rgba(0,20,50,0.95) 0%, rgba(0,30,60,0.9) 100%)',
-      borderBottom: '1px solid rgba(0,229,255,0.15)',
-      padding: '6px 16px',
-      display: 'flex',
-      gap: 0,
-      alignItems: 'stretch',
-      flexShrink: 0,
-    }}>
-      {/* 左侧: Agent 主位 — 占更大空间 */}
-      <div style={{
-        flex: '0 0 280px',
-        borderRight: '1px solid rgba(0,229,255,0.15)',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        paddingRight: 12,
-      }}>
-        <AgentHeroCell onSelectPoint={onSelectPoint} />
-      </div>
-
-      {/* 右侧: KPI 紧凑网格 */}
-      <div style={{
-        flex: 1,
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: 0,
-        alignItems: 'center',
-      }}>
-        {compactKpis.map(k => (
-          <div key={k.label} style={{
-            padding: '2px 14px',
-            borderRight: '1px solid rgba(0,229,255,0.06)',
-          }}>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>{k.label}</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: k.color, lineHeight: 1.3 }}>{k.value}</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>{k.sub}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* 时间范围选择器 */}
-      <div style={{ flexShrink: 0, padding: '2px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3 }}>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>时间范围</div>
-        <div style={{ display: 'flex', gap: 3 }}>
-          {TIME_OPTIONS.map(opt => (
+    <>
+      <PageHeader
+        eyebrow="沉降 · 哪个点不对"
+        title="沉降监测"
+        description="按风险排序的点位；选中后查看纵断面、多点对比与裂缝联动"
+        meta={
+          <span className={`ds-chip ${alertCount > 0 ? 'ds-chip--danger' : 'ds-chip--ok'}`}>
+            {alertCount + warnCount} 个异常点 / 共 {points.length} 点
+          </span>
+        }
+        actions={
+          <>
+            <div className="ds-seg">
+              {TIME_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`ds-seg__item ${days === opt.value ? 'ds-seg__item--active' : ''}`}
+                  onClick={() => onDaysChange(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
             <button
-              key={opt.value}
-              onClick={() => onDaysChange(opt.value)}
-              style={{
-                padding: '2px 7px',
-                fontSize: 11,
-                borderRadius: 4,
-                border: `1px solid ${days === opt.value ? 'rgba(0,229,255,0.8)' : 'rgba(0,229,255,0.2)'}`,
-                background: days === opt.value ? 'rgba(0,229,255,0.15)' : 'transparent',
-                color: days === opt.value ? '#00e5ff' : 'rgba(255,255,255,0.6)',
-                cursor: 'pointer',
-                fontWeight: days === opt.value ? 600 : 400,
-              }}
-            >{opt.label}</button>
+              type="button"
+              className="ds-btn ds-btn--primary"
+              disabled={!selectedId}
+              onClick={() => selectedId && navigate(`/advanced?point=${encodeURIComponent(selectedId)}&metric=settlement&from=settlement`)}
+            >
+              分析该点 →
+            </button>
+          </>
+        }
+      />
+
+      {/* Agent 主位 + KPI */}
+      <div style={{
+        flexShrink: 0,
+        display: 'flex',
+        gap: 12,
+        alignItems: 'stretch',
+        padding: '10px 16px',
+        borderBottom: '1px solid var(--ds-divider)',
+      }}>
+        <div style={{
+          flex: '0 0 260px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          paddingRight: 12,
+          borderRight: '1px solid var(--ds-divider)',
+        }}>
+          <AgentHeroCell onSelectPoint={onSelectPoint} />
+        </div>
+        <div className="ds-kpi-grid" style={{ flex: 1, gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+          {compactKpis.map(k => (
+            <KpiCard key={k.label} label={k.label} value={k.value} unit={k.unit} sub={k.sub} tone={k.tone} />
           ))}
         </div>
       </div>
-
-      {/* 下一步：带着当前点位进入高级分析 */}
-      <div style={{ flexShrink: 0, padding: '2px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3 }}>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>下一步</div>
-        <button
-          disabled={!selectedId}
-          onClick={() => selectedId && navigate(`/advanced?point=${encodeURIComponent(selectedId)}&metric=settlement&from=settlement`)}
-          style={{
-            padding: '4px 10px',
-            fontSize: 11,
-            borderRadius: 4,
-            border: '1px solid rgba(0,229,255,0.6)',
-            background: selectedId ? 'rgba(0,229,255,0.15)' : 'transparent',
-            color: selectedId ? '#00e5ff' : 'rgba(255,255,255,0.3)',
-            cursor: selectedId ? 'pointer' : 'not-allowed',
-            whiteSpace: 'nowrap',
-            fontWeight: 600,
-          }}
-        >
-          分析该点 →
-        </button>
-      </div>
-    </div>
+    </>
   );
 }
 
@@ -267,16 +255,24 @@ function PointList({ points, loading, selectedId, onSelect }: PointListProps) {
 
   return (
     <div style={{
-      width: 160,
+      width: 172,
       flexShrink: 0,
-      background: 'rgba(0,15,35,0.8)',
-      borderRight: '1px solid rgba(0,229,255,0.1)',
+      background: 'var(--ds-surface)',
+      borderRight: '1px solid var(--ds-border)',
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
     }}>
-      <div style={{ padding: '10px 12px 6px', fontSize: 12, color: 'rgba(0,229,255,0.7)', fontWeight: 600, letterSpacing: 1, flexShrink: 0 }}>
-        监测点 · {points.length}个
+      <div style={{
+        padding: '9px 12px',
+        fontSize: 12,
+        color: 'var(--ds-accent-text)',
+        fontWeight: 600,
+        letterSpacing: 0.6,
+        flexShrink: 0,
+        borderBottom: '1px solid var(--ds-divider)',
+      }}>
+        监测点 · {points.length} 个
       </div>
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         {loading ? (
@@ -558,37 +554,33 @@ function TunnelProfileChart({ profileData, selectedId, points, loading, events, 
     };
   }, [profileData, selectedId, points, events]);
 
-  if (loading) {
-    return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,10,25,0.6)' }}>
-        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>加载纵断面数据...</span>
-      </div>
-    );
-  }
-
-  if (!profileData || profileData.profile.length === 0) {
-    return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,10,25,0.6)' }}>
-        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>暂无纵断面数据</span>
-      </div>
-    );
-  }
+  const state = loading
+    ? 'loading'
+    : !profileData || profileData.profile.length === 0
+      ? 'empty'
+      : 'ready';
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'rgba(0,10,25,0.6)' }}>
-      <div style={{ padding: '8px 16px 0', fontSize: 12, color: 'rgba(0,229,255,0.6)', fontWeight: 600, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span>隧道纵断面</span>
-        {availableDates && availableDates.length > 1 && onDateChange ? (
+    <ChartCard
+      title="隧道纵断面"
+      icon="chart-line"
+      cutoff={profileData?.date}
+      state={state}
+      emptyText="暂无纵断面数据"
+      style={{ flex: 1, minHeight: 0 }}
+      extra={
+        availableDates && availableDates.length > 1 && onDateChange ? (
           <select
             value={currentDate || profileData?.date || ''}
             onChange={e => onDateChange(e.target.value)}
             style={{
+              height: 24,
               fontSize: 11,
-              padding: '2px 6px',
-              background: 'rgba(0,229,255,0.08)',
-              border: '1px solid rgba(0,229,255,0.25)',
+              padding: '0 6px',
+              background: 'var(--ds-accent-soft)',
+              border: '1px solid var(--ds-accent-line)',
               borderRadius: 4,
-              color: '#00e5ff',
+              color: 'var(--ds-accent-text)',
               cursor: 'pointer',
               outline: 'none',
             }}
@@ -597,14 +589,13 @@ function TunnelProfileChart({ profileData, selectedId, points, loading, events, 
               <option key={d} value={d} style={{ background: '#0a192f', color: '#fff' }}>{d}</option>
             ))}
           </select>
-        ) : (
-          <span style={{ color: 'rgba(255,255,255,0.4)' }}>· {profileData?.date}</span>
-        )}
-      </div>
-      <div style={{ flex: 1, minHeight: 0, padding: '0 8px 4px' }}>
+        ) : null
+      }
+    >
+      <div style={{ position: 'absolute', inset: '0 8px 4px' }}>
         <EChartsWrapper option={option} notMerge />
       </div>
-    </div>
+    </ChartCard>
   );
 }
 
@@ -727,13 +718,13 @@ function MultiComparePanel({ allPoints, selectedId, days, summaryLoaded }: Multi
   }, [compareIds, seriesData]);
 
   return (
-    <div style={{ flexShrink: 0, borderTop: '1px solid rgba(0,229,255,0.1)', background: 'rgba(0,8,20,0.7)', display: 'flex', flexDirection: 'column', height: collapsed ? 36 : '38%' }}>
+    <div style={{ flexShrink: 0, border: '1px solid var(--ds-border)', borderRadius: 'var(--ds-radius)', background: 'var(--ds-surface)', display: 'flex', flexDirection: 'column', height: collapsed ? 38 : '38%', overflow: 'hidden' }}>
       {/* 标题栏 */}
       <div style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, cursor: 'pointer' }} onClick={() => setCollapsed(c => !c)}>
-        <span style={{ fontSize: 12, color: 'rgba(0,229,255,0.7)', fontWeight: 600 }}>
+        <span style={{ fontSize: 12, color: 'var(--ds-accent-text)', fontWeight: 600 }}>
           多点对比 · {compareIds.length}/5
         </span>
-        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>点击监测点加入对比</span>
+        <span style={{ fontSize: 12, color: 'var(--ds-text-muted)' }}>点击监测点加入对比</span>
         <div style={{ flex: 1 }} />
         {/* 已选标签 */}
         {compareIds.map((pid, idx) => (
@@ -870,8 +861,8 @@ function CrackJointPanel({ selectedId }: CrackJointPanelProps) {
 
   if (!selectedId) {
     return (
-      <div style={{ flexShrink: 0, borderTop: '1px solid rgba(0,229,255,0.1)', background: 'rgba(0,8,20,0.7)' }}>
-        <div style={{ padding: '8px 12px', fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
+      <div style={{ flexShrink: 0, border: '1px solid var(--ds-border)', borderRadius: 'var(--ds-radius)', background: 'var(--ds-surface)' }}>
+        <div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--ds-text-faint)' }}>
           沉降-裂缝联动 · 选择监测点查看
         </div>
       </div>
@@ -881,11 +872,13 @@ function CrackJointPanel({ selectedId }: CrackJointPanelProps) {
   return (
     <div style={{
       flexShrink: 0,
-      borderTop: '1px solid rgba(0,229,255,0.1)',
-      background: 'rgba(0,8,20,0.7)',
+      border: '1px solid var(--ds-border)',
+      borderRadius: 'var(--ds-radius)',
+      background: 'var(--ds-surface)',
       display: 'flex',
       flexDirection: 'column',
-      height: collapsed ? 36 : '38%',
+      height: collapsed ? 38 : '38%',
+      overflow: 'hidden',
       transition: 'height 0.2s',
     }}>
       {/* 标题栏 — 始终可见 */}
@@ -893,7 +886,7 @@ function CrackJointPanel({ selectedId }: CrackJointPanelProps) {
         style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, cursor: 'pointer' }}
         onClick={() => setCollapsed(c => !c)}
       >
-        <span style={{ fontSize: 12, color: 'rgba(0,229,255,0.7)', fontWeight: 600 }}>
+        <span style={{ fontSize: 12, color: 'var(--ds-accent-text)', fontWeight: 600 }}>
           沉降-裂缝联动 · {selectedId}
         </span>
         <span style={{ fontSize: 12, color: hasCracks ? '#34d399' : 'rgba(255,255,255,0.35)' }}>
@@ -1016,14 +1009,8 @@ export default function SettlementV2() {
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
   return (
-    <div style={{
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      background: 'radial-gradient(ellipse at center, #0a192f 0%, #040b14 100%)',
-      overflow: 'hidden',
-    }}>
-      {/* 顶栏英雄区 + 时间范围选择器 */}
+    <div className="ds-page">
+      {/* 顶栏：页头 + KPI + 时间范围 + 下一步 */}
       <HeroBar points={points} loading={loading} days={days} onDaysChange={setDays} onSelectPoint={setSelectedId} selectedId={selectedId} />
 
       {/* 主体：左侧列表 + 右侧（纵断面图 + 裂缝联动） */}
@@ -1034,7 +1021,15 @@ export default function SettlementV2() {
           selectedId={selectedId}
           onSelect={setSelectedId}
         />
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+          padding: 10,
+          overflow: 'hidden',
+        }}>
           <TunnelProfileChart
             profileData={profileData}
             selectedId={selectedId}

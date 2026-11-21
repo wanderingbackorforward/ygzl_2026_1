@@ -16,17 +16,12 @@ export default function Temperature() {
   return (
     <div style={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {!IS_MOBILE && (
-        <div style={{ flex: '0 0 auto', borderBottom: '1px solid rgba(0, 255, 255, 0.12)', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px' }}>
-          <div style={{ color: 'rgba(230, 247, 255, 0.85)', fontSize: 12 }}>视图</div>
-          <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ flex: '0 0 auto', borderBottom: '1px solid var(--ds-divider)', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px' }}>
+          <div style={{ color: 'var(--ds-text-muted)', fontSize: 12 }}>视图</div>
+          <div className="ds-seg">
             {modes.map(m => (
               <button key={m.key} type="button" onClick={() => setMode(m.key)}
-                style={{
-                  padding: '6px 10px', borderRadius: 8, fontSize: 12, lineHeight: '16px', cursor: 'pointer', whiteSpace: 'nowrap',
-                  border: mode === m.key ? '1px solid rgba(0, 255, 255, 0.7)' : '1px solid rgba(0, 255, 255, 0.25)',
-                  background: mode === m.key ? 'rgba(0, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.25)',
-                  color: '#e6f7ff',
-                }}>
+                className={`ds-seg__item ${mode === m.key ? 'ds-seg__item--active' : ''}`}>
                 {m.label}
               </button>
             ))}

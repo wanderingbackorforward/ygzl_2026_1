@@ -3,8 +3,9 @@
  * 三层架构: VitalSigns(2秒扫描) → 主面板(分析) → 算法洞察(深度)
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiGet } from '../../lib/api';
+import { PageHeader, StateView } from '../common/ui';
 import { PointSelector } from '../shared/PointSelector';
 import { TempVitalSignsStrip } from './TempVitalSignsStrip';
 import { ConstructionGuidePanel } from './ConstructionGuidePanel';
@@ -13,6 +14,7 @@ import { TemperatureIntelligencePanel } from './TemperatureIntelligencePanel';
 import { TemperatureSeriesChart } from '../charts/temperature/TemperatureSeriesChart';
 
 export const TemperatureV2Cockpit: React.FC = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const pointParam = searchParams.get('point');
   const [overview, setOverview] = useState<any>(null);
@@ -121,17 +123,38 @@ export const TemperatureV2Cockpit: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center bg-slate-950">
-        <div className="text-center">
-          <i className="fas fa-spinner fa-spin text-3xl text-cyan-400 mb-3 block" />
-          <span className="text-white text-sm">加载温度数据...</span>
-        </div>
+      <div className="ds-page">
+        <StateView kind="loading" title="加载温度数据…" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-950">
+    <div className="ds-page">
+      <PageHeader
+        eyebrow="温度 · 哪个点不对"
+        title="温度监测"
+        description="选中传感器查看时间序列；异常点可进入高级分析并建单"
+        meta={
+          <span className={`ds-chip ${problemIds.length > 0 ? 'ds-chip--warn' : 'ds-chip--ok'}`}>
+            {problemIds.length} 个需关注 / 共 {sensors.length} 个
+          </span>
+        }
+        actions={
+          <button
+            type="button"
+            className="ds-btn ds-btn--primary"
+            disabled={!selectedSensor}
+            onClick={() =>
+              selectedSensor &&
+              navigate(`/advanced?point=${encodeURIComponent(selectedSensor)}&metric=temperature&from=temperature`)
+            }
+          >
+            分析该点 →
+          </button>
+        }
+      />
+
       {/* Layer 1: VitalSigns 顶栏 */}
       <TempVitalSignsStrip
         stats={overview?.stats || {}}
@@ -141,7 +164,7 @@ export const TemperatureV2Cockpit: React.FC = () => {
       />
 
       {/* Layer 2: 主面板 — 三栏布局 */}
-      <div className="flex-1 min-h-0 flex gap-3 px-4 pb-4">
+      <div className="flex-1 min-h-0 flex gap-3 px-4 py-3">
         {/* 左栏: 传感器列表 */}
         <div className="w-48 shrink-0 flex flex-col">
           <PointSelector
@@ -157,7 +180,7 @@ export const TemperatureV2Cockpit: React.FC = () => {
 
         {/* 中栏: 时间序列图 */}
         <div className="flex-1 min-w-0 flex flex-col gap-3">
-          <div className="flex-1 min-h-0 bg-slate-900/50 rounded-lg border border-slate-700/50 p-3">
+          <div className="flex-1 min-h-0 ds-panel p-3">
             <TemperatureSeriesChart
               cardId="temp-v2-series"
               sensorId={selectedSensor}
@@ -168,7 +191,7 @@ export const TemperatureV2Cockpit: React.FC = () => {
         </div>
 
         {/* 右栏: 智能处置 / 施工指导 / 算法洞察 切换 */}
-        <div className="w-96 shrink-0 flex flex-col bg-slate-900/50 rounded-lg border border-slate-700/50">
+        <div className="w-96 shrink-0 flex flex-col ds-panel">
           {/* 切换按钮 */}
           <div className="shrink-0 flex border-b border-slate-700/50">
             <button onClick={() => setActivePanel('intel')}

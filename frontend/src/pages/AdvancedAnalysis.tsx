@@ -4,50 +4,39 @@ import { ProfileChart, TimeSlider, JointDashboard, EventManager } from '../compo
 import { AnomalyDashboard, RecommendationDashboard, PredictionDashboard, CorrelationDashboard, DeepLearningDashboard, ExplainabilityDashboard, KnowledgeGraphDashboard } from '../components/analysis';
 import { useProfileData, useAvailableDates, useProfileStatistics } from '../hooks/useAdvancedAnalysis';
 import { apiGet, apiPost } from '../lib/api';
+import { PageHeader, KpiCard } from '../components/common/ui';
 
 import '../styles/variables.css';
 
 type TabType = 'anomaly' | 'recommendation' | 'prediction' | 'deeplearning' | 'correlation' | 'explainability' | 'knowledgegraph' | 'profile' | 'joint' | 'events';
 type JointMetric = 'settlement' | 'crack' | 'correlation';
 
-// 分析模块分组
-const analysisGroups = [
-  {
-    label: '发现问题',
-    items: [
-      { id: 'anomaly' as TabType, label: '异常检测', icon: 'exclamation-triangle', desc: '哪些监测点有问题？ —— 自动扫描全部25个点位，找出沉降异常的点，按严重程度标红/橙/黄/绿' },
-      { id: 'recommendation' as TabType, label: '处置建议', icon: 'clipboard-list', desc: '发现问题后该怎么办？ —— 根据异常等级自动生成处置方案：紧急巡检 / 加密监测 / 持续跟踪' },
-    ],
-  },
-  {
-    label: '预测未来',
-    items: [
-      { id: 'prediction' as TabType, label: '趋势预测', icon: 'chart-area', desc: '未来会怎样？ —— 预测每个点位未来7~30天的沉降趋势，提前发现可能超限的风险点' },
-      { id: 'deeplearning' as TabType, label: '深度学习预测', icon: 'brain', desc: '更高精度预测 —— 用深度学习模型做更精准的预测，适合复杂地质条件下的长期预测' },
-    ],
-  },
-  {
-    label: '追溯原因',
-    items: [
-      { id: 'correlation' as TabType, label: '因果与空间', icon: 'project-diagram', desc: '施工导致了哪些影响？ —— 量化某次施工事件对沉降的真实影响，以及哪些点位之间会互相影响' },
-      { id: 'explainability' as TabType, label: '影响因素分析', icon: 'chart-bar', desc: '什么因素影响最大？ —— 找出影响沉降的关键因素排序，以及哪个点位的变化会引起另一个点位变化' },
-    ],
-  },
-  {
-    label: '综合分析',
-    items: [
-      { id: 'knowledgegraph' as TabType, label: '知识图谱', icon: 'share-alt', desc: '文献知识管理 —— 上传文献/笔记，系统自动提取实体和关系构建知识图谱，基于图谱内容进行智能问答，答案附带来源引用' },
-    ],
-  },
-  {
-    label: '基础图表',
-    items: [
-      { id: 'profile' as TabType, label: '纵断面', icon: 'chart-line', desc: '查看沉降剖面 —— 沿线路方向展示所有点位的沉降分布，支持按时间回放动画' },
-      { id: 'joint' as TabType, label: '沉降+裂缝', icon: 'link', desc: '多指标联合查看 —— 同时展示沉降和裂缝数据，观察两者之间是否存在联动关系' },
-      { id: 'events' as TabType, label: '施工事件', icon: 'calendar-alt', desc: '管理施工记录 —— 记录和管理施工事件（如爆破、开挖），为因果分析提供数据支撑' },
-    ],
-  },
+interface AnalysisTab {
+  id: TabType;
+  label: string;
+  icon: string;
+  desc: string;
+}
+
+// 主要分析：信息架构第 2 节，四个标签回答"多严重、为什么"
+const PRIMARY_TABS: AnalysisTab[] = [
+  { id: 'anomaly', label: '异常检测', icon: 'exclamation-triangle', desc: '哪些监测点有问题？—— 扫描全部 25 个点位，找出沉降异常并按严重程度标色' },
+  { id: 'prediction', label: '趋势预测', icon: 'chart-area', desc: '未来会怎样？—— 预测每个点位未来 7~30 天的沉降趋势，提前发现可能超限的风险点' },
+  { id: 'correlation', label: '因果与空间', icon: 'project-diagram', desc: '施工导致了哪些影响？—— 量化施工事件对沉降的影响，以及点位之间的空间关联' },
+  { id: 'knowledgegraph', label: '知识图谱', icon: 'share-alt', desc: '文献知识管理 —— 上传文献/笔记，自动提取实体和关系，答案附带来源引用' },
 ];
+
+// 辅助分析：保留能力，不占主入口（先下导航，观察一轮再删）
+const MORE_TABS: AnalysisTab[] = [
+  { id: 'recommendation', label: '处置建议', icon: 'clipboard-list', desc: '根据异常等级生成处置方案：紧急巡检 / 加密监测 / 持续跟踪' },
+  { id: 'deeplearning', label: '深度学习预测', icon: 'brain', desc: '用深度学习模型做更精准的预测（实验性）' },
+  { id: 'explainability', label: '影响因素分析', icon: 'chart-bar', desc: '找出影响沉降的关键因素排序' },
+  { id: 'profile', label: '纵断面', icon: 'chart-line', desc: '沿线路方向展示所有点位的沉降分布，支持按时间回放' },
+  { id: 'joint', label: '沉降+裂缝', icon: 'link', desc: '同时展示沉降和裂缝数据，观察两者是否联动' },
+  { id: 'events', label: '施工事件', icon: 'calendar-alt', desc: '记录和管理施工事件，为因果分析提供数据支撑' },
+];
+
+const ALL_TABS: AnalysisTab[] = [...PRIMARY_TABS, ...MORE_TABS];
 
 // 链路参数：从总览/指标页带过来的点位
 interface PointDetail {
@@ -167,77 +156,95 @@ const AdvancedAnalysis: React.FC = () => {
   const pointParam = searchParams.get('point');
   const fromParam = searchParams.get('from');
 
-  // 获取当前激活的标签信息
-  const getActiveTabInfo = () => {
-    for (const group of analysisGroups) {
-      const item = group.items.find(i => i.id === activeTab);
-      if (item) return { group: group.label, item };
-    }
-    return null;
-  };
-
-  const activeInfo = getActiveTabInfo();
+  const navigate = useNavigate();
+  const activeInfo = ALL_TABS.find(i => i.id === activeTab) || null;
+  const isMoreTab = !PRIMARY_TABS.some(t => t.id === activeTab);
 
   return (
     <div style={styles.container}>
       {pointParam && <PointContextBar pointId={pointParam} from={fromParam} />}
-      <div style={styles.header}>
-        <div style={styles.headerTop}>
-          <h1 style={styles.title}>高级分析</h1>
 
-          {/* 下拉选择器 */}
-          <div style={styles.selectorContainer}>
-            <label style={styles.selectorLabel}>分析模块:</label>
-            <select
-              value={activeTab}
-              onChange={e => setActiveTab(e.target.value as TabType)}
-              style={styles.selector}
-            >
-              {analysisGroups.map(group => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.items.map(item => (
-                    <option key={item.id} value={item.id}>
-                      {item.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+      <PageHeader
+        eyebrow="多严重、为什么"
+        title="高级分析"
+        description={activeInfo?.desc}
+        meta={
+          <span className="ds-chip ds-chip--accent">
+            {activeInfo?.label ?? '分析'}
+          </span>
+        }
+        actions={
+          <button type="button" className="ds-btn" onClick={() => navigate('/overview')}>
+            回到总览
+          </button>
+        }
+      />
 
-            {/* 当前选中的模块信息 */}
-            {activeInfo && (
-              <div style={styles.activeInfo}>
-                <i className={`fas fa-${activeInfo.item.icon}`} style={styles.activeIcon} />
-                <span style={styles.activeText}>{activeInfo.item.label}</span>
-                <span style={styles.activeGroup}>({activeInfo.group})</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 当前模块功能描述 */}
-        {activeInfo && activeInfo.item.desc && (
-          <div style={styles.descBar}>
-            <i className="fas fa-info-circle" style={styles.descIcon} />
-            <span style={styles.descText}>{activeInfo.item.desc}</span>
-          </div>
-        )}
-        {activeTab === 'joint' && (
-          <div style={styles.headerSub}>
-            <span style={styles.subLabel}>指标</span>
-            <select
-              value={jointMetric}
-              onChange={e => setJointMetric(e.target.value as JointMetric)}
-              style={styles.subSelect}
-            >
-              <option value="settlement">沉降</option>
-              <option value="crack">裂缝宽度</option>
-              <option value="correlation">相关性/联动</option>
-            </select>
-            <span style={styles.subHint}>切换到"相关性/联动"可查看相关性摘要与联动结果</span>
-          </div>
-        )}
+      {/* 主入口 4 个；其余能力收在"更多分析"，不删代码 */}
+      <div style={{
+        flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '8px 20px',
+        borderBottom: '1px solid var(--ds-divider)',
+        overflowX: 'auto',
+      }}>
+        {PRIMARY_TABS.map(tab => (
+          <button
+            key={tab.id}
+            type="button"
+            className={`ds-seg__item ${activeTab === tab.id ? 'ds-seg__item--active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+            title={tab.desc}
+          >
+            <i className={`fas fa-${tab.icon}`} style={{ marginRight: 5 }} />
+            {tab.label}
+          </button>
+        ))}
+        <span style={{ flex: 1 }} />
+        <select
+          value={isMoreTab ? activeTab : ''}
+          onChange={e => e.target.value && setActiveTab(e.target.value as TabType)}
+          className="ds-select"
+          style={{
+            height: 'var(--ds-control-h)',
+            padding: '0 10px',
+            fontSize: 'var(--ds-fs-small)',
+            color: isMoreTab ? 'var(--ds-accent-text)' : 'var(--ds-text-muted)',
+            background: 'rgba(0,0,0,0.25)',
+            border: '1px solid var(--ds-border)',
+            borderRadius: 'var(--ds-radius-sm)',
+            outline: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          <option value="" style={{ background: '#0a192f', color: '#a9c4dd' }}>
+            更多分析（辅助）
+          </option>
+          {MORE_TABS.map(tab => (
+            <option key={tab.id} value={tab.id} style={{ background: '#0a192f', color: '#fff' }}>
+              {tab.label}
+            </option>
+          ))}
+        </select>
       </div>
+
+      {activeTab === 'joint' && (
+        <div style={styles.headerSub}>
+          <span style={styles.subLabel}>指标</span>
+          <select
+            value={jointMetric}
+            onChange={e => setJointMetric(e.target.value as JointMetric)}
+            style={styles.subSelect}
+          >
+            <option value="settlement">沉降</option>
+            <option value="crack">裂缝宽度</option>
+            <option value="correlation">相关性/联动</option>
+          </select>
+          <span style={styles.subHint}>切换到"相关性/联动"可查看相关性摘要与联动结果</span>
+        </div>
+      )}
 
       <div style={styles.content}>
         {activeTab === 'anomaly' && <AnomalyTab />}
@@ -381,45 +388,46 @@ const ProfileTab: React.FC = () => {
         </div>
 
         {data && (
-          <div style={styles.statsSection}>
-            <StatCard
+          <div className="ds-kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
+            <KpiCard
+              compact
               label="点位总数"
               value={(statistics?.total_points ?? data.profile.length).toString()}
-              icon="map-marker-alt"
+              unit="个"
+              tone="info"
             />
-            <StatCard
-              label="日期"
-              value={data.date || '-'}
-              icon="calendar"
-            />
-            <StatCard
+            <KpiCard compact label="日期" value={data.date || '-'} />
+            <KpiCard
+              compact
               label="最大沉降"
               value={
                 statistics?.max_settlement_point?.total_change !== null && statistics?.max_settlement_point?.total_change !== undefined
-                  ? `${statistics.max_settlement_point.total_change.toFixed(2)} mm`
+                  ? statistics.max_settlement_point.total_change.toFixed(2)
                   : data.profile.length > 0
                   ? (() => {
                       const minValue = Math.min(...data.profile.map(p => p.cumulative_change ?? 0));
-                      return isFinite(minValue) ? `${minValue.toFixed(2)} mm` : '-';
+                      return isFinite(minValue) ? minValue.toFixed(2) : '-';
                     })()
                   : '-'
               }
-              icon="arrow-down"
-              highlight
+              unit="mm"
+              tone="danger"
             />
-            <StatCard
+            <KpiCard
+              compact
               label="最大沉降点"
               value={statistics?.max_settlement_point?.point_id || '-'}
-              icon="crosshairs"
             />
-            <StatCard
+            <KpiCard
+              compact
               label="预警点位"
               value={
                 statistics?.points
                   ? statistics.points.filter(p => p.alert_level && p.alert_level !== 'normal').length.toString()
                   : '-'
               }
-              icon="exclamation-triangle"
+              unit="个"
+              tone="warn"
             />
           </div>
         )}
@@ -446,32 +454,14 @@ const EventsTab: React.FC = () => {
   );
 };
 
-// Stat Card Component
-const StatCard: React.FC<{
-  label: string;
-  value: string;
-  icon: string;
-  highlight?: boolean;
-}> = ({ label, value, icon, highlight }) => (
-  <div style={{ ...styles.statCard, ...(highlight ? styles.statCardHighlight : {}) }}>
-    <div style={styles.statIcon}>
-      <i className={`fas fa-${icon}`} />
-    </div>
-    <div style={styles.statContent}>
-      <div style={styles.statValue}>{value}</div>
-      <div style={styles.statLabel}>{label}</div>
-    </div>
-  </div>
-);
-
 const styles: Record<string, React.CSSProperties> = {
   container: {
     display: 'flex',
     flexDirection: 'column',
     height: '100vh',
-    backgroundColor: '#0a0a1a',
-    color: '#fff',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
+    backgroundColor: 'var(--ds-bg-deep)',
+    color: 'var(--ds-text)',
+    fontFamily: 'var(--ds-font)',
   },
   pointBar: {
     display: 'flex',
@@ -532,9 +522,9 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: '10px',
     padding: '10px 12px',
-    backgroundColor: 'rgba(30, 30, 50, 0.6)',
-    borderRadius: '8px',
-    border: '1px solid rgba(74, 158, 255, 0.18)',
+    backgroundColor: 'var(--ds-surface)',
+    borderRadius: 'var(--ds-radius-sm)',
+    border: '1px solid var(--ds-border)',
   },
   subLabel: {
     fontSize: '12px',
