@@ -623,7 +623,7 @@ export default function OverviewV2() {
       <PageHeader
         eyebrow="今天有没有事"
         title="数据总览"
-        description="四类监测指标的最新状态；点异常进入对应指标页，再进高级分析"
+        description="四类监测指标的最新状态；点异常进入对应指标页，再进分析诊断"
         meta={
           <span className="ds-chip ds-chip--accent">
             安全评分 {overview?.safety_score ?? '—'}
@@ -631,7 +631,7 @@ export default function OverviewV2() {
         }
         actions={
           <button type="button" className="ds-btn" onClick={() => navigate('/advanced')}>
-            高级分析 →
+            分析诊断 →
           </button>
         }
       />

@@ -81,7 +81,7 @@ function getBaseContext(path: string): Partial<PageContext> | null {
     },
     '/advanced': {
       pagePath: '/advanced',
-      pageTitle: '高级分析',
+      pageTitle: '分析诊断',
       moduleKey: 'advanced',
     },
     '/tickets': {

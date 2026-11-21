@@ -1,4 +1,4 @@
-// 高级分析模块工具函数
+// 分析诊断模块工具函数
 
 import type { Anomaly, AnomalySortBy, SortOrder, Recommendation } from '../types/analysis';
 

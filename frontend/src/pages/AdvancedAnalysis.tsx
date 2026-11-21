@@ -1,14 +1,14 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ProfileChart, TimeSlider, JointDashboard, EventManager } from '../components/advanced';
-import { AnomalyDashboard, RecommendationDashboard, PredictionDashboard, CorrelationDashboard, DeepLearningDashboard, ExplainabilityDashboard, KnowledgeGraphDashboard } from '../components/analysis';
+import { RecommendationDashboard, CorrelationDashboard, DeepLearningDashboard, ExplainabilityDashboard, KnowledgeGraphDashboard } from '../components/analysis';
 import { useProfileData, useAvailableDates, useProfileStatistics } from '../hooks/useAdvancedAnalysis';
 import { apiGet, createAlertTicket } from '../lib/api';
 import { PageHeader, KpiCard } from '../components/common/ui';
 
 import '../styles/variables.css';
 
-type TabType = 'anomaly' | 'recommendation' | 'prediction' | 'deeplearning' | 'correlation' | 'explainability' | 'knowledgegraph' | 'profile' | 'joint' | 'events';
+type TabType = 'recommendation' | 'deeplearning' | 'correlation' | 'explainability' | 'knowledgegraph' | 'profile' | 'joint' | 'events';
 type JointMetric = 'settlement' | 'crack' | 'correlation';
 
 interface AnalysisTab {
@@ -19,12 +19,11 @@ interface AnalysisTab {
 }
 
 // —— 按“值班决策顺序”分组，而不是按算法分组 ——
-// 主流程：① 哪里有问题 → ② 会怎么发展 → ③ 为什么 → ④ 该怎么办
+// 哪里有问题 / 会怎么发展 → 已在沉降页（SettlementV2 风险点、SettlementNew 趋势预测）
+// 本页只回答：① 为什么 → ② 该怎么办
 const PRIMARY_TABS: AnalysisTab[] = [
-  { id: 'anomaly', label: '① 哪里有问题', icon: 'exclamation-triangle', desc: '异常检测 —— 扫描全部 25 个点位，找出沉降异常并按严重程度标色' },
-  { id: 'prediction', label: '② 会怎么发展', icon: 'chart-area', desc: '趋势预测 —— 预测每个点位未来 7~30 天的沉降趋势，提前发现可能超限的风险点' },
-  { id: 'correlation', label: '③ 为什么', icon: 'project-diagram', desc: '因果与空间 —— 量化施工事件对沉降的影响，以及点位之间的空间关联' },
-  { id: 'recommendation', label: '④ 该怎么办', icon: 'clipboard-list', desc: '处置建议 —— 根据异常等级生成处置方案：紧急巡检 / 加密监测 / 持续跟踪' },
+  { id: 'correlation', label: '① 为什么', icon: 'project-diagram', desc: '因果与空间 —— 量化施工事件对沉降的影响，以及点位之间的空间关联' },
+  { id: 'recommendation', label: '② 该怎么办', icon: 'clipboard-list', desc: '处置建议 —— 根据异常等级生成处置方案：紧急巡检 / 加密监测 / 持续跟踪' },
 ];
 
 // 专题视图：按监测对象查看
@@ -92,7 +91,7 @@ const PointContextBar: React.FC<{ pointId: string; from?: string | null }> = ({ 
         dataType: isTemp ? 'temperature' : 'settlement',
         pointId: info.point_id,
         title: `[${info.point_id}] ${isTemp ? '温度' : '沉降'}异常复核`,
-        description: `${info.point_id} 告警级别：${alertLevel || '未知'}；最新值：${latestValue ?? '-'}；数据截止：${info.data_cutoff || '-'}。来源：${from || '高级分析'}`,
+        description: `${info.point_id} 告警级别：${alertLevel || '未知'}；最新值：${latestValue ?? '-'}；数据截止：${info.data_cutoff || '-'}。来源：${from || '分析诊断'}`,
         severity: severityFromAlert(alertLevel),
         anomalyType: 'threshold_exceeded',
         currentValue: latestValue ?? null,
@@ -154,7 +153,7 @@ const PointContextBar: React.FC<{ pointId: string; from?: string | null }> = ({ 
 };
 
 const AdvancedAnalysis: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('anomaly');
+  const [activeTab, setActiveTab] = useState<TabType>('correlation');
   const [jointMetric, setJointMetric] = useState<JointMetric>('settlement');
   const [searchParams] = useSearchParams();
   const pointParam = searchParams.get('point');
@@ -180,8 +179,8 @@ const AdvancedAnalysis: React.FC = () => {
       {pointParam && <PointContextBar pointId={pointParam} from={fromParam} />}
 
       <PageHeader
-        eyebrow="多严重、为什么"
-        title="高级分析"
+        eyebrow="为什么、该怎么办"
+        title="分析诊断"
         description={activeInfo?.desc}
         meta={
           <span className="ds-chip ds-chip--accent">
@@ -208,7 +207,7 @@ const AdvancedAnalysis: React.FC = () => {
           <span style={{ fontSize: 11, color: 'var(--ds-text-muted)', whiteSpace: 'nowrap' }}>主流程</span>
           {PRIMARY_TABS.map(renderTab)}
           <span style={{ flex: 1 }} />
-          <span style={{ color: 'var(--ds-text-muted)', fontSize: 11 }}>不确定从哪看？按 ①②③④ 从左到右即可</span>
+          <span style={{ color: 'var(--ds-text-muted)', fontSize: 11 }}>不确定从哪看？按 ①② 从左到右即可</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 11, color: 'var(--ds-text-muted)', whiteSpace: 'nowrap' }}>专题视图</span>
@@ -236,9 +235,7 @@ const AdvancedAnalysis: React.FC = () => {
       )}
 
       <div style={styles.content}>
-        {activeTab === 'anomaly' && <AnomalyTab />}
         {activeTab === 'recommendation' && <RecommendationTab />}
-        {activeTab === 'prediction' && <PredictionTab />}
         {activeTab === 'deeplearning' && <DeepLearningTab />}
         {activeTab === 'correlation' && <CorrelationTab />}
         {activeTab === 'explainability' && <ExplainabilityTab />}
@@ -251,32 +248,11 @@ const AdvancedAnalysis: React.FC = () => {
   );
 };
 
-// Anomaly Tab
-const AnomalyTab: React.FC = () => {
-  return (
-    <div style={styles.tabContent}>
-      <AnomalyDashboard />
-    </div>
-  );
-};
-
 // Recommendation Tab
 const RecommendationTab: React.FC = () => {
   return (
     <div style={styles.tabContent}>
       <RecommendationDashboard />
-    </div>
-  );
-};
-
-// Prediction Tab
-const PredictionTab: React.FC = () => {
-  // 全部25个训练好的监测点位
-  const pointIds = Array.from({ length: 25 }, (_, i) => `S${i + 1}`);
-
-  return (
-    <div style={styles.tabContent}>
-      <PredictionDashboard pointIds={pointIds} threshold={-30} />
     </div>
   );
 };

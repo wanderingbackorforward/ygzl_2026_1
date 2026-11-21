@@ -325,7 +325,7 @@ export const quickCommands: QuickCommand[] = [
     tags: ['原理', 'InSAR', '技术'],
   },
 
-  // ── 高级分析模块 ──
+  // ── 分析诊断模块 ──
   {
     id: 'advanced-diagnosis',
     title: '智能异常诊断',

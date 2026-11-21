@@ -155,7 +155,7 @@ export const TemperatureV2Cockpit: React.FC = () => {
       <PageHeader
         eyebrow="温度 · 哪个点不对"
         title="温度监测"
-        description="台账 320 个传感器，251 个有分析数据；选中后查看时间序列，异常点可进入高级分析"
+        description="台账 320 个传感器，251 个有分析数据；选中后查看时间序列，异常点可进入分析诊断"
         meta={
           <span className={`ds-chip ${problemIds.length > 0 ? 'ds-chip--warn' : 'ds-chip--ok'}`}>
             {problemIds.length} 个需关注 / 有数据 {sensors.length} 个
