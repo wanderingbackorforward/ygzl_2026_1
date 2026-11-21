@@ -14,7 +14,7 @@ import threading
 import uuid
 from decimal import Decimal # <--- 新增导入
 
-from flask import Flask, Blueprint, jsonify, request, send_from_directory, render_template, redirect
+from flask import Flask, Blueprint, jsonify, request, send_from_directory, render_template, redirect, make_response
 from flask_cors import CORS
 import mysql.connector
 import numpy as np
@@ -74,9 +74,10 @@ from modules.analysis_v2.api import analysis_v2_bp
 
 # 温度V2模块
 try:
-    from modules.temperature_v2.api_routes import temperature_v2_api
+    from modules.temperature_v2.api_routes import temperature_v2_api, build_overview_payload
 except Exception:
     temperature_v2_api = None
+    build_overview_payload = None
 from modules.insar.api import insar_bp
 from modules.tunnel.api import tunnel_bp
 from modules.advanced_analysis.api import advanced_bp
@@ -273,12 +274,20 @@ def health():
     v = os.environ.get('DB_VENDOR', '').strip().lower()
     return jsonify({'status': 'healthy', 'vendor': v, 'timestamp': datetime.now().isoformat()})
 
+def _deprecated_alias(successor, resp):
+    """旧路由统一出口：保留原行为，仅加弃用标记并记录一次调用。"""
+    print(f"[DEPRECATED] {request.method} {request.path} -> {successor}")
+    response = make_response(resp)
+    response.headers['Deprecation'] = 'true'
+    response.headers['Link'] = f'<{successor}>; rel="successor-version"'
+    return response
+
 @app.route('/api/points')
 def get_all_points():
     print("[API] GET /api/points")
-    """获取所有监测点信息"""
+    """获取所有监测点信息（已弃用，点位主口径统一走 /api/summary）"""
     points = repo.get_all_points()
-    return jsonify(points)
+    return _deprecated_alias('/api/summary', jsonify(points))
 
 @app.route('/api/point/<point_id>')
 def get_point_data(point_id):
@@ -383,17 +392,15 @@ def get_summary():
             return _respond(result)
         except Exception as e:
             print(f"[API] summary with days={days} failed: {e}")
-            # fallback 到静态表
-            return _respond(repo.get_summary())
+            return jsonify({'status': 'error', 'message': f'按时间范围查询沉降失败: {e}'}), 503
     else:
         return _respond(repo.get_summary())
 
 @app.route('/api/trends')
 def get_trends():
     print("[API] GET /api/trends")
-    """获取所有监测点的趋势分类统计"""
-    trends = repo.get_trends()
-    return jsonify(trends)
+    """已弃用：趋势分类统计由 /api/summary?with_summary=1 提供"""
+    return _deprecated_alias('/api/summary?with_summary=1', jsonify(repo.get_trends()))
 
 @app.route('/api/prediction/<point_id>')
 def get_prediction(point_id):
@@ -775,6 +782,11 @@ def get_temperature_points():
 @temperature_api.route('/temperature/summary', methods=['GET'])
 def get_temperature_summary():
     print("[API] GET /api/temperature/summary")
+    # view=overview：驾驶舱聚合视图；默认仍是逐传感器列表
+    if request.args.get('view') == 'overview':
+        if build_overview_payload is None:
+            return jsonify({'success': False, 'message': '温度总览不可用'}), 503
+        return jsonify(build_overview_payload())
     result = [temperature_rules.enrich_point(row) for row in (repo.temperature_get_summary() or [])]
     return json_dumps_response({'status': 'success','data': result,'message': f'成功获取{len(result)}个温度监测点的分析结果'})
 
@@ -842,31 +854,31 @@ def upload_temperature_data():
 
 @app.route('/temperature/points', methods=['GET'])
 def get_temperature_points_alias():
-    return get_temperature_points()
+    return _deprecated_alias('/api/temperature/points', get_temperature_points())
 
 @app.route('/temperature/summary', methods=['GET'])
 def get_temperature_summary_alias():
-    return get_temperature_summary()
+    return _deprecated_alias('/api/temperature/summary', get_temperature_summary())
 
 @app.route('/temperature/data/<sensor_id>', methods=['GET'])
 def get_temperature_data_alias(sensor_id):
-    return get_temperature_data(sensor_id)
+    return _deprecated_alias(f'/api/temperature/data/{sensor_id}', get_temperature_data(sensor_id))
 
 @app.route('/temperature/data/multi', methods=['GET'])
 def get_temperature_data_multi_alias():
-    return get_temperature_data_multi()
+    return _deprecated_alias('/api/temperature/data/multi', get_temperature_data_multi())
 
 @app.route('/temperature/trends', methods=['GET'])
 def get_temperature_trends_alias():
-    return get_temperature_trends()
+    return _deprecated_alias('/api/temperature/trends', get_temperature_trends())
 
 @app.route('/temperature/stats', methods=['GET'])
 def get_temperature_stats_alias():
-    return get_temperature_stats()
+    return _deprecated_alias('/api/temperature/stats', get_temperature_stats())
 
 @app.route('/temperature/upload', methods=['POST'])
 def upload_temperature_data_alias():
-    return upload_temperature_data()
+    return _deprecated_alias('/api/temperature/upload', upload_temperature_data())
 
 
 def process_temperature_file(task_id, file_path):

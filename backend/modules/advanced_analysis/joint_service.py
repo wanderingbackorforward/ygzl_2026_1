@@ -29,15 +29,12 @@ def _url(path):
 
 
 def _safe_request(url, headers):
-    """Make a request and return empty list on error"""
-    try:
-        r = requests.get(url, headers=headers)
-        if r.status_code == 404 or r.status_code >= 500:
-            return []
-        r.raise_for_status()
-        return r.json()
-    except Exception:
+    """查询失败必须上抛；只有 404（表不存在）视为空结果。"""
+    r = requests.get(url, headers=headers, timeout=10)
+    if r.status_code == 404:
         return []
+    r.raise_for_status()
+    return r.json()
 
 
 # Default settlement-crack mapping (demo data)

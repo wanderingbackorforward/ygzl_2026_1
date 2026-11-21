@@ -10,9 +10,53 @@ from werkzeug.utils import secure_filename
 import time
 import threading
 from modules.database.db_config import get_db_connection
+from modules.rules import vibration as vibration_rules
 
 # 创建Blueprint
 vibration_bp = Blueprint('vibration', __name__, url_prefix='/api/vibration')
+
+
+# ==================== 规则接口（GB 6722 唯一出处）====================
+
+@vibration_bp.route('/analyze', methods=['POST'])
+def analyze_vibration():
+    """批量通道分类：动态阈值、预警等级、施工建议、汇总评分。"""
+    payload = request.get_json(silent=True) or {}
+    try:
+        result = vibration_rules.analyze(payload)
+    except (ValueError, TypeError) as exc:
+        return jsonify({'status': 'error', 'message': str(exc)}), 400
+    return jsonify({'status': 'success', 'data': result})
+
+
+@vibration_bp.route('/calculate', methods=['POST'])
+def calculate_vibration():
+    """Sadovsky 公式：预测 PPV（需 R）/ 反算安全距离（需 v_limit）。"""
+    payload = request.get_json(silent=True) or {}
+    try:
+        coefficients = vibration_rules.site_coefficients(payload.get('site_type'))
+        predicted_ppv = None
+        if payload.get('R') is not None:
+            predicted_ppv = vibration_rules.predict_ppv(
+                payload.get('site_type'), payload.get('Q'), payload.get('R')
+            )
+        safe_distance = None
+        if payload.get('v_limit') is not None:
+            safe_distance = vibration_rules.safe_distance(
+                payload.get('site_type'), payload.get('Q'), payload.get('v_limit')
+            )
+        if predicted_ppv is None and safe_distance is None:
+            raise ValueError('需提供 R 或 v_limit')
+    except (ValueError, TypeError) as exc:
+        return jsonify({'status': 'error', 'message': str(exc)}), 400
+    return jsonify({
+        'status': 'success',
+        'data': {
+            'predicted_ppv': predicted_ppv,
+            'safe_distance': safe_distance,
+            'coefficients': coefficients,
+        },
+    })
 
 # 创建线程锁，防止并发问题
 processing_lock = threading.Lock()

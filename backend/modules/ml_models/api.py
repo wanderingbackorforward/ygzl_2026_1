@@ -188,13 +188,34 @@ except Exception as e:
 ml_api = Blueprint('ml_api', __name__, url_prefix='/api/ml')
 
 
+class MLUnavailable(RuntimeError):
+    """模型/数据不可用：默认让失败可见，不再悄悄返回演示数据。"""
+
+
+def _require_mock_allowed(message):
+    """只有显式设置 ML_ALLOW_MOCK=1 时才允许返回演示数据。"""
+    if os.environ.get('ML_ALLOW_MOCK', '').strip().lower() not in ('1', 'true', 'yes'):
+        raise MLUnavailable(message)
+
+
+@ml_api.errorhandler(MLUnavailable)
+def _handle_ml_unavailable(err):
+    return jsonify({
+        'status': 'error',
+        'success': False,
+        'code': 'ml_unavailable',
+        'message': str(err),
+    }), 503
+
+
 # =========================================================
 # Server-side mock data generators (used when ML modules unavailable)
-# Returns 200 + mock:true so frontend doesn't see errors
+# 默认抛 MLUnavailable（接口返回非 2xx）；仅 ML_ALLOW_MOCK=1 时返回演示数据
 # =========================================================
 
 def _mock_prediction(point_id, steps=30, model_name='mock'):
     """Generate mock prediction data when model unavailable"""
+    _require_mock_allowed('预测模型不可用，已停止返回演示数据')
     import random
     random.seed(hash(point_id) % 2**31)
     base = -10 - (hash(point_id) % 20)
@@ -229,6 +250,7 @@ def _mock_prediction(point_id, steps=30, model_name='mock'):
 
 def _mock_stgcn(steps=30):
     """Generate mock STGCN multi-point prediction"""
+    _require_mock_allowed('STGCN 模型不可用，已停止返回演示数据')
     pids = [f'S{i+1}' for i in range(10)]
     preds = {}
     for pid in pids:
@@ -243,6 +265,7 @@ def _mock_stgcn(steps=30):
 
 def _mock_shap(point_id):
     """Generate mock SHAP explanation"""
+    _require_mock_allowed('SHAP 解释模型不可用，已停止返回演示数据')
     features = [
         {'feature': 'lag_1', 'importance': 0.55, 'rank': 1},
         {'feature': 'lag_2', 'importance': 0.30, 'rank': 2},
@@ -262,6 +285,7 @@ def _mock_shap(point_id):
 
 def _mock_kg_stats():
     """Generate mock KG statistics"""
+    _require_mock_allowed('知识图谱不可用，已停止返回演示数据')
     return {
         'success': True, 'mock': True,
         'total_nodes': 87, 'total_edges': 142,
@@ -272,6 +296,7 @@ def _mock_kg_stats():
 
 def _mock_kg_neighbors(point_id):
     """Generate mock KG neighbor data"""
+    _require_mock_allowed('知识图谱不可用，已停止返回演示数据')
     idx = int(''.join(filter(str.isdigit, point_id)) or '1')
     cx, cy = 400, 300
     nodes = [{'id': point_id, 'label': point_id, 'type': 'MonitoringPoint', 'color': '#06b6d4', 'size': 20, 'x': cx, 'y': cy}]
@@ -293,6 +318,7 @@ def _mock_kg_neighbors(point_id):
 
 def _mock_kg_risk_points(min_severity='high'):
     """Generate mock risk points"""
+    _require_mock_allowed('知识图谱不可用，已停止返回演示数据')
     all_pts = [
         {'point_id': 'S3', 'severity': 'critical', 'anomaly_count': 5, 'latest_anomaly_date': '2026-03-10', 'description': 'S3 settlement accelerating, exceeds threshold'},
         {'point_id': 'S7', 'severity': 'critical', 'anomaly_count': 4, 'latest_anomaly_date': '2026-03-09', 'description': 'S7 continuous anomaly detected'},
@@ -311,6 +337,7 @@ def _mock_kg_risk_points(min_severity='high'):
 
 def _mock_kgqa(question):
     """Generate mock KGQA answer"""
+    _require_mock_allowed('知识图谱问答不可用，已停止返回演示数据')
     return {
         'success': True, 'mock': True, 'question': question,
         'answer': 'Based on knowledge graph analysis: The system monitors 25 settlement points with 2 at critical risk. '
@@ -324,6 +351,7 @@ def _mock_kgqa(question):
 
 def _mock_causal_discover(point_ids, max_lag=5):
     """Generate mock causal discovery results"""
+    _require_mock_allowed('因果发现模型不可用，已停止返回演示数据')
     import random
     random.seed(42)
     relations = []
@@ -1717,6 +1745,7 @@ def api_causal_discover():
 
 def _mock_multi_factor_correlation():
     """Generate mock multi-factor correlation when data unavailable"""
+    _require_mock_allowed('多因素相关性数据不足，已停止返回演示数据')
     import random
     random.seed(42)
     factors = ['settlement', 'temperature', 'crack_width']

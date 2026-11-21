@@ -17,6 +17,51 @@ algo = TemperatureAlgorithms()
 guide = ConstructionGuide()
 intelligence = TemperatureIntelligenceService(repo=repo, algorithms=algo, guide=guide)
 
+# 温度总览唯一实现：/api/temperature/summary?view=overview 与旧 /v2/overview 共用
+def build_overview_payload():
+    summary = repo.temperature_get_summary()
+    points = repo.temperature_get_points()
+    snapshot = intelligence.get_snapshot()
+    overview = snapshot.get('overview', {})
+    stats = {
+        'current_avg': overview.get('current_avg'),
+        'current_max': overview.get('current_max'),
+        'current_min': overview.get('current_min'),
+        'avg_range': overview.get('avg_range'),
+        'dominant_trend': overview.get('dominant_trend'),
+        'freeze_thaw_cycles': overview.get('freeze_thaw_cycle_total', 0),
+        'freeze_thaw_sensor_count': overview.get('freeze_thaw_sensor_count', 0),
+        'sensor_count': overview.get('sensor_count', 0),
+        'date_range': overview.get('date_range'),
+        'trends': overview.get('trends', {}),
+        'alerts': overview.get('alerts', {}),
+    }
+    conditions = {
+        'ambient_temp': stats['current_avg'],
+        'daily_range': stats['avg_range'],
+        'ground_temp': stats['current_min'],
+    }
+    assessment = guide.full_assessment(conditions) if any(v is not None for v in conditions.values()) else None
+    return {
+        'success': True,
+        'data': {
+            'summary': [temperature_rules.enrich_point(row) for row in summary] if isinstance(summary, list) else [],
+            'stats': stats,
+            'points': [temperature_rules.enrich_point(row) for row in points] if isinstance(points, list) else [],
+            'construction_assessment': assessment,
+            'thresholds': snapshot.get('thresholds', {}),
+        }
+    }
+
+
+@temperature_v2_api.after_request
+def _mark_overview_deprecated(resp):
+    if request.endpoint == 'temperature_v2_api.v2_overview':
+        resp.headers['Deprecation'] = 'true'
+        resp.headers['Link'] = '</api/temperature/summary?view=overview>; rel="successor-version"'
+        print(f"[DEPRECATED] {request.method} {request.path} -> /api/temperature/summary?view=overview")
+    return resp
+
 
 def _sensor_time_series(sensor_id: str):
     """获取单个传感器的时间序列数据"""
@@ -47,47 +92,9 @@ def _related_point_ids_from_request():
 
 @temperature_v2_api.route('/temperature/v2/overview', methods=['GET'])
 def v2_overview():
-    """V2总览: KPI + 所有传感器状态"""
+    """V2总览（已弃用）：改用 GET /api/temperature/summary?view=overview"""
     try:
-        summary = repo.temperature_get_summary()
-        points = repo.temperature_get_points()
-        snapshot = intelligence.get_snapshot()
-        overview = snapshot.get('overview', {})
-        cur_avg = overview.get('current_avg')
-        cur_max = overview.get('current_max')
-        cur_min = overview.get('current_min')
-        avg_range = overview.get('avg_range')
-
-        stats = {
-            'current_avg': cur_avg,
-            'current_max': cur_max,
-            'current_min': cur_min,
-            'avg_range': avg_range,
-            'dominant_trend': overview.get('dominant_trend'),
-            'freeze_thaw_cycles': overview.get('freeze_thaw_cycle_total', 0),
-            'freeze_thaw_sensor_count': overview.get('freeze_thaw_sensor_count', 0),
-            'sensor_count': overview.get('sensor_count', 0),
-            'date_range': overview.get('date_range'),
-            'trends': overview.get('trends', {}),
-            'alerts': overview.get('alerts', {}),
-        }
-        conditions = {
-            'ambient_temp': cur_avg,
-            'daily_range': avg_range,
-            'ground_temp': cur_min,
-        }
-        assessment = guide.full_assessment(conditions) if any(v is not None for v in conditions.values()) else None
-
-        return jsonify({
-            'success': True,
-            'data': {
-                'summary': [temperature_rules.enrich_point(row) for row in summary] if isinstance(summary, list) else [],
-                'stats': stats,
-                'points': [temperature_rules.enrich_point(row) for row in points] if isinstance(points, list) else [],
-                'construction_assessment': assessment,
-                'thresholds': snapshot.get('thresholds', {}),
-            }
-        })
+        return jsonify(build_overview_payload())
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 

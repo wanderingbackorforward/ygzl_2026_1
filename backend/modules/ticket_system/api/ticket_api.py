@@ -14,9 +14,31 @@ from ..config import (
     TICKET_TYPES, TICKET_STATUS, TICKET_PRIORITY,
     can_transition_status, get_ticket_type, get_ticket_status, get_priority
 )
+from modules.rules import tickets as ticket_rules
 
 # 创建工单API蓝图
 ticket_bp = Blueprint('ticket', __name__, url_prefix='/api/tickets')
+
+# 已收敛到 POST /api/tickets 的旧建单入口（保留代码，仅加弃用标记）
+_DEPRECATED_ENDPOINTS = {'ticket.trigger_alert_ticket'}
+
+
+@ticket_bp.after_request
+def _mark_deprecated(resp):
+    if request.endpoint in _DEPRECATED_ENDPOINTS:
+        resp.headers['Deprecation'] = 'true'
+        resp.headers['Link'] = '</api/tickets>; rel="successor-version"'
+        print(f"[DEPRECATED] {request.method} {request.path} -> /api/tickets")
+    return resp
+
+
+def _attach_allowed_transitions(tickets, role):
+    """把当前角色可执行的下一状态挂到工单上，前端按此渲染按钮。"""
+    for ticket in tickets or []:
+        ticket['allowed_transitions'] = ticket_rules.allowed_transitions(
+            ticket.get('status'), role
+        )
+    return tickets
 
 
 def create_response(data=None, message="", success=True, code=200):
@@ -104,6 +126,7 @@ def get_tickets():
 
         # 获取工单列表
         tickets = ticket_model.get_tickets(filters, limit, offset)
+        _attach_allowed_transitions(tickets, request.args.get('user_role', 'admin'))
 
         # 获取总数（这里简化处理，实际应该单独查询）
         total = len(tickets) if tickets else 0
@@ -132,6 +155,19 @@ def create_ticket():
         data = request.get_json()
         if not data:
             return create_response(None, "请求数据不能为空", False, 400)
+
+        # 统一建单口径：data_type/severity/anomaly_type → ticket_type/priority/sub_type
+        data = dict(data)
+        resolved = ticket_rules.resolve_creation_fields(data)
+        data['ticket_type'] = resolved['ticket_type']
+        data['priority'] = resolved['priority']
+        if resolved.get('sub_type'):
+            data['sub_type'] = resolved['sub_type']
+        if not data.get('assignee_id') and data.get('auto_created'):
+            assignee = ticket_rules.default_assignee(data['ticket_type'])
+            if assignee:
+                data['assignee_id'] = assignee
+                data['assignee_name'] = data.get('assignee_name') or assignee
 
         # 验证必填字段
         required_fields = ['title', 'ticket_type', 'creator_id', 'creator_name']
@@ -207,6 +243,8 @@ def get_ticket_detail(ticket_id):
         if not ticket:
             return create_response(None, "工单不存在", False, 404)
 
+        _attach_allowed_transitions([ticket], request.args.get('user_role', 'admin'))
+
         # 获取工单评论
         comments = comment_model.get_comments(ticket_id)
 
@@ -228,6 +266,8 @@ def get_ticket_by_number(ticket_number):
         ticket = ticket_model.get_ticket_by_number(ticket_number)
         if not ticket:
             return create_response(None, "工单不存在", False, 404)
+
+        _attach_allowed_transitions([ticket], request.args.get('user_role', 'admin'))
 
         # 获取工单评论
         comments = comment_model.get_comments(ticket['id'])

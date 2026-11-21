@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """InSAR API 路由 - 只负责参数解析和响应格式化"""
 import os
+from datetime import datetime
 from typing import Any, Dict
 
 from flask import Blueprint, jsonify, request
@@ -141,12 +142,61 @@ def insar_zones():
         return _error_response(e, dataset)
 
 
+def _dataset_item(name: str) -> Dict[str, Any]:
+    """数据集清单项：来源文件类型 + 最近更新时间（文件数据集，非数据库表）。"""
+    paths = []
+    raw_dir = os.path.join(config.raw_dir, name)
+    if os.path.isdir(raw_dir):
+        for fn in sorted(os.listdir(raw_dir)):
+            if fn.lower().endswith(".shp"):
+                paths.append((os.path.join(raw_dir, fn), "Shapefile"))
+                break
+
+    processed_candidates = []
+    if name == "yanggaozhong":
+        processed_candidates.append(os.path.join(config.processed_dir, "points.geojson"))
+    processed_candidates.append(os.path.join(config.processed_dir, f"{name}.geojson"))
+    if config.cache_dir != config.processed_dir:
+        if name == "yanggaozhong":
+            processed_candidates.append(os.path.join(config.cache_dir, "points.geojson"))
+        processed_candidates.append(os.path.join(config.cache_dir, f"{name}.geojson"))
+    for path in processed_candidates:
+        if os.path.isfile(path):
+            paths.append((path, "GeoJSON 处理结果"))
+            break
+
+    sources = []
+    for _, label in paths:
+        if label not in sources:
+            sources.append(label)
+    updated = max((os.path.getmtime(path) for path, _ in paths), default=None)
+    return {
+        "name": name,
+        "sources": sources,
+        "source": " + ".join(sources) if sources else "未找到文件",
+        "updated_at": (
+            datetime.fromtimestamp(updated).strftime("%Y-%m-%d %H:%M:%S")
+            if updated else None
+        ),
+    }
+
+
 @insar_bp.route("/datasets", methods=["GET"])
 def insar_datasets():
     datasets = discover_datasets()
+    # discover_datasets 会把 zones.*.geojson 等中间产物也扫进来，清单只保留有实体文件的数据集
+    items = [item for item in (_dataset_item(name) for name in datasets) if item["sources"]]
+    updated = [item["updated_at"] for item in items if item["updated_at"]]
     return jsonify({
         "status": "success",
-        "data": {"datasets": datasets, "default": "yanggaozhong"},
+        "data": {
+            "datasets": datasets,
+            "default": "yanggaozhong",
+            "kind": "file",
+            "source": "文件数据集（Shapefile 原始 + GeoJSON 处理结果）",
+            "updated_at": max(updated) if updated else None,
+            "items": items,
+        },
     })
 
 

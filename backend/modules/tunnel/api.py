@@ -9,6 +9,7 @@ from flask import Blueprint, jsonify, request
 
 from modules.db.vendor import get_repo
 from modules.ticket_system.models import ticket_model
+from modules.rules import tickets as ticket_rules
 
 tunnel_bp = Blueprint("tunnel", __name__, url_prefix="/api/tunnel")
 
@@ -583,21 +584,11 @@ def fusion_points_near_chainage():
 
 
 def _priority_from_score(score):
-    if score >= 85:
-        return "CRITICAL"
-    if score >= 70:
-        return "HIGH"
-    if score >= 50:
-        return "MEDIUM"
-    return "LOW"
+    return ticket_rules.priority_from_risk_score(score)
 
 
 def _subtype_from_metrics(max_abs_current_value, max_abs_change_rate):
-    if max_abs_current_value is not None and max_abs_current_value >= 10:
-        return "沉降量超限"
-    if max_abs_change_rate is not None and max_abs_change_rate >= 1:
-        return "沉降速率异常"
-    return "监测点数据异常"
+    return ticket_rules.subtype_from_settlement_metrics(max_abs_current_value, max_abs_change_rate)
 
 
 def _normalize_severity(x):

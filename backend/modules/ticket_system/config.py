@@ -3,6 +3,8 @@
 适配沉降监测数字孪生系统的工单类型、状态、优先级定义
 """
 
+from modules.rules import tickets as ticket_rules
+
 # 工单类型定义 - 适配沉降监测场景
 TICKET_TYPES = {
     'SETTLEMENT_ALERT': {
@@ -37,6 +39,24 @@ TICKET_TYPES = {
         'autoAssign': True,
         'slaHours': 3,
         'requiredFields': ['crack_location', 'crack_type', 'measurement_value']
+    },
+
+    'TEMPERATURE_ALERT': {
+        'code': 'TEMPERATURE_ALERT',
+        'name': '温度预警',
+        'icon': 'thermometer',
+        'color': '#FA8C16',
+        'description': '温度监测数据异常预警',
+        'subTypes': [
+            '温度超限',
+            '温度变化率异常',
+            '温度趋势异常',
+            '日温差异常',
+            '温度监测异常'
+        ],
+        'autoAssign': True,
+        'slaHours': 2,
+        'requiredFields': ['monitoring_point', 'alert_type', 'threshold_value']
     },
 
     'EQUIPMENT_FAULT': {
@@ -116,7 +136,6 @@ TICKET_STATUS = {
         'color': '#FAAD14',
         'icon': 'clock-circle',
         'description': '工单已创建，等待分配处理',
-        'allowedNextStatus': ['IN_PROGRESS', 'REJECTED'],
         'notifyRoles': ['admin', 'dispatcher'],
         'badge': 'warning'
     },
@@ -127,7 +146,6 @@ TICKET_STATUS = {
         'color': '#1890FF',
         'icon': 'loading',
         'description': '工单正在处理',
-        'allowedNextStatus': ['SUSPENDED', 'RESOLVED'],
         'requireProgress': True,
         'badge': 'processing'
     },
@@ -138,7 +156,6 @@ TICKET_STATUS = {
         'color': '#D9D9D9',
         'icon': 'pause-circle',
         'description': '工单暂停处理（等待配件/审批等）',
-        'allowedNextStatus': ['IN_PROGRESS'],
         'requireReason': True,
         'badge': 'default'
     },
@@ -149,7 +166,6 @@ TICKET_STATUS = {
         'color': '#52C41A',
         'icon': 'check-circle',
         'description': '问题已解决，等待确认',
-        'allowedNextStatus': ['CLOSED', 'IN_PROGRESS'],
         'requireSolution': True,
         'notifyCreator': True,
         'badge': 'success'
@@ -161,7 +177,6 @@ TICKET_STATUS = {
         'color': '#8C8C8C',
         'icon': 'check',
         'description': '工单已完成并关闭',
-        'allowedNextStatus': [],
         'requireRating': False,
         'isFinal': True,
         'badge': 'default'
@@ -173,12 +188,15 @@ TICKET_STATUS = {
         'color': '#FF4D4F',
         'icon': 'close-circle',
         'description': '工单被拒绝（无效/重复）',
-        'allowedNextStatus': [],
         'requireReason': True,
         'isFinal': True,
         'badge': 'error'
     }
 }
+
+# 可流转的下一状态由规则模块唯一提供，配置只保留展示字段
+for _status_code, _status_info in TICKET_STATUS.items():
+    _status_info['allowedNextStatus'] = ticket_rules.transition_targets(_status_code)
 
 # 优先级定义
 TICKET_PRIORITY = {
@@ -250,21 +268,11 @@ USER_ROLES = {
     }
 }
 
-# 状态流转权限控制
-STATUS_TRANSITION_PERMISSIONS = {
-    'PENDING -> IN_PROGRESS': ['admin', 'monitoring_engineer', 'field_technician'],
-    'PENDING -> REJECTED': ['admin', 'monitoring_engineer'],
-    'IN_PROGRESS -> SUSPENDED': ['field_technician', 'admin'],
-    'IN_PROGRESS -> RESOLVED': ['field_technician', 'admin', 'monitoring_engineer'],
-    'SUSPENDED -> IN_PROGRESS': ['field_technician', 'admin'],
-    'RESOLVED -> CLOSED': ['creator', 'admin', 'monitoring_engineer'],
-    'RESOLVED -> IN_PROGRESS': ['creator', 'admin', 'monitoring_engineer']
-}
-
 # 工单自动分配规则
 AUTO_ASSIGN_RULES = {
     'byType': {
         'SETTLEMENT_ALERT': 'monitoring_engineer',
+        'TEMPERATURE_ALERT': 'monitoring_engineer',
         'CRACK_ALERT': 'monitoring_engineer',
         'EQUIPMENT_FAULT': 'field_technician',
         'MAINTENANCE': 'field_technician',
@@ -331,20 +339,8 @@ def get_priority(code):
     return TICKET_PRIORITY.get(code)
 
 def can_transition_status(from_status, to_status, user_role):
-    """检查状态流转是否合法"""
-    status_info = TICKET_STATUS.get(from_status)
-    if not status_info:
-        return False
-
-    # 检查是否允许流转到目标状态
-    if to_status not in status_info.get('allowedNextStatus', []):
-        return False
-
-    # 检查用户权限
-    transition_key = f"{from_status} -> {to_status}"
-    allowed_roles = STATUS_TRANSITION_PERMISSIONS.get(transition_key, [])
-
-    return user_role in allowed_roles or user_role == 'admin'
+    """检查状态流转是否合法（状态机唯一实现在 modules/rules/tickets.py）"""
+    return to_status in ticket_rules.allowed_transitions(from_status, user_role)
 
 def calculate_sla(ticket_type, priority):
     """计算 SLA 时间"""

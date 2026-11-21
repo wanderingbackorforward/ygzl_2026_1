@@ -13,6 +13,21 @@ import os
 # 创建蓝图
 analysis_v2_bp = Blueprint('analysis_v2', __name__, url_prefix='/api/analysis/v2')
 
+# 建单入口已收敛到 POST /api/tickets（保留本模块旧接口，仅加弃用标记）
+_DEPRECATED_ENDPOINTS = {
+    'analysis_v2.create_ticket_from_anomaly',
+    'analysis_v2.create_temperature_ticket',
+}
+
+
+@analysis_v2_bp.after_request
+def _mark_deprecated(resp):
+    if request.endpoint in _DEPRECATED_ENDPOINTS:
+        resp.headers['Deprecation'] = 'true'
+        resp.headers['Link'] = '</api/tickets>; rel="successor-version"'
+        print(f"[DEPRECATED] {request.method} {request.path} -> /api/tickets")
+    return resp
+
 # 严重程度到工单优先级的映射
 SEVERITY_TO_PRIORITY = {
     'critical': 'CRITICAL',
