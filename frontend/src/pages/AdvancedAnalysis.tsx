@@ -22,8 +22,8 @@ interface AnalysisTab {
 // 哪里有问题 / 会怎么发展 → 已在沉降页（SettlementV2 风险点、SettlementNew 趋势预测）
 // 本页只回答：① 为什么 → ② 该怎么办
 const PRIMARY_TABS: AnalysisTab[] = [
-  { id: 'correlation', label: '① 为什么', icon: 'project-diagram', desc: '因果与空间 —— 量化施工事件对沉降的影响，以及点位之间的空间关联' },
-  { id: 'recommendation', label: '② 该怎么办', icon: 'clipboard-list', desc: '处置建议 —— 根据异常等级生成处置方案：紧急巡检 / 加密监测 / 持续跟踪' },
+  { id: 'correlation', label: '① 施工影响多大', icon: 'project-diagram', desc: '选一个点位和施工事件，算出施工让它多沉了多少；也可以看哪些点位在同步变化' },
+  { id: 'recommendation', label: '② 该怎么处理', icon: 'clipboard-list', desc: '按异常等级给出处置方案：紧急巡检 / 加密监测 / 持续跟踪' },
 ];
 
 // 专题视图：按监测对象查看
@@ -179,7 +179,7 @@ const AdvancedAnalysis: React.FC = () => {
       {pointParam && <PointContextBar pointId={pointParam} from={fromParam} />}
 
       <PageHeader
-        eyebrow="为什么、该怎么办"
+        eyebrow="施工影响多大、该怎么处理"
         title="分析诊断"
         description={activeInfo?.desc}
         meta={

@@ -75,7 +75,7 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
       backgroundColor: 'transparent',
       title: {
         text: `${eventName}影响分析`,
-        subtext: `方法: ${data.method === 'DID' ? '双重差分法' : '合成控制法'}`,
+        subtext: `方法: ${data.method === 'DID' ? '对比法' : '趋势模拟法'}`,
         left: 'center',
         textStyle: {
           color: '#fff',
@@ -102,7 +102,7 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
         },
       },
       legend: {
-        data: ['处理组（受影响点位）', '对照组（未受影响点位）', '反事实预测'],
+        data: ['受影响点位', '对比点位', '如果没施工'],
         top: 40,
         textStyle: {
           color: '#fff',
@@ -158,7 +158,7 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
       series: [
         // 处理组
         {
-          name: '处理组（受影响点位）',
+          name: '受影响点位',
           type: 'line',
           data: treatedValues,
           lineStyle: {
@@ -189,7 +189,7 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
         },
         // 对照组
         {
-          name: '对照组（未受影响点位）',
+          name: '对比点位',
           type: 'line',
           data: controlValues,
           lineStyle: {
@@ -206,7 +206,7 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
         ...(counterfactual.length > 0
           ? [
               {
-                name: '反事实预测',
+                name: '如果没施工',
                 type: 'line',
                 data: counterfactual,
                 lineStyle: {
@@ -253,7 +253,7 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
       {/* 分析结果 */}
       <div style={styles.resultContainer}>
         <div style={styles.resultCard}>
-          <div style={styles.resultLabel}>处理效应</div>
+          <div style={styles.resultLabel}>净影响</div>
           <div style={styles.resultValue}>
             {(data.treatment_effect ?? 0) > 0 ? '+' : ''}
             {(data.treatment_effect ?? 0).toFixed(3)} mm
@@ -264,7 +264,7 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
         </div>
 
         <div style={styles.resultCard}>
-          <div style={styles.resultLabel}>处理组变化</div>
+          <div style={styles.resultLabel}>受影响点位变化</div>
           <div style={styles.resultValue}>
             {(data.treated_change ?? 0) > 0 ? '+' : ''}
             {(data.treated_change ?? 0).toFixed(3)} mm
@@ -275,7 +275,7 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
         </div>
 
         <div style={styles.resultCard}>
-          <div style={styles.resultLabel}>对照组变化</div>
+          <div style={styles.resultLabel}>对比点位变化</div>
           <div style={styles.resultValue}>
             {(data.control_change ?? 0) > 0 ? '+' : ''}
             {(data.control_change ?? 0).toFixed(3)} mm
@@ -286,12 +286,12 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
         </div>
 
         <div style={styles.resultCard}>
-          <div style={styles.resultLabel}>置信区间</div>
+          <div style={styles.resultLabel}>波动范围</div>
           <div style={styles.resultValue}>
             [{(data.confidence_interval?.[0] ?? 0).toFixed(3)}, {(data.confidence_interval?.[1] ?? 0).toFixed(3)}]
           </div>
           <div style={styles.resultHint}>
-            95%置信水平
+            95% 可能范围
           </div>
         </div>
       </div>

@@ -54,7 +54,8 @@ export const CorrelationDashboard: React.FC<CorrelationDashboardProps> = ({
 
   return (
     <div style={styles.container}>
-      {/* 统计卡片 */}
+      {/* 统计卡片：只在点位关联/多因素视图展示，施工影响视图保持极简 */}
+      {analysisType !== 'causal' && (
       <div style={styles.statsGrid}>
         <div style={styles.statCard}>
           <div style={{ ...styles.statIcon, color: '#4a9eff' }}>
@@ -74,7 +75,7 @@ export const CorrelationDashboard: React.FC<CorrelationDashboardProps> = ({
             <div style={styles.statValue}>
               {spatialData?.cluster_count ?? (spatialLoading ? '计算中' : '未计算')}
             </div>
-            <div style={styles.statLabel}>空间聚类</div>
+            <div style={styles.statLabel}>相似点位组</div>
           </div>
         </div>
 
@@ -83,8 +84,8 @@ export const CorrelationDashboard: React.FC<CorrelationDashboardProps> = ({
             <i className="fas fa-chart-line" />
           </div>
           <div style={styles.statContent}>
-            <div style={styles.statValue}>DID / SCM</div>
-            <div style={styles.statLabel}>因果推断方法</div>
+            <div style={styles.statValue}>对比法</div>
+            <div style={styles.statLabel}>分析方式</div>
           </div>
         </div>
 
@@ -98,10 +99,11 @@ export const CorrelationDashboard: React.FC<CorrelationDashboardProps> = ({
           </div>
         </div>
       </div>
+      )}
 
       {/* 分析类型选择 */}
       <div style={styles.typeSelector}>
-        <div style={styles.typeSelectorLabel}>分析类型:</div>
+        <div style={styles.typeSelectorLabel}>想看什么？</div>
         <div style={styles.typeButtons}>
           <button
             style={{
@@ -111,7 +113,7 @@ export const CorrelationDashboard: React.FC<CorrelationDashboardProps> = ({
             onClick={() => setAnalysisType('causal')}
           >
             <i className="fas fa-project-diagram" style={{ marginRight: '6px' }} />
-            因果分析
+            施工影响
           </button>
           <button
             style={{
@@ -121,7 +123,7 @@ export const CorrelationDashboard: React.FC<CorrelationDashboardProps> = ({
             onClick={() => setAnalysisType('spatial')}
           >
             <i className="fas fa-th" style={{ marginRight: '6px' }} />
-            空间关联
+            点位关联
           </button>
           <button
             style={{
@@ -131,8 +133,13 @@ export const CorrelationDashboard: React.FC<CorrelationDashboardProps> = ({
             onClick={() => setAnalysisType('multifactor')}
           >
             <i className="fas fa-layer-group" style={{ marginRight: '6px' }} />
-            多因素关联
+            多因素
           </button>
+        </div>
+        <div style={{ fontSize: 12, color: '#8fa8c2' }}>
+          {analysisType === 'causal' && '选一个点位，看施工让它多沉了多少'}
+          {analysisType === 'spatial' && '看哪些点位的变化是同步的'}
+          {analysisType === 'multifactor' && '看多个因素一起对沉降的影响'}
         </div>
 
         {/* 空间关联配置 */}
