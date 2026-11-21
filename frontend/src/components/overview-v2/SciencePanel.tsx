@@ -19,9 +19,8 @@ interface PointSummary {
   point_id: string;
   total_change: number;
   trend_slope: number;
-  trend_type: string;
-  alert_level: string;
-  level?: 'normal' | 'warning' | 'alert';
+  level?: 'normal' | 'warning' | 'alert' | null;
+  trend?: 'down' | 'up' | 'stable' | null;
 }
 
 interface ConsolidationState {
@@ -39,7 +38,7 @@ function computeConsolidation(points: PointSummary[]): ConsolidationState {
 
   const avgSlope = points.reduce((s, p) => s + Math.abs(p.trend_slope ?? 0), 0) / points.length;
   const maxChange = Math.abs(Math.min(...points.map(p => p.total_change ?? 0)));
-  const stableCount = points.filter(p => p.trend_type === 'stable' || Math.abs(p.trend_slope) < 0.05).length;
+  const stableCount = points.filter(p => p.trend ? p.trend === 'stable' : Math.abs(p.trend_slope) < 0.05).length;
   const stableRatio = stableCount / points.length;
 
   // Terzaghi 固结度 U = 1 - exp(-T_v)
@@ -253,7 +252,7 @@ export function AnomalyConfidenceRadar({ points }: { points: PointSummary[] }) {
     // 五个维度评分（0-100）
     const alertRatio = points.filter(p => p.level === 'alert').length / points.length * 100;
     const warnRatio = points.filter(p => p.level === 'warning').length / points.length * 100;
-    const accelRatio = points.filter(p => p.trend_type === 'increasing').length / points.length * 100;
+    const accelRatio = points.filter(p => p.trend === 'down').length / points.length * 100;
     const maxSett = Math.min(0, Math.min(...points.map(p => p.total_change)));
     const settScore = Math.min(100, Math.abs(maxSett) * 3);
     const avgSlopeAbs = points.reduce((s, p) => s + Math.abs(p.trend_slope ?? 0), 0) / points.length;

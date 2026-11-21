@@ -14,6 +14,7 @@ type OverdueTicket = {
 
 type OverdueResponse = {
   days: number
+  basis?: string
   count: number
   tickets: OverdueTicket[]
   server_time?: string
@@ -98,7 +99,6 @@ export const OverdueTicketAlert: React.FC = () => {
 
   const tickets = data?.tickets || []
   const count = data?.count || 0
-  const days = data?.days || 3
 
   if (!visible) return null
 
@@ -120,7 +120,7 @@ export const OverdueTicketAlert: React.FC = () => {
 
         <div style={styles.body}>
           <div style={styles.summary}>
-            存在 <span style={styles.em}>{count}</span> 个工单超过 <span style={styles.em}>{days}</span> 天未解决
+            存在 <span style={styles.em}>{count}</span> 个工单已超过处理时限未解决
           </div>
 
           {error ? <div style={styles.error}>{error}</div> : null}

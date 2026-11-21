@@ -90,7 +90,7 @@ export const AnomalyList: React.FC<AnomalyListProps> = ({ anomalies, onAnomalyCl
           </div>
           <div style={styles.filterGroup}>
             <span style={styles.filterLabel}>异常类型:</span>
-            {['spike', 'acceleration', 'fluctuation', 'trend'].map(type => (
+            {['spike', 'acceleration', 'fluctuation', 'volatility', 'trend'].map(type => (
               <button
                 key={type}
                 style={{

@@ -127,6 +127,9 @@ export interface ProfileStatistics {
     total_change: number | null;
     trend_type: string | null;
     alert_level: string | null;
+    level?: string | null;
+    level_cn?: string | null;
+    trend?: string | null;
   }>;
   max_settlement_point: {
     point_id: string;

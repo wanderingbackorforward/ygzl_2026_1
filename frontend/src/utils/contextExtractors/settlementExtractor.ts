@@ -11,24 +11,25 @@ import { cachePageData } from '../../hooks/usePageContext';
 export function extractSettlementContext(data: any): SettlementContext {
   const points = data?.points || [];
   const settlements = points
-    .map((p: any) => p.settlement)
+    .map((p: any) => p.total_change)
     .filter((s: any) => typeof s === 'number' && isFinite(s));
 
   const totalPoints = points.length;
   const avgSettlement = settlements.length > 0
     ? settlements.reduce((sum: number, s: number) => sum + s, 0) / settlements.length
     : 0;
-  const maxSettlement = settlements.length > 0 ? Math.max(...settlements) : 0;
+  const maxSettlement = settlements.length > 0 ? Math.min(...settlements) : 0;
 
-  // 判断趋势类型
-  let trendType = '稳定';
-  if (avgSettlement < -5) trendType = '持续沉降';
-  else if (avgSettlement > 5) trendType = '持续抬升';
+  // 分级只读后端结论（level / trend），前端不再自设阈值
+  const levels = points.map((p: any) => p.level).filter((l: any) => typeof l === 'string');
+  const alertCount = levels.filter((l: string) => l === 'alert').length;
+  const warningCount = levels.filter((l: string) => l === 'warning').length;
+  const anomalyCount = alertCount + warningCount;
 
-  // 判断风险等级
-  let riskLevel = '正常';
-  if (Math.abs(maxSettlement) > 20) riskLevel = '高风险';
-  else if (Math.abs(maxSettlement) > 10) riskLevel = '中风险';
+  const downCount = points.filter((p: any) => p.trend === 'down').length;
+  const upCount = points.filter((p: any) => p.trend === 'up').length;
+  const trendType = downCount > upCount ? '持续沉降' : upCount > downCount ? '持续抬升' : '稳定';
+  const riskLevel = alertCount > 0 ? '高风险' : warningCount > 0 ? '中风险' : '正常';
 
   const context: SettlementContext = {
     pagePath: '/settlement',
@@ -46,16 +47,16 @@ export function extractSettlementContext(data: any): SettlementContext {
       filters: {},
       statistics: {
         totalCount: totalPoints,
-        anomalyCount: settlements.filter((s: number) => Math.abs(s) > 10).length,
-        normalCount: totalPoints - settlements.filter((s: number) => Math.abs(s) > 10).length,
+        anomalyCount,
+        normalCount: totalPoints - anomalyCount,
       },
     },
     metadata: {
       lastUpdate: new Date().toISOString(),
       dataSource: '沉降监测传感器',
       recordCount: totalPoints,
-      hasAnomalies: Math.abs(maxSettlement) > 10,
-      anomalyCount: settlements.filter((s: number) => Math.abs(s) > 10).length,
+      hasAnomalies: anomalyCount > 0,
+      anomalyCount,
     },
   };
 
@@ -83,7 +84,7 @@ export function formatSettlementContextForLLM(context: SettlementContext): strin
 - 风险等级：${summary.riskLevel}
 
 **异常情况**：
-- 异常点数量：${statistics?.anomalyCount || 0} 个（沉降量绝对值 > 10 mm）
+- 异常点数量：${statistics?.anomalyCount || 0} 个（由后端分级判定）
 - 正常点数量：${statistics?.normalCount || 0} 个
 
 **数据源**：${context.metadata.dataSource}

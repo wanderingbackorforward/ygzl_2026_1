@@ -423,7 +423,7 @@ const ProfileTab: React.FC = () => {
               label="预警点位"
               value={
                 statistics?.points
-                  ? statistics.points.filter(p => p.alert_level && p.alert_level !== 'normal').length.toString()
+                  ? statistics.points.filter(p => p.level === 'warning' || p.level === 'alert').length.toString()
                   : '-'
               }
               unit="个"

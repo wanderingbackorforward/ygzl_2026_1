@@ -29,6 +29,7 @@ interface PointSummary {
   level?: 'normal' | 'warning' | 'alert';
   level_cn?: string;
   reason?: string;
+  trend?: 'down' | 'up' | 'stable';
 }
 
 interface SettlementSummary {
@@ -306,9 +307,9 @@ function EvidenceCanvas({ result }: { result: DiagnosisResult | null }) {
 function ManagerOverview({ points, summary }: { points: PointSummary[]; summary?: SettlementSummary }) {
   // 趋势分类统计
   const stats = useMemo(() => {
-    const stable = points.filter(p => p.trend_type === 'stable' || Math.abs(p.trend_slope) < 0.05).length;
-    const increasing = points.filter(p => p.trend_type === 'increasing' && p.trend_slope < -0.05).length;
-    const decreasing = points.filter(p => p.trend_type === 'decreasing' || p.trend_slope > 0.05).length;
+    const stable = points.filter(p => p.trend === 'stable').length;
+    const increasing = points.filter(p => p.trend === 'down').length;
+    const decreasing = points.filter(p => p.trend === 'up').length;
     const alert = summary?.alert_count ?? 0;
     const warn = summary?.warning_count ?? 0;
     const maxSett = summary?.max_settlement ?? 0;
@@ -547,10 +548,10 @@ export default function OverviewV2() {
     const input: DiagnosisInput = {
       points: points.map(p => ({
         point_id: p.point_id,
-        alert_level: p.level || 'normal',
+        level: p.level || 'normal',
         total_change: p.total_change ?? 0,
         trend_slope: p.trend_slope ?? 0,
-        trend_type: p.trend_type || 'stable',
+        trend: p.trend || 'stable',
         predicted_change_30d: p.predicted_change_30d ?? 0,
       })),
       anomalies: analysis?.anomalies || [],

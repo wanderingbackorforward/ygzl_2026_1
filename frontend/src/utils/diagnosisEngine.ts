@@ -14,10 +14,10 @@
 export interface DiagnosisInput {
   points: {
     point_id: string;
-    alert_level: string;       // 'normal' | 'warning' | 'alert'，来自后端 rules 模块
+    level?: 'normal' | 'warning' | 'alert' | null;  // 后端 rules 模块统一结论
     total_change: number;      // mm, 负值=沉降
     trend_slope: number;       // mm/d
-    trend_type: string;        // 'stable' | 'increasing' | 'decreasing'
+    trend?: 'down' | 'up' | 'stable' | null;        // 后端统一趋势方向
     predicted_change_30d: number;
   }[];
   // 后端沉降聚合结论；页面不再自行重新统计
@@ -136,8 +136,8 @@ function computeScore(
 
   // 只按后端已定级的结果扣分，不在前端重复判定阈值
   for (const p of points) {
-    if (p.alert_level === 'alert') score -= 12;
-    if (p.alert_level === 'warning') score -= 4;
+    if (p.level === 'alert') score -= 12;
+    if (p.level === 'warning') score -= 4;
   }
 
   // 严重异常扣分
@@ -166,12 +166,12 @@ function buildEvidenceNetwork(
 
   // 找出最严重的几个点作为核心节点
   const alertPoints = points
-    .filter(p => p.alert_level !== 'normal')
+    .filter(p => p.level === 'warning' || p.level === 'alert')
     .sort((a, b) => a.total_change - b.total_change)
     .slice(0, 6);
 
   for (const p of alertPoints) {
-    const sev = p.alert_level === 'alert' ? 0.9 : 0.5;
+    const sev = p.level === 'alert' ? 0.9 : 0.5;
     nodes.push({
       id: p.point_id,
       category: 'settlement',
@@ -214,7 +214,7 @@ function buildEvidenceNetwork(
   }
 
   // 如果有加速沉降的点群，它们之间可能存在空间关联
-  const accelerating = alertPoints.filter(p => p.trend_type === 'increasing');
+  const accelerating = alertPoints.filter(p => p.trend === 'down');
   for (let i = 0; i < accelerating.length - 1; i++) {
     for (let j = i + 1; j < accelerating.length; j++) {
       links.push({
@@ -248,7 +248,7 @@ function generateActions(
   const actions: ActionItem[] = [];
 
   // 工程师行动：基于异常和报警点
-  const criticalPoints = points.filter(p => p.alert_level === 'alert');
+  const criticalPoints = points.filter(p => p.level === 'alert');
   if (criticalPoints.length > 0) {
     const ids = criticalPoints.map(p => p.point_id);
     actions.push({
@@ -261,7 +261,7 @@ function generateActions(
   }
 
   // 加速沉降 → 工程师需加密监测
-  const accelerating = points.filter(p => p.trend_slope < -0.5 && p.trend_type === 'increasing');
+  const accelerating = points.filter(p => p.trend_slope < -0.5 && p.trend === 'down');
   if (accelerating.length > 0) {
     const ids = accelerating.map(p => p.point_id);
     actions.push({
@@ -301,9 +301,10 @@ function generateActions(
   for (const rec of recommendations.slice(0, 3)) {
     const existing = actions.find(a => (a.instruction || '').includes(rec.title || ''));
     if (!existing) {
+      const priority = (rec.priority || '').toUpperCase();
       actions.push({
-        role: rec.priority === 'CRITICAL' || rec.priority === 'HIGH' ? 'engineer' : 'manager',
-        urgency: rec.priority === 'CRITICAL' ? 'now' : rec.priority === 'HIGH' ? 'today' : 'week',
+        role: priority === 'CRITICAL' || priority === 'HIGH' ? 'engineer' : 'manager',
+        urgency: priority === 'CRITICAL' ? 'now' : priority === 'HIGH' ? 'today' : 'week',
         instruction: rec.action || rec.title,
         reason: rec.description,
         relatedPoints: rec.affected_points || [],
@@ -325,8 +326,8 @@ function composeSentence(
   if (points.length === 0) return '暂无监测数据，无法生成诊断。';
 
   const totalPoints = status?.total_points ?? points.length;
-  const alertCount = status?.alert_count ?? points.filter(p => p.alert_level === 'alert').length;
-  const warnCount = status?.warning_count ?? points.filter(p => p.alert_level === 'warning').length;
+  const alertCount = status?.alert_count ?? points.filter(p => p.level === 'alert').length;
+  const warnCount = status?.warning_count ?? points.filter(p => p.level === 'warning').length;
   const maxSett = status?.max_settlement ?? Math.min(...points.map(p => p.total_change));
   const worstPointId = status?.max_settlement_point ?? points.find(p => p.total_change === maxSett)?.point_id;
 
@@ -346,7 +347,7 @@ function composeSentence(
   if (alertCount > 0) parts.push(`${alertCount} 个报警`);
   if (warnCount > 0) parts.push(`${warnCount} 个预警`);
 
-  const accelerating = points.filter(p => p.trend_type === 'increasing' && p.trend_slope < -0.3);
+  const accelerating = points.filter(p => p.trend === 'down' && p.trend_slope < -0.3);
   if (accelerating.length > 0) {
     parts.push(`${accelerating.length} 个点沉降加速`);
   }

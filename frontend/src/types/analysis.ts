@@ -10,7 +10,9 @@ export interface Anomaly {
   settlement: number;
   anomaly_score: number;
   severity: 'critical' | 'high' | 'medium' | 'low';
-  anomaly_type: 'spike' | 'acceleration' | 'fluctuation' | 'trend' | 'unknown';
+  anomaly_type:
+    | 'spike' | 'acceleration' | 'fluctuation' | 'volatility' | 'trend' | 'unknown'
+    | 'threshold_exceeded' | 'rate_abnormal' | 'trend_abnormal' | 'prediction_warning';
 }
 
 /**

@@ -39,7 +39,12 @@ export const anomalyTypeText: Record<string, string> = {
   spike: '突变',
   acceleration: '加速',
   fluctuation: '波动',
+  volatility: '波动',
   trend: '趋势异常',
+  threshold_exceeded: '超限',
+  rate_abnormal: '速率异常',
+  trend_abnormal: '趋势异常',
+  prediction_warning: '预测预警',
   unknown: '未知',
 };
 
@@ -50,7 +55,12 @@ export const anomalyTypeIcon: Record<string, string> = {
   spike: 'bolt',
   acceleration: 'arrow-up',
   fluctuation: 'wave-square',
+  volatility: 'wave-square',
   trend: 'chart-line',
+  threshold_exceeded: 'exclamation-circle',
+  rate_abnormal: 'arrow-up',
+  trend_abnormal: 'chart-line',
+  prediction_warning: 'clock',
   unknown: 'question-circle',
 };
 
