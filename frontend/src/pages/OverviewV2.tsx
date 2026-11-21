@@ -542,7 +542,7 @@ export default function OverviewV2() {
       label: '沉降 · 异常点',
       value: settlement?.alert_count ?? '—',
       unit: '个',
-      tone: (settlement?.alert_count ?? 0) > 0 ? ('danger' as const) : ('ok' as const),
+      tone: (settlement?.alert_count ?? 0) > 0 ? ('warn' as const) : ('ok' as const),
       sub: settlement
         ? `${settlement.total_points ?? 0} 点 · 最高监测 ${Number(settlement.max_value ?? 0).toFixed(2)} mm`
         : '接口不可用',
