@@ -1,6 +1,6 @@
 import pandas as pd
 import pyodbc
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, inspect, text
 import os
 import sys
 
@@ -90,6 +90,11 @@ def import_mdb_to_mysql(mdb_path):
         
         # 3. 导入温度数据
         print("正在导入温度测量数据...")
+        # 全量刷新：旧逻辑用首批 if_exists='replace' 达到同样效果，但会重建表结构；
+        # 这里改成显式清空，保证重跑结果一致且不丢索引/列类型。
+        if 'raw_temperature_data' in inspect(engine).get_table_names():
+            with engine.begin() as conn:
+                conn.execute(text("DELETE FROM raw_temperature_data"))
         # R2字段根据分析可能是温度数据
         # 为了避免导入过多数据，我们只导入与特定传感器相关的数据
         
@@ -158,8 +163,8 @@ def import_mdb_to_mysql(mdb_path):
                     'S2': 'value2'        # 其他测量值
                 }, inplace=True)
                 
-                # 保存到MySQL
-                data_df.to_sql('raw_temperature_data', engine, if_exists='append' if total_imported > 0 else 'replace', index=False)
+                # 保存到MySQL（表已在上面清空，这里直接写入）
+                data_df.to_sql('raw_temperature_data', engine, if_exists='append', index=False)
                 
                 total_imported += len(data_df)
                 print(f"已导入 {total_imported} 条温度数据记录")

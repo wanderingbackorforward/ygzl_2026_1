@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 
 # 导入数据库配置
 from modules.database.db_config import db_config, sqlalchemy_url, mysql_connect, ensure_mysql_database
+from modules.data_import.idempotent_io import append_new_rows
 
 
 def check_tables_exist():
@@ -138,9 +139,12 @@ def import_crack_excel(excel_path):
             import_df.drop(columns=[date_col], inplace=True)
 
         # 将数据导入MySQL - 特别注意表名为 raw_crack_data，而不是 raw_settlement_data
-        import_df.to_sql('raw_crack_data', engine, if_exists='append', index=False)
+        # 按测量时间幂等，重传同一文件不会翻倍
+        inserted, skipped = append_new_rows(
+            import_df, engine, 'raw_crack_data', ['measurement_date']
+        )
 
-        print(f"成功导入 {len(import_df)} 行裂缝数据到 raw_crack_data 表")
+        print(f"成功导入 {inserted} 行裂缝数据到 raw_crack_data 表（跳过已存在 {skipped} 行）")
         return True
 
     except Exception as e:

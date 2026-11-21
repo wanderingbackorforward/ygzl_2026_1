@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 
 # 导入数据库配置
 from modules.database.db_config import sqlalchemy_url
+from modules.data_import.idempotent_io import append_new_rows
 
 def import_excel_to_mysql(excel_path):
     print(f"开始导入Excel文件: {excel_path}")
@@ -28,10 +29,12 @@ def import_excel_to_mysql(excel_path):
         # 创建数据库连接（env-aware SQLAlchemy URL from db_config facade）
         engine = create_engine(sqlalchemy_url())
 
-        # 将数据导入MySQL
-        df.to_sql('raw_settlement_data', engine, if_exists='append', index=False)
+        # 将数据导入MySQL（按测量时间幂等，重传同一文件不会翻倍）
+        inserted, skipped = append_new_rows(
+            df, engine, 'raw_settlement_data', ['measurement_date']
+        )
 
-        print(f"成功导入 {len(df)} 行数据到 raw_settlement_data 表")
+        print(f"成功导入 {inserted} 行数据到 raw_settlement_data 表（跳过已存在 {skipped} 行）")
         return True
 
     except Exception as e:
