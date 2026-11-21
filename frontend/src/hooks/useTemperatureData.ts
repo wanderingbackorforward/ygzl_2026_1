@@ -2,18 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiGet } from '../lib/api';
 import type { TemperatureSummary, TemperatureDataPoint, TemperatureDetailData } from '../types/api';
 
-function isProblemAlertLevel(value: unknown): boolean {
-  if (typeof value !== 'string') return false;
-  const s = value.trim();
-  if (!s) return false;
-  const lower = s.toLowerCase();
-  if (lower === 'normal' || lower === 'ok') return false;
-  if (s.includes('正常')) return false;
-  if (lower.includes('warning') || lower.includes('danger') || lower.includes('critical') || lower.includes('high')) return true;
-  if (s.includes('警告') || s.includes('注意') || s.includes('需关注') || s.includes('异常') || s.includes('Abnormal')) return true;
-  return false;
-}
-
 export function useTemperatureSummary(): {
   data: TemperatureSummary | null;
   loading: boolean;
@@ -80,8 +68,7 @@ export function useTemperatureSensors(): { sensors: string[]; problemSensorIds: 
             if (!id || id === 'null' || id === 'undefined') continue;
             ids.push(id);
 
-            const alert = row?.alert_level ?? row?.alert_status ?? row?.alert ?? row?.status ?? '';
-            if (isProblemAlertLevel(alert)) problemIds.push(id);
+            if (row?.level === 'warning' || row?.level === 'alert') problemIds.push(id);
           }
           const cleaned = Array.from(new Set(ids));
           const cleanedProblems = Array.from(new Set(problemIds));
