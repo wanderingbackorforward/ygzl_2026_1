@@ -8,11 +8,34 @@ interface CausalAnalysisProps {
 
 interface EventImpactResult {
   method: string;
+  method_label?: string;
   treatment_effect: number;
   treated_change: number;
   control_change: number;
   confidence_interval: [number, number];
   interpretation: string;
+  // 后端给出的人话结论（区间跨 0 时不会说成"有影响"）
+  significant?: boolean;
+  level?: 'unknown' | 'clear' | 'caution';
+  headline?: string;
+  detail?: string;
+  advice?: string;
+  control_points?: string[];
+  control_selection?: string;
+  data_note?: string;
+  low_sample?: boolean;
+  interval_reliable?: boolean;
+  sample_size?: {
+    treated_before?: number;
+    treated_after?: number;
+    control_points?: number;
+  };
+  algorithm?: {
+    name?: string;
+    label?: string;
+    uses_llm?: boolean;
+    data_source?: string;
+  };
   before_period: {
     dates: string[];
     treated_values: number[];
@@ -108,12 +131,23 @@ export const CausalAnalysis: React.FC<CausalAnalysisProps> = ({
 
   const effect = result ? Number(result.treatment_effect) : 0;
   const absEffect = Math.abs(effect);
-  const tone = absEffect >= 3 ? 'danger' : absEffect >= 1 ? 'warn' : 'ok';
-  const resultSentence = !result
-    ? ''
-    : effect < 0
-      ? `施工让 ${selectedPoint} 比“没施工”时多下沉了 ${absEffect.toFixed(2)} mm`
-      : `施工让 ${selectedPoint} 比“没施工”时抬升了 ${absEffect.toFixed(2)} mm`;
+  const level = result?.level || 'unknown';
+  const tone: 'danger' | 'warn' | 'ok' | 'neutral' =
+    level === 'caution' ? 'warn'
+      : level === 'clear' ? (effect < 0 ? 'danger' : 'ok')
+        : 'neutral';
+  const badgeText =
+    level === 'caution' ? '结果不够稳'
+      : level === 'clear' ? (effect < 0 ? '影响明确 · 偏不利' : '影响明确 · 偏安全')
+        : '暂时看不出影响';
+  const headline = result?.headline || (effect < 0
+    ? `施工让 ${selectedPoint} 比“没施工”时多下沉了 ${absEffect.toFixed(2)} mm`
+    : `施工让 ${selectedPoint} 比“没施工”时抬升了 ${absEffect.toFixed(2)} mm`);
+  const fmt = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(2)}`;
+  const controlList = (result?.control_points || []).join('、') || '未指定';
+  const ci = result?.confidence_interval;
+  const ciIncludesZero = !!ci && ci[0] <= 0 && ci[1] >= 0;
+  const algoLabel = result?.method_label || (result?.method === 'SCM' ? '趋势模拟法' : '对比法');
 
   return (
     <div style={styles.container}>
@@ -126,6 +160,10 @@ export const CausalAnalysis: React.FC<CausalAnalysisProps> = ({
           <div style={styles.explainTitle}>这件事在算什么？</div>
           <div style={styles.explainText}>
             用没受施工影响的点位做对比，算出施工让这个点位额外下沉了多少毫米。
+          </div>
+          <div style={styles.explainTag}>
+            <i className="fas fa-microchip" style={{ marginRight: 6 }} />
+            纯统计计算 · 数据来自现场实测 · 未调用大模型
           </div>
         </div>
       </div>
@@ -265,7 +303,7 @@ export const CausalAnalysis: React.FC<CausalAnalysisProps> = ({
         </summary>
         <div style={styles.advancedBody}>
           <div style={styles.advancedBlock}>
-            <div style={styles.advancedLabel}>用来对比的点位（不选就自动挑离得远的）</div>
+            <div style={styles.advancedLabel}>用来对比的点位（不选就按施工前走势自动配对）</div>
             <div style={styles.chipRow}>
               {pointIds
                 .filter(id => id !== selectedPoint)
@@ -314,40 +352,112 @@ export const CausalAnalysis: React.FC<CausalAnalysisProps> = ({
         </div>
       )}
 
-      {/* 分析结果：先说结论，再看图 */}
+      {/* 分析结果：一句话结论 → 依据 → 建议 → 想看细节再展开 */}
       {result && (
-        <>
-          <div ref={resultRef} style={{ ...styles.resultBanner, ...styles[`result_${tone}` as 'result_ok' | 'result_warn' | 'result_danger'] }}>
-            <div style={styles.resultLabel}>施工的净影响</div>
-            <div style={styles.resultNumber}>
-              {effect > 0 ? '+' : ''}{effect.toFixed(2)}
-              <span style={styles.resultUnit}>mm</span>
+        <div ref={resultRef} style={styles.resultWrap}>
+          <div
+            style={{
+              ...styles.verdictCard,
+              ...(styles[`result_${tone}` as 'result_ok' | 'result_warn' | 'result_danger' | 'result_neutral']),
+            }}
+          >
+            <div style={styles.verdictTop}>
+              <span style={styles.verdictBadge}>{badgeText}</span>
+              <span style={styles.verdictMethod}>{selectedPoint} · {algoLabel}</span>
             </div>
-            <div style={styles.resultSentence}>{resultSentence}</div>
-            <div style={styles.resultMeta}>
-              {selectedPoint} 实际变化 {Number(result.treated_change).toFixed(2)} mm
-              <span style={styles.dot}>·</span>
-              对比点位 {Number(result.control_change).toFixed(2)} mm
-              {result.confidence_interval && (
-                <>
-                  <span style={styles.dot}>·</span>
-                  波动范围 {Number(result.confidence_interval[0]).toFixed(2)} ~ {Number(result.confidence_interval[1]).toFixed(2)} mm
-                </>
-              )}
+            <div style={styles.verdictHeadline}>{headline}</div>
+            {result.detail && <div style={styles.verdictDetail}>{result.detail}</div>}
+            {level === 'clear' && (
+              <div style={styles.bigNumberRow}>
+                <span style={styles.bigNumber}>{fmt(effect)}</span>
+                <span style={styles.bigNumberUnit}>mm 净影响</span>
+              </div>
+            )}
+          </div>
+
+          <div style={styles.evidenceCard}>
+            <div style={styles.sectionTitle}>依据：三组数字对得上</div>
+            <div style={styles.evidenceRow}>
+              <span style={styles.evidenceLabel}>{selectedPoint} 施工前后变化</span>
+              <span style={styles.evidenceValue}>{fmt(Number(result.treated_change))} mm</span>
+            </div>
+            <div style={styles.evidenceRow}>
+              <span style={styles.evidenceLabel}>对比点位同期变化（{controlList}）</span>
+              <span style={styles.evidenceValue}>{fmt(Number(result.control_change))} mm</span>
+            </div>
+            <div style={{ ...styles.evidenceRow, ...styles.evidenceRowLast }}>
+              <span style={styles.evidenceLabel}>相减得到的净影响</span>
+              <span style={styles.evidenceValueStrong}>{fmt(effect)} mm</span>
+            </div>
+            <div style={styles.ciNote}>
+              可复算：{fmt(Number(result.treated_change))} −（{fmt(Number(result.control_change))}）= {fmt(effect)} mm
+            </div>
+            <div style={styles.ciNote}>
+              可能范围 {fmt(Number(ci?.[0] ?? 0))} ~ {fmt(Number(ci?.[1] ?? 0))} mm
+              {ciIncludesZero ? '，包含 0，所以不能断定是施工造成的' : '，不包含 0，结论比较稳'}
+            </div>
+            {result.low_sample && (
+              <div style={styles.warnNote}>
+                <i className="fas fa-exclamation-triangle" style={{ marginRight: 6 }} />
+                这次施工前后各只有 {result.sample_size?.treated_before ?? 0} 次测量，样本偏少，建议换 60 天窗口再算一次。
+              </div>
+            )}
+          </div>
+
+          <div style={styles.adviceCard}>
+            <i className="fas fa-clipboard-check" style={styles.adviceIcon} />
+            <div>
+              <div style={styles.adviceLabel}>建议</div>
+              <div style={styles.adviceText}>{result.advice}</div>
             </div>
           </div>
-          <div style={styles.chartCard}>
-            <div style={styles.chartTitle}>
-              {eventName}前后，{selectedPoint} 与对比点位的走势
+
+          <details style={styles.fold}>
+            <summary style={styles.foldSummary}>
+              <i className="fas fa-calculator" style={{ marginRight: 8 }} />
+              这次是怎么算出来的？（没有调用大模型）
+            </summary>
+            <div style={styles.foldBody}>
+              <div style={styles.foldLine}>
+                <b>算法：</b>{algoLabel}（{result.method}）。
+                {result.method === 'SCM'
+                  ? '用施工前的走势推一个“如果没施工”的对照，再看实际和它的差距。'
+                  : '用施工前后的实测变化，减去同期对比点位的变化。'}
+              </div>
+              <div style={styles.foldLine}>
+                <b>数据：</b>{result.algorithm?.data_source || '现场实测沉降数据'}；
+                {result.data_note || '按周测数据计算'}。
+              </div>
+              <div style={styles.foldLine}>
+                <b>对比点位：</b>{controlList}
+                {result.control_selection === 'auto_similar_trend'
+                  ? '（按施工前走势自动配对，未使用坐标距离）'
+                  : ''}
+              </div>
+              <div style={styles.foldLine}>
+                <b>是否用大模型：</b>没有。这是本地统计计算，同样的数据谁算都是这个结果。
+              </div>
+              <div style={styles.foldHint}>
+                说明：事件名称只用于图表标注；真正参与计算的是点位、日期和前后各 {windowDays} 天的实测值。
+              </div>
             </div>
-            <EventImpactChart
-              data={result}
-              eventDate={eventDate}
-              eventName={eventName}
-              height={420}
-            />
-          </div>
-        </>
+          </details>
+
+          <details style={styles.fold}>
+            <summary style={styles.foldSummary}>
+              <i className="fas fa-chart-line" style={{ marginRight: 8 }} />
+              展开看走势图（两条线各自怎么走）
+            </summary>
+            <div style={styles.chartBox}>
+              <EventImpactChart
+                data={result}
+                eventDate={eventDate}
+                eventName={eventName}
+                height={340}
+              />
+            </div>
+          </details>
+        </div>
       )}
     </div>
   );
@@ -390,6 +500,17 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
     lineHeight: 1.6,
     color: '#b9cbe0',
+  },
+  explainTag: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    marginTop: 8,
+    padding: '3px 9px',
+    borderRadius: 999,
+    background: 'rgba(74,158,255,0.16)',
+    border: '1px solid rgba(74,158,255,0.3)',
+    fontSize: 11.5,
+    color: '#9fc6ff',
   },
   steps: {
     display: 'grid',
@@ -580,9 +701,14 @@ const styles: Record<string, React.CSSProperties> = {
   errorIcon: {
     fontSize: 18,
   },
-  resultBanner: {
-    padding: '22px 24px',
-    borderRadius: 14,
+  resultWrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 14,
+  },
+  verdictCard: {
+    padding: '20px 22px',
+    borderRadius: 16,
     border: '1px solid',
   },
   result_ok: {
@@ -597,50 +723,165 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(255,77,79,0.10)',
     borderColor: 'rgba(255,77,79,0.38)',
   },
-  resultLabel: {
-    fontSize: 13,
-    color: '#9fb8d1',
-    marginBottom: 6,
+  result_neutral: {
+    background: 'rgba(74,158,255,0.10)',
+    borderColor: 'rgba(74,158,255,0.35)',
   },
-  resultNumber: {
-    fontSize: 44,
+  verdictTop: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  verdictBadge: {
+    padding: '4px 10px',
+    borderRadius: 999,
+    background: 'rgba(255,255,255,0.14)',
+    fontSize: 12,
+    fontWeight: 700,
+    color: '#fff',
+  },
+  verdictMethod: {
+    fontSize: 12,
+    color: '#9fb8d1',
+  },
+  verdictHeadline: {
+    marginTop: 10,
+    fontSize: 22,
+    lineHeight: 1.35,
+    fontWeight: 800,
+    color: '#fff',
+  },
+  verdictDetail: {
+    marginTop: 8,
+    fontSize: 13.5,
+    lineHeight: 1.7,
+    color: '#cfdcec',
+  },
+  bigNumberRow: {
+    marginTop: 12,
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: 8,
+  },
+  bigNumber: {
+    fontSize: 36,
     fontWeight: 800,
     lineHeight: 1.1,
     color: '#fff',
     letterSpacing: '-0.5px',
   },
-  resultUnit: {
-    fontSize: 18,
-    fontWeight: 600,
-    marginLeft: 6,
-    color: '#b9cbe0',
-  },
-  resultSentence: {
-    marginTop: 8,
-    fontSize: 17,
-    fontWeight: 700,
-    color: '#fff',
-  },
-  resultMeta: {
-    marginTop: 10,
-    fontSize: 12.5,
+  bigNumberUnit: {
+    fontSize: 13,
     color: '#9fb8d1',
   },
-  dot: {
-    margin: '0 8px',
-    color: '#54708c',
-  },
-  chartCard: {
-    padding: '16px 18px 10px',
-    background: 'rgba(30, 42, 62, 0.7)',
+  evidenceCard: {
+    padding: '16px 18px',
+    background: 'rgba(30, 42, 62, 0.75)',
     border: '1px solid rgba(120,160,210,0.18)',
     borderRadius: 14,
   },
-  chartTitle: {
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: '#8fa8c2',
+    marginBottom: 10,
+  },
+  evidenceRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
+    gap: 8,
+    padding: '9px 0',
+    borderBottom: '1px solid rgba(120,160,210,0.12)',
+  },
+  evidenceRowLast: {
+    borderBottom: 'none',
+  },
+  evidenceLabel: {
+    fontSize: 13,
+    color: '#c2d3e6',
+    lineHeight: 1.5,
+  },
+  evidenceValue: {
     fontSize: 14,
     fontWeight: 700,
     color: '#fff',
-    marginBottom: 6,
+    fontVariantNumeric: 'tabular-nums',
+  },
+  evidenceValueStrong: {
+    fontSize: 17,
+    fontWeight: 800,
+    color: '#fff',
+    fontVariantNumeric: 'tabular-nums',
+  },
+  ciNote: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#8fa8c2',
+    lineHeight: 1.6,
+  },
+  warnNote: {
+    marginTop: 10,
+    fontSize: 12,
+    color: '#fbbf24',
+    lineHeight: 1.6,
+    display: 'flex',
+    alignItems: 'flex-start',
+  },
+  adviceCard: {
+    display: 'flex',
+    gap: 12,
+    padding: '14px 16px',
+    background: 'rgba(74,158,255,0.10)',
+    border: '1px solid rgba(74,158,255,0.28)',
+    borderRadius: 12,
+  },
+  adviceIcon: {
+    fontSize: 18,
+    color: '#7ab8ff',
+    marginTop: 2,
+  },
+  adviceLabel: {
+    fontSize: 12,
+    color: '#8fa8c2',
+    marginBottom: 4,
+  },
+  adviceText: {
+    fontSize: 13.5,
+    color: '#e8f2ff',
+    lineHeight: 1.7,
+  },
+  fold: {
+    background: 'rgba(20, 32, 50, 0.6)',
+    border: '1px solid rgba(120,160,210,0.16)',
+    borderRadius: 12,
+    padding: '10px 16px',
+  },
+  foldSummary: {
+    cursor: 'pointer',
+    fontSize: 13,
+    color: '#9fb8d1',
+  },
+  foldBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    padding: '12px 2px 6px',
+  },
+  foldLine: {
+    fontSize: 12.5,
+    lineHeight: 1.7,
+    color: '#c2d3e6',
+  },
+  foldHint: {
+    fontSize: 12,
+    lineHeight: 1.6,
+    color: '#7f9ab5',
+  },
+  chartBox: {
+    paddingTop: 8,
   },
   emptyContainer: {
     display: 'flex',

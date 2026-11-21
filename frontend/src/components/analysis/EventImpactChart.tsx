@@ -28,11 +28,15 @@ interface EventImpactChartProps {
   height?: number;
 }
 
+/**
+ * 走势图只负责"看图核对"，结论和依据在页面上方的结论卡里。
+ * 不在图里重复摆数字，避免同一件事说三遍。
+ */
 export const EventImpactChart: React.FC<EventImpactChartProps> = ({
   data,
   eventDate,
   eventName = '施工事件',
-  height = 400,
+  height = 340,
 }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<echarts.ECharts | null>(null);
@@ -46,11 +50,8 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
 
     const chart = chartInstance.current;
 
-    // 合并前后期数据
-    const allDates = [
-      ...data.before_period.dates,
-      ...data.after_period.dates,
-    ];
+    const beforeCount = data.before_period.dates.length;
+    const allDates = [...data.before_period.dates, ...data.after_period.dates];
     const treatedValues = [
       ...data.before_period.treated_values,
       ...data.after_period.treated_values,
@@ -60,164 +61,121 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
       ...data.after_period.control_values,
     ];
 
-    // 找到事件日期的索引
-    const eventIndex = allDates.indexOf(eventDate);
+    // 施工日不是测量日：竖线放在"施工后第一次测量"的位置，之前的写法取不到值，线会消失
+    const eventIndex = beforeCount;
 
-    // 反事实预测（如果有）
     const counterfactual = data.after_period.counterfactual
       ? [
-          ...Array(data.before_period.dates.length).fill(null),
+          ...Array(beforeCount).fill(null),
           ...data.after_period.counterfactual,
         ]
       : [];
 
     const option: echarts.EChartsOption = {
       backgroundColor: 'transparent',
-      title: {
-        text: `${eventName}影响分析`,
-        subtext: `方法: ${data.method === 'DID' ? '对比法' : '趋势模拟法'}`,
-        left: 'center',
-        textStyle: {
-          color: '#fff',
-          fontSize: 16,
-          fontWeight: 'bold',
-        },
-        subtextStyle: {
-          color: '#fff',
-          fontSize: 12,
-        },
-      },
       tooltip: {
         trigger: 'axis',
         backgroundColor: 'rgba(20, 20, 40, 0.95)',
         borderColor: 'rgba(74, 158, 255, 0.3)',
-        textStyle: {
-          color: '#fff',
-        },
-        axisPointer: {
-          type: 'cross',
-          label: {
-            backgroundColor: 'rgba(74, 158, 255, 0.8)',
-          },
-        },
+        textStyle: { color: '#fff' },
+        valueFormatter: (v) => (v === null || v === undefined ? '-' : `${Number(v).toFixed(2)} mm`),
       },
       legend: {
-        data: ['受影响点位', '对比点位', '如果没施工'],
-        top: 40,
-        textStyle: {
-          color: '#fff',
-        },
+        data: ['受影响点位', '对比点位（均值）'].concat(counterfactual.length ? ['如果没施工'] : []),
+        top: 0,
+        textStyle: { color: '#cfe0f2', fontSize: 12 },
       },
       grid: {
         left: '3%',
         right: '4%',
-        bottom: '3%',
-        top: 100,
+        bottom: '6%',
+        top: 44,
         containLabel: true,
       },
       xAxis: {
         type: 'category',
         data: allDates,
         boundaryGap: false,
-        axisLine: {
-          lineStyle: {
-            color: 'rgba(74, 158, 255, 0.3)',
-          },
-        },
-        axisLabel: {
-          color: '#fff',
-          rotate: 45,
-        },
-        splitLine: {
-          show: true,
-          lineStyle: {
-            color: 'rgba(74, 158, 255, 0.1)',
-          },
-        },
+        axisLine: { lineStyle: { color: 'rgba(74, 158, 255, 0.3)' } },
+        axisLabel: { color: '#9fb8d1', rotate: 45, fontSize: 11 },
+        splitLine: { show: false },
       },
       yAxis: {
         type: 'value',
-        name: '沉降 (mm)',
-        nameTextStyle: {
-          color: '#fff',
-        },
-        axisLine: {
-          lineStyle: {
-            color: 'rgba(74, 158, 255, 0.3)',
-          },
-        },
-        axisLabel: {
-          color: '#fff',
-        },
-        splitLine: {
-          lineStyle: {
-            color: 'rgba(74, 158, 255, 0.1)',
-          },
-        },
+        name: '累计沉降 (mm)',
+        nameTextStyle: { color: '#9fb8d1', fontSize: 11 },
+        axisLine: { show: false },
+        axisLabel: { color: '#9fb8d1', fontSize: 11 },
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
       },
       series: [
-        // 处理组
         {
           name: '受影响点位',
           type: 'line',
           data: treatedValues,
-          lineStyle: {
-            color: '#ff7a45',
-            width: 2,
-          },
-          itemStyle: {
-            color: '#ff7a45',
-          },
+          lineStyle: { color: '#ff7a45', width: 2.5 },
+          itemStyle: { color: '#ff7a45' },
           symbol: 'circle',
           symbolSize: 6,
+          markArea: {
+            silent: true,
+            data: [
+              [
+                {
+                  xAxis: allDates[0],
+                  itemStyle: { color: 'rgba(120,160,210,0.06)' },
+                  label: { show: true, position: 'insideTop', color: '#8fa8c2', fontSize: 11, formatter: '施工前' },
+                },
+                { xAxis: allDates[beforeCount - 1] },
+              ],
+              [
+                {
+                  xAxis: allDates[beforeCount],
+                  itemStyle: { color: 'rgba(255,122,69,0.07)' },
+                  label: { show: true, position: 'insideTop', color: '#ffb28c', fontSize: 11, formatter: '施工后' },
+                },
+                { xAxis: allDates[allDates.length - 1] },
+              ],
+            ],
+          },
           markLine: {
+            symbol: 'none',
             data: [
               {
                 xAxis: eventIndex,
                 label: {
-                  formatter: eventName,
+                  formatter: `施工日 ${eventDate.slice(5)}`,
                   color: '#fff',
+                  fontSize: 11,
+                  rotate: 0,
+                  position: 'insideEndTop',
+                  backgroundColor: 'rgba(255,77,79,0.85)',
+                  padding: [2, 6],
+                  borderRadius: 3,
                 },
-                lineStyle: {
-                  color: '#ff4d4f',
-                  type: 'dashed',
-                  width: 2,
-                },
+                lineStyle: { color: '#ff4d4f', type: 'dashed', width: 1.5 },
               },
             ],
           },
         },
-        // 对照组
         {
-          name: '对比点位',
+          name: '对比点位（均值）',
           type: 'line',
           data: controlValues,
-          lineStyle: {
-            color: '#4a9eff',
-            width: 2,
-          },
-          itemStyle: {
-            color: '#4a9eff',
-          },
+          lineStyle: { color: '#4a9eff', width: 2 },
+          itemStyle: { color: '#4a9eff' },
           symbol: 'circle',
-          symbolSize: 6,
+          symbolSize: 5,
         },
-        // 反事实预测
         ...(counterfactual.length > 0
           ? [
               {
                 name: '如果没施工',
-                type: 'line',
+                type: 'line' as const,
                 data: counterfactual,
-                lineStyle: {
-                  color: '#52c41a',
-                  width: 2,
-                  type: 'dashed',
-                },
-                itemStyle: {
-                  color: '#52c41a',
-                },
-                symbol: 'circle',
+                lineStyle: { color: '#52c41a', width: 2, type: 'dashed' as const },
+                itemStyle: { color: '#52c41a' },
+                symbol: 'circle' as const,
                 symbolSize: 4,
               },
             ]
@@ -225,16 +183,11 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
       ],
     };
 
-    chart.setOption(option);
+    chart.setOption(option, true);
 
-    const handleResize = () => {
-      chart.resize();
-    };
+    const handleResize = () => chart.resize();
     window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
+    return () => window.removeEventListener('resize', handleResize);
   }, [data, eventDate, eventName]);
 
   useEffect(() => {
@@ -246,119 +199,5 @@ export const EventImpactChart: React.FC<EventImpactChartProps> = ({
     };
   }, []);
 
-  return (
-    <div style={styles.container}>
-      <div ref={chartRef} style={{ width: '100%', height: `${height}px` }} />
-
-      {/* 分析结果 */}
-      <div style={styles.resultContainer}>
-        <div style={styles.resultCard}>
-          <div style={styles.resultLabel}>净影响</div>
-          <div style={styles.resultValue}>
-            {(data.treatment_effect ?? 0) > 0 ? '+' : ''}
-            {(data.treatment_effect ?? 0).toFixed(3)} mm
-          </div>
-          <div style={styles.resultHint}>
-            事件导致的净影响
-          </div>
-        </div>
-
-        <div style={styles.resultCard}>
-          <div style={styles.resultLabel}>受影响点位变化</div>
-          <div style={styles.resultValue}>
-            {(data.treated_change ?? 0) > 0 ? '+' : ''}
-            {(data.treated_change ?? 0).toFixed(3)} mm
-          </div>
-          <div style={styles.resultHint}>
-            受影响点位的变化
-          </div>
-        </div>
-
-        <div style={styles.resultCard}>
-          <div style={styles.resultLabel}>对比点位变化</div>
-          <div style={styles.resultValue}>
-            {(data.control_change ?? 0) > 0 ? '+' : ''}
-            {(data.control_change ?? 0).toFixed(3)} mm
-          </div>
-          <div style={styles.resultHint}>
-            未受影响点位的变化
-          </div>
-        </div>
-
-        <div style={styles.resultCard}>
-          <div style={styles.resultLabel}>波动范围</div>
-          <div style={styles.resultValue}>
-            [{(data.confidence_interval?.[0] ?? 0).toFixed(3)}, {(data.confidence_interval?.[1] ?? 0).toFixed(3)}]
-          </div>
-          <div style={styles.resultHint}>
-            95% 可能范围
-          </div>
-        </div>
-      </div>
-
-      {/* 解释 */}
-      <div style={styles.interpretation}>
-        <div style={styles.interpretationIcon}>
-          <i className="fas fa-info-circle" />
-        </div>
-        <div style={styles.interpretationText}>
-          {data.interpretation}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-  },
-  resultContainer: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '16px',
-    padding: '16px',
-    backgroundColor: 'rgba(30, 30, 50, 0.6)',
-    borderRadius: '8px',
-    border: '1px solid rgba(74, 158, 255, 0.2)',
-  },
-  resultCard: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
-  resultLabel: {
-    fontSize: '12px',
-    color: '#fff',
-  },
-  resultValue: {
-    fontSize: '20px',
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  resultHint: {
-    fontSize: '13px',
-    color: '#ccc',
-  },
-  interpretation: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '12px',
-    padding: '16px',
-    backgroundColor: 'rgba(74, 158, 255, 0.1)',
-    borderRadius: '8px',
-    border: '1px solid rgba(74, 158, 255, 0.2)',
-  },
-  interpretationIcon: {
-    fontSize: '20px',
-    color: '#4a9eff',
-    flexShrink: 0,
-  },
-  interpretationText: {
-    fontSize: '14px',
-    color: '#fff',
-    lineHeight: '1.6',
-  },
+  return <div ref={chartRef} style={{ width: '100%', height: `${height}px` }} />;
 };

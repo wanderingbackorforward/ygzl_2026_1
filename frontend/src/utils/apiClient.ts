@@ -6,7 +6,6 @@ import {
   generateMockPrediction,
   generateMockModelComparison,
   generateMockSpatialCorrelation,
-  generateMockCausalAnalysis,
   generateMockInformerPrediction,
   generateMockSTGCNPrediction,
   generateMockCausalDiscover,
@@ -194,6 +193,9 @@ export async function fetchSpatialCorrelation(distanceThreshold: number = 50) {
 
 /**
  * 因果分析
+ *
+ * 注意：这里故意不接 mock。诊断结果会直接影响现场判断，
+ * 接口失败时必须如实报错，不能拿随机数冒充实测结论。
  */
 export async function fetchCausalAnalysis(params: {
   point_id: string;
@@ -202,21 +204,27 @@ export async function fetchCausalAnalysis(params: {
   method: 'DID' | 'SCM';
   window_days: number;
 }) {
-  return fetchWithFallback(
-    `${API_BASE}/ml/causal/event-impact`,
-    {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20000);
+  try {
+    const response = await fetch(`${API_BASE}/ml/causal/event-impact`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params),
-    },
-    () =>
-      generateMockCausalAnalysis(
-        params.point_id,
-        params.event_date,
-        params.method,
-        params.window_days
-      )
-  );
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error(`诊断服务暂时不可用（HTTP ${response.status}），请稍后重试`);
+    }
+    return await response.json();
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('诊断超时，请稍后重试');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
