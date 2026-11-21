@@ -349,14 +349,11 @@ def get_summary():
                     slope = 0.0
                     predicted_change_30d = 0.0
 
-                # alert_level 判定
-                abs_change = abs(total_change)
-                if abs_change >= 5 or abs(slope) >= 0.15:
-                    alert_level = 'alert'
-                elif abs_change >= 3 or abs(slope) >= 0.08:
-                    alert_level = 'warning'
-                else:
-                    alert_level = 'normal'
+                # alert_level 判定统一走 rules 模块，禁止在此重复阈值
+                alert_level = settlement_rules.classify_point(
+                    total_change=total_change,
+                    trend_slope=slope,
+                )['level']
 
                 # trend_type
                 if abs(slope) < 0.01:
