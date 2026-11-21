@@ -6,6 +6,7 @@
 
 from flask import Blueprint, request, jsonify
 from modules.db.vendor import get_repo
+from modules.rules import temperature as temperature_rules
 from .algorithms import TemperatureAlgorithms
 from .construction_guide import ConstructionGuide
 from .intelligence import TemperatureIntelligenceService
@@ -80,9 +81,9 @@ def v2_overview():
         return jsonify({
             'success': True,
             'data': {
-                'summary': summary if isinstance(summary, list) else [],
+                'summary': [temperature_rules.enrich_point(row) for row in summary] if isinstance(summary, list) else [],
                 'stats': stats,
-                'points': points if isinstance(points, list) else [],
+                'points': [temperature_rules.enrich_point(row) for row in points] if isinstance(points, list) else [],
                 'construction_assessment': assessment,
                 'thresholds': snapshot.get('thresholds', {}),
             }

@@ -67,6 +67,7 @@ from modules.api.vibration_handler import vibration_bp
 
 # 工单系统模块
 from modules.ticket_system.api import ticket_bp, user_bp
+from modules.ticket_system.models import ticket_model
 
 # 二级数据分析模块
 from modules.analysis_v2.api import analysis_v2_bp
@@ -81,6 +82,11 @@ from modules.tunnel.api import tunnel_bp
 from modules.advanced_analysis.api import advanced_bp
 from modules.assistant.api import assistant_bp
 from modules.module_registry.api.module_api import module_bp
+
+# 业务规则唯一出处：阈值、分级词表、聚合、系统状态
+from modules.rules import settlement as settlement_rules
+from modules.rules import temperature as temperature_rules
+from modules.rules import status as status_rules
 
 # Agent 巡检模块（/api/agent）— 与 modules.assistant（/api/assistant 聊天）独立，勿混用
 try:
@@ -285,6 +291,16 @@ def get_summary():
     print("[API] GET /api/summary")
     """获取所有监测点的汇总分析，支持 days 参数过滤时间范围"""
     days = request.args.get('days', type=int)
+    with_summary = str(request.args.get('with_summary', '')).lower() in ('1', 'true', 'yes')
+
+    def _respond(rows):
+        enriched = [settlement_rules.enrich_point(row) for row in (rows or [])]
+        if with_summary:
+            return json.dumps(
+                {'points': enriched, 'summary': settlement_rules.summarize_points(enriched)},
+                default=decimal_default,
+            )
+        return json.dumps(enriched, default=decimal_default)
 
     if days and days > 0:
         # 按时间范围从原始数据动态计算
@@ -306,7 +322,7 @@ def get_summary():
             r.raise_for_status()
             raw = r.json()
             if not raw:
-                return json.dumps([], default=decimal_default)
+                return _respond([])
 
             # 按点位分组计算统计
             from collections import defaultdict
@@ -366,15 +382,13 @@ def get_summary():
 
             import re
             result.sort(key=lambda x: (int(re.sub(r'[^0-9]', '', x['point_id']) or '0'), x['point_id']))
-            return json.dumps(result, default=decimal_default)
+            return _respond(result)
         except Exception as e:
             print(f"[API] summary with days={days} failed: {e}")
             # fallback 到静态表
-            summary = repo.get_summary()
-            return json.dumps(summary, default=decimal_default)
+            return _respond(repo.get_summary())
     else:
-        summary = repo.get_summary()
-        return json.dumps(summary, default=decimal_default)
+        return _respond(repo.get_summary())
 
 @app.route('/api/trends')
 def get_trends():
@@ -757,13 +771,13 @@ def get_crack_stats_overview():
 @temperature_api.route('/temperature/points', methods=['GET'])
 def get_temperature_points():
     print("[API] GET /api/temperature/points")
-    result = repo.temperature_get_points()
+    result = [temperature_rules.enrich_point(row) for row in (repo.temperature_get_points() or [])]
     return jsonify({'status': 'success','data': result,'message': f'成功获取{len(result)}个温度监测点'})
 
 @temperature_api.route('/temperature/summary', methods=['GET'])
 def get_temperature_summary():
     print("[API] GET /api/temperature/summary")
-    result = repo.temperature_get_summary()
+    result = [temperature_rules.enrich_point(row) for row in (repo.temperature_get_summary() or [])]
     return json_dumps_response({'status': 'success','data': result,'message': f'成功获取{len(result)}个温度监测点的分析结果'})
 
 @temperature_api.route('/temperature/data/<sensor_id>', methods=['GET'])
@@ -986,33 +1000,20 @@ def get_overview_summary():
     try:
         # --- 沉降数据 ---
         try:
-            settlement_points = repo.get_all_points()
-            settlement_summary = repo.get_summary()
+            settlement_summary = repo.get_summary() or []
             settlement_trends = repo.get_trends()
-            
-            total_points = len(settlement_points) if settlement_points else 0
-            max_value = 0
-            alert_count = 0
-            if settlement_summary:
-                for item in settlement_summary:
-                    # settlement_analysis 字段：max_value / avg_daily_rate / alert_level
-                    val = float(item.get('max_value', 0) or 0)
-                    if abs(val) > abs(max_value):
-                        max_value = val
-                    level = str(item.get('alert_level') or '')
-                    if level and level != '正常':
-                        alert_count += 1
-            
+            settlement_info = settlement_rules.summarize_points(settlement_summary)
+
             trend_distribution = {}
             if settlement_trends:
                 for t in settlement_trends:
                     trend_distribution[t.get('trend_type', '未知')] = t.get('count', 0)
-            
+
             result['settlement'] = {
-                'total_points': total_points,
-                'max_value': round(max_value, 2),
-                'alert_count': alert_count,
-                'trend_distribution': trend_distribution
+                **settlement_info,
+                # 兼容旧字段：max_value 统一为“最大累计沉降”
+                'max_value': settlement_info.get('max_settlement'),
+                'trend_distribution': trend_distribution,
             }
         except Exception as e:
             print(f"[Overview] 沉降数据聚合失败: {e}")
@@ -1052,6 +1053,7 @@ def get_overview_summary():
             temp_trends = repo.temperature_get_trends()
             
             total_sensors = len(temp_points) if temp_points else 0
+            temperature_info = temperature_rules.summarize_points(temp_points or [])
             avg_temp = min_temp = max_temp = 0
             
             if temp_summary:
@@ -1072,11 +1074,13 @@ def get_overview_summary():
                     trend_distribution[t.get('trend_type', '未知')] = t.get('count', 0)
             
             result['temperature'] = {
+                **temperature_info,
                 'total_sensors': total_sensors,
+                'analyzed_sensors': temperature_info.get('total_points', 0),
                 'avg_temp': avg_temp,
                 'min_temp': min_temp,
                 'max_temp': max_temp,
-                'trend_distribution': trend_distribution
+                'trend_distribution': trend_distribution,
             }
         except Exception as e:
             print(f"[Overview] 温度数据聚合失败: {e}")
@@ -1103,7 +1107,7 @@ def get_overview_summary():
 
         # --- 计算综合安全评分 ---
         score = 100
-        score -= result['settlement'].get('alert_count', 0) * 2
+        score -= result['settlement'].get('abnormal_count', 0) * 2
         score -= result['cracks'].get('expanding_count', 0) * 3
         score -= result['cracks'].get('critical_count', 0) * 2
         score = max(0, min(100, score))
@@ -1114,6 +1118,50 @@ def get_overview_summary():
     except Exception as e:
         print(f"[Overview] 汇总数据获取失败: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+# =========================================================
+# 系统状态唯一出口：封面 / 总览 / 沉降 / 工单 读同一份结论
+# =========================================================
+@app.route('/api/status/summary', methods=['GET'])
+def get_status_summary():
+    print("[API] GET /api/status/summary")
+    errors = {}
+
+    try:
+        settlement_info = settlement_rules.summarize_points(repo.get_summary() or [])
+    except Exception as e:
+        settlement_info = {}
+        errors['settlement'] = str(e)
+
+    try:
+        temperature_info = temperature_rules.summarize_points(repo.temperature_get_points() or [])
+    except Exception as e:
+        temperature_info = {}
+        errors['temperature'] = str(e)
+
+    tickets_info = {}
+    try:
+        stats = ticket_model.get_ticket_statistics() or {}
+        by_status = stats.get('by_status') or {}
+        tickets_info = {
+            'pending': by_status.get('PENDING', 0),
+            'overdue': stats.get('overdue', 0),
+            'total': stats.get('total', 0),
+        }
+    except Exception as e:
+        errors['tickets'] = str(e)
+
+    payload = status_rules.build_status(
+        settlement=settlement_info,
+        temperature=temperature_info,
+        tickets=tickets_info,
+    )
+    if errors:
+        payload['errors'] = errors
+    return json.dumps(payload, ensure_ascii=False, default=decimal_default), 200, {
+        'Content-Type': 'application/json'
+    }
 
 
 # =========================================================
