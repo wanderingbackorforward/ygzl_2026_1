@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { apiGet, apiPost, apiPut } from '../lib/api'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { PageHeader, KpiCard, DataPanel, StateView } from '../components/common/ui'
 
 type TicketStatus = 'PENDING' | 'IN_PROGRESS' | 'SUSPENDED' | 'RESOLVED' | 'CLOSED' | 'REJECTED'
 type TicketPriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
@@ -22,17 +23,20 @@ interface Ticket {
   comments?: Comment[]
 }
 
-function transitionAction(from: TicketStatus, to: TicketStatus): { label: string; className: string } {
+function transitionAction(
+  from: TicketStatus,
+  to: TicketStatus,
+): { label: string; tone: 'primary' | 'ok' | 'warn' | 'danger' | 'muted' } {
   if (to === 'IN_PROGRESS') {
     return {
       label: from === 'PENDING' ? '开始处理' : from === 'SUSPENDED' ? '恢复处理' : '重新打开',
-      className: 'bg-blue-600 hover:bg-blue-500',
+      tone: 'primary',
     }
   }
-  if (to === 'RESOLVED') return { label: '标记解决', className: 'bg-green-600 hover:bg-green-500' }
-  if (to === 'CLOSED') return { label: '关闭工单', className: 'bg-slate-600 hover:bg-slate-500' }
-  if (to === 'SUSPENDED') return { label: '挂起', className: 'bg-amber-600 hover:bg-amber-500' }
-  return { label: '拒绝工单', className: 'bg-red-600 hover:bg-red-500' }
+  if (to === 'RESOLVED') return { label: '标记解决', tone: 'ok' }
+  if (to === 'CLOSED') return { label: '关闭工单', tone: 'muted' }
+  if (to === 'SUSPENDED') return { label: '挂起', tone: 'warn' }
+  return { label: '拒绝工单', tone: 'danger' }
 }
 
 interface Comment {
@@ -55,20 +59,20 @@ interface TicketConfig {
   priority?: Record<string, { name: string; color?: string }>
 }
 
-const STATUS_COLORS: Record<TicketStatus, string> = {
-  PENDING: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40',
-  IN_PROGRESS: 'bg-blue-500/20 text-blue-400 border-blue-500/40',
-  SUSPENDED: 'bg-gray-500/20 text-gray-400 border-gray-500/40',
-  RESOLVED: 'bg-green-500/20 text-green-400 border-green-500/40',
-  CLOSED: 'bg-slate-500/20 text-slate-400 border-slate-500/40',
-  REJECTED: 'bg-red-500/20 text-red-400 border-red-500/40',
+const STATUS_CHIP: Record<TicketStatus, string> = {
+  PENDING: 'ds-chip--warn',
+  IN_PROGRESS: 'ds-chip--info',
+  SUSPENDED: '',
+  RESOLVED: 'ds-chip--ok',
+  CLOSED: '',
+  REJECTED: 'ds-chip--danger',
 }
 
-const PRIORITY_COLORS: Record<TicketPriority, string> = {
-  CRITICAL: 'bg-red-500/20 text-red-400 border-red-500/40',
-  HIGH: 'bg-orange-500/20 text-orange-400 border-orange-500/40',
-  MEDIUM: 'bg-blue-500/20 text-blue-400 border-blue-500/40',
-  LOW: 'bg-green-500/20 text-green-400 border-green-500/40',
+const PRIORITY_CHIP: Record<TicketPriority, string> = {
+  CRITICAL: 'ds-chip--danger',
+  HIGH: 'ds-chip--warn',
+  MEDIUM: 'ds-chip--info',
+  LOW: 'ds-chip--ok',
 }
 
 interface CreateTicketDrawerProps {
@@ -198,7 +202,7 @@ function CreateTicketDrawer({ config, template, onClose, onSuccess }: CreateTick
                     }
                   }}
                   rows={4}
-                  className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+                  className="ds-input w-full"
                   placeholder="输入问题描述..."
                 />
                 <div className="mt-3 flex items-center justify-between">
@@ -213,7 +217,7 @@ function CreateTicketDrawer({ config, template, onClose, onSuccess }: CreateTick
                     type="button"
                     onClick={handleQuickParse}
                     disabled={parsing}
-                    className="rounded bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
+                    className="ds-btn ds-btn--primary"
                   >
                     {parsing ? '解析中...' : 'AI 解析 (Ctrl+Enter)'}
                   </button>
@@ -253,7 +257,7 @@ function CreateTicketDrawer({ config, template, onClose, onSuccess }: CreateTick
                     type="text"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+                    className="ds-input w-full"
                     placeholder="简要描述问题"
                   />
                 </div>
@@ -265,7 +269,7 @@ function CreateTicketDrawer({ config, template, onClose, onSuccess }: CreateTick
                   <select
                     value={formData.ticket_type}
                     onChange={(e) => setFormData({ ...formData, ticket_type: e.target.value })}
-                    className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+                    className="ds-input w-full"
                   >
                     <option value="">请选择类型</option>
                     {config.types &&
@@ -282,7 +286,7 @@ function CreateTicketDrawer({ config, template, onClose, onSuccess }: CreateTick
                   <select
                     value={formData.priority}
                     onChange={(e) => setFormData({ ...formData, priority: e.target.value as TicketPriority })}
-                    className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+                    className="ds-input w-full"
                   >
                     {config.priority &&
                       Object.entries(config.priority).map(([key, val]) => (
@@ -299,7 +303,7 @@ function CreateTicketDrawer({ config, template, onClose, onSuccess }: CreateTick
                     type="text"
                     value={formData.monitoring_point_id}
                     onChange={(e) => setFormData({ ...formData, monitoring_point_id: e.target.value })}
-                    className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+                    className="ds-input w-full"
                     placeholder="监测点编号（可选）"
                   />
                 </div>
@@ -310,7 +314,7 @@ function CreateTicketDrawer({ config, template, onClose, onSuccess }: CreateTick
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={6}
-                    className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+                    className="ds-input w-full"
                     placeholder="详细描述问题情况..."
                   />
                 </div>
@@ -323,14 +327,14 @@ function CreateTicketDrawer({ config, template, onClose, onSuccess }: CreateTick
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 rounded border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+                className="ds-btn flex-1"
               >
                 取消
               </button>
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex-1 rounded bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
+                className="ds-btn ds-btn--primary flex-1"
               >
                 {submitting ? '创建中...' : '创建'}
               </button>
@@ -540,8 +544,16 @@ export default function Tickets() {
     }
   }
 
+  const listState = loading
+    ? 'loading'
+    : loadErrors.includes('工单列表')
+      ? 'error'
+      : filteredTickets.length === 0
+        ? 'empty'
+        : 'ready'
+
   return (
-    <div className="flex h-full flex-col bg-slate-950">
+    <div className="ds-page">
       {pageNotice && (
         <div className="shrink-0 border-b border-green-500/20 bg-green-500/10 px-6 py-2 text-sm text-green-200">
           <i className="fas fa-circle-check mr-2" />
@@ -567,104 +579,109 @@ export default function Tickets() {
           </button>
         </div>
       )}
-      {/* 顶栏：统计徽章 + 快捷按钮 + 新建按钮 */}
-      <div className="shrink-0 border-b border-cyan-500/20 bg-slate-900/50 px-6 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-lg font-semibold text-white">工单</h1>
+
+      <PageHeader
+        eyebrow="TICKETS · 工单闭环"
+        title="工单"
+        description="异常点位 → 建单 → 处置 → 归档，一条链路追到底"
+        meta={
+          <>
             {systemStatus && (
-              <span className="rounded border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-sm text-cyan-300">
+              <span className="ds-chip ds-chip--info">
                 监测点异常 {systemStatus.counts.settlement_abnormal}
               </span>
             )}
             {stats && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="rounded border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 text-yellow-400">
-                  待处理 {stats.by_status?.PENDING || 0}
-                </span>
-                <span className="rounded border border-blue-500/40 bg-blue-500/10 px-2 py-0.5 text-blue-400">
-                  处理中 {stats.by_status?.IN_PROGRESS || 0}
-                </span>
-                {(stats.overdue || 0) > 0 && (
-                  <span className="rounded border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-red-400">
-                    逾期 {stats.overdue}
-                  </span>
-                )}
-              </div>
+              <span className="ds-chip ds-chip--warn">待处理 {stats.by_status?.PENDING || 0}</span>
             )}
-          </div>
-          <div className="flex items-center gap-2">
-            {/* 快捷模板按钮 */}
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => {
-                  setQuickTemplate('SETTLEMENT_ALERT')
-                  setShowCreateDrawer(true)
-                }}
-                className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-white hover:border-cyan-500 hover:bg-slate-700"
-                title="快速创建沉降告警工单"
-              >
-                沉降
-              </button>
-              <button
-                onClick={() => {
-                  setQuickTemplate('CRACK_ALERT')
-                  setShowCreateDrawer(true)
-                }}
-                className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-white hover:border-cyan-500 hover:bg-slate-700"
-                title="快速创建裂缝异常工单"
-              >
-                裂缝
-              </button>
-              <button
-                onClick={() => {
-                  setQuickTemplate('TEMPERATURE_ALERT')
-                  setShowCreateDrawer(true)
-                }}
-                className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-white hover:border-cyan-500 hover:bg-slate-700"
-                title="快速创建温度告警工单"
-              >
-                温度
-              </button>
-              <button
-                onClick={() => {
-                  setQuickTemplate('VIBRATION_ALERT')
-                  setShowCreateDrawer(true)
-                }}
-                className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-white hover:border-cyan-500 hover:bg-slate-700"
-                title="快速创建振动异常工单"
-              >
-                振动
-              </button>
+            {stats && (
+              <span className="ds-chip ds-chip--accent">处理中 {stats.by_status?.IN_PROGRESS || 0}</span>
+            )}
+            {stats && (stats.overdue || 0) > 0 && (
+              <span className="ds-chip ds-chip--danger">逾期 {stats.overdue}</span>
+            )}
+          </>
+        }
+        actions={
+          <>
+            <div className="ds-toolbar" style={{ gap: 6 }}>
+              {[
+                { type: 'SETTLEMENT_ALERT', label: '沉降', title: '快速创建沉降告警工单' },
+                { type: 'CRACK_ALERT', label: '裂缝', title: '快速创建裂缝异常工单' },
+                { type: 'TEMPERATURE_ALERT', label: '温度', title: '快速创建温度告警工单' },
+                { type: 'VIBRATION_ALERT', label: '振动', title: '快速创建振动异常工单' },
+              ].map((item) => (
+                <button
+                  key={item.type}
+                  type="button"
+                  className="ds-btn"
+                  title={item.title}
+                  onClick={() => {
+                    setQuickTemplate(item.type)
+                    setShowCreateDrawer(true)
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
-            <div className="h-4 w-px bg-slate-600"></div>
             <button
+              type="button"
+              className="ds-btn ds-btn--primary"
               onClick={() => {
                 setQuickTemplate(null)
                 setShowCreateDrawer(true)
               }}
-              className="rounded bg-cyan-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-cyan-500"
             >
               + 新建工单
             </button>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
-      {/* 搜索筛选栏 */}
-      <div className="shrink-0 border-b border-slate-700/50 bg-slate-900/30 px-6 py-2.5">
-        <div className="flex items-center gap-3">
+      <div className="ds-page__body">
+        {stats && (
+          <div className="ds-kpi-grid">
+            <KpiCard
+              compact
+              label="待处理"
+              value={stats.by_status?.PENDING || 0}
+              unit="单"
+              tone={(stats.by_status?.PENDING || 0) > 0 ? 'warn' : 'ok'}
+              sub="待首次响应"
+            />
+            <KpiCard
+              compact
+              label="处理中"
+              value={stats.by_status?.IN_PROGRESS || 0}
+              unit="单"
+              tone="info"
+              sub="已派单未闭环"
+            />
+            <KpiCard
+              compact
+              label="逾期"
+              value={stats.overdue || 0}
+              unit="单"
+              tone={(stats.overdue || 0) > 0 ? 'danger' : 'ok'}
+              sub="超过处理时限"
+            />
+            <KpiCard compact label="今日新建" value={stats.today_created || 0} unit="单" sub="当日 0 点后" />
+          </div>
+        )}
+
+        <div className="ds-toolbar" style={{ flexShrink: 0 }}>
           <input
             type="text"
-            placeholder="搜索工单..."
+            className="ds-input ds-input--flex"
+            placeholder="搜索工单号 / 标题 / 描述…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 rounded border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-white placeholder-slate-400 outline-none focus:border-cyan-500"
           />
           <select
+            className="ds-input"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-white outline-none focus:border-cyan-500"
           >
             <option value="">所有状态</option>
             {config.status &&
@@ -675,9 +692,9 @@ export default function Tickets() {
               ))}
           </select>
           <select
+            className="ds-input"
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="rounded border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-white outline-none focus:border-cyan-500"
           >
             <option value="">所有优先级</option>
             {config.priority &&
@@ -688,126 +705,147 @@ export default function Tickets() {
               ))}
           </select>
         </div>
-      </div>
 
-      {/* 主内容：左侧列表 + 右侧详情 */}
-      <div className="flex min-h-0 flex-1">
-        {/* 左侧工单列表 */}
-        <div className="min-h-0 w-96 shrink-0 overflow-y-auto border-r border-slate-700/50 bg-slate-900/20">
-          {loading ? (
-            <div className="flex items-center justify-center py-12 text-slate-400">加载中...</div>
-          ) : filteredTickets.length === 0 ? (
-            <div className="flex items-center justify-center py-12 text-slate-400">暂无工单</div>
-          ) : (
-            filteredTickets.map((ticket) => (
-              <div
+        <div className="ds-split">
+          <DataPanel
+            className="ds-split__side"
+            title="工单列表"
+            icon="fa-ticket"
+            subtitle={`${filteredTickets.length} 条`}
+            state={listState}
+            emptyText="暂无工单"
+            emptyHint={
+              searchQuery || statusFilter || priorityFilter
+                ? '当前筛选条件下没有记录，清空筛选再试'
+                : '还没有工单，右上角可直接新建'
+            }
+            errorText="工单列表接口不可用"
+            onRetry={loadTickets}
+            scroll
+          >
+            {filteredTickets.map((ticket) => (
+              <button
+                type="button"
                 key={ticket.id}
                 onClick={() => setSelectedTicket(ticket)}
-                className={`cursor-pointer border-b border-slate-700/30 px-4 py-3 transition-colors hover:bg-slate-800/40 ${
-                  selectedTicket?.id === ticket.id ? 'bg-slate-800/60' : ''
-                }`}
+                className={`ds-list-item ${selectedTicket?.id === ticket.id ? 'ds-list-item--active' : ''}`.trim()}
               >
-                <div className="mb-1.5 flex items-center justify-between">
-                  <span className="text-xs font-medium text-cyan-400">{ticket.ticket_number}</span>
-                  <span
-                    className={`rounded border px-1.5 py-0.5 text-xs ${
-                      STATUS_COLORS[ticket.status] || 'bg-slate-500/20 text-slate-400'
-                    }`}
-                  >
+                <div className="ds-list-item__top">
+                  <span className="ds-list-item__no">{ticket.ticket_number}</span>
+                  <span className={`ds-chip ${STATUS_CHIP[ticket.status] || ''}`.trim()}>
                     {getStatusName(ticket.status)}
                   </span>
                 </div>
-                <div className="mb-1.5 text-sm font-medium text-white">{ticket.title}</div>
-                <div className="flex items-center gap-2 text-xs text-slate-400">
-                  <span
-                    className={`rounded border px-1.5 py-0.5 ${
-                      PRIORITY_COLORS[ticket.priority] || 'bg-slate-500/20 text-slate-400'
-                    }`}
-                  >
+                <div className="ds-list-item__title">{ticket.title}</div>
+                <div className="ds-list-item__meta">
+                  <span className={`ds-chip ${PRIORITY_CHIP[ticket.priority] || ''}`.trim()}>
                     {getPriorityName(ticket.priority)}
                   </span>
                   <span>{formatDate(ticket.created_at)}</span>
                   {ticket.assignee_name && <span>· {ticket.assignee_name}</span>}
                 </div>
-              </div>
-            ))
-          )}
-        </div>
+              </button>
+            ))}
+          </DataPanel>
 
-        {/* 右侧详情面板 */}
-        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-900/10 p-6">
-          {selectedTicket ? (
-            <div>
-              <div className="mb-4 flex items-start justify-between">
-                <div>
-                  <div className="mb-1 text-xs font-medium text-cyan-400">{selectedTicket.ticket_number}</div>
-                  <h2 className="text-xl font-semibold text-white">{selectedTicket.title}</h2>
+          <DataPanel
+            className="ds-split__main"
+            title="工单详情"
+            icon="fa-file-lines"
+            subtitle={selectedTicket ? selectedTicket.ticket_number : undefined}
+            scroll
+          >
+            {selectedTicket ? (
+              <div style={{ padding: 'var(--ds-space-3) 14px' }}>
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div>
+                    <div className="ds-list-item__no">{selectedTicket.ticket_number}</div>
+                    <h2 className="ds-page-header__title" style={{ marginTop: 2 }}>
+                      {selectedTicket.title}
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    className="ds-btn"
+                    onClick={() => setSelectedTicket(null)}
+                  >
+                    关闭
+                  </button>
                 </div>
-                <button
-                  onClick={() => setSelectedTicket(null)}
-                  className="text-slate-400 hover:text-white"
-                >
-                  ✕
-                </button>
-              </div>
 
-              <div className="mb-4 grid grid-cols-2 gap-3">
-                <div className="rounded border border-slate-700/50 bg-slate-800/30 p-3">
-                  <div className="mb-1 text-xs text-slate-400">状态</div>
-                  <div className="text-sm font-medium text-white">{getStatusName(selectedTicket.status)}</div>
+                <div className="ds-meta-grid mb-3">
+                  <div className="ds-meta">
+                    <div className="ds-meta__label">状态</div>
+                    <div className="ds-meta__value">{getStatusName(selectedTicket.status)}</div>
+                  </div>
+                  <div className="ds-meta">
+                    <div className="ds-meta__label">优先级</div>
+                    <div className="ds-meta__value">{getPriorityName(selectedTicket.priority)}</div>
+                  </div>
+                  <div className="ds-meta">
+                    <div className="ds-meta__label">类型</div>
+                    <div className="ds-meta__value">{getTypeName(selectedTicket.ticket_type)}</div>
+                  </div>
+                  <div className="ds-meta">
+                    <div className="ds-meta__label">创建时间</div>
+                    <div className="ds-meta__value">{formatDate(selectedTicket.created_at)}</div>
+                  </div>
+                  {selectedTicket.monitoring_point_id && (
+                    <div className="ds-meta">
+                      <div className="ds-meta__label">监测点位</div>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/advanced?point=${encodeURIComponent(selectedTicket.monitoring_point_id!)}&from=tickets`)}
+                        className="ds-meta__value"
+                        style={{
+                          padding: 0,
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--ds-accent-text)',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                        }}
+                      >
+                        {selectedTicket.monitoring_point_id} · 回到点位
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <div className="rounded border border-slate-700/50 bg-slate-800/30 p-3">
-                  <div className="mb-1 text-xs text-slate-400">优先级</div>
-                  <div className="text-sm font-medium text-white">{getPriorityName(selectedTicket.priority)}</div>
-                </div>
-                <div className="rounded border border-slate-700/50 bg-slate-800/30 p-3">
-                  <div className="mb-1 text-xs text-slate-400">类型</div>
-                  <div className="text-sm font-medium text-white">{getTypeName(selectedTicket.ticket_type)}</div>
-                </div>
-                <div className="rounded border border-slate-700/50 bg-slate-800/30 p-3">
-                  <div className="mb-1 text-xs text-slate-400">创建时间</div>
-                  <div className="text-sm font-medium text-white">{formatDate(selectedTicket.created_at)}</div>
-                </div>
-                {selectedTicket.monitoring_point_id && (
-                  <div className="rounded border border-slate-700/50 bg-slate-800/30 p-3">
-                    <div className="mb-1 text-xs text-slate-400">监测点位</div>
-                    <button
-                      onClick={() => navigate(`/advanced?point=${encodeURIComponent(selectedTicket.monitoring_point_id!)}&from=tickets`)}
-                      className="text-sm font-medium text-cyan-400 hover:underline"
-                    >
-                      {selectedTicket.monitoring_point_id} · 回到点位
-                    </button>
+
+                {selectedTicket.description && (
+                  <div className="ds-meta mb-3">
+                    <div className="ds-meta__label">描述</div>
+                    <div style={{ marginTop: 4, fontSize: 'var(--ds-fs-small)', color: 'var(--ds-text)' }}>
+                      {selectedTicket.description}
+                    </div>
                   </div>
                 )}
-              </div>
 
-              {selectedTicket.description && (
-                <div className="mb-4 rounded border border-slate-700/50 bg-slate-800/30 p-4">
-                  <div className="mb-2 text-xs font-medium text-slate-400">描述</div>
-                  <div className="text-sm text-white">{selectedTicket.description}</div>
+                <div className="ds-toolbar">
+                  {(selectedTicket.allowed_transitions || []).map((next) => {
+                    const action = transitionAction(selectedTicket.status, next)
+                    return (
+                      <button
+                        key={next}
+                        type="button"
+                        onClick={() => handleStatusChange(selectedTicket.id, next)}
+                        className={`ds-btn ds-btn--${action.tone}`}
+                      >
+                        {action.label}
+                      </button>
+                    )
+                  })}
                 </div>
-              )}
-
-              <div className="flex gap-2">
-                {(selectedTicket.allowed_transitions || []).map((next) => {
-                  const action = transitionAction(selectedTicket.status, next)
-                  return (
-                    <button
-                      key={next}
-                      onClick={() => handleStatusChange(selectedTicket.id, next)}
-                      className={`rounded px-3 py-1.5 text-sm font-medium text-white ${action.className}`}
-                    >
-                      {action.label}
-                    </button>
-                  )
-                })}
               </div>
-            </div>
-          ) : (
-            <div className="flex h-full items-center justify-center text-slate-400">
-              选择一个工单查看详情
-            </div>
-          )}
+            ) : (
+              <StateView
+                kind="nodata"
+                title="选择一个工单查看详情"
+                hint="左侧列表点选后，可查看描述、关联点位与处置动作"
+                compact
+              />
+            )}
+          </DataPanel>
         </div>
       </div>
 

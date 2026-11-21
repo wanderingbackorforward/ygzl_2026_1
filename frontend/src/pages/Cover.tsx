@@ -33,15 +33,18 @@ export default function Cover() {
   const { modules } = useModules()
   const [status, setStatus] = useState<SystemStatus | null>(null)
   const [statusError, setStatusError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
+    setStatusError(false)
     apiGet<SystemStatus>('/status/summary')
       .then(setStatus)
       .catch(e => {
         console.error('[Cover] fetch status failed', e)
+        setStatus(null)
         setStatusError(true)
       })
-  }, [])
+  }, [reloadKey])
 
   const source = modules.length ? modules : DEFAULT_MODULES
   const entries = source
@@ -54,7 +57,13 @@ export default function Cover() {
   const statusLabel = status
     ? (status.level === 'alert' ? '存在报警' : status.level === 'warning' ? '有预警待处理' : '运行正常')
     : (statusError ? '状态获取失败' : '状态同步中')
-  const statusColor = statusTone === 'danger' ? '#ff8b9a' : statusTone === 'warning' ? '#ffc24d' : statusTone === 'normal' ? '#7dff9d' : '#cfd8e3'
+  const statusColor = statusTone === 'danger'
+    ? 'var(--ds-danger-text)'
+    : statusTone === 'warning'
+      ? 'var(--ds-warn-text)'
+      : statusTone === 'normal'
+        ? 'var(--ds-ok-text)'
+        : 'var(--ds-text-secondary)'
   const abnormalCount = status ? status.counts.settlement_abnormal : '--'
   const riskLabel = status?.level_cn ?? (statusError ? '未知' : '同步中')
 
@@ -72,28 +81,40 @@ export default function Cover() {
       {/* 标题区 */}
       <div className="touchkit-tile" style={{ padding: '36px 40px' }}>
         <span className={`touchkit-tile__bar touchkit-tile__bar--${statusTone}`} />
-        <div style={{ fontSize: 14, color: 'rgba(230,247,255,0.6)', letterSpacing: 3 }}>
+        <div style={{ fontSize: 14, color: 'var(--ds-text-muted)', letterSpacing: 3 }}>
           DIGITAL TWIN · 安全监测管控平台
         </div>
         <h1 style={{ fontSize: 'clamp(30px, 4.5vw, 56px)', fontWeight: 800, margin: '10px 0 8px', lineHeight: 1.1 }}>
           隧道工程安全监测数字孪生
         </h1>
-        <div style={{ fontSize: 'clamp(16px, 1.6vw, 20px)', color: 'rgba(230,247,255,0.78)' }}>
+        <div style={{ fontSize: 'clamp(16px, 1.6vw, 20px)', color: 'var(--ds-text-secondary)' }}>
           实时形变 · 多源传感 · 风险预警 · 智能研判
         </div>
-        <div
+        <button
+          type="button"
+          onClick={() => setReloadKey((k) => k + 1)}
+          title={statusError ? '接口不可用，点击重试' : '点击刷新系统状态'}
           style={{
             marginTop: 20, display: 'inline-flex', alignItems: 'center', gap: 12,
             padding: '12px 22px', borderRadius: 999,
-            background: `${statusColor}1f`, border: `1px solid ${statusColor}66`, color: statusColor,
-            fontSize: 18, fontWeight: 600,
+            background: statusTone === 'danger'
+              ? 'var(--ds-danger-soft)'
+              : statusTone === 'warning'
+                ? 'var(--ds-warn-soft)'
+                : statusTone === 'normal'
+                  ? 'var(--ds-ok-soft)'
+                  : 'rgba(255,255,255,0.05)',
+            border: `1px solid ${statusColor}`,
+            color: statusColor,
+            fontFamily: 'inherit',
+            fontSize: 18, fontWeight: 600, cursor: 'pointer',
           }}
         >
           <i className="fas fa-shield-halved" style={{ fontSize: 22 }} />
           系统状态：{statusLabel}
-        </div>
+        </button>
         {status && (
-          <div style={{ marginTop: 10, fontSize: 14, color: 'rgba(230,247,255,0.62)' }}>
+          <div style={{ marginTop: 10, fontSize: 14, color: 'var(--ds-text-muted)' }}>
             {status.headline}
           </div>
         )}
@@ -136,8 +157,8 @@ export default function Cover() {
               >
                 <i className={m.icon_class} style={{ fontSize: 40, color: 'var(--wall-info)' }} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{m.display_name}</div>
-                  <div style={{ fontSize: 14, color: 'rgba(230,247,255,0.55)', marginTop: 4 }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--ds-text)' }}>{m.display_name}</div>
+                  <div style={{ fontSize: 14, color: 'var(--ds-text-faint)', marginTop: 4 }}>
                     {isPending ? (m.pending_badge_text || '待开发') : '进入 →'}
                   </div>
                 </div>

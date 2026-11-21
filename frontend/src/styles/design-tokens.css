@@ -469,6 +469,42 @@ button.ds-kpi:hover {
   border-color: var(--ds-accent-text);
 }
 
+.ds-btn--ok {
+  color: var(--ds-ok-text);
+  background: var(--ds-ok-soft);
+  border-color: rgba(34, 197, 94, 0.45);
+}
+
+.ds-btn--ok:hover {
+  color: var(--ds-ok-text);
+  background: rgba(34, 197, 94, 0.24);
+  border-color: rgba(34, 197, 94, 0.7);
+}
+
+.ds-btn--warn {
+  color: var(--ds-warn-text);
+  background: var(--ds-warn-soft);
+  border-color: rgba(245, 166, 35, 0.45);
+}
+
+.ds-btn--warn:hover {
+  color: var(--ds-warn-text);
+  background: rgba(245, 166, 35, 0.24);
+  border-color: rgba(245, 166, 35, 0.7);
+}
+
+.ds-btn--danger {
+  color: var(--ds-danger-text);
+  background: var(--ds-danger-soft);
+  border-color: rgba(239, 68, 68, 0.45);
+}
+
+.ds-btn--danger:hover {
+  color: var(--ds-danger-text);
+  background: rgba(239, 68, 68, 0.24);
+  border-color: rgba(239, 68, 68, 0.7);
+}
+
 .ds-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -512,6 +548,148 @@ button.ds-kpi:hover {
   flex-wrap: wrap;
 }
 
+/* =========================================================
+   表单控件：输入框 / 下拉 / 文本域（全站唯一写法）
+   ========================================================= */
+.ds-input {
+  height: var(--ds-control-h);
+  padding: 0 10px;
+  font-family: inherit;
+  font-size: var(--ds-fs-small);
+  color: var(--ds-text);
+  background: rgba(3, 7, 13, 0.6);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.ds-input::placeholder {
+  color: var(--ds-text-faint);
+}
+
+.ds-input:focus {
+  border-color: var(--ds-border-strong);
+  box-shadow: 0 0 0 2px var(--ds-accent-soft);
+}
+
+select.ds-input {
+  padding-right: 24px;
+  cursor: pointer;
+}
+
+textarea.ds-input {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.ds-input--flex {
+  flex: 1;
+  min-width: 0;
+}
+
+/* =========================================================
+   列表条目 + 详情元信息（工单等左右分栏页）
+   ========================================================= */
+.ds-list-item {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  text-align: left;
+  font-family: inherit;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--ds-divider);
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.ds-list-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ds-list-item--active {
+  background: var(--ds-accent-soft);
+}
+
+.ds-list-item__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-2);
+}
+
+.ds-list-item__no {
+  font-size: var(--ds-fs-caption);
+  font-weight: 600;
+  color: var(--ds-accent-text);
+}
+
+.ds-list-item__title {
+  margin-top: 4px;
+  font-size: var(--ds-fs-body);
+  font-weight: 600;
+  color: var(--ds-text);
+}
+
+.ds-list-item__meta {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  font-size: var(--ds-fs-caption);
+  color: var(--ds-text-muted);
+}
+
+.ds-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--ds-space-2);
+}
+
+.ds-meta {
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+}
+
+.ds-meta__label {
+  font-size: var(--ds-fs-caption);
+  color: var(--ds-text-muted);
+}
+
+.ds-meta__value {
+  margin-top: 2px;
+  font-size: var(--ds-fs-small);
+  font-weight: 600;
+  color: var(--ds-text);
+  word-break: break-all;
+}
+
+/* =========================================================
+   左右分栏：列表 + 详情（窄屏自动纵向）
+   ========================================================= */
+.ds-split {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: var(--ds-space-3);
+}
+
+.ds-split__side {
+  width: 360px;
+  flex-shrink: 0;
+}
+
+.ds-split__main {
+  flex: 1;
+  min-width: 0;
+}
+
 /* 窄屏：页头折行 */
 @media (max-width: 900px) {
   .ds-page-header {
@@ -521,5 +699,14 @@ button.ds-kpi:hover {
   .ds-page-header__actions {
     width: 100%;
     justify-content: flex-end;
+  }
+
+  .ds-split {
+    flex-direction: column;
+  }
+
+  .ds-split__side {
+    width: 100%;
+    max-height: 42%;
   }
 }
