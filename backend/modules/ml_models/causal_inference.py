@@ -154,9 +154,110 @@ class CausalInference:
         else:
             magnitude = "严重影响"
 
-        direction = "增加" if effect > 0 else "减少"
+        # cumulative_change 向下为负：效应为负说明比对照点多下沉
+        trend = "多下沉" if effect < 0 else "少下沉"
 
-        return f"施工事件导致沉降{direction} {abs(effect):.3f} mm（{magnitude}）"
+        return f"施工后比对照点位{trend} {abs(effect):.3f} mm（{magnitude}）"
+
+
+def _pick_similar_controls(treated_pre, candidate_ids, fetch_point_fn,
+                           window_start, event_date, k=3):
+    """
+    自动挑对照组：只看施工前窗口，挑走势与处理组最接近的 k 个点位。
+
+    不用坐标距离选点，因为 monitoring_points 里的坐标是示意布局，
+    不是现场实测坐标；用距离会制造一个看起来合理、实际没有依据的对照。
+    """
+    if treated_pre is None or len(treated_pre) == 0 or not candidate_ids:
+        return []
+
+    scored = []
+    for cid in candidate_ids:
+        try:
+            cdf = fetch_point_fn(cid)
+        except Exception:
+            continue
+        if cdf is None or len(cdf) == 0:
+            continue
+
+        cdf = cdf.copy()
+        cdf['measurement_date'] = pd.to_datetime(cdf['measurement_date'])
+        col = 'cumulative_change' if 'cumulative_change' in cdf.columns else 'cumulative_settlement'
+        cpre = cdf[
+            (cdf['measurement_date'] >= window_start) &
+            (cdf['measurement_date'] < event_date)
+        ]
+        if len(cpre) < 2:
+            continue
+
+        joined = pd.concat(
+            [treated_pre.rename('t'),
+             cpre.set_index('measurement_date')[col].rename('c')],
+            axis=1, join='inner'
+        ).dropna()
+        if len(joined) < 2:
+            continue
+
+        scored.append((float(np.mean(np.abs(joined['t'] - joined['c']))), cid))
+
+    scored.sort(key=lambda item: item[0])
+    return [cid for _, cid in scored[:k]]
+
+
+def _aligned_series(dates, treated_values, control_series):
+    """按日期把对照序列对齐到处理组序列；缺测的日期直接丢掉，不补数。"""
+    if control_series is None or len(control_series) == 0:
+        return dates, treated_values, [0.0] * len(dates)
+
+    ctrl = control_series.reindex(pd.to_datetime(dates))
+    keep = ~ctrl.isna().values
+    if keep.all():
+        return dates, treated_values, [float(v) for v in ctrl.values]
+
+    return (
+        [d for d, k in zip(dates, keep) if k],
+        [float(v) for v, k in zip(treated_values, keep) if k],
+        [float(v) for v, k in zip(ctrl.values, keep) if k],
+    )
+
+
+def _build_verdict(point_id, effect, ci, method='DID'):
+    """把统计结果翻译成一句人话结论、依据和建议。"""
+    lo, hi = float(ci[0]), float(ci[1])
+    significant = (lo > 0) or (hi < 0)
+    abs_effect = abs(float(effect))
+    trend = '多下沉' if effect < 0 else '少下沉'
+    base = ('和“如果没施工”的推算线相比' if method == 'SCM'
+            else '扣掉对比点位的同期变化后')
+
+    if not significant:
+        return {
+            'significant': False,
+            'level': 'unknown',
+            'headline': f'看不出施工对 {point_id} 有明显影响',
+            'detail': (
+                f'{base}，差距是 {abs_effect:.2f} mm，'
+                f'但可能范围在 {lo:.2f} ~ {hi:.2f} mm 之间，跨过了 0，'
+                f'所以不能断定是施工造成的。'
+            ),
+            'advice': '先继续观察 2~3 周；如果这个点位和对比点位持续拉开差距，再复核。',
+        }
+
+    return {
+        'significant': True,
+        'level': 'clear',
+        'headline': f'施工后 {point_id} 比同等条件的点位{trend}了 {abs_effect:.2f} mm',
+        'detail': (
+            f'{base}，差距是 {abs_effect:.2f} mm；'
+            f'可能范围在 {lo:.2f} ~ {hi:.2f} mm 之间，没有跨过 0，'
+            f'说明这个差距不太可能只是正常波动。'
+        ),
+        'advice': (
+            '建议复核这个点位的预警阈值，并加密观测频次。'
+            if effect < 0 else
+            '影响方向偏安全，建议保持现有观测频率，确认是否持续。'
+        ),
+    }
 
 
 def analyze_event_impact(point_id, event_date, conn=None, control_point_ids=None,
@@ -231,14 +332,25 @@ def analyze_event_impact(point_id, event_date, conn=None, control_point_ids=None
         }
 
     if control_point_ids is None:
-        # 从实际沉降数据中选择对照组（避免monitoring_points表ID不匹配）
+        # 自动配对对照组：用施工前走势最接近的点位，而不是按字母序取前三个
         from modules.ml_models.supabase_data import fetch_settlement_point_ids
         all_point_ids = fetch_settlement_point_ids()
         other_ids = [pid for pid in all_point_ids if pid != point_id]
-        if other_ids:
+        treated_pre_series = treated_df.loc[
+            (treated_df['measurement_date'] >= window_start_date) &
+            (treated_df['measurement_date'] < event_date_ts),
+            ['measurement_date', value_col]
+        ].set_index('measurement_date')[value_col]
+        control_point_ids = _pick_similar_controls(
+            treated_pre_series, other_ids, fetch_point_fn,
+            window_start_date, event_date_ts, k=3
+        )
+        control_selection = 'auto_similar_trend'
+        if not control_point_ids:
             control_point_ids = other_ids[:3]
-        else:
-            control_point_ids = []
+            control_selection = 'auto_first_ids'
+    else:
+        control_selection = 'manual'
 
     if not control_point_ids:
         return {
@@ -254,6 +366,7 @@ def analyze_event_impact(point_id, event_date, conn=None, control_point_ids=None
         # 查询对照组数据 - 使用日期筛选（非位置索引）
         control_before_list = []
         control_after_list = []
+        ctrl_frames = []
 
         for ctrl_id in control_point_ids:
             if fetch_point_fn is not None:
@@ -283,6 +396,8 @@ def analyze_event_impact(point_id, event_date, conn=None, control_point_ids=None
                 control_before_list.extend(ctrl_before)
             if len(ctrl_after) > 0:
                 control_after_list.extend(ctrl_after)
+            if 'cumulative_change' in ctrl_df.columns:
+                ctrl_frames.append(ctrl_df[['measurement_date', 'cumulative_change']])
 
         if not control_before_list or not control_after_list:
             return {
@@ -308,30 +423,26 @@ def analyze_event_impact(point_id, event_date, conn=None, control_point_ids=None
             (treated_df['measurement_date'] <= window_end_date)
         ]['measurement_date'].dt.strftime('%Y-%m-%d').tolist()
 
-        # 获取第一个对照点的时间序列用于图表展示
-        if fetch_point_fn and control_point_ids:
-            c_df = fetch_point_fn(control_point_ids[0])
-            c_df['measurement_date'] = pd.to_datetime(c_df['measurement_date'])
-            c_before = c_df[
-                (c_df['measurement_date'] >= window_start_date) &
-                (c_df['measurement_date'] < event_date_ts)
-            ]['cumulative_change'].values.tolist()
-            c_after = c_df[
-                (c_df['measurement_date'] >= event_date_ts) &
-                (c_df['measurement_date'] <= window_end_date)
-            ]['cumulative_change'].values.tolist()
+        # 图表用的对照序列：多个对照点按日期取平均，与上面合并样本的口径保持一致
+        if ctrl_frames:
+            ctrl_avg = pd.concat(ctrl_frames, ignore_index=True) \
+                .groupby('measurement_date')['cumulative_change'].mean()
         else:
-            c_before = [0.0] * len(before_dates)
-            c_after = [0.0] * len(after_dates)
+            ctrl_avg = None
+
+        before_dates, b_treated, c_before = _aligned_series(
+            before_dates, treated_before.tolist(), ctrl_avg)
+        after_dates, a_treated, c_after = _aligned_series(
+            after_dates, treated_after.tolist(), ctrl_avg)
 
         result['before_period'] = {
             'dates': before_dates,
-            'treated_values': treated_before.tolist(),
+            'treated_values': b_treated,
             'control_values': c_before,
         }
         result['after_period'] = {
             'dates': after_dates,
-            'treated_values': treated_after.tolist(),
+            'treated_values': a_treated,
             'control_values': c_after,
         }
 
@@ -409,12 +520,52 @@ def analyze_event_impact(point_id, event_date, conn=None, control_point_ids=None
             'counterfactual': cf_a,
         }
 
+        # 对照组自身的变化，用合成对照序列算，避免前端显示 0.00 mm
+        if len(cf_b) > 0 and len(cf_a) > 0:
+            result['control_change'] = float(np.mean(cf_a) - np.mean(cf_b))
+
     else:
         raise ValueError("method必须是'DID'或'SCM'")
 
     result['point_id'] = point_id
     result['event_date'] = event_date.strftime('%Y-%m-%d')
     result['control_points'] = control_point_ids
+
+    # 统一给出人话结论：先看区间是否跨过 0，再谈影响大小
+    ci = result.get('confidence_interval') or [0.0, 0.0]
+    rmse = float(result.get('pre_event_rmse') or 0.0)
+    result['interval_reliable'] = not (result.get('method') == 'SCM' and rmse < 1e-6)
+
+    verdict = _build_verdict(
+        point_id, float(result.get('treatment_effect', 0.0)), ci,
+        result.get('method', 'DID')
+    )
+    result.update(verdict)
+
+    if not result['interval_reliable']:
+        result['level'] = 'caution'
+        result['headline'] = f'{point_id} 的影响估算不够稳，建议改用对比法'
+        result['detail'] = '趋势模拟法对施工前的数据拟合得过于完美，把握区间会偏乐观，不能当作定论。'
+        result['advice'] = '在高级设置里切回「对比法（推荐）」再算一次。'
+
+    result['method_label'] = '对比法' if result.get('method') == 'DID' else '趋势模拟法'
+    result['control_selection'] = control_selection
+    result['sample_size'] = {
+        'treated_before': int(len(treated_before)),
+        'treated_after': int(len(treated_after)),
+        'control_points': int(len(control_point_ids)),
+    }
+    result['low_sample'] = min(len(treated_before), len(treated_after)) < 3
+    result['data_note'] = (
+        f'施工前 {len(treated_before)} 次、施工后 {len(treated_after)} 次；'
+        f'对比点位 {len(control_point_ids)} 个'
+    )
+    result['algorithm'] = {
+        'name': result.get('method'),
+        'label': result['method_label'],
+        'uses_llm': False,
+        'data_source': '现场沉降监测实测数据（周测）',
+    }
 
     return result
 
