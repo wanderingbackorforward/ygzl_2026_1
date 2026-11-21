@@ -44,18 +44,21 @@ def _url(path):
     return f'{base}{path}'
 
 
+from modules.rules import settlement as settlement_rules
+
+
 class SettlementAnalysisService(BaseAnalysisService):
     """沉降分析服务 - 从原始数据实时计算"""
 
-    # 阈值配置
+    # 阈值唯一出处：modules/rules/settlement.py（类属性保留环境变量覆盖能力）
     THRESHOLDS = {
-        'daily_rate_critical': 0.15,     # 日沉降速率严重阈值 (mm/day)
-        'daily_rate_high': 0.08,         # 日沉降速率高风险阈值
-        'daily_rate_medium': 0.03,       # 日沉降速率中等阈值
-        'cumulative_warning': -3.0,      # 累计沉降警戒值 (mm)
-        'cumulative_alert': -5.0,        # 累计沉降报警值 (mm)
-        'prediction_30d_warning': -3.0,  # 30天预测警戒值
-        'prediction_30d_alert': -5.0,    # 30天预测报警值
+        'daily_rate_critical': settlement_rules.THRESHOLDS['rate_alert'],
+        'daily_rate_high': settlement_rules.THRESHOLDS['rate_warning'],
+        'daily_rate_medium': settlement_rules.THRESHOLDS['rate_notice'],
+        'cumulative_warning': -settlement_rules.THRESHOLDS['cumulative_warning'],
+        'cumulative_alert': -settlement_rules.THRESHOLDS['cumulative_alert'],
+        'prediction_30d_warning': -settlement_rules.THRESHOLDS['prediction_30d_warning'],
+        'prediction_30d_alert': -settlement_rules.THRESHOLDS['prediction_30d_alert'],
     }
 
     def __init__(self):
@@ -175,15 +178,17 @@ class SettlementAnalysisService(BaseAnalysisService):
             else:
                 trend_type = "轻微变化"
 
-            # 确定告警级别
-            if total_change <= self.THRESHOLDS['cumulative_alert']:
-                alert_level = "alert"
-            elif total_change <= self.THRESHOLDS['cumulative_warning']:
-                alert_level = "warning"
-            elif abs(slope) >= self.THRESHOLDS['daily_rate_high']:
-                alert_level = "warning"
-            else:
-                alert_level = "normal"
+            # 确定告警级别（唯一出处：modules/rules/settlement.py）
+            alert_level = settlement_rules.classify_point(
+                total_change=total_change,
+                trend_slope=slope,
+                thresholds={
+                    'cumulative_alert': abs(self.THRESHOLDS['cumulative_alert']),
+                    'cumulative_warning': abs(self.THRESHOLDS['cumulative_warning']),
+                    'rate_alert': self.THRESHOLDS['daily_rate_critical'],
+                    'rate_warning': self.THRESHOLDS['daily_rate_high'],
+                },
+            )['level']
 
             # 计算最大日变化率
             max_daily_rate = max(abs(dc) for dc in daily_changes) if daily_changes else 0

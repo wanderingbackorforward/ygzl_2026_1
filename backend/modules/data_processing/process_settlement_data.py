@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 # 导入数据库配置
 from modules.database.db_config import get_db_connection, sqlalchemy_url
 from modules.db.vendor import get_repo
+from modules.rules import settlement as settlement_rules
 
 # 预测配置
 PREDICTION_DAYS = 30  # 预测未来30天
@@ -87,13 +88,13 @@ def calculate_prediction(valid_days, valid_values, slope, intercept, prediction_
     daily_rate = abs(slope)
     total_predicted_change = abs(predicted_change)
 
-    if daily_rate > 0.15 or total_predicted_change > 5.0:
+    if daily_rate > settlement_rules.THRESHOLDS['rate_alert'] or total_predicted_change > settlement_rules.THRESHOLDS['cumulative_alert']:
         risk_level = "critical"  # 严重风险
         risk_score = 90
-    elif daily_rate > 0.08 or total_predicted_change > 3.0:
+    elif daily_rate > settlement_rules.THRESHOLDS['rate_warning'] or total_predicted_change > settlement_rules.THRESHOLDS['cumulative_warning']:
         risk_level = "high"  # 高风险
         risk_score = 70
-    elif daily_rate > 0.03 or total_predicted_change > 1.5:
+    elif daily_rate > settlement_rules.THRESHOLDS['rate_notice'] or total_predicted_change > 1.5:
         risk_level = "medium"  # 中等风险
         risk_score = 50
     elif daily_rate > 0.01 or total_predicted_change > 0.5:
@@ -103,9 +104,9 @@ def calculate_prediction(valid_days, valid_values, slope, intercept, prediction_
         risk_level = "normal"  # 正常
         risk_score = 10
 
-    # 预警阈值检查
-    warning_threshold = -3.0  # mm, 累计沉降警戒值
-    alert_threshold = -5.0   # mm, 累计沉降报警值
+    # 预警阈值检查（唯一出处：modules/rules/settlement.py）
+    warning_threshold = -settlement_rules.THRESHOLDS['cumulative_warning']  # mm, 累计沉降警戒值
+    alert_threshold = -settlement_rules.THRESHOLDS['cumulative_alert']  # mm, 累计沉降报警值
 
     warnings = []
     if slope < -0.1:
@@ -253,16 +254,18 @@ def process_data():
         # 判断趋势类型
         if slope < -0.1:
             trend_type = "显著下沉"
-            alert_level = "高风险"
         elif slope > 0.1:
             trend_type = "显著隆起"
-            alert_level = "中风险"
         elif abs(slope) > 0.02:
             trend_type = "轻微变化"
-            alert_level = "低风险"
         else:
             trend_type = "无显著趋势"
-            alert_level = "正常"
+
+        # 告警级别唯一出处：modules/rules/settlement.py
+        alert_level = settlement_rules.classify_point(
+            total_change=total_change,
+            trend_slope=slope,
+        )['level']
 
         # 从预测数据中获取风险评分和预警信息
         risk_score = prediction_data['risk_score'] if prediction_data else 0

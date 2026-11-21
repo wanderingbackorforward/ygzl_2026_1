@@ -362,17 +362,16 @@ class SupabaseHttpRepo:
         return len(ticket_ids)
 
     def tickets_statistics(self):
-        r = self.http.get(_url('/rest/v1/tickets?select=status,ticket_type,priority,created_at'), headers=_headers())
+        r = self.http.get(_url('/rest/v1/tickets?select=status,ticket_type,priority,created_at,due_at,is_archived'), headers=_headers())
         r.raise_for_status()
         rows = r.json()
-        total = len(rows)
+        from datetime import datetime
+        from modules.rules import tickets as ticket_rules
+        today = datetime.now().date()
         by_status = {}
         by_type = {}
         by_priority = {}
-        from datetime import datetime
-        today = datetime.now().date()
         today_created = 0
-        overdue = 0
         for x in rows:
             s = x.get('status')
             by_status[s] = by_status.get(s, 0) + 1
@@ -386,7 +385,8 @@ class SupabaseHttpRepo:
                     d = str(ca).split('T')[0]
                     if d == today.isoformat(): today_created += 1
                 except: pass
-        return {'total': total, 'by_status': by_status, 'by_type': by_type, 'by_priority': by_priority, 'today_created': today_created, 'overdue': overdue}
+        summary = ticket_rules.summarize(rows)
+        return {'total': len(rows), 'by_status': by_status, 'by_type': by_type, 'by_priority': by_priority, 'today_created': today_created, 'pending': summary['pending'], 'overdue': summary['overdue']}
 
     def ticket_comments_get(self, ticket_id, limit=50):
         r = self.http.get(_url(f'/rest/v1/ticket_comments?select=*&ticket_id=eq.{ticket_id}&order=created_at.asc&limit={limit}'), headers=_headers())

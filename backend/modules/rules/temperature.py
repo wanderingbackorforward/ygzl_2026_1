@@ -36,7 +36,9 @@ def classify_sensor(
     current_min: Any = None,
     current_range: Any = None,
     stored_level: Any = None,
+    thresholds: Optional[Dict[str, float]] = None,
 ) -> Dict[str, Any]:
+    limits = thresholds or THRESHOLDS
     stored = normalize_level(stored_level)
     if stored:
         return {
@@ -52,18 +54,18 @@ def classify_sensor(
     if t_max is None and t_min is None and t_range is None:
         return {'level': None, 'level_cn': '未评估', 'reason': '暂无温度数据'}
 
-    if (t_max is not None and t_max >= THRESHOLDS['temp_high_critical']) or (
-        t_min is not None and t_min <= THRESHOLDS['temp_low_critical']
-    ) or (t_range is not None and t_range >= THRESHOLDS['daily_range_critical']):
+    if (t_max is not None and t_max >= limits['temp_high_critical']) or (
+        t_min is not None and t_min <= limits['temp_low_critical']
+    ) or (t_range is not None and t_range >= limits['daily_range_critical']):
         return {
             'level': 'alert',
             'level_cn': LEVEL_LABELS['alert'],
             'reason': '温度超过严重阈值',
         }
 
-    if (t_max is not None and t_max >= THRESHOLDS['temp_high_warning']) or (
-        t_min is not None and t_min <= THRESHOLDS['temp_low_warning']
-    ) or (t_range is not None and t_range >= THRESHOLDS['daily_range_warning']):
+    if (t_max is not None and t_max >= limits['temp_high_warning']) or (
+        t_min is not None and t_min <= limits['temp_low_warning']
+    ) or (t_range is not None and t_range >= limits['daily_range_warning']):
         return {
             'level': 'warning',
             'level_cn': LEVEL_LABELS['warning'],

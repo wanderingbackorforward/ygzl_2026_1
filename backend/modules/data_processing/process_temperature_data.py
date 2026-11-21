@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 
 # 导入数据库配置
 from modules.database.db_config import sqlalchemy_url
+from modules.rules import temperature as temperature_rules
 
 def process_data():
     """处理和分析温度数据"""
@@ -134,19 +135,21 @@ def process_data():
         # 判断温度趋势类型
         if slope > 0.2:
             trend_type = "显著升温"
-            alert_level = "需关注"
         elif slope < -0.2:
             trend_type = "显著降温"
-            alert_level = "需关注"
         elif slope > 0:
             trend_type = "缓慢升温"
-            alert_level = "正常"
         elif slope < 0:
             trend_type = "缓慢降温"
-            alert_level = "正常"
         else:
             trend_type = "温度稳定"
-            alert_level = "正常"
+
+        # 告警级别唯一出处：modules/rules/temperature.py
+        alert_level = temperature_rules.classify_sensor(
+            current_max=max_temp,
+            current_min=min_temp,
+            current_range=avg_temp_range,
+        )['level']
         
         # 保存分析结果
         analysis_results.append({

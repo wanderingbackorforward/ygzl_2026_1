@@ -4,6 +4,6 @@
 页面与接口只读这里产出的 level / value / reason，不再各自维护阈值与分级词表。
 """
 
-from . import common, settlement, status, temperature
+from . import common, cracks, settlement, status, temperature, tickets
 
-__all__ = ['common', 'settlement', 'temperature', 'status']
+__all__ = ['common', 'cracks', 'settlement', 'temperature', 'status', 'tickets']

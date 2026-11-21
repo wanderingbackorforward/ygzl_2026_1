@@ -87,6 +87,7 @@ from modules.module_registry.api.module_api import module_bp
 from modules.rules import settlement as settlement_rules
 from modules.rules import temperature as temperature_rules
 from modules.rules import status as status_rules
+from modules.rules import cracks as cracks_rules
 
 # Agent 巡检模块（/api/agent）— 与 modules.assistant（/api/assistant 聊天）独立，勿混用
 try:
@@ -1143,6 +1144,15 @@ def get_status_summary():
         temperature_info = {}
         errors['temperature'] = str(e)
 
+    try:
+        crack_info = cracks_rules.summarize_points(repo.crack_get_monitoring_points() or [])
+        if not crack_info.get('total_points'):
+            crack_info = {}
+            errors['cracks'] = '无有效裂缝点位'
+    except Exception as e:
+        crack_info = {}
+        errors['cracks'] = str(e)
+
     tickets_info = {}
     try:
         stats = ticket_model.get_ticket_statistics() or {}
@@ -1158,6 +1168,7 @@ def get_status_summary():
     payload = status_rules.build_status(
         settlement=settlement_info,
         temperature=temperature_info,
+        cracks=crack_info,
         tickets=tickets_info,
         unavailable=list(errors.keys()),
     )

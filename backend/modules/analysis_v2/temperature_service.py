@@ -24,20 +24,14 @@ from .base import (
     RecommendationPriority
 )
 
+from modules.rules import temperature as temperature_rules
+
+
 class TemperatureAnalysisService(BaseAnalysisService):
     """温度分析服务 - 从原始数据实时计算"""
 
-    # 阈值配置 (温度单位: 摄氏度)
-    THRESHOLDS = {
-        'temp_high_critical': 45.0,      # 高温严重阈值
-        'temp_high_warning': 38.0,       # 高温警戒阈值
-        'temp_low_critical': -10.0,      # 低温严重阈值
-        'temp_low_warning': 0.0,         # 低温警戒阈值
-        'daily_range_critical': 25.0,    # 日温差严重阈值
-        'daily_range_warning': 18.0,     # 日温差警戒阈值
-        'rate_change_critical': 5.0,     # 温度变化率严重阈值 (度/天)
-        'rate_change_warning': 3.0,      # 温度变化率警戒阈值
-    }
+    # 阈值唯一出处：modules/rules/temperature.py（类属性保留环境变量覆盖能力）
+    THRESHOLDS = dict(temperature_rules.THRESHOLDS)
 
     def __init__(self):
         super().__init__('temperature')
@@ -271,21 +265,13 @@ class TemperatureAnalysisService(BaseAnalysisService):
             else:
                 trend_type = "stable"
 
-            # 确定告警级别
-            alert_level = "normal"
-            if current_max is not None and current_max >= self._thresholds['temp_high_critical']:
-                alert_level = "alert"
-            elif current_min is not None and current_min <= self._thresholds['temp_low_critical']:
-                alert_level = "alert"
-            elif current_max is not None and current_max >= self._thresholds['temp_high_warning']:
-                alert_level = "warning"
-            elif current_min is not None and current_min <= self._thresholds['temp_low_warning']:
-                alert_level = "warning"
-            if current_range is not None and current_range >= self._thresholds['daily_range_critical']:
-                alert_level = "alert"
-            elif current_range is not None and current_range >= self._thresholds['daily_range_warning']:
-                if alert_level != "alert":
-                    alert_level = "warning"
+            # 确定告警级别（唯一出处：modules/rules/temperature.py）
+            alert_level = temperature_rules.classify_sensor(
+                current_max=current_max,
+                current_min=current_min,
+                current_range=current_range,
+                thresholds=self._thresholds,
+            )['level']
 
             self._sensor_stats[sensor_id] = {
                 'sensor_id': sensor_id,

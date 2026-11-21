@@ -34,8 +34,8 @@ def build_status(
         settlement.get('level'),
         temperature.get('level'),
         cracks.get('level'),
-        'alert' if overdue_tickets > 0 else None,
-        'warning' if pending_tickets > 0 else None,
+        # 工单是管理项：待处理 / 逾期都只计预警，报警只来自监测指标
+        'warning' if pending_tickets > 0 or overdue_tickets > 0 else None,
     ])
 
     parts = []
@@ -46,7 +46,12 @@ def build_status(
     if crack_abnormal > 0:
         parts.append(f'{crack_abnormal} 条裂缝超限')
     if pending_tickets > 0:
-        parts.append(f'{pending_tickets} 张工单待处理')
+        text = f'{pending_tickets} 张工单待处理'
+        if overdue_tickets > 0:
+            text += f'（{overdue_tickets} 张逾期）'
+        parts.append(text)
+    elif overdue_tickets > 0:
+        parts.append(f'{overdue_tickets} 张工单逾期')
 
     if not parts:
         base_headline = '各项监测指标正常，无待处理工单。'
@@ -94,6 +99,6 @@ def build_status(
             'settlement': settlement.get('level'),
             'temperature': temperature.get('level'),
             'cracks': cracks.get('level'),
-            'tickets': 'alert' if overdue_tickets else ('warning' if pending_tickets else 'normal'),
+            'tickets': 'warning' if (overdue_tickets or pending_tickets) else 'normal',
         },
     }

@@ -17,6 +17,9 @@ THRESHOLDS = {
     'cumulative_warning': 3.0,
     'rate_alert': 0.15,
     'rate_warning': 0.08,
+    'rate_notice': 0.03,
+    'prediction_30d_alert': 5.0,
+    'prediction_30d_warning': 3.0,
 }
 
 
@@ -38,12 +41,38 @@ def _first_value(row: Dict[str, Any], *keys: str) -> Any:
     return None
 
 
+TREND_DOWN_TYPES = {'显著下沉', '持续下沉', '加速下沉', '下沉'}
+TREND_UP_TYPES = {'显著隆起', '持续隆起', '加速隆起', '隆起'}
+TREND_STABLE_TYPES = {'无显著趋势', '稳定', '温度稳定', '轻微变化'}
+
+
+def trend_direction(trend_type: Any = None, trend_slope: Any = None) -> str:
+    """统一趋势方向：down=下沉，up=隆起，stable=稳定。"""
+    text = str(trend_type).strip() if trend_type is not None else ''
+    if text in TREND_DOWN_TYPES:
+        return 'down'
+    if text in TREND_UP_TYPES:
+        return 'up'
+    if text in TREND_STABLE_TYPES:
+        return 'stable'
+    slope = _to_float(trend_slope)
+    if slope is None:
+        return 'stable'
+    if slope <= -0.05:
+        return 'down'
+    if slope >= 0.05:
+        return 'up'
+    return 'stable'
+
+
 def classify_point(
     total_change: Any = None,
     trend_slope: Any = None,
     stored_level: Any = None,
+    thresholds: Optional[Dict[str, float]] = None,
 ) -> Dict[str, Any]:
     """返回单点结论：level / level_cn / value / reason。"""
+    limits = thresholds or THRESHOLDS
     change = _to_float(total_change)
     slope = _to_float(trend_slope)
 
@@ -67,28 +96,28 @@ def classify_point(
             'reason': '缺少累计沉降与速率数据',
         }
 
-    if (abs_change is not None and abs_change >= THRESHOLDS['cumulative_alert']) or (
-        abs_rate is not None and abs_rate >= THRESHOLDS['rate_alert']
+    if (abs_change is not None and abs_change >= limits['cumulative_alert']) or (
+        abs_rate is not None and abs_rate >= limits['rate_alert']
     ):
-        if abs_change is not None and abs_change >= THRESHOLDS['cumulative_alert']:
-            reason = f'累计沉降 {change:.2f} mm，超过报警阈值 {THRESHOLDS["cumulative_alert"]:.2f} mm'
+        if abs_change is not None and abs_change >= limits['cumulative_alert']:
+            reason = f'累计沉降 {change:.2f} mm，超过报警阈值 {limits["cumulative_alert"]:.2f} mm'
         else:
-            reason = f'日沉降速率 {slope:.4f} mm/d，超过报警阈值 {THRESHOLDS["rate_alert"]:.2f} mm/d'
+            reason = f'日沉降速率 {slope:.4f} mm/d，超过报警阈值 {limits["rate_alert"]:.2f} mm/d'
         return {'level': 'alert', 'level_cn': LEVEL_LABELS['alert'], 'value': change, 'reason': reason}
 
-    if (abs_change is not None and abs_change >= THRESHOLDS['cumulative_warning']) or (
-        abs_rate is not None and abs_rate >= THRESHOLDS['rate_warning']
+    if (abs_change is not None and abs_change >= limits['cumulative_warning']) or (
+        abs_rate is not None and abs_rate >= limits['rate_warning']
     ):
-        if abs_change is not None and abs_change >= THRESHOLDS['cumulative_warning']:
-            reason = f'累计沉降 {change:.2f} mm，超过预警阈值 {THRESHOLDS["cumulative_warning"]:.2f} mm'
+        if abs_change is not None and abs_change >= limits['cumulative_warning']:
+            reason = f'累计沉降 {change:.2f} mm，超过预警阈值 {limits["cumulative_warning"]:.2f} mm'
         else:
-            reason = f'日沉降速率 {slope:.4f} mm/d，超过预警阈值 {THRESHOLDS["rate_warning"]:.2f} mm/d'
+            reason = f'日沉降速率 {slope:.4f} mm/d，超过预警阈值 {limits["rate_warning"]:.2f} mm/d'
         return {'level': 'warning', 'level_cn': LEVEL_LABELS['warning'], 'value': change, 'reason': reason}
 
     if change is None:
-        reason = f'日沉降速率 {slope:.4f} mm/d，未超过预警阈值 {THRESHOLDS["rate_warning"]:.2f} mm/d'
+        reason = f'日沉降速率 {slope:.4f} mm/d，未超过预警阈值 {limits["rate_warning"]:.2f} mm/d'
     else:
-        reason = f'累计沉降 {change:.2f} mm，未超过预警阈值 {THRESHOLDS["cumulative_warning"]:.2f} mm'
+        reason = f'累计沉降 {change:.2f} mm，未超过预警阈值 {limits["cumulative_warning"]:.2f} mm'
     return {'level': 'normal', 'level_cn': LEVEL_LABELS['normal'], 'value': change, 'reason': reason}
 
 
@@ -101,6 +130,10 @@ def enrich_point(row: Dict[str, Any]) -> Dict[str, Any]:
         stored_level=row.get('alert_level'),
     )
     result.update(info)
+    result['trend'] = trend_direction(
+        row.get('trend_type'),
+        _first_value(row, 'trend_slope', 'avg_daily_rate'),
+    )
     return result
 
 

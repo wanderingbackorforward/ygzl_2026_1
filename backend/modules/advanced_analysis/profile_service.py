@@ -11,6 +11,8 @@ except ImportError:
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 
+from modules.rules import settlement as settlement_rules
+
 
 def _headers():
     anon = os.environ.get('SUPABASE_ANON_KEY', '')
@@ -220,12 +222,17 @@ class ProfileService:
             })
 
         stats.sort(key=lambda x: x['chainage_m'])
-
-        # Find max settlement location
-        max_settlement = min(stats, key=lambda x: x.get('total_change') or 0, default=None)
+        enriched = [settlement_rules.enrich_point(row) for row in stats]
+        summary = settlement_rules.summarize_points(enriched)
+        max_point_id = summary.get('max_settlement_point')
+        max_settlement = next(
+            (row for row in enriched if row.get('point_id') == max_point_id),
+            None,
+        )
 
         return {
-            'points': stats,
+            'points': enriched,
             'max_settlement_point': max_settlement,
-            'total_points': len(stats),
+            'total_points': summary.get('total_points', 0),
+            'summary': summary,
         }
