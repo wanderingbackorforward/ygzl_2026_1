@@ -208,6 +208,24 @@ def _handle_ml_unavailable(err):
     }), 503
 
 
+# 已弃用：DL 推理路由与 /api/ml/predict/<model> 语义重复，统一指向后者
+_DL_DEPRECATED_ENDPOINTS = {
+    'ml_api.api_dl_predict_informer': '/api/ml/predict/informer/<point_id>',
+    'ml_api.api_dl_predict_stgcn': '/api/ml/predict/stgcn',
+    'ml_api.api_dl_predict_pinn': '/api/ml/predict/pinn/<point_id>',
+}
+
+
+@ml_api.after_request
+def _mark_dl_deprecated(resp):
+    successor = _DL_DEPRECATED_ENDPOINTS.get(request.endpoint)
+    if successor:
+        resp.headers['Deprecation'] = 'true'
+        resp.headers['Link'] = f'<{successor}>; rel="successor-version"'
+        print(f"[DEPRECATED] {request.method} {request.path} -> {successor}")
+    return resp
+
+
 # =========================================================
 # Server-side mock data generators (used when ML modules unavailable)
 # 默认抛 MLUnavailable（接口返回非 2xx）；仅 ML_ALLOW_MOCK=1 时返回演示数据
@@ -1091,6 +1109,12 @@ def _get_dl_inference():
     return _DL_INFERENCE
 
 
+def _dl_payload(result):
+    """DL 推理统一出口：模型未注册/推理失败返回 503，不伪装成 200。"""
+    failed = isinstance(result, dict) and result.get('success') is False
+    return jsonify(result), (503 if failed else 200)
+
+
 @ml_api.route('/dl/status', methods=['GET'])
 def api_dl_status():
     """
@@ -1123,9 +1147,9 @@ def api_dl_predict_informer(point_id):
     try:
         inf = _get_dl_inference()
         if inf is None:
-            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+            return jsonify({'success': False, 'code': 'ml_unavailable', 'message': '深度学习推理模块未安装'}), 503
         steps = int(request.args.get('steps', 8))
-        return jsonify(inf.predict_informer(point_id, steps))
+        return _dl_payload(inf.predict_informer(point_id, steps))
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -1143,9 +1167,9 @@ def api_dl_predict_stgcn():
     try:
         inf = _get_dl_inference()
         if inf is None:
-            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+            return jsonify({'success': False, 'code': 'ml_unavailable', 'message': '深度学习推理模块未安装'}), 503
         steps = int(request.args.get('steps', 8))
-        return jsonify(inf.predict_stgcn(steps))
+        return _dl_payload(inf.predict_stgcn(steps))
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -1163,9 +1187,9 @@ def api_dl_predict_pinn(point_id):
     try:
         inf = _get_dl_inference()
         if inf is None:
-            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+            return jsonify({'success': False, 'code': 'ml_unavailable', 'message': '深度学习推理模块未安装'}), 503
         steps = int(request.args.get('steps', 8))
-        return jsonify(inf.predict_pinn(point_id, steps))
+        return _dl_payload(inf.predict_pinn(point_id, steps))
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -1183,9 +1207,9 @@ def api_dl_predict_temperature(sid):
     try:
         inf = _get_dl_inference()
         if inf is None:
-            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+            return jsonify({'success': False, 'code': 'ml_unavailable', 'message': '深度学习推理模块未安装'}), 503
         steps = int(request.args.get('steps', 2))
-        return jsonify(inf.predict_temperature(sid, steps))
+        return _dl_payload(inf.predict_temperature(sid, steps))
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -1204,8 +1228,8 @@ def api_dl_predict_vibration(channel_id):
     try:
         inf = _get_dl_inference()
         if inf is None:
-            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
-        return jsonify(inf.predict_vibration(channel_id))
+            return jsonify({'success': False, 'code': 'ml_unavailable', 'message': '深度学习推理模块未安装'}), 503
+        return _dl_payload(inf.predict_vibration(channel_id))
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -1226,9 +1250,9 @@ def api_dl_predict_crack(point_id):
     try:
         inf = _get_dl_inference()
         if inf is None:
-            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+            return jsonify({'success': False, 'code': 'ml_unavailable', 'message': '深度学习推理模块未安装'}), 503
         pred_len = int(request.args.get('pred_len', 10))
-        return jsonify(inf.predict_crack(point_id, pred_len))
+        return _dl_payload(inf.predict_crack(point_id, pred_len))
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -1249,9 +1273,9 @@ def api_dl_predict_tbm(tbm_id):
     try:
         inf = _get_dl_inference()
         if inf is None:
-            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+            return jsonify({'success': False, 'code': 'ml_unavailable', 'message': '深度学习推理模块未安装'}), 503
         pred_len = int(request.args.get('pred_len', 4))
-        return jsonify(inf.predict_tbm(tbm_id, pred_len))
+        return _dl_payload(inf.predict_tbm(tbm_id, pred_len))
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -1270,8 +1294,8 @@ def api_dl_predict_vibration_freq(channel_id):
     try:
         inf = _get_dl_inference()
         if inf is None:
-            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
-        return jsonify(inf.predict_vibration_freq(channel_id))
+            return jsonify({'success': False, 'code': 'ml_unavailable', 'message': '深度学习推理模块未安装'}), 503
+        return _dl_payload(inf.predict_vibration_freq(channel_id))
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -1289,7 +1313,7 @@ def api_dl_prediction_history(model_name, target_id):
     try:
         inf = _get_dl_inference()
         if inf is None:
-            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+            return jsonify({'success': False, 'code': 'ml_unavailable', 'message': '深度学习推理模块未安装'}), 503
         limit = int(request.args.get('limit', 10))
         return jsonify(inf.get_prediction_history(model_name, target_id, limit))
     except Exception as e:
