@@ -360,9 +360,9 @@ export const VibrationV2: React.FC = () => {
                 />
               ) : (
                 <StateView
-                  kind={analysisError ? 'error' : 'loading'}
-                  title={analysisError ? '振动规则计算失败' : undefined}
-                  hint={analysisError ? '后端 /api/vibration/analyze 不可用，页面不展示替代数值' : undefined}
+                  kind={analysisError ? 'error' : analysis ? 'nodata' : 'loading'}
+                  title={analysisError ? '振动规则计算失败' : analysis ? '后端返回 0 个通道' : undefined}
+                  hint={analysisError ? '后端 /api/vibration/analyze 不可用，页面不展示替代数值' : analysis ? '规则计算已完成，但通道列表为空' : undefined}
                   compact
                 />
               )}

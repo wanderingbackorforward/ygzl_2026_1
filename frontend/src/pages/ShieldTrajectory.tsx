@@ -5,6 +5,7 @@ import type {
   PredictionResult, RiskBinsResponse,
 } from '../components/trajectory/types'
 import TrajectoryMap from '../components/trajectory/TrajectoryMap'
+import { StateView } from '../components/common/ui'
 
 type Project = { project_id: string; name: string }
 type Alignment = { alignment_id: string; project_id: string; name: string; geojson?: unknown }
@@ -210,12 +211,20 @@ export default function ShieldTrajectory() {
         </div>
       </div>
 
-      {/* === Error === */}
-      {error && <div className="shrink-0 bg-red-900/40 px-4 py-2 text-sm text-red-300">{error}</div>}
+      {/* === Error（有旧数据时作为顶部提示，无数据时在主区走 StateView） === */}
+      {error && records.length > 0 && <div className="shrink-0 bg-red-900/40 px-4 py-2 text-sm text-red-300">{error}</div>}
 
       {/* === Main content === */}
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        {loading && <div className="text-center text-slate-200 py-12">加载中...</div>}
+        {loading && <StateView kind="loading" title="正在加载盾构轨迹…" />}
+        {!loading && error && !records.length && (
+          <StateView
+            kind="error"
+            title="轨迹数据加载失败"
+            hint={error}
+            onRetry={() => { void loadData() }}
+          />
+        )}
 
         {!loading && tab === '轨迹总览' && (
           <div>
@@ -226,8 +235,13 @@ export default function ShieldTrajectory() {
               onRingClick={handleRingClick}
             />
             {!records.length && (
-              <div className="mt-4 text-center text-slate-200">
-                暂无遥测数据：本项目/盾构机尚未上传轨迹记录（页面不会生成模拟数据）。
+              <div className="mt-4">
+                <StateView
+                  kind="empty"
+                  compact
+                  title="暂无遥测数据"
+                  hint="本项目 / 盾构机尚未上传轨迹记录，页面不会生成模拟数据"
+                />
               </div>
             )}
           </div>

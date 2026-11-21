@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { useModules } from '../contexts/ModulesContext'
+import { StateView } from '../components/common/ui'
 import type { AppModule, ModuleStatus } from '../types/modules'
 
 function statusLabel(s: ModuleStatus) {
@@ -43,7 +44,7 @@ export default function ModuleAdmin() {
         </button>
       </div>
 
-      {error && (
+      {error && sorted.length > 0 && (
         <div style={{
           marginTop: 12,
           padding: 10,
@@ -56,6 +57,15 @@ export default function ModuleAdmin() {
         </div>
       )}
 
+      {loading ? (
+        <div style={{ marginTop: 12 }}>
+          <StateView kind="loading" title="正在加载模块配置…" />
+        </div>
+      ) : sorted.length === 0 ? (
+        <div style={{ marginTop: 12 }}>
+          <StateView kind="empty" title="暂无模块配置" hint={error || 'app_modules 返回空列表'} />
+        </div>
+      ) : (
       <div style={{
         marginTop: 12,
         border: '1px solid rgba(64,174,255,.25)',
@@ -76,7 +86,7 @@ export default function ModuleAdmin() {
           <div style={{ padding: 10, fontWeight: 600 }}>操作</div>
         </div>
 
-        {(loading ? [] : sorted).map(m => {
+        {sorted.map(m => {
           const busy = !!updating[m.module_key]
           return (
             <div
@@ -129,13 +139,8 @@ export default function ModuleAdmin() {
             </div>
           )
         })}
-
-        {loading && (
-          <div style={{ padding: 12, background: 'rgba(10,25,47,.55)', color: 'rgba(255,255,255,.75)' }}>
-            加载中...
-          </div>
-        )}
       </div>
+      )}
     </div>
   )
 }

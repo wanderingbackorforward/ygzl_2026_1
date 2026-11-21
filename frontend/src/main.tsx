@@ -35,7 +35,6 @@ const FloatingAssistant = lazyWithRetry(() => import('./components/assistant/Flo
 const Settlement = lazyWithRetry(() => import('./pages/Settlement'))
 const Temperature = lazyWithRetry(() => import('./pages/Temperature'))
 const Cracks = lazyWithRetry(() => import('./pages/Cracks'))
-const Vibration = lazyWithRetry(() => import('./pages/Vibration'))
 const VibrationV2 = lazyWithRetry(() => import('./pages/VibrationV2'))
 const Insar = lazyWithRetry(() => import('./pages/Insar'))
 const Overview = lazyWithRetry(() => import('./pages/OverviewV2'))
@@ -84,7 +83,6 @@ function App() {
                   <Route path="/temperature" element={<ModuleGate moduleKey="temperature"><Temperature /></ModuleGate>} />
                   <Route path="/cracks" element={<ModuleGate moduleKey="cracks"><Cracks /></ModuleGate>} />
                   <Route path="/vibration" element={<ModuleGate moduleKey="vibration"><VibrationV2 /></ModuleGate>} />
-                  <Route path="/vibration-legacy" element={<ModuleGate moduleKey="vibration"><Vibration /></ModuleGate>} />
                   <Route path="/insar" element={<ModuleGate moduleKey="insar"><Insar /></ModuleGate>} />
                   <Route path="/overview" element={<ModuleGate moduleKey="overview"><Overview /></ModuleGate>} />
                   <Route path="/three" element={<ModuleGate moduleKey="three"><ThreeModel /></ModuleGate>} />
@@ -93,6 +91,8 @@ function App() {
                   <Route path="/shield-trajectory" element={<ShieldTrajectory />} />
 
                   <Route path="/modules" element={<ModuleAdmin />} />
+                  {/* 未知路由（含已删除的 /vibration-legacy）回总览，避免空白页 */}
+                  <Route path="*" element={<Navigate to="/overview" replace />} />
                 </Routes>
               </div>
             </Suspense>
