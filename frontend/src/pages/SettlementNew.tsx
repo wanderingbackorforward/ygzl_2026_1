@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { LayoutProvider } from '../contexts/LayoutContext';
 import { SettlementProvider, useSettlement } from '../contexts/SettlementContext';
 import { DashboardGrid } from '../components/layout/DashboardGrid';
@@ -87,6 +87,13 @@ const RiskAlertCardWrapper: React.FC = () => {
 const SecondaryAnalysisCard: React.FC = () => {
   const { selectPoint } = useSettlement();
   const [creating, setCreating] = useState(false);
+  const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timer = window.setTimeout(() => setNotice(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   const handleCreateTicket = useCallback(async (anomaly: AnomalyItem) => {
     if (creating) return;
@@ -113,20 +120,27 @@ const SecondaryAnalysisCard: React.FC = () => {
         sendEmail,
         source: 'settlement_page',
       });
-      alert(`工单创建成功!\n\n工单号: ${ticket.ticket_number || 'N/A'}\n监测点: ${anomaly.point_id}`);
+      setNotice({ type: 'success', text: `工单创建成功：${ticket.ticket_number || 'N/A'}（监测点 ${anomaly.point_id}）` });
     } catch (error) {
       console.error('Create ticket error:', error);
-      alert(`工单创建失败: ${error instanceof Error ? error.message : '网络错误'}`);
+      setNotice({ type: 'error', text: `工单创建失败：${error instanceof Error ? error.message : '网络错误'}` });
     } finally {
       setCreating(false);
     }
   }, [creating]);
 
   return (
-    <SecondaryDataTab
-      onSelectPoint={selectPoint}
-      onCreateTicket={handleCreateTicket}
-    />
+    <>
+      {notice && (
+        <div className={`mx-2 mt-2 rounded px-3 py-2 text-sm ${notice.type === 'success' ? 'bg-green-900/30 text-green-200' : 'bg-red-900/30 text-red-200'}`}>
+          {notice.text}
+        </div>
+      )}
+      <SecondaryDataTab
+        onSelectPoint={selectPoint}
+        onCreateTicket={handleCreateTicket}
+      />
+    </>
   );
 };
 

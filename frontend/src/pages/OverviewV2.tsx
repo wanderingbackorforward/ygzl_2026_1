@@ -12,7 +12,7 @@ import {
 } from '../utils/diagnosisEngine';
 import type { EChartsOption } from 'echarts';
 import { TerzaghiIndicator, MoranIndicator, AnomalyConfidenceRadar } from '../components/overview-v2/SciencePanel';
-import { PageHeader, KpiCard } from '../components/common/ui';
+import { PageHeader, KpiCard, StateView } from '../components/common/ui';
 import './OverviewV2.css';
 
 // ─────────────────────────────────────────────
@@ -515,23 +515,29 @@ export default function OverviewV2() {
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [overview, setOverview] = useState<OverviewSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    try {
-      const [pts, anal, ov] = await Promise.all([
-        apiGet<PointSummary[]>('/summary').catch(() => []),
-        apiGet<AnalysisData>('/analysis/v2/settlement').catch(() => null),
-        apiGet<OverviewSummary>('/overview/summary').catch(() => null),
-      ]);
-      setPoints(pts || []);
-      setAnalysis(anal);
-      setOverview(ov);
-    } catch {
-      // 静默降级
-    } finally {
-      setLoading(false);
+    setError('');
+    const [pts, anal, ov] = await Promise.allSettled([
+      apiGet<PointSummary[]>('/summary'),
+      apiGet<AnalysisData>('/analysis/v2/settlement'),
+      apiGet<OverviewSummary>('/overview/summary'),
+    ]);
+    const failed: string[] = [];
+    if (pts.status === 'fulfilled' && Array.isArray(pts.value)) {
+      setPoints(pts.value);
+    } else {
+      setPoints([]);
+      failed.push('沉降摘要');
     }
+    if (anal.status === 'fulfilled') setAnalysis(anal.value);
+    else { setAnalysis(null); failed.push('沉降异常分析'); }
+    if (ov.status === 'fulfilled') setOverview(ov.value);
+    else { setOverview(null); failed.push('四指标总览'); }
+    if (failed.length) setError(`以下接口不可用：${failed.join('、')}。本页数字不完整，请重试。`);
+    setLoading(false);
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -629,6 +635,13 @@ export default function OverviewV2() {
           </button>
         }
       />
+
+      {/* 接口失败可见（不允许静默降级） */}
+      {error && (
+        <div style={{ flexShrink: 0, padding: '8px 16px 0' }}>
+          <StateView kind="error" compact title="部分数据不可用" hint={error} onRetry={loadData} />
+        </div>
+      )}
 
       {/* 四指标 KPI（信息架构第 2 节第一区块） */}
       <div style={{ flexShrink: 0, padding: '12px 16px 0' }}>

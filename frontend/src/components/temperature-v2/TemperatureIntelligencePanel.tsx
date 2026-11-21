@@ -8,6 +8,7 @@ interface TemperatureIntelligencePanelProps {
   riskItem: any;
   actionPlan: any;
   loading?: boolean;
+  error?: string;
   onRefresh?: () => Promise<void> | void;
 }
 
@@ -42,6 +43,7 @@ export const TemperatureIntelligencePanel: React.FC<TemperatureIntelligencePanel
   riskItem,
   actionPlan,
   loading = false,
+  error = '',
   onRefresh,
 }) => {
   const navigate = useNavigate();
@@ -57,6 +59,10 @@ export const TemperatureIntelligencePanel: React.FC<TemperatureIntelligencePanel
 
   if (!sensorId) {
     return <Empty icon="fa-mouse-pointer" text="请先选择一个传感器" />;
+  }
+
+  if (error) {
+    return <Empty icon="fa-exclamation-triangle" text={error} color="text-red-400" />;
   }
 
   if (loading) {

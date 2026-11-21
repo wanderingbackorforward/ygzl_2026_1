@@ -10,6 +10,7 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
   const [copied, setCopied] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [summary, setSummary] = useState<string>('')
+  const [summaryError, setSummaryError] = useState('')
 
   // 生成对话总结
   const generateSummary = async () => {
@@ -43,59 +44,24 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
       }
 
       setSummary(data.data?.summary || data.summary || '总结生成失败')
+      setSummaryError('')
     } catch (err) {
       console.error('生成总结失败:', err)
-      // 如果API失败，使用简单的客户端总结
-      setSummary(generateClientSummary())
+      setSummary('')
+      setSummaryError(`总结接口不可用：${err instanceof Error ? err.message : '网络错误'}。不会用客户端内容代写总结。`)
     } finally {
       setGenerating(false)
     }
   }
 
-  // 客户端简单总结（备用方案）
-  const generateClientSummary = () => {
-    if (!conversation) return ''
-
-    const messages = conversation.messages || []
-    const userMessages = messages.filter(m => m.role === 'user')
-    const assistantMessages = messages.filter(m => m.role === 'assistant')
-
-    let summary = `# ${conversation.title}\n\n`
-    summary += `**角色**: ${getRoleLabel(conversation.role)}\n`
-    summary += `**创建时间**: ${new Date(conversation.createdAt).toLocaleString('zh-CN')}\n`
-    summary += `**消息数**: ${messages.length} (用户: ${userMessages.length}, AI: ${assistantMessages.length})\n\n`
-    summary += `## 对话摘要\n\n`
-
-    // 提取用户的主要问题
-    if (userMessages.length > 0) {
-      summary += `### 主要问题\n\n`
-      userMessages.slice(0, 5).forEach((msg, index) => {
-        const preview = msg.content.slice(0, 100)
-        summary += `${index + 1}. ${preview}${msg.content.length > 100 ? '...' : ''}\n`
-      })
-      summary += `\n`
-    }
-
-    // 提取AI的关键回复
-    if (assistantMessages.length > 0) {
-      summary += `### 关键回复\n\n`
-      assistantMessages.slice(0, 3).forEach((msg, index) => {
-        const preview = msg.content.slice(0, 200)
-        summary += `${index + 1}. ${preview}${msg.content.length > 200 ? '...' : ''}\n\n`
-      })
-    }
-
-    return summary
-  }
-
   // 导出为 Markdown
   const exportAsMarkdown = () => {
-    return summary || generateClientSummary()
+    return summary
   }
 
   // 导出为纯文本
   const exportAsText = () => {
-    const content = summary || generateClientSummary()
+    const content = summary
     // 移除 Markdown 格式
     return content
       .replace(/^#+\s/gm, '')
@@ -112,7 +78,7 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
       role: conversation.role,
       createdAt: conversation.createdAt,
       messageCount: conversation.messages?.length || 0,
-      summary: summary || generateClientSummary()
+      summary: summary
     }, null, 2)
   }
 
@@ -229,6 +195,13 @@ export default function ExportPanel({ conversation }: ExportPanelProps) {
               </>
             )}
           </button>
+        )}
+
+        {/* 总结错误 */}
+        {summaryError && (
+          <div className="mb-4 rounded-xl border border-red-500/40 bg-red-900/30 px-4 py-3 text-sm text-red-200">
+            {summaryError}
+          </div>
         )}
 
         {/* 总结预览 */}

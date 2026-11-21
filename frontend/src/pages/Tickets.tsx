@@ -357,6 +357,15 @@ export default function Tickets() {
   const [showCreateDrawer, setShowCreateDrawer] = useState(false)
   const [quickTemplate, setQuickTemplate] = useState<string | null>(null)
   const [pageNotice, setPageNotice] = useState<string | null>(null)
+  const [loadErrors, setLoadErrors] = useState<string[]>([])
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  const notePart = (label: string, failed: boolean) =>
+    setLoadErrors(prev => (
+      failed
+        ? (prev.includes(label) ? prev : [...prev, label])
+        : prev.filter(item => item !== label)
+    ))
 
   useEffect(() => {
     loadConfig()
@@ -371,6 +380,12 @@ export default function Tickets() {
     return () => window.clearTimeout(timer)
   }, [pageNotice])
 
+  useEffect(() => {
+    if (!actionError) return undefined
+    const timer = window.setTimeout(() => setActionError(null), 4000)
+    return () => window.clearTimeout(timer)
+  }, [actionError])
+
   async function loadConfig() {
     try {
       const [types, status, priority] = await Promise.all([
@@ -379,8 +394,10 @@ export default function Tickets() {
         apiGet<Record<string, any>>('/tickets/config/priority'),
       ])
       setConfig({ types, status, priority })
+      notePart('工单配置', false)
     } catch (err) {
       console.error('Failed to load config:', err)
+      notePart('工单配置', true)
     }
   }
 
@@ -388,8 +405,10 @@ export default function Tickets() {
     try {
       const data = await apiGet<{ counts: { settlement_abnormal: number } }>('/status/summary')
       setSystemStatus(data)
+      notePart('系统状态', false)
     } catch (err) {
       console.error('Failed to load system status:', err)
+      notePart('系统状态', true)
     }
   }
 
@@ -397,8 +416,10 @@ export default function Tickets() {
     try {
       const data = await apiGet<TicketStats>('/tickets/statistics')
       setStats(data)
+      notePart('工单统计', false)
     } catch (err) {
       console.error('Failed to load stats:', err)
+      notePart('工单统计', true)
     }
   }
 
@@ -412,8 +433,10 @@ export default function Tickets() {
 
       const result = await apiGet<{ tickets: Ticket[] }>(`/tickets?${params}`)
       setTickets(result.tickets || [])
+      notePart('工单列表', false)
     } catch (err) {
       console.error('Failed to load tickets:', err)
+      notePart('工单列表', true)
     } finally {
       setLoading(false)
     }
@@ -461,6 +484,7 @@ export default function Tickets() {
       .catch((err) => {
         if (!cancelled) {
           console.error('Failed to load ticket by id:', err)
+          setActionError('按工单号定位失败，列表可能与链接不一致')
         }
       })
 
@@ -512,7 +536,7 @@ export default function Tickets() {
       }
     } catch (err) {
       console.error('Failed to update status:', err)
-      alert('更新状态失败')
+      setActionError('更新状态失败，请稍后重试')
     }
   }
 
@@ -522,6 +546,25 @@ export default function Tickets() {
         <div className="shrink-0 border-b border-green-500/20 bg-green-500/10 px-6 py-2 text-sm text-green-200">
           <i className="fas fa-circle-check mr-2" />
           {pageNotice}
+        </div>
+      )}
+      {actionError && (
+        <div className="shrink-0 border-b border-red-500/20 bg-red-500/10 px-6 py-2 text-sm text-red-200">
+          <i className="fas fa-exclamation-triangle mr-2" />
+          {actionError}
+        </div>
+      )}
+      {loadErrors.length > 0 && (
+        <div className="shrink-0 border-b border-red-500/20 bg-red-500/10 px-6 py-2 text-sm text-red-200">
+          <i className="fas fa-exclamation-triangle mr-2" />
+          以下接口不可用：{loadErrors.join('、')}。页面数字不完整。
+          <button
+            type="button"
+            className="ml-3 underline hover:text-white"
+            onClick={() => { loadConfig(); loadStats(); loadTickets(); loadSystemStatus() }}
+          >
+            重试
+          </button>
         </div>
       )}
       {/* 顶栏：统计徽章 + 快捷按钮 + 新建按钮 */}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { apiGet, apiPost } from '../lib/api'
+import { apiGet } from '../lib/api'
 import type {
   DeviationRecord, DeviationSummary, CorrectionAdvice,
   PredictionResult, RiskBinsResponse,
@@ -26,6 +26,8 @@ export default function ShieldTrajectory() {
   const [correction, setCorrection] = useState<CorrectionAdvice | null>(null)
   const [prediction, setPrediction] = useState<PredictionResult | null>(null)
   const [riskData, setRiskData] = useState<RiskBinsResponse | null>(null)
+  const [predictionError, setPredictionError] = useState('')
+  const [riskError, setRiskError] = useState('')
 
   // -- UI --
   const [tab, setTab] = useState<Tab>('轨迹总览')
@@ -73,23 +75,9 @@ export default function ShieldTrajectory() {
         apiGet<CorrectionAdvice>(`/tunnel/trajectory/correction?${qs}`),
       ])
       let recs = devRes?.records || []
-      // if no data, seed demo and reload once
-      if (!recs.length) {
-        await apiPost('/tunnel/trajectory/seed-demo', { project_id: projectId, machine_id: machineId })
-        const retry = await apiGet<{ records: DeviationRecord[] }>(`/tunnel/trajectory/deviation?${qs}`)
-        recs = retry?.records || []
-        if (recs.length) {
-          const [s2, c2] = await Promise.all([
-            apiGet<DeviationSummary>(`/tunnel/trajectory/summary?${qs}`),
-            apiGet<CorrectionAdvice>(`/tunnel/trajectory/correction?${qs}`),
-          ])
-          setSummary(s2)
-          setCorrection(c2)
-        }
-      } else {
-        setSummary(sumRes)
-        setCorrection(corRes)
-      }
+      // 不再自动灌演示数据：无记录就展示“暂无遥测数据”
+      setSummary(recs.length ? sumRes : null)
+      setCorrection(recs.length ? corRes : null)
       setRecords(recs)
     } catch (e: any) {
       setError(e?.message || String(e))
@@ -105,7 +93,11 @@ export default function ShieldTrajectory() {
     if (tab !== '偏差分析' || !projectId || !machineId) return
     const qs = `project_id=${encodeURIComponent(projectId)}&machine_id=${encodeURIComponent(machineId)}`
     apiGet<PredictionResult>(`/tunnel/trajectory/prediction?${qs}`)
-      .then(setPrediction).catch(() => {})
+      .then((res) => { setPrediction(res); setPredictionError('') })
+      .catch((e) => {
+        setPrediction(null)
+        setPredictionError(`预测接口不可用：${e?.message || e}`)
+      })
   }, [tab, projectId, machineId])
 
   // -- lazy load risk --
@@ -115,7 +107,11 @@ export default function ShieldTrajectory() {
     if (alignmentId) qs.set('alignment_id', alignmentId)
     if (machineId) qs.set('machine_id', machineId)
     apiGet<RiskBinsResponse>(`/tunnel/risk/bins?${qs.toString()}`)
-      .then(setRiskData).catch(() => {})
+      .then((res) => { setRiskData(res); setRiskError('') })
+      .catch((e) => {
+        setRiskData(null)
+        setRiskError(`风险分仓接口不可用：${e?.message || e}`)
+      })
   }, [tab, projectId, alignmentId, machineId])
 
   // -- selected alignment geojson --
@@ -230,13 +226,20 @@ export default function ShieldTrajectory() {
               onRingClick={handleRingClick}
             />
             {!records.length && (
-              <div className="mt-4 text-center text-slate-200">暂无遥测数据，已自动生成模拟数据...</div>
+              <div className="mt-4 text-center text-slate-200">
+                暂无遥测数据：本项目/盾构机尚未上传轨迹记录（页面不会生成模拟数据）。
+              </div>
             )}
           </div>
         )}
 
         {!loading && tab === '偏差分析' && (
           <div className="space-y-4">
+            {predictionError && (
+              <div className="rounded bg-red-900/40 px-4 py-2 text-sm text-red-300">
+                {predictionError}（下方仍展示实测偏差）
+              </div>
+            )}
             {/* Lazy import for code splitting */}
             <DeviationProfileLazy records={records} selectedRing={selectedRing}
               onRingSelect={handleRingClick} prediction={prediction} />
@@ -245,8 +248,13 @@ export default function ShieldTrajectory() {
         )}
 
         {!loading && tab === '风险管控' && (
-          <RiskPanelLazy riskData={riskData} projectId={projectId} alignmentId={alignmentId}
-            machineId={machineId} onRefresh={loadData} />
+          <div className="space-y-4">
+            {riskError && (
+              <div className="rounded bg-red-900/40 px-4 py-2 text-sm text-red-300">{riskError}</div>
+            )}
+            <RiskPanelLazy riskData={riskData} projectId={projectId} alignmentId={alignmentId}
+              machineId={machineId} onRefresh={loadData} />
+          </div>
         )}
       </div>
 

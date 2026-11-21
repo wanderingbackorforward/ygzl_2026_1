@@ -4,7 +4,7 @@ import { apiGet } from '../lib/api';
 import { EChartsWrapper } from '../components/charts/EChartsWrapper';
 import { useJointData } from '../hooks/useAdvancedAnalysis';
 import { AgentHeroCell } from '../components/agent/AgentHeroCell';
-import { PageHeader, KpiCard, ChartCard } from '../components/common/ui';
+import { PageHeader, KpiCard, ChartCard, StateView } from '../components/common/ui';
 import type { EChartsOption } from 'echarts';
 
 // ─────────────────────────────────────────────
@@ -598,6 +598,7 @@ interface MultiCompareProps {
 
 function MultiComparePanel({ allPoints, selectedId, days, summaryLoaded }: MultiCompareProps) {
   const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [compareErrors, setCompareErrors] = useState<string[]>([]);
   const [seriesData, setSeriesData] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(false);
   const [collapsed, setCollapsed] = useState(true);
@@ -621,10 +622,11 @@ function MultiComparePanel({ allPoints, selectedId, days, summaryLoaded }: Multi
         compareIds.map(pid =>
           apiGet<{ timeSeriesData: any[] }>(`/point/${pid}`)
             .then(d => ({ pid, rows: d?.timeSeriesData ?? [] }))
-            .catch(() => ({ pid, rows: [] }))
+            .catch(() => ({ pid, rows: [], failed: true }))
         )
       ).then(results => {
         if (cancelled) return;
+        setCompareErrors(results.filter((r: any) => r.failed).map((r: any) => r.pid));
         const map: Record<string, any[]> = {};
         results.forEach(({ pid, rows }) => {
           if (days > 0) {
@@ -710,6 +712,9 @@ function MultiComparePanel({ allPoints, selectedId, days, summaryLoaded }: Multi
           多点对比 · {compareIds.length}/5
         </span>
         <span style={{ fontSize: 12, color: 'var(--ds-text-muted)' }}>点击监测点加入对比</span>
+        {compareErrors.length > 0 && (
+          <span style={{ fontSize: 12, color: '#f87171' }}>{compareErrors.join('、')} 数据不可用</span>
+        )}
         <div style={{ flex: 1 }} />
         {/* 已选标签 */}
         {compareIds.map((pid, idx) => (
@@ -920,6 +925,9 @@ export default function SettlementV2() {
   const [profileDate, setProfileDate] = useState<string>('');
   const [days, setDays] = useState<number>(30);
   const [events, setEvents] = useState<ConstructionEvent[]>([]);
+  const [summaryError, setSummaryError] = useState('');
+  const [profileError, setProfileError] = useState('');
+  const [eventsError, setEventsError] = useState('');
 
   const fetchSummary = useCallback(async () => {
     setLoading(true);
@@ -940,6 +948,7 @@ export default function SettlementV2() {
       }
       setPoints(data.points);
       setSummary(data.summary);
+      setSummaryError('');
       if (data.points.length > 0) {
         setSelectedId(prev => {
           if (prev && data.points.some(p => p.point_id === prev)) return prev;
@@ -952,6 +961,7 @@ export default function SettlementV2() {
       }
     } catch (e) {
       console.error('[SettlementV2] fetch summary failed', e);
+      setSummaryError('沉降摘要接口不可用，点位列表与结论无法更新');
     } finally {
       setLoading(false);
     }
@@ -963,8 +973,10 @@ export default function SettlementV2() {
       const url = date ? `/advanced/profile/data?date=${date}` : '/advanced/profile/data';
       const data = await apiGet<ProfileData>(url);
       setProfileData(data ?? null);
+      setProfileError('');
     } catch (e) {
       console.error('[SettlementV2] fetch profile failed', e);
+      setProfileError('纵断面数据不可用，剖面图无法更新');
     } finally {
       setProfileLoading(false);
     }
@@ -975,11 +987,13 @@ export default function SettlementV2() {
       const data = await apiGet<{ dates: string[] }>('/advanced/profile/dates');
       const dates = data?.dates ?? [];
       setProfileDates(dates);
+      setProfileError('');
       if (dates.length > 0 && !profileDate) {
         setProfileDate(dates[dates.length - 1]); // 默认选最新日期
       }
     } catch (e) {
       console.error('[SettlementV2] fetch profile dates failed', e);
+      setProfileError('纵断面日期列表不可用');
     }
   }, []);
 
@@ -994,9 +1008,11 @@ export default function SettlementV2() {
         `/advanced/events/timeline?start=${start}&end=${end}`
       );
       setEvents(data?.events ?? []);
+      setEventsError('');
     } catch (e) {
       console.error('[SettlementV2] fetch events failed', e);
       setEvents([]);
+      setEventsError('施工事件时间线不可用');
     }
   }, [days]);
 
@@ -1008,6 +1024,18 @@ export default function SettlementV2() {
     <div className="ds-page">
       {/* 顶栏：页头 + KPI + 时间范围 + 下一步 */}
       <HeroBar points={points} summary={summary} loading={loading} days={days} onDaysChange={setDays} onSelectPoint={setSelectedId} selectedId={selectedId} />
+
+      {(summaryError || profileError || eventsError) && (
+        <div style={{ flexShrink: 0, padding: '8px 12px 0' }}>
+          <StateView
+            kind="error"
+            compact
+            title="部分数据不可用"
+            hint={[summaryError, profileError, eventsError].filter(Boolean).join('；')}
+            onRetry={() => { fetchSummary(); fetchProfile(profileDate || undefined); fetchProfileDates(); fetchEvents(); }}
+          />
+        </div>
+      )}
 
       {/* 主体：左侧列表 + 右侧（纵断面图 + 裂缝联动） */}
       <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>

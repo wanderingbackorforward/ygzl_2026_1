@@ -29,6 +29,9 @@ export const TemperatureV2Cockpit: React.FC = () => {
   const [selectedSensor, setSelectedSensor] = useState<string | null>(pointParam);
   const [seriesData, setSeriesData] = useState<any>(null);
   const [seriesLoading, setSeriesLoading] = useState(false);
+  const [overviewError, setOverviewError] = useState('');
+  const [intelError, setIntelError] = useState('');
+  const [seriesError, setSeriesError] = useState('');
   const [activePanel, setActivePanel] = useState<'guide' | 'algo' | 'intel'>('intel');
 
   // 加载总览数据
@@ -53,7 +56,10 @@ export const TemperatureV2Cockpit: React.FC = () => {
       setSensorNames(names);
       setProblemIds([...new Set(problems)] as string[]);
       if (ids.length > 0 && !selectedSensor) setSelectedSensor(ids[0]);
-    } catch { /* ignore */ }
+      setOverviewError('');
+    } catch (e: any) {
+      setOverviewError(`温度摘要接口不可用：${e?.message || e}`);
+    }
     finally { setLoading(false); }
   }, [selectedSensor]);
 
@@ -70,10 +76,12 @@ export const TemperatureV2Cockpit: React.FC = () => {
       setSnapshot(snapshotPayload && Object.keys(snapshotPayload).length > 0 ? snapshotPayload : null);
       setRiskItems(Array.isArray(riskResult?.items) ? riskResult.items : []);
       setActionPlans(Array.isArray(actionResult?.plans) ? actionResult.plans : []);
-    } catch {
+      setIntelError('');
+    } catch (e: any) {
       setSnapshot(null);
       setRiskItems([]);
       setActionPlans([]);
+      setIntelError(`温度智能评估接口不可用：${e?.message || e}`);
     } finally {
       setIntelLoading(false);
     }
@@ -94,8 +102,12 @@ export const TemperatureV2Cockpit: React.FC = () => {
       .then(result => {
         const rows = Array.isArray(result) ? result : result?.timeSeriesData || [];
         setSeriesData(rows);
+        setSeriesError('');
       })
-      .catch(() => setSeriesData(null))
+      .catch((e) => {
+        setSeriesData(null);
+        setSeriesError(`该传感器时间序列不可用：${e?.message || e}`);
+      })
       .finally(() => setSeriesLoading(false));
   }, [selectedSensor]);
 
@@ -165,6 +177,18 @@ export const TemperatureV2Cockpit: React.FC = () => {
         }
       />
 
+      {(overviewError || intelError) && (
+        <div style={{ flexShrink: 0, padding: '8px 16px 0' }}>
+          <StateView
+            kind="error"
+            compact
+            title="部分温度数据不可用"
+            hint={[overviewError, intelError].filter(Boolean).join('；')}
+            onRetry={refreshAll}
+          />
+        </div>
+      )}
+
       {/* Layer 1: VitalSigns 顶栏 */}
       <TempVitalSignsStrip
         stats={overview?.stats || {}}
@@ -191,6 +215,9 @@ export const TemperatureV2Cockpit: React.FC = () => {
 
         {/* 中栏: 时间序列图 */}
         <div className="flex-1 min-w-0 flex flex-col gap-3">
+          {seriesError && (
+            <div className="shrink-0 rounded bg-red-900/30 px-3 py-2 text-sm text-red-300">{seriesError}</div>
+          )}
           <div className="flex-1 min-h-0 ds-panel p-3">
             <TemperatureSeriesChart
               cardId="temp-v2-series"
@@ -230,6 +257,7 @@ export const TemperatureV2Cockpit: React.FC = () => {
                 riskItem={selectedRisk}
                 actionPlan={selectedActionPlan}
                 loading={intelLoading}
+                error={intelError}
                 onRefresh={refreshAll}
               />
             ) : activePanel === 'algo' ? (
