@@ -995,11 +995,12 @@ def get_overview_summary():
             alert_count = 0
             if settlement_summary:
                 for item in settlement_summary:
-                    val = float(item.get('current_value', 0) or 0)
+                    # settlement_analysis 字段：max_value / avg_daily_rate / alert_level
+                    val = float(item.get('max_value', 0) or 0)
                     if abs(val) > abs(max_value):
                         max_value = val
-                    rate = float(item.get('change_rate', 0) or 0)
-                    if abs(rate) > 1.0:
+                    level = str(item.get('alert_level') or '')
+                    if level and level != '正常':
                         alert_count += 1
             
             trend_distribution = {}
@@ -1054,9 +1055,10 @@ def get_overview_summary():
             avg_temp = min_temp = max_temp = 0
             
             if temp_summary:
-                temps = [float(s.get('avg_temp', 0) or 0) for s in temp_summary if s.get('avg_temp')]
-                mins = [float(s.get('min_temp', 0) or 0) for s in temp_summary if s.get('min_temp')]
-                maxs = [float(s.get('max_temp', 0) or 0) for s in temp_summary if s.get('max_temp')]
+                # temperature_analysis 字段：avg_temperature / min_temperature / max_temperature
+                temps = [float(s.get('avg_temperature', 0) or 0) for s in temp_summary if s.get('avg_temperature')]
+                mins = [float(s.get('min_temperature', 0) or 0) for s in temp_summary if s.get('min_temperature')]
+                maxs = [float(s.get('max_temperature', 0) or 0) for s in temp_summary if s.get('max_temperature')]
                 if temps:
                     avg_temp = round(sum(temps) / len(temps), 1)
                 if mins:
@@ -1112,6 +1114,208 @@ def get_overview_summary():
     except Exception as e:
         print(f"[Overview] 汇总数据获取失败: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+# =========================================================
+# 统一口径：数据截止时间 + 按点查询（P2）
+# 口径说明见 运维/杨高中路/指标口径.md
+# =========================================================
+_DATA_RANGE_CACHE = {'at': None, 'payload': None}
+_DATA_RANGE_TTL_SECONDS = 300
+
+_DEPRECATED_PATHS = ('/api/crack/data', '/api/source', '/api/source/diagnostics')
+
+
+def _query_rows(sql, params=None):
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(sql, params or ())
+        return cursor.fetchall() or []
+    except Exception as err:
+        print(f"[metrics] query failed: {err}")
+        return []
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if conn is not None and conn.is_connected():
+            conn.close()
+
+
+def _query_value(sql, params=None, default=None):
+    rows = _query_rows(sql, params)
+    if not rows:
+        return default
+    for value in rows[0].values():
+        return value
+    return default
+
+
+def _text(value):
+    return str(value) if value is not None else None
+
+
+@app.route('/api/meta/data-range')
+def get_data_range():
+    """各指标真实数据截止时间；页面顶部"数据截止"用它，避免把归档数据说成今天"""
+    cached_at = _DATA_RANGE_CACHE.get('at')
+    if cached_at is not None and (datetime.now() - cached_at).total_seconds() < _DATA_RANGE_TTL_SECONDS:
+        payload = _DATA_RANGE_CACHE['payload']
+        return json.dumps(payload, ensure_ascii=False, default=decimal_default), 200, {'Content-Type': 'application/json'}
+
+    payload = {
+        'success': True,
+        'data': {
+            'sensor_data': {
+                'max_date': _text(_query_value(
+                    "SELECT MAX(data_time) FROM sensor_data WHERE data_time >= '2021-01-01'")),
+                'table': 'sensor_data',
+            },
+            'settlement': {
+                'max_date': _text(_query_value("SELECT MAX(measurement_date) FROM processed_settlement_data")),
+                'table': 'processed_settlement_data',
+                'analysis_updated': _text(_query_value("SELECT MAX(last_updated) FROM settlement_analysis")),
+                'archived': True,
+            },
+            'temperature': {
+                'max_date': _text(_query_value("SELECT MAX(measurement_date) FROM processed_temperature_data")),
+                'table': 'processed_temperature_data',
+                'analysis_updated': _text(_query_value("SELECT MAX(last_updated) FROM temperature_analysis")),
+            },
+            'crack': {
+                'max_date': _text(_query_value("SELECT MAX(measurement_date) FROM raw_crack_data")),
+                'table': 'raw_crack_data',
+                'archived': True,
+            },
+            'vibration': {
+                'max_date': _text(_query_value("SELECT MAX(upload_time) FROM vibration_datasets")),
+                'table': 'vibration_datasets',
+            },
+            'tickets': {
+                'max_date': _text(_query_value("SELECT MAX(created_at) FROM tickets")),
+                'table': 'tickets',
+            },
+            'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        }
+    }
+    _DATA_RANGE_CACHE['at'] = datetime.now()
+    _DATA_RANGE_CACHE['payload'] = payload
+    return json.dumps(payload, ensure_ascii=False, default=decimal_default), 200, {'Content-Type': 'application/json'}
+
+
+def _point_kind(point_id):
+    """仅按编号形态判断，不做猜测：S1~S25 沉降、F1-1 类裂缝、其余按温度映射查"""
+    token = point_id.upper()
+    if token.startswith('F') and '-' in token and token[1:].split('-')[0].isdigit():
+        return 'crack'
+    if token.startswith('S') and token[1:].isdigit():
+        return 'settlement'
+    return 'temperature'
+
+
+def _safe_column(point_id):
+    return all(ch.isalnum() or ch in ('-', '_') for ch in point_id)
+
+
+@app.route('/api/metrics/point/<point_id>')
+def get_point_metrics(point_id):
+    """按 point_id 返回该点最新值 + 序列；映射不上时明确返回 matched=false，不猜"""
+    pid = (point_id or '').strip()
+    kind = _point_kind(pid)
+    data = {
+        'point_id': pid,
+        'type': kind,
+        'matched': False,
+        'source_table': None,
+        'data_cutoff': None,
+        'latest': {},
+        'series': [],
+        'note': None,
+    }
+
+    if kind == 'settlement':
+        rows = _query_rows("SELECT * FROM settlement_analysis WHERE point_id = %s LIMIT 1", (pid,))
+        series = _query_rows(
+            """
+            SELECT measurement_date, value, daily_change, cumulative_change
+            FROM processed_settlement_data
+            WHERE point_id = %s
+            ORDER BY measurement_date DESC
+            LIMIT 200
+            """,
+            (pid,),
+        )
+        if series:
+            series.reverse()
+        data['source_table'] = 'settlement_analysis'
+        data['data_cutoff'] = _text(_query_value("SELECT MAX(measurement_date) FROM processed_settlement_data"))
+        if rows:
+            data['matched'] = True
+            data['latest'] = rows[0]
+        data['series'] = series
+        if not rows and not series:
+            data['note'] = 'settlement_analysis / processed_settlement_data 中均无此点'
+
+    elif kind == 'crack':
+        rows = _query_rows("SELECT * FROM crack_monitoring_points WHERE point_id = %s LIMIT 1", (pid,))
+        data['source_table'] = 'crack_monitoring_points'
+        data['data_cutoff'] = _text(_query_value("SELECT MAX(measurement_date) FROM raw_crack_data"))
+        if rows:
+            data['matched'] = True
+            data['latest'] = rows[0]
+        else:
+            data['note'] = 'crack_monitoring_points 中无此点'
+        if _safe_column(pid):
+            series = _query_rows(
+                f"SELECT measurement_date, `{pid}` AS value FROM raw_crack_data "
+                f"WHERE `{pid}` IS NOT NULL ORDER BY measurement_date DESC LIMIT 200"
+            )
+            series.reverse()
+            data['series'] = series
+
+    else:
+        mapping = _query_rows(
+            "SELECT sid, sensor_name FROM point_sensor_map WHERE source = 'temperature' "
+            "AND (point_id = %s OR sensor_name = %s) LIMIT 1",
+            (pid, pid),
+        )
+        data['source_table'] = 'temperature_analysis'
+        data['data_cutoff'] = _text(_query_value("SELECT MAX(measurement_date) FROM processed_temperature_data"))
+        if mapping:
+            sid = mapping[0].get('sid')
+            data['sid'] = sid
+            analysis = _query_rows("SELECT * FROM temperature_analysis WHERE sensor_id = %s LIMIT 1", (sid,))
+            if analysis:
+                data['matched'] = True
+                data['latest'] = analysis[0]
+            series = _query_rows(
+                """
+                SELECT measurement_date, avg_temperature, min_temperature, max_temperature
+                FROM processed_temperature_data
+                WHERE SID = %s
+                ORDER BY measurement_date DESC
+                LIMIT 200
+                """,
+                (sid,),
+            )
+            series.reverse()
+            data['series'] = series
+            if not analysis and not series:
+                data['note'] = '台账有此点，但 temperature_analysis / processed_temperature_data 无数据'
+        else:
+            data['note'] = 'point_sensor_map 中无此点（未建立点→传感器映射）'
+
+    return json.dumps({'success': True, 'data': data}, ensure_ascii=False, default=decimal_default), 200, {'Content-Type': 'application/json'}
+
+
+@app.after_request
+def _mark_deprecated_endpoints(response):
+    if request.path in _DEPRECATED_PATHS or request.path.startswith('/temperature/'):
+        response.headers['Deprecation'] = 'true'
+        response.headers['Access-Control-Expose-Headers'] = 'Deprecation'
+    return response
 
 
 # =========================================================
