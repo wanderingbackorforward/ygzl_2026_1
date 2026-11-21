@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import './styles/tailwind.css'
 import './styles/wall.css'
 import Nav from './shared/Nav'
+import DataCutoffBar from './components/common/DataCutoffBar'
 import { OverdueTicketAlert } from './components/tickets/OverdueTicketAlert'
 import { ModulesProvider } from './contexts/ModulesContext'
 import { AuthProvider } from './contexts/AuthContext'
@@ -58,6 +59,7 @@ function App() {
             }}
           >
             <Nav />
+            <DataCutoffBar />
             {!IS_MOBILE && <OverdueTicketAlert />}
             {!IS_MOBILE && (
               <Suspense fallback={null}>
