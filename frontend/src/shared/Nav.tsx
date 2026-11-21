@@ -27,7 +27,7 @@ export default function Nav() {
     return () => clearInterval(timer)
   }, [fetchBadge])
 
-  const items = useMemo<AppModule[]>(() => modules, [modules])
+  const items = useMemo<AppModule[]>(() => modules.filter(m => m.is_visible === undefined || Boolean(m.is_visible)), [modules])
 
   /* ---- 手机：底部 Tab 栏 + 侧抽屉 ---- */
   if (IS_MOBILE) {

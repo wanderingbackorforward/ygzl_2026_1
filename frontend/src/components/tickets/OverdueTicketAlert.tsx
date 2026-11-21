@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { apiGet } from '../../lib/api'
 
 type OverdueTicket = {
@@ -58,8 +58,12 @@ function normalizeCode(value?: string) {
   return String(value || '').trim().toUpperCase()
 }
 
+// 只在“今天有没有事”的页面自动弹出，避免遮挡 3D / 地图等主场景（D0 §6.4）
+const AUTO_OPEN_PATHS = ['/overview', '/tickets']
+
 export const OverdueTicketAlert: React.FC = () => {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const [data, setData] = useState<OverdueResponse | null>(null)
   const [visible, setVisible] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -100,7 +104,7 @@ export const OverdueTicketAlert: React.FC = () => {
   const tickets = data?.tickets || []
   const count = data?.count || 0
 
-  if (!visible) return null
+  if (!visible || !AUTO_OPEN_PATHS.includes(pathname)) return null
 
   return (
     <div style={styles.overlay}>
