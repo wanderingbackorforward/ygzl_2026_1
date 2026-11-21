@@ -1077,25 +1077,11 @@ def get_overview_summary():
         # --- 裂缝数据 ---
         try:
             crack_points = repo.crack_get_monitoring_points()
-            total_cracks = len(crack_points) if crack_points else 0
-            expanding = shrinking = stable = 0
-            
-            if crack_points:
-                for pt in crack_points:
-                    ct = pt.get('change_type', '')
-                    if ct == '扩展':
-                        expanding += 1
-                    elif ct == '收缩':
-                        shrinking += 1
-                    elif ct == '稳定':
-                        stable += 1
-            
+            crack_info = cracks_rules.summarize_points(crack_points or [])
             result['cracks'] = {
-                'total_points': total_cracks,
-                'expanding_count': expanding,
-                'shrinking_count': shrinking,
-                'stable_count': stable,
-                'critical_count': expanding
+                **crack_info,
+                # 兼容旧字段：critical_count 表示 C/D 级严重裂缝数（不是扩展数）
+                'critical_count': crack_info.get('abnormal_count', 0),
             }
         except Exception as e:
             print(f"[Overview] 裂缝数据聚合失败: {e}")

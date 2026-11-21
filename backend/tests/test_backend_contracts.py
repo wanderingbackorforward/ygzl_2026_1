@@ -22,9 +22,13 @@ from modules.data_import.idempotent_io import append_new_rows  # noqa: E402
 
 # ---------------- 规则口径 ----------------
 
-def test_settlement_historical_level_wins():
-    info = settlement.classify_point(total_change=0.1, trend_slope=0.0, stored_level='alert')
+def test_settlement_metrics_override_stale_level():
+    # 实测 5.96mm 即使历史标成“低风险”，也必须判报警
+    info = settlement.classify_point(total_change=-5.96, stored_level='低风险')
     assert info['level'] == 'alert'
+    # 没有实测值时才沿用历史结论
+    fallback = settlement.classify_point(total_change=None, trend_slope=None, stored_level='alert')
+    assert fallback['level'] == 'alert'
 
 
 def test_settlement_thresholds_boundary():
@@ -52,8 +56,20 @@ def test_settlement_summary_counts_and_max():
     assert info['level'] == 'alert'
 
 
-def test_temperature_priority_and_thresholds():
-    assert temperature.classify_sensor(current_max=50, stored_level='normal')['level'] == 'normal'
+def test_settlement_summary_ignores_stale_label():
+    rows = [
+        {'point_id': 'S1', 'total_change': -5.96, 'alert_level': '低风险'},
+        {'point_id': 'S2', 'total_change': -0.5, 'alert_level': '低风险'},
+    ]
+    info = settlement.summarize_points(rows)
+    assert (info['normal_count'], info['warning_count'], info['alert_count']) == (1, 0, 1)
+
+
+def test_temperature_metrics_override_stale_level():
+    # 实测 50C 即使历史标成“正常”，也必须判报警
+    assert temperature.classify_sensor(current_max=50, stored_level='normal')['level'] == 'alert'
+    # 没有实测值时才沿用历史结论
+    assert temperature.classify_sensor(stored_level='warning')['level'] == 'warning'
     assert temperature.classify_sensor(current_max=46)['level'] == 'alert'
     assert temperature.classify_sensor(current_max=40)['level'] == 'warning'
     assert temperature.classify_sensor(current_max=20)['level'] == 'normal'

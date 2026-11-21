@@ -39,19 +39,20 @@ def classify_sensor(
     thresholds: Optional[Dict[str, float]] = None,
 ) -> Dict[str, Any]:
     limits = thresholds or THRESHOLDS
-    stored = normalize_level(stored_level)
-    if stored:
-        return {
-            'level': stored,
-            'level_cn': LEVEL_LABELS[stored],
-            'reason': f'历史分析结论：{str(stored_level).strip()}',
-        }
-
     t_max = _to_float(current_max)
     t_min = _to_float(current_min)
     t_range = _to_float(current_range)
 
+    # 实测值优先：历史结论（如旧口径写入的“低风险”）不能压过当前数据。
+    # 只有完全没有实测值时才回退到历史结论。
     if t_max is None and t_min is None and t_range is None:
+        stored = normalize_level(stored_level)
+        if stored:
+            return {
+                'level': stored,
+                'level_cn': LEVEL_LABELS[stored],
+                'reason': f'无实测值，沿用历史结论：{str(stored_level).strip()}',
+            }
         return {'level': None, 'level_cn': '未评估', 'reason': '暂无温度数据'}
 
     if (t_max is not None and t_max >= limits['temp_high_critical']) or (
@@ -98,7 +99,8 @@ def summarize_points(points: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
     unknown = 0
 
     for row in points or []:
-        level = normalize_level(row.get('level')) or normalize_level(row.get('alert_level'))
+        # 统一按实测值重算，避免历史 alert_level 与阈值结论不一致
+        level = normalize_level(enrich_point(row).get('level'))
         if level is None:
             unknown += 1
             continue

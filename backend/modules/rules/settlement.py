@@ -97,20 +97,20 @@ def classify_point(
     limits = thresholds or THRESHOLDS
     change = _to_float(total_change)
     slope = _to_float(trend_slope)
-
-    stored = normalize_level(stored_level)
-    if stored:
-        return {
-            'level': stored,
-            'level_cn': LEVEL_LABELS[stored],
-            'value': change,
-            'reason': f'历史分析结论：{str(stored_level).strip()}',
-        }
-
     abs_change = abs(change) if change is not None else None
     abs_rate = abs(slope) if slope is not None else None
 
+    # 实测值优先：历史结论（如旧口径写入的“低风险”）不能压过当前数据。
+    # 只有完全没有实测值时才回退到历史结论。
     if abs_change is None and abs_rate is None:
+        stored = normalize_level(stored_level)
+        if stored:
+            return {
+                'level': stored,
+                'level_cn': LEVEL_LABELS[stored],
+                'value': change,
+                'reason': f'无实测值，沿用历史结论：{str(stored_level).strip()}',
+            }
         return {
             'level': None,
             'level_cn': '未评估',
@@ -167,7 +167,8 @@ def summarize_points(points: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
     values: List[Dict[str, Any]] = []
 
     for row in rows:
-        level = normalize_level(row.get('level')) or normalize_level(row.get('alert_level'))
+        # 统一按实测值重算，避免历史 alert_level 与阈值结论不一致
+        level = normalize_level(enrich_point(row).get('level'))
         if level is None:
             unknown += 1
             continue

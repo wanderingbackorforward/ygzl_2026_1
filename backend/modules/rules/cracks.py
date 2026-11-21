@@ -75,6 +75,7 @@ def summarize_points(points: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
     grades = {grade: 0 for grade in GRADE_ORDER}
     unknown = 0
     expanding = 0
+    shrinking = 0
     stable = 0
     widest: Optional[Dict[str, Any]] = None
 
@@ -87,6 +88,8 @@ def summarize_points(points: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
         change_type = str(row.get('change_type') or '').strip()
         if change_type == '扩展':
             expanding += 1
+        elif change_type == '收缩':
+            shrinking += 1
         elif change_type == '稳定':
             stable += 1
         width = row.get('width_mm')
@@ -107,6 +110,7 @@ def summarize_points(points: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
         'unknown_count': unknown,
         'grade_distribution': dict(grades),
         'expanding_count': expanding,
+        'shrinking_count': shrinking,
         'stable_count': stable,
         'max_width': round(widest['width_mm'], 2) if widest else None,
         'max_width_point': widest['point_id'] if widest else None,
