@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiGet } from '../lib/api';
 import { EChartsWrapper } from '../components/charts/EChartsWrapper';
 import { useJointData } from '../hooks/useAdvancedAnalysis';
@@ -112,9 +113,11 @@ interface HeroBarProps {
   days: number;
   onDaysChange: (d: number) => void;
   onSelectPoint?: (id: string) => void;
+  selectedId?: string | null;
 }
 
-function HeroBar({ points, loading, days, onDaysChange, onSelectPoint }: HeroBarProps) {
+function HeroBar({ points, loading, days, onDaysChange, onSelectPoint, selectedId }: HeroBarProps) {
+  const navigate = useNavigate();
   if (loading) {
     return (
       <div style={{ background: 'rgba(0,30,60,0.9)', borderBottom: '1px solid rgba(0,229,255,0.15)', padding: '10px 20px', display: 'flex', gap: 32, alignItems: 'center' }}>
@@ -215,6 +218,28 @@ function HeroBar({ points, loading, days, onDaysChange, onSelectPoint }: HeroBar
             >{opt.label}</button>
           ))}
         </div>
+      </div>
+
+      {/* 下一步：带着当前点位进入高级分析 */}
+      <div style={{ flexShrink: 0, padding: '2px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3 }}>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>下一步</div>
+        <button
+          disabled={!selectedId}
+          onClick={() => selectedId && navigate(`/advanced?point=${encodeURIComponent(selectedId)}&metric=settlement&from=settlement`)}
+          style={{
+            padding: '4px 10px',
+            fontSize: 11,
+            borderRadius: 4,
+            border: '1px solid rgba(0,229,255,0.6)',
+            background: selectedId ? 'rgba(0,229,255,0.15)' : 'transparent',
+            color: selectedId ? '#00e5ff' : 'rgba(255,255,255,0.3)',
+            cursor: selectedId ? 'pointer' : 'not-allowed',
+            whiteSpace: 'nowrap',
+            fontWeight: 600,
+          }}
+        >
+          分析该点 →
+        </button>
       </div>
     </div>
   );
@@ -905,9 +930,11 @@ function CrackJointPanel({ selectedId }: CrackJointPanelProps) {
 // 主页面
 // ─────────────────────────────────────────────
 export default function SettlementV2() {
+  const [searchParams] = useSearchParams();
+  const pointParam = searchParams.get('point');
   const [points, setPoints] = useState<PointSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(pointParam);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileDates, setProfileDates] = useState<string[]>([]);
@@ -928,9 +955,11 @@ export default function SettlementV2() {
         data = await apiGet<PointSummary[]>('/summary');
       }
       setPoints(data ?? []);
-      if (data && data.length > 0 && !selectedId) {
-        const first = data.find(p => p.alert_level === 'alert') ?? data[0];
-        setSelectedId(first.point_id);
+      if (data && data.length > 0) {
+        setSelectedId(prev => {
+          if (prev && data.some(p => p.point_id === prev)) return prev;
+          return (data.find(p => p.alert_level === 'alert') ?? data[0]).point_id;
+        });
       }
     } catch (e) {
       console.error('[SettlementV2] fetch summary failed', e);
@@ -995,7 +1024,7 @@ export default function SettlementV2() {
       overflow: 'hidden',
     }}>
       {/* 顶栏英雄区 + 时间范围选择器 */}
-      <HeroBar points={points} loading={loading} days={days} onDaysChange={setDays} onSelectPoint={setSelectedId} />
+      <HeroBar points={points} loading={loading} days={days} onDaysChange={setDays} onSelectPoint={setSelectedId} selectedId={selectedId} />
 
       {/* 主体：左侧列表 + 右侧（纵断面图 + 裂缝联动） */}
       <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>

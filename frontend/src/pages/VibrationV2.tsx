@@ -243,6 +243,9 @@ export const VibrationV2: React.FC = () => {
           {/* 左侧：标题 + 选择器 */}
           <div className="flex items-center gap-6">
             <h1 className="text-xl font-bold text-white">振动监测</h1>
+            <span className="rounded border border-amber-500/50 bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300">
+              演示数据
+            </span>
 
             {/* 数据集选择 */}
             <select

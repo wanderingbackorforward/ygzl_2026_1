@@ -34,7 +34,7 @@ export const MockModeIndicator: React.FC = () => {
         onClick={() => setShowTooltip(!showTooltip)}
       >
         <i className="fas fa-flask" style={styles.icon} />
-        <span style={styles.text}>演示模式 ({count})</span>
+        <span style={styles.text}>演示数据 ({count})</span>
       </div>
       {showTooltip && (
         <div style={styles.tooltipVisible}>

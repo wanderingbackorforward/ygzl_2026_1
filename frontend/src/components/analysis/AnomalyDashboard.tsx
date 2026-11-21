@@ -35,8 +35,8 @@ export const AnomalyDashboard: React.FC = () => {
           if (detectionResult.anomalies && Array.isArray(detectionResult.anomalies)) {
             detectionResult.anomalies.forEach((anomaly: any) => {
               allAnomalies.push({
-                point_id: anomaly.point_id,
-                point_name: anomaly.point_id,
+                point_id: anomaly.point_id || detectionResult.point_id,
+                point_name: anomaly.point_id || detectionResult.point_id,
                 date: anomaly.date,
                 settlement: anomaly.settlement,
                 anomaly_score: anomaly.anomaly_score,

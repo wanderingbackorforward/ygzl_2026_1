@@ -59,7 +59,7 @@ export const CrackSpatialMap: React.FC<CardComponentProps> = () => {
 
     return {
       title: {
-        text: '空间分布热力图',
+        text: '空间分布示意（点位坐标为示意，非实测坐标）',
         left: 'center',
         top: 10,
         textStyle: { fontSize: 16, color: '#fff' },

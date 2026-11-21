@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ProfileChart, TimeSlider, JointDashboard, EventManager } from '../components/advanced';
 import { AnomalyDashboard, RecommendationDashboard, PredictionDashboard, CorrelationDashboard, DeepLearningDashboard, ExplainabilityDashboard, KnowledgeGraphDashboard } from '../components/analysis';
-import { MockModeIndicator } from '../components/common/MockModeIndicator';
 import { useProfileData, useAvailableDates, useProfileStatistics } from '../hooks/useAdvancedAnalysis';
+import { apiGet, apiPost } from '../lib/api';
 
 import '../styles/variables.css';
 
@@ -48,9 +49,123 @@ const analysisGroups = [
   },
 ];
 
+// 链路参数：从总览/指标页带过来的点位
+interface PointDetail {
+  point_id: string;
+  type: 'settlement' | 'temperature' | 'crack';
+  matched: boolean;
+  source_table?: string;
+  data_cutoff?: string;
+  latest?: Record<string, any>;
+  note?: string;
+  sid?: number | string;
+}
+
+function severityFromAlert(level?: string): 'low' | 'medium' | 'high' {
+  if (!level) return 'low';
+  if (/高|报警/.test(level)) return 'high';
+  if (/中|需关注/.test(level)) return 'medium';
+  return 'low';
+}
+
+const PointContextBar: React.FC<{ pointId: string; from?: string | null }> = ({ pointId, from }) => {
+  const navigate = useNavigate();
+  const [info, setInfo] = useState<PointDetail | null>(null);
+  const [error, setError] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setInfo(null);
+    setError('');
+    apiGet<PointDetail>(`/metrics/point/${encodeURIComponent(pointId)}`)
+      .then(d => { if (alive) setInfo(d); })
+      .catch(e => { if (alive) setError(e instanceof Error ? e.message : '点位数据不可用'); });
+    return () => { alive = false; };
+  }, [pointId]);
+
+  const isTemp = info?.type === 'temperature';
+  const latestValue = isTemp ? info?.latest?.avg_temperature : info?.latest?.total_change;
+  const alertLevel = info?.latest?.alert_level;
+  const canCreate = !!info?.matched && info?.type !== 'crack';
+
+  const handleCreate = async () => {
+    if (!info?.matched) return;
+    setCreating(true);
+    setError('');
+    try {
+      const url = isTemp
+        ? '/analysis/v2/temperature/create-ticket'
+        : '/analysis/v2/settlement/create-ticket';
+      const res = await apiPost<{ ticket_id?: number | string }>(url, {
+        point_id: info.point_id,
+        title: `[${info.point_id}] ${isTemp ? '温度' : '沉降'}异常复核`,
+        description: `${info.point_id} 告警级别：${alertLevel || '未知'}；最新值：${latestValue ?? '-'}；数据截止：${info.data_cutoff || '-'}。来源：${from || '高级分析'}`,
+        severity: severityFromAlert(alertLevel),
+        anomaly_type: 'threshold_exceeded',
+        current_value: latestValue ?? null,
+        threshold: isTemp ? 30 : -5,
+        send_email: false,
+      });
+      const ticketId = res?.ticket_id;
+      navigate(ticketId ? `/tickets?ticketId=${ticketId}&created=1` : '/tickets');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '建单失败');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <div style={styles.pointBar}>
+      <span style={styles.pointBarLabel}>当前点位</span>
+      <span style={styles.pointBarId}>{pointId}</span>
+      {info ? (
+        <span style={styles.pointBarMeta}>
+          {info.type === 'temperature' ? '温度' : info.type === 'crack' ? '裂缝' : '沉降'}
+          {info.data_cutoff ? ` · 截止 ${info.data_cutoff.slice(0, 10)}` : ''}
+          {info.matched ? ` · 最新值 ${typeof latestValue === 'number' ? latestValue.toFixed(2) : '-'}` : ' · 未映射到主表'}
+        </span>
+      ) : (
+        <span style={styles.pointBarMeta}>{error || '读取点位数据…'}</span>
+      )}
+      {error && info && <span style={styles.pointBarError}>{error}</span>}
+      <div style={{ flex: 1 }} />
+      <button
+        style={{ ...styles.pointBarButton, ...styles.pointBarPrimary, opacity: creating || !canCreate ? 0.5 : 1 }}
+        disabled={creating || !canCreate}
+        onClick={handleCreate}
+      >
+        {creating ? '建单中…' : info?.type === 'crack' ? '裂缝需手动建单' : '建单并转工单'}
+      </button>
+      {info && (
+        <button
+          style={styles.pointBarButton}
+          onClick={() => {
+            const target = info.type === 'temperature'
+              ? `/temperature?point=${encodeURIComponent(String(info.sid ?? info.point_id))}`
+              : info.type === 'crack'
+              ? `/cracks?point=${encodeURIComponent(info.point_id)}`
+              : `/settlement?point=${encodeURIComponent(info.point_id)}`;
+            navigate(target);
+          }}
+        >
+          查看点位
+        </button>
+      )}
+      <button style={styles.pointBarButton} onClick={() => navigate('/advanced', { replace: true })}>
+        取消点位
+      </button>
+    </div>
+  );
+};
+
 const AdvancedAnalysis: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('anomaly');
   const [jointMetric, setJointMetric] = useState<JointMetric>('settlement');
+  const [searchParams] = useSearchParams();
+  const pointParam = searchParams.get('point');
+  const fromParam = searchParams.get('from');
 
   // 获取当前激活的标签信息
   const getActiveTabInfo = () => {
@@ -65,7 +180,7 @@ const AdvancedAnalysis: React.FC = () => {
 
   return (
     <div style={styles.container}>
-      <MockModeIndicator />
+      {pointParam && <PointContextBar pointId={pointParam} from={fromParam} />}
       <div style={styles.header}>
         <div style={styles.headerTop}>
           <h1 style={styles.title}>高级分析</h1>
@@ -357,6 +472,47 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: '#0a0a1a',
     color: '#fff',
     fontFamily: 'system-ui, -apple-system, sans-serif',
+  },
+  pointBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '8px 24px',
+    flexShrink: 0,
+    background: 'rgba(6, 30, 60, 0.95)',
+    borderBottom: '1px solid rgba(0, 229, 255, 0.35)',
+  },
+  pointBarLabel: {
+    fontSize: '12px',
+    color: 'rgba(255,255,255,0.5)',
+  },
+  pointBarId: {
+    fontSize: '15px',
+    fontWeight: 700,
+    color: '#00e5ff',
+  },
+  pointBarMeta: {
+    fontSize: '12px',
+    color: 'rgba(255,255,255,0.65)',
+  },
+  pointBarError: {
+    fontSize: '12px',
+    color: '#f87171',
+  },
+  pointBarButton: {
+    padding: '4px 10px',
+    fontSize: '12px',
+    borderRadius: '4px',
+    border: '1px solid rgba(0,229,255,0.35)',
+    background: 'transparent',
+    color: '#00e5ff',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+  pointBarPrimary: {
+    background: 'rgba(0,229,255,0.18)',
+    color: '#fff',
+    fontWeight: 600,
   },
   header: {
     display: 'flex',

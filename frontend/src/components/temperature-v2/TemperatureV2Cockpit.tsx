@@ -3,6 +3,7 @@
  * 三层架构: VitalSigns(2秒扫描) → 主面板(分析) → 算法洞察(深度)
  */
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { apiGet } from '../../lib/api';
 import { PointSelector } from '../shared/PointSelector';
 import { TempVitalSignsStrip } from './TempVitalSignsStrip';
@@ -12,6 +13,8 @@ import { TemperatureIntelligencePanel } from './TemperatureIntelligencePanel';
 import { TemperatureSeriesChart } from '../charts/temperature/TemperatureSeriesChart';
 
 export const TemperatureV2Cockpit: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const pointParam = searchParams.get('point');
   const [overview, setOverview] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [intelLoading, setIntelLoading] = useState(true);
@@ -20,7 +23,7 @@ export const TemperatureV2Cockpit: React.FC = () => {
   const [actionPlans, setActionPlans] = useState<any[]>([]);
   const [sensors, setSensors] = useState<string[]>([]);
   const [problemIds, setProblemIds] = useState<string[]>([]);
-  const [selectedSensor, setSelectedSensor] = useState<string | null>(null);
+  const [selectedSensor, setSelectedSensor] = useState<string | null>(pointParam);
   const [seriesData, setSeriesData] = useState<any>(null);
   const [seriesLoading, setSeriesLoading] = useState(false);
   const [activePanel, setActivePanel] = useState<'guide' | 'algo' | 'intel'>('intel');

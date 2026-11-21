@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiGet } from '../lib/api';
 import { EChartsWrapper } from '../components/charts/EChartsWrapper';
 import {
@@ -94,6 +95,7 @@ function DiagnosisBanner({ result, loading }: { result: DiagnosisResult | null; 
 // 证据画布 — ECharts Graph 因果关系图
 // ─────────────────────────────────────────────
 function EvidenceCanvas({ result }: { result: DiagnosisResult | null }) {
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<{ name: string; detail: string; category: string } | null>(null);
 
   const handleChartReady = useCallback((chart: any) => {
@@ -240,6 +242,18 @@ function EvidenceCanvas({ result }: { result: DiagnosisResult | null }) {
         }}>
           <span style={{ color: '#06b6d4', fontSize: 14, fontWeight: 700 }}>{selected.name}</span>
           <span style={{ color: '#fff', fontSize: 12, flex: 1 }}>{selected.detail}</span>
+          {/^[A-Za-z]/.test(selected.name) && /^(settlement|temperature|crack)$/.test(selected.category) && (
+            <button
+              onClick={() => navigate(`/advanced?point=${encodeURIComponent(selected.name)}&metric=${selected.category}&from=overview`)}
+              style={{
+                padding: '4px 10px', fontSize: 12, borderRadius: 4,
+                border: '1px solid rgba(0,229,255,0.5)', background: 'rgba(0,229,255,0.15)',
+                color: '#00e5ff', cursor: 'pointer', whiteSpace: 'nowrap',
+              }}
+            >
+              去处置 →
+            </button>
+          )}
           <button onClick={() => setSelected(null)} style={{
             background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
             cursor: 'pointer', fontSize: 14, padding: '4px 8px',

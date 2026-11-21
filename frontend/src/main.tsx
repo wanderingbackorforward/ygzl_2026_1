@@ -5,6 +5,7 @@ import './styles/tailwind.css'
 import './styles/wall.css'
 import Nav from './shared/Nav'
 import DataCutoffBar from './components/common/DataCutoffBar'
+import { MockModeIndicator } from './components/common/MockModeIndicator'
 import { OverdueTicketAlert } from './components/tickets/OverdueTicketAlert'
 import { ModulesProvider } from './contexts/ModulesContext'
 import { AuthProvider } from './contexts/AuthContext'
@@ -60,6 +61,7 @@ function App() {
           >
             <Nav />
             <DataCutoffBar />
+            <MockModeIndicator />
             {!IS_MOBILE && <OverdueTicketAlert />}
             {!IS_MOBILE && (
               <Suspense fallback={null}>

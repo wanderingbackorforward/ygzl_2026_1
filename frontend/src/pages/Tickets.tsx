@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { apiGet, apiPost, apiPatch } from '../lib/api'
+import { apiGet, apiPost, apiPut } from '../lib/api'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 type TicketStatus = 'PENDING' | 'IN_PROGRESS' | 'SUSPENDED' | 'RESOLVED' | 'CLOSED' | 'REJECTED'
@@ -473,7 +473,7 @@ export default function Tickets() {
 
   async function handleStatusChange(ticketId: number, newStatus: TicketStatus) {
     try {
-      await apiPatch(`/tickets/${ticketId}/status`, {
+      await apiPut(`/tickets/${ticketId}/status`, {
         status: newStatus,
         user_id: 'current_user',
         user_role: 'admin',
@@ -695,6 +695,17 @@ export default function Tickets() {
                   <div className="mb-1 text-xs text-slate-400">创建时间</div>
                   <div className="text-sm font-medium text-white">{formatDate(selectedTicket.created_at)}</div>
                 </div>
+                {selectedTicket.monitoring_point_id && (
+                  <div className="rounded border border-slate-700/50 bg-slate-800/30 p-3">
+                    <div className="mb-1 text-xs text-slate-400">监测点位</div>
+                    <button
+                      onClick={() => navigate(`/advanced?point=${encodeURIComponent(selectedTicket.monitoring_point_id!)}&from=tickets`)}
+                      className="text-sm font-medium text-cyan-400 hover:underline"
+                    >
+                      {selectedTicket.monitoring_point_id} · 回到点位
+                    </button>
+                  </div>
+                )}
               </div>
 
               {selectedTicket.description && (
