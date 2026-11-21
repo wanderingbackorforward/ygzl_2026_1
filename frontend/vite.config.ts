@@ -11,13 +11,22 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    fs: {
+      allow: ['.', 'D:/mine/myprojects/杨高中路/frontend/node_modules']
+    },
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5000',
-        changeOrigin: true
+        target: 'http://120.55.70.218',
+        changeOrigin: true,
+        rewrite: p => p.replace(/^\/api/, '/ygzl/api')
       },
       '/static/glb': {
-        target: 'http://127.0.0.1:5000',
+        target: 'http://120.55.70.218',
+        changeOrigin: true,
+        rewrite: p => p.replace(/^\/static\/glb/, '/ygzl/static/glb')
+      },
+      '/ygzl': {
+        target: 'http://120.55.70.218',
         changeOrigin: true
       }
     }

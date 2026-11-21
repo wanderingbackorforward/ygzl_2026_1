@@ -183,14 +183,14 @@ function buildEvidenceNetwork(
   // 异常作为关联节点
   const seenTypes = new Set<string>();
   for (const a of anomalies) {
-    const typeKey = a.type;
+    const typeKey = (a as any).type || (a as any).anomaly_type || 'unknown';
     if (seenTypes.has(typeKey)) continue;
     seenTypes.add(typeKey);
 
     const nodeId = `anomaly-${typeKey}`;
     nodes.push({
       id: nodeId,
-      category: a.type.includes('crack') ? 'crack' : a.type.includes('temp') ? 'temperature' : 'settlement',
+      category: typeKey.includes('crack') ? 'crack' : typeKey.includes('temp') ? 'temperature' : 'settlement',
       label: anomalyTypeLabel(typeKey),
       detail: a.description,
       severity: a.severity === 'critical' ? 1 : a.severity === 'high' ? 0.7 : 0.4,
@@ -298,7 +298,7 @@ function generateActions(
 
   // 从后端建议中补充
   for (const rec of recommendations.slice(0, 3)) {
-    const existing = actions.find(a => a.instruction.includes(rec.title));
+    const existing = actions.find(a => (a.instruction || '').includes(rec.title || ''));
     if (!existing) {
       actions.push({
         role: rec.priority === 'CRITICAL' || rec.priority === 'HIGH' ? 'engineer' : 'manager',

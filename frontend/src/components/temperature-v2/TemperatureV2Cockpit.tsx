@@ -30,18 +30,17 @@ export const TemperatureV2Cockpit: React.FC = () => {
     setLoading(true);
     try {
       const result = await apiGet<any>('/temperature/v2/overview');
-      if (result?.success) {
-        setOverview(result.data);
-        const summary = result.data?.summary || [];
-        const ids: string[] = summary.map((r: any) => String(r.sensor_id || r.SID || '')).filter((s: string) => s);
-        const problems: string[] = summary.filter((r: any) => {
-          const a = r.alert_level || r.alert_status || '';
-          return a && a !== 'normal' && a !== 'ok';
-        }).map((r: any) => String(r.sensor_id || r.SID || ''));
-        setSensors([...new Set(ids)] as string[]);
-        setProblemIds([...new Set(problems)] as string[]);
-        if (ids.length > 0 && !selectedSensor) setSelectedSensor(ids[0]);
-      }
+      const payload = result?.data && result?.success !== undefined ? result.data : result;
+      setOverview(payload);
+      const summary = payload?.summary || [];
+      const ids: string[] = summary.map((r: any) => String(r.sensor_id || r.SID || '')).filter((s: string) => s);
+      const problems: string[] = summary.filter((r: any) => {
+        const a = r.alert_level || r.alert_status || '';
+        return a && a !== 'normal' && a !== 'ok';
+      }).map((r: any) => String(r.sensor_id || r.SID || ''));
+      setSensors([...new Set(ids)] as string[]);
+      setProblemIds([...new Set(problems)] as string[]);
+      if (ids.length > 0 && !selectedSensor) setSelectedSensor(ids[0]);
     } catch { /* ignore */ }
     finally { setLoading(false); }
   }, [selectedSensor]);
