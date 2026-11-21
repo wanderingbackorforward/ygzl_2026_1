@@ -66,13 +66,13 @@ export const CorrelationDashboard: React.FC<CorrelationDashboardProps> = ({
           </div>
         </div>
 
-        <div style={styles.statCard}>
+        <div style={styles.statCard} title="切换到「空间关联」后自动计算">
           <div style={{ ...styles.statIcon, color: '#ff7a45' }}>
             <i className="fas fa-project-diagram" />
           </div>
           <div style={styles.statContent}>
             <div style={styles.statValue}>
-              {spatialData?.cluster_count || '-'}
+              {spatialData?.cluster_count ?? (spatialLoading ? '计算中' : '未计算')}
             </div>
             <div style={styles.statLabel}>空间聚类</div>
           </div>
@@ -93,7 +93,7 @@ export const CorrelationDashboard: React.FC<CorrelationDashboardProps> = ({
             <i className="fas fa-calendar-check" />
           </div>
           <div style={styles.statContent}>
-            <div style={styles.statValue}>实时</div>
+            <div style={styles.statValue}>就绪</div>
             <div style={styles.statLabel}>分析状态</div>
           </div>
         </div>
