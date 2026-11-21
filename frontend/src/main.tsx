@@ -40,7 +40,6 @@ const ThreeModel = lazyWithRetry(() => import('./pages/ThreeModel'))
 const Tickets = lazyWithRetry(() => import('./pages/Tickets'))
 const Cover = lazyWithRetry(() => import('./pages/Cover'))
 const ModuleAdmin = lazyWithRetry(() => import('./pages/ModuleAdmin'))
-const Tunnel = lazyWithRetry(() => import('./pages/Tunnel'))
 const AdvancedAnalysis = lazyWithRetry(() => import('./pages/AdvancedAnalysis'))
 const ShieldTrajectory = lazyWithRetry(() => import('./pages/ShieldTrajectory'))
 
@@ -85,7 +84,6 @@ function App() {
                   <Route path="/overview" element={<ModuleGate moduleKey="overview"><Overview /></ModuleGate>} />
                   <Route path="/three" element={<ModuleGate moduleKey="three"><ThreeModel /></ModuleGate>} />
                   <Route path="/tickets" element={<ModuleGate moduleKey="tickets"><Tickets /></ModuleGate>} />
-                  <Route path="/tunnel" element={<ModuleGate moduleKey="tunnel"><Tunnel /></ModuleGate>} />
                   <Route path="/advanced" element={<ModuleGate moduleKey="advanced"><AdvancedAnalysis /></ModuleGate>} />
                   <Route path="/shield-trajectory" element={<ShieldTrajectory />} />
 
