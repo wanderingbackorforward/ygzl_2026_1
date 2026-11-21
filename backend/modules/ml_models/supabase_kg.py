@@ -6,7 +6,10 @@ Uses Supabase tables (kg_nodes, kg_edges) + networkx for in-memory queries.
 
 import os
 import math
-import requests
+try:
+    from modules.db.http_compat import requests  # 本地/云端 MySQL 兼容层
+except ImportError:
+    import requests
 import numpy as np
 import networkx as nx
 from datetime import datetime

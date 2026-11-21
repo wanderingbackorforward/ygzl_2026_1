@@ -6,7 +6,10 @@ Returns structured dict; on error returns {success: False, error: "..."}.
 """
 import os
 import time
-import requests
+try:
+    from modules.db.http_compat import requests  # 本地/云端 MySQL 兼容层
+except ImportError:
+    import requests
 import numpy as np
 import pandas as pd
 

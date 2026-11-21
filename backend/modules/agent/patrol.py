@@ -7,7 +7,10 @@ Agent 巡检主逻辑
 
 import os
 import uuid
-import requests
+try:
+    from modules.db.http_compat import requests  # 本地/云端 MySQL 兼容层
+except ImportError:
+    import requests
 import numpy as np
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional

@@ -4,7 +4,10 @@ Supabase HTTP data access for ML modules
 Replaces MySQL connections with Supabase REST API calls
 """
 import os
-import requests
+try:
+    from modules.db.http_compat import requests  # 本地/云端 MySQL 兼容层
+except ImportError:
+    import requests
 import pandas as pd
 import numpy as np
 

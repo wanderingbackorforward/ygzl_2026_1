@@ -13,11 +13,11 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5000',
+        target: 'http://120.55.70.218/ygzl',
         changeOrigin: true
       },
       '/static/glb': {
-        target: 'http://127.0.0.1:5000',
+        target: 'http://120.55.70.218/ygzl',
         changeOrigin: true
       }
     }

@@ -58,7 +58,10 @@ class KnowledgeGraphNX:
             fetch_all_settlement,
         )
         import os
-        import requests
+        try:
+            from modules.db.http_compat import requests
+        except ImportError:
+            import requests
 
         self.G.clear()
         stats = {"nodes": 0, "edges": 0, "point_nodes": 0, "event_nodes": 0, "anomaly_nodes": 0}

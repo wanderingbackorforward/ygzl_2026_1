@@ -4,7 +4,10 @@ Joint Analysis Service - Settlement + Crack combined analysis
 """
 
 import os
-import requests
+try:
+    from modules.db.http_compat import requests  # 本地/云端 MySQL 兼容层
+except ImportError:
+    import requests
 from datetime import datetime
 from typing import List, Dict, Optional
 

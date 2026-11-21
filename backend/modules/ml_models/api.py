@@ -1045,6 +1045,232 @@ def api_predict_ensemble(point_id):
 
 
 # =========================================================
+# 9.5 训练好的深度学习模型推理 API (加载 trained_models/ 权重)
+# =========================================================
+
+# 延迟导入推理模块 (仅在首次调用时加载, 避免 Vercel 冷启动超时)
+_DL_INFERENCE = None
+
+def _get_dl_inference():
+    global _DL_INFERENCE
+    if _DL_INFERENCE is None:
+        try:
+            from modules.ml_models import dl_inference
+            _DL_INFERENCE = dl_inference
+        except Exception as e:
+            print(f"[警告] 深度学习推理模块加载失败: {e}")
+            return None
+    return _DL_INFERENCE
+
+
+@ml_api.route('/dl/status', methods=['GET'])
+def api_dl_status():
+    """
+    查询训练好的深度学习模型状态
+    返回各模型权重是否已加载、评估指标、配置信息
+    """
+    try:
+        inf = _get_dl_inference()
+        if inf is None:
+            return jsonify({
+                'success': False,
+                'message': '深度学习推理模块未安装 (需要 PyTorch)',
+                'models': {}
+            })
+        return jsonify(inf.get_trained_models_status())
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@ml_api.route('/dl/predict/informer/<point_id>', methods=['GET'])
+def api_dl_predict_informer(point_id):
+    """
+    用训练好的 Informer 权重预测指定监测点 (周频, 默认8周)
+
+    参数:
+        steps: 预测步数 (默认8)
+    """
+    try:
+        inf = _get_dl_inference()
+        if inf is None:
+            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+        steps = int(request.args.get('steps', 8))
+        return jsonify(inf.predict_informer(point_id, steps))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@ml_api.route('/dl/predict/stgcn', methods=['GET'])
+def api_dl_predict_stgcn():
+    """
+    用训练好的 STGCN 权重预测所有监测点 (多点联合, 周频)
+
+    参数:
+        steps: 预测步数 (默认8)
+    """
+    try:
+        inf = _get_dl_inference()
+        if inf is None:
+            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+        steps = int(request.args.get('steps', 8))
+        return jsonify(inf.predict_stgcn(steps))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@ml_api.route('/dl/predict/pinn/<point_id>', methods=['GET'])
+def api_dl_predict_pinn(point_id):
+    """
+    用训练好的 PINN 权重预测指定监测点 (物理信息神经网络, 周频)
+
+    参数:
+        steps: 预测步数 (默认8)
+    """
+    try:
+        inf = _get_dl_inference()
+        if inf is None:
+            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+        steps = int(request.args.get('steps', 8))
+        return jsonify(inf.predict_pinn(point_id, steps))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@ml_api.route('/dl/predict/temperature/<int:sid>', methods=['GET'])
+def api_dl_predict_temperature(sid):
+    """
+    用训练好的多任务 Informer 权重预测指定温度传感器未来 N 天
+
+    参数:
+        steps: 预测天数 (默认2, 最多7)
+    """
+    try:
+        inf = _get_dl_inference()
+        if inf is None:
+            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+        steps = int(request.args.get('steps', 2))
+        return jsonify(inf.predict_temperature(sid, steps))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@ml_api.route('/dl/predict/vibration/<channel_id>', methods=['GET'])
+def api_dl_predict_vibration(channel_id):
+    """
+    用训练好的 1D-CNN 双输出头网络预测指定通道的振动波形 + 16 维特征
+    从 Supabase 拉真实波形 -> 预测后 50 个点 + 16 个统计特征
+
+    参数:
+        channel_id: 通道号 1-8 (字符串)
+    """
+    try:
+        inf = _get_dl_inference()
+        if inf is None:
+            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+        return jsonify(inf.predict_vibration(channel_id))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@ml_api.route('/dl/predict/crack/<point_id>', methods=['GET'])
+def api_dl_predict_crack(point_id):
+    """
+    用训练好的 CrackLSTM 预测指定监测点的裂缝宽度
+    从 Supabase raw_crack_data 拉最近 30 条观测 -> 预测后 10 个 6h 步
+    拉 crack_monitoring_points 拿点的 trend/slope/r_value 等元信息
+
+    参数:
+        point_id: 监测点 ID (F1-1 ... F9-3)
+        pred_len: 预测步数 (默认 10, 最多 30)
+    """
+    try:
+        inf = _get_dl_inference()
+        if inf is None:
+            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+        pred_len = int(request.args.get('pred_len', 10))
+        return jsonify(inf.predict_crack(point_id, pred_len))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@ml_api.route('/dl/predict/tbm/<tbm_id>', methods=['GET'])
+def api_dl_predict_tbm(tbm_id):
+    """
+    用训练好的 TBMNet 预测指定盾构机的轨迹偏差
+    从 Supabase tbm_trajectory_data 拉最近 8 条 5min 观测 -> 预测后 4 个 5min 步
+    输出 4 个偏差目标: tail/head x vertical/horizontal
+
+    参数:
+        tbm_id: 盾构机 ID (TBM001, TBM20251009001750, ...)
+        pred_len: 预测步数 (默认 4)
+    """
+    try:
+        inf = _get_dl_inference()
+        if inf is None:
+            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+        pred_len = int(request.args.get('pred_len', 4))
+        return jsonify(inf.predict_tbm(tbm_id, pred_len))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@ml_api.route('/dl/predict/vibration_freq/<channel_id>', methods=['GET'])
+def api_dl_predict_vibration_freq(channel_id):
+    """
+    用训练好的 SpectrumClassifier 对指定通道的振动频谱进行分类 + 异常检测
+    从 Supabase vibration_frequency_data 拉频谱 -> 1D-CNN 分类 -> 低置信度 = 异常
+
+    参数:
+        channel_id: 通道号 1-8
+    """
+    try:
+        inf = _get_dl_inference()
+        if inf is None:
+            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+        return jsonify(inf.predict_vibration_freq(channel_id))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@ml_api.route('/dl/history/<model_name>/<target_id>', methods=['GET'])
+def api_dl_prediction_history(model_name, target_id):
+    """
+    查询某模型对某监测点/传感器的历史预测记录 (从 Supabase 拉取)
+
+    参数:
+        limit: 返回条数 (默认10)
+    """
+    try:
+        inf = _get_dl_inference()
+        if inf is None:
+            return jsonify({'success': False, 'message': '深度学习推理模块未安装'})
+        limit = int(request.args.get('limit', 10))
+        return jsonify(inf.get_prediction_history(model_name, target_id, limit))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# =========================================================
 # 10. SHAP可解释性分析API
 # =========================================================
 

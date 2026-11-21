@@ -18,9 +18,12 @@ def _url(path):
     return f'{base}{path}'
 
 class SupabaseHttpRepo:
+    # 实际发请求的对象；Supabase 模式用真实 requests，MySQL 模式由子类替换
+    http = requests
+
     def get_all_points(self):
-        a = requests.get(_url('/rest/v1/settlement_analysis?select=*'), headers=_headers())
-        mp = requests.get(_url('/rest/v1/monitoring_points?select=*'), headers=_headers())
+        a = self.http.get(_url('/rest/v1/settlement_analysis?select=*'), headers=_headers())
+        mp = self.http.get(_url('/rest/v1/monitoring_points?select=*'), headers=_headers())
         a.raise_for_status(); mp.raise_for_status()
         ana = {row.get('point_id'): row for row in a.json()}
         res = []
@@ -35,12 +38,12 @@ class SupabaseHttpRepo:
         return res
 
     def get_point_detail(self, point_id):
-        ts = requests.get(
+        ts = self.http.get(
             _url(f'/rest/v1/processed_settlement_data?select=measurement_date,value,daily_change,cumulative_change&point_id=eq.{point_id}&order=measurement_date'),
             headers=_headers()
         )
         ts.raise_for_status()
-        ana = requests.get(
+        ana = self.http.get(
             _url(f'/rest/v1/settlement_analysis?select=*&point_id=eq.{point_id}'),
             headers=_headers()
         )
@@ -54,7 +57,7 @@ class SupabaseHttpRepo:
         return {'timeSeriesData': ts_rows, 'analysisData': ana_dict}
 
     def get_summary(self):
-        r = requests.get(_url('/rest/v1/settlement_analysis?select=*'), headers=_headers())
+        r = self.http.get(_url('/rest/v1/settlement_analysis?select=*'), headers=_headers())
         r.raise_for_status()
         rows = r.json()
         def key(x):
@@ -66,7 +69,7 @@ class SupabaseHttpRepo:
         return rows
 
     def get_trends(self):
-        r = requests.get(_url('/rest/v1/settlement_analysis?select=trend_type'), headers=_headers())
+        r = self.http.get(_url('/rest/v1/settlement_analysis?select=trend_type'), headers=_headers())
         r.raise_for_status()
         rows = r.json()
         cnt = {}
@@ -76,7 +79,7 @@ class SupabaseHttpRepo:
         return [{'trend_type': k, 'count': v} for k, v in cnt.items()]
 
     def crack_get_monitoring_points(self):
-        r = requests.get(_url('/rest/v1/crack_monitoring_points?select=*&status=eq.active'), headers=_headers())
+        r = self.http.get(_url('/rest/v1/crack_monitoring_points?select=*&status=eq.active'), headers=_headers())
         r.raise_for_status()
         rows = r.json()
         for x in rows:
@@ -89,7 +92,7 @@ class SupabaseHttpRepo:
         return rows
 
     def crack_get_data(self):
-        r = requests.get(_url('/rest/v1/raw_crack_data?select=*&order=measurement_date'), headers=_headers())
+        r = self.http.get(_url('/rest/v1/raw_crack_data?select=*&order=measurement_date'), headers=_headers())
         r.raise_for_status()
         rows = r.json()
         for x in rows:
@@ -98,8 +101,8 @@ class SupabaseHttpRepo:
         return rows
 
     def crack_get_analysis_results(self):
-        r1 = requests.get(_url('/rest/v1/crack_analysis_results?select=*'), headers=_headers())
-        r2 = requests.get(_url('/rest/v1/crack_monitoring_points?select=point_id,trend_type,change_type,total_change,average_change_rate,trend_slope'), headers=_headers())
+        r1 = self.http.get(_url('/rest/v1/crack_analysis_results?select=*'), headers=_headers())
+        r2 = self.http.get(_url('/rest/v1/crack_monitoring_points?select=point_id,trend_type,change_type,total_change,average_change_rate,trend_slope'), headers=_headers())
         r1.raise_for_status(); r2.raise_for_status()
         ana = r1.json()
         mp = {row.get('point_id'): row for row in r2.json()}
@@ -137,13 +140,13 @@ class SupabaseHttpRepo:
         return {'dates': dates, 'series': series}
 
     def temperature_get_points(self):
-        r = requests.get(_url('/rest/v1/temperature_monitoring_points?select=*&status=eq.active'), headers=_headers())
+        r = self.http.get(_url('/rest/v1/temperature_monitoring_points?select=*&status=eq.active'), headers=_headers())
         r.raise_for_status()
         rows = r.json()
         return rows
 
     def temperature_get_summary(self):
-        r = requests.get(_url('/rest/v1/temperature_analysis?select=*'), headers=_headers())
+        r = self.http.get(_url('/rest/v1/temperature_analysis?select=*'), headers=_headers())
         r.raise_for_status()
         rows = r.json()
         import re
@@ -158,8 +161,8 @@ class SupabaseHttpRepo:
         return rows
 
     def temperature_get_data(self, sensor_id):
-        d = requests.get(_url(f'/rest/v1/processed_temperature_data?select=*&SID=eq.{sensor_id}&order=measurement_date'), headers=_headers())
-        a = requests.get(_url(f'/rest/v1/temperature_analysis?select=*&sensor_id=eq.{sensor_id}'), headers=_headers())
+        d = self.http.get(_url(f'/rest/v1/processed_temperature_data?select=*&SID=eq.{sensor_id}&order=measurement_date'), headers=_headers())
+        a = self.http.get(_url(f'/rest/v1/temperature_analysis?select=*&sensor_id=eq.{sensor_id}'), headers=_headers())
         d.raise_for_status(); a.raise_for_status()
         data_rows = d.json()
         for x in data_rows:
@@ -196,7 +199,7 @@ class SupabaseHttpRepo:
     def temperature_get_data_multi(self, sensor_ids):
         result = {}
         for sid in sensor_ids:
-            d = requests.get(_url(f'/rest/v1/processed_temperature_data?select=*&SID=eq.{sid}&order=measurement_date'), headers=_headers())
+            d = self.http.get(_url(f'/rest/v1/processed_temperature_data?select=*&SID=eq.{sid}&order=measurement_date'), headers=_headers())
             d.raise_for_status()
             rows = d.json()
             for x in rows:
@@ -209,7 +212,7 @@ class SupabaseHttpRepo:
         days = int(days) if days is not None else 90
         days = 1 if days <= 0 else days
 
-        latest = requests.get(
+        latest = self.http.get(
             _url('/rest/v1/processed_temperature_data?select=measurement_date&order=measurement_date.desc&limit=1'),
             headers=_headers()
         )
@@ -227,7 +230,7 @@ class SupabaseHttpRepo:
         start_dt = latest_dt - datetime.timedelta(days=days)
         start_str = start_dt.isoformat()
 
-        r = requests.get(
+        r = self.http.get(
             _url(f'/rest/v1/processed_temperature_data?select=*&measurement_date=gte.{start_str}&order=measurement_date.asc'),
             headers=_headers()
         )
@@ -247,7 +250,7 @@ class SupabaseHttpRepo:
         return rows
 
     def temperature_get_trends(self):
-        r = requests.get(_url('/rest/v1/temperature_analysis?select=trend_type'), headers=_headers())
+        r = self.http.get(_url('/rest/v1/temperature_analysis?select=trend_type'), headers=_headers())
         r.raise_for_status()
         rows = r.json()
         cnt = {}
@@ -257,8 +260,8 @@ class SupabaseHttpRepo:
         return [{'trend_type': k, 'count': v} for k, v in cnt.items()]
 
     def temperature_get_stats(self):
-        d = requests.get(_url('/rest/v1/processed_temperature_data?select=measurement_date,avg_temperature,max_temperature,min_temperature,SID'), headers=_headers())
-        a = requests.get(_url('/rest/v1/temperature_analysis?select=sensor_id,trend_type,alert_level'), headers=_headers())
+        d = self.http.get(_url('/rest/v1/processed_temperature_data?select=measurement_date,avg_temperature,max_temperature,min_temperature,SID'), headers=_headers())
+        a = self.http.get(_url('/rest/v1/temperature_analysis?select=sensor_id,trend_type,alert_level'), headers=_headers())
         d.raise_for_status(); a.raise_for_status()
         dr = d.json(); ar = a.json()
         import math
@@ -311,39 +314,39 @@ class SupabaseHttpRepo:
         q = "/rest/v1/tickets?select=*&order=created_at.desc"
         if params: q += "&" + "&".join(params)
         q += f"&limit={limit}&offset={offset}"
-        r = requests.get(_url(q), headers=_headers())
+        r = self.http.get(_url(q), headers=_headers())
         r.raise_for_status()
         rows = r.json()
         return rows
 
     def ticket_create(self, ticket_data):
         h = _headers(); h['Prefer'] = 'return=representation'
-        r = requests.post(_url('/rest/v1/tickets'), headers=h, json=ticket_data)
+        r = self.http.post(_url('/rest/v1/tickets'), headers=h, json=ticket_data)
         r.raise_for_status()
         rows = r.json()
         return rows[0] if isinstance(rows, list) and rows else {}
 
     def ticket_get_by_id(self, ticket_id):
-        r = requests.get(_url(f'/rest/v1/tickets?select=*&id=eq.{ticket_id}'), headers=_headers())
+        r = self.http.get(_url(f'/rest/v1/tickets?select=*&id=eq.{ticket_id}'), headers=_headers())
         r.raise_for_status()
         rows = r.json()
         return rows[0] if isinstance(rows, list) and rows else None
 
     def ticket_get_by_number(self, ticket_number):
-        r = requests.get(_url(f'/rest/v1/tickets?select=*&ticket_number=eq.{ticket_number}'), headers=_headers())
+        r = self.http.get(_url(f'/rest/v1/tickets?select=*&ticket_number=eq.{ticket_number}'), headers=_headers())
         r.raise_for_status()
         rows = r.json()
         return rows[0] if isinstance(rows, list) and rows else None
 
     def ticket_update(self, ticket_id, update_data):
         h = _headers(); h['Prefer'] = 'return=representation'
-        r = requests.patch(_url(f'/rest/v1/tickets?id=eq.{ticket_id}'), headers=h, json=update_data)
+        r = self.http.patch(_url(f'/rest/v1/tickets?id=eq.{ticket_id}'), headers=h, json=update_data)
         r.raise_for_status()
         rows = r.json()
         return rows[0] if isinstance(rows, list) and rows else None
 
     def ticket_delete(self, ticket_id):
-        r = requests.delete(_url(f'/rest/v1/tickets?id=eq.{ticket_id}'), headers=_headers())
+        r = self.http.delete(_url(f'/rest/v1/tickets?id=eq.{ticket_id}'), headers=_headers())
         r.raise_for_status()
         return True
 
@@ -351,7 +354,7 @@ class SupabaseHttpRepo:
         if not ticket_ids:
             return 0
         ids_csv = ",".join(str(tid) for tid in ticket_ids)
-        r = requests.delete(
+        r = self.http.delete(
             _url(f'/rest/v1/tickets?id=in.({ids_csv})'),
             headers=_headers()
         )
@@ -359,7 +362,7 @@ class SupabaseHttpRepo:
         return len(ticket_ids)
 
     def tickets_statistics(self):
-        r = requests.get(_url('/rest/v1/tickets?select=status,ticket_type,priority,created_at'), headers=_headers())
+        r = self.http.get(_url('/rest/v1/tickets?select=status,ticket_type,priority,created_at'), headers=_headers())
         r.raise_for_status()
         rows = r.json()
         total = len(rows)
@@ -386,30 +389,30 @@ class SupabaseHttpRepo:
         return {'total': total, 'by_status': by_status, 'by_type': by_type, 'by_priority': by_priority, 'today_created': today_created, 'overdue': overdue}
 
     def ticket_comments_get(self, ticket_id, limit=50):
-        r = requests.get(_url(f'/rest/v1/ticket_comments?select=*&ticket_id=eq.{ticket_id}&order=created_at.asc&limit={limit}'), headers=_headers())
+        r = self.http.get(_url(f'/rest/v1/ticket_comments?select=*&ticket_id=eq.{ticket_id}&order=created_at.asc&limit={limit}'), headers=_headers())
         r.raise_for_status()
         rows = r.json()
         return rows
 
     def ticket_comment_add(self, payload):
         h = _headers(); h['Prefer'] = 'return=representation'
-        r = requests.post(_url('/rest/v1/ticket_comments'), headers=h, json=payload)
+        r = self.http.post(_url('/rest/v1/ticket_comments'), headers=h, json=payload)
         r.raise_for_status()
         rows = r.json()
         return rows[0] if isinstance(rows, list) and rows else {}
 
     def ticket_comment_update(self, comment_id, author_id, content):
         h = _headers(); h['Prefer'] = 'return=representation'
-        r = requests.patch(_url(f'/rest/v1/ticket_comments?id=eq.{comment_id}&author_id=eq.{author_id}'), headers=h, json={'content': content})
+        r = self.http.patch(_url(f'/rest/v1/ticket_comments?id=eq.{comment_id}&author_id=eq.{author_id}'), headers=h, json={'content': content})
         r.raise_for_status()
         rows = r.json()
         return bool(rows)
 
     def ticket_comment_delete(self, comment_id, author_id=None, is_admin=False):
         if is_admin:
-            r = requests.delete(_url(f'/rest/v1/ticket_comments?id=eq.{comment_id}'), headers=_headers())
+            r = self.http.delete(_url(f'/rest/v1/ticket_comments?id=eq.{comment_id}'), headers=_headers())
         else:
-            r = requests.delete(_url(f'/rest/v1/ticket_comments?id=eq.{comment_id}&author_id=eq.{author_id}'), headers=_headers())
+            r = self.http.delete(_url(f'/rest/v1/ticket_comments?id=eq.{comment_id}&author_id=eq.{author_id}'), headers=_headers())
         r.raise_for_status()
         return True
 
@@ -419,19 +422,19 @@ class SupabaseHttpRepo:
 
     def tickets_get_due_soon(self, hours=24):
         """Get tickets due within specified hours"""
-        r = requests.get(_url(f'/rest/v1/v_tickets_due_soon?select=*'), headers=_headers())
+        r = self.http.get(_url(f'/rest/v1/v_tickets_due_soon?select=*'), headers=_headers())
         r.raise_for_status()
         return r.json()
 
     def tickets_get_overdue(self):
         """Get all overdue tickets"""
-        r = requests.get(_url(f'/rest/v1/v_tickets_overdue?select=*'), headers=_headers())
+        r = self.http.get(_url(f'/rest/v1/v_tickets_overdue?select=*'), headers=_headers())
         r.raise_for_status()
         return r.json()
 
     def tickets_get_to_archive(self):
         """Get tickets ready for archiving (closed/rejected > 7 days)"""
-        r = requests.get(_url(f'/rest/v1/v_tickets_to_archive?select=*'), headers=_headers())
+        r = self.http.get(_url(f'/rest/v1/v_tickets_to_archive?select=*'), headers=_headers())
         r.raise_for_status()
         return r.json()
 
@@ -476,7 +479,7 @@ class SupabaseHttpRepo:
 
         # Insert into archive table
         h = _headers(); h['Prefer'] = 'return=representation'
-        r = requests.post(_url('/rest/v1/ticket_archive'), headers=h, json=archive_data)
+        r = self.http.post(_url('/rest/v1/ticket_archive'), headers=h, json=archive_data)
         r.raise_for_status()
 
         # Mark original ticket as archived
@@ -516,7 +519,7 @@ class SupabaseHttpRepo:
         # Try with is_archived filter first, fall back to all tickets if column doesn't exist
         try:
             test_url = _url('/rest/v1/tickets?select=is_archived&limit=1')
-            test_r = requests.get(test_url, headers=_headers())
+            test_r = self.http.get(test_url, headers=_headers())
             if test_r.status_code == 200:
                 params.append('is_archived=eq.false')
         except:
@@ -535,13 +538,13 @@ class SupabaseHttpRepo:
         q = "/rest/v1/tickets?select=*&order=created_at.desc"
         if params: q += "&" + "&".join(params)
         q += f"&limit={limit}&offset={offset}"
-        r = requests.get(_url(q), headers=_headers())
+        r = self.http.get(_url(q), headers=_headers())
         r.raise_for_status()
         return r.json()
 
     def tickets_get_archived(self, limit=50, offset=0):
         """Get archived tickets from archive table"""
-        r = requests.get(_url(f'/rest/v1/ticket_archive?select=*&order=archived_at.desc&limit={limit}&offset={offset}'), headers=_headers())
+        r = self.http.get(_url(f'/rest/v1/ticket_archive?select=*&order=archived_at.desc&limit={limit}&offset={offset}'), headers=_headers())
         r.raise_for_status()
         return r.json()
 
@@ -554,13 +557,13 @@ class SupabaseHttpRepo:
         q = '/rest/v1/system_users?select=*&order=created_at.desc'
         if active_only:
             q += '&is_active=eq.true'
-        r = requests.get(_url(q), headers=_headers())
+        r = self.http.get(_url(q), headers=_headers())
         r.raise_for_status()
         return r.json()
 
     def user_get_by_id(self, user_id):
         """Get user by user_id"""
-        r = requests.get(_url(f'/rest/v1/system_users?select=*&user_id=eq.{user_id}'), headers=_headers())
+        r = self.http.get(_url(f'/rest/v1/system_users?select=*&user_id=eq.{user_id}'), headers=_headers())
         r.raise_for_status()
         rows = r.json()
         return rows[0] if rows else None
@@ -568,7 +571,7 @@ class SupabaseHttpRepo:
     def user_create(self, user_data):
         """Create a new user"""
         h = _headers(); h['Prefer'] = 'return=representation'
-        r = requests.post(_url('/rest/v1/system_users'), headers=h, json=user_data)
+        r = self.http.post(_url('/rest/v1/system_users'), headers=h, json=user_data)
         r.raise_for_status()
         rows = r.json()
         return rows[0] if rows else {}
@@ -576,7 +579,7 @@ class SupabaseHttpRepo:
     def user_update(self, user_id, update_data):
         """Update user information"""
         h = _headers(); h['Prefer'] = 'return=representation'
-        r = requests.patch(_url(f'/rest/v1/system_users?user_id=eq.{user_id}'), headers=h, json=update_data)
+        r = self.http.patch(_url(f'/rest/v1/system_users?user_id=eq.{user_id}'), headers=h, json=update_data)
         r.raise_for_status()
         rows = r.json()
         return rows[0] if rows else None
@@ -587,7 +590,7 @@ class SupabaseHttpRepo:
 
     def user_get_notification_settings(self, user_id):
         """Get user notification settings"""
-        r = requests.get(_url(f'/rest/v1/user_notification_settings?select=*&user_id=eq.{user_id}'), headers=_headers())
+        r = self.http.get(_url(f'/rest/v1/user_notification_settings?select=*&user_id=eq.{user_id}'), headers=_headers())
         r.raise_for_status()
         rows = r.json()
         return rows[0] if rows else None
@@ -598,10 +601,10 @@ class SupabaseHttpRepo:
         h = _headers(); h['Prefer'] = 'return=representation'
 
         if existing:
-            r = requests.patch(_url(f'/rest/v1/user_notification_settings?user_id=eq.{user_id}'), headers=h, json=settings_data)
+            r = self.http.patch(_url(f'/rest/v1/user_notification_settings?user_id=eq.{user_id}'), headers=h, json=settings_data)
         else:
             settings_data['user_id'] = user_id
-            r = requests.post(_url('/rest/v1/user_notification_settings'), headers=h, json=settings_data)
+            r = self.http.post(_url('/rest/v1/user_notification_settings'), headers=h, json=settings_data)
 
         r.raise_for_status()
         rows = r.json()
@@ -624,7 +627,7 @@ class SupabaseHttpRepo:
     def users_get_with_email(self):
         """Get all active users with their notification emails"""
         try:
-            r = requests.get(_url('/rest/v1/v_users_with_email?select=*'), headers=_headers())
+            r = self.http.get(_url('/rest/v1/v_users_with_email?select=*'), headers=_headers())
             r.raise_for_status()
             return r.json()
         except:
@@ -640,7 +643,7 @@ class SupabaseHttpRepo:
 
     def users_get_by_role(self, role):
         """Get users by role"""
-        r = requests.get(_url(f'/rest/v1/system_users?select=*&role=eq.{role}&is_active=eq.true'), headers=_headers())
+        r = self.http.get(_url(f'/rest/v1/system_users?select=*&role=eq.{role}&is_active=eq.true'), headers=_headers())
         r.raise_for_status()
         return r.json()
 
@@ -655,7 +658,7 @@ class SupabaseHttpRepo:
         return emails
 
     def modules_get_all(self):
-        r = requests.get(_url('/rest/v1/app_modules?select=*&order=sort_order'), headers=_headers())
+        r = self.http.get(_url('/rest/v1/app_modules?select=*&order=sort_order'), headers=_headers())
         r.raise_for_status()
         return r.json()
 
@@ -668,7 +671,7 @@ class SupabaseHttpRepo:
         headers = _headers()
         headers['Content-Type'] = 'application/json'
         headers['Prefer'] = 'return=representation'
-        r = requests.patch(_url(f'/rest/v1/app_modules?module_key=eq.{module_key}'), headers=headers, json=payload)
+        r = self.http.patch(_url(f'/rest/v1/app_modules?module_key=eq.{module_key}'), headers=headers, json=payload)
         r.raise_for_status()
         rows = r.json()
         if isinstance(rows, list) and rows:
@@ -676,14 +679,14 @@ class SupabaseHttpRepo:
         return None
 
     def tunnel_projects_list(self):
-        r = requests.get(_url("/rest/v1/tunnel_projects?select=*&order=created_at.desc"), headers=_headers())
+        r = self.http.get(_url("/rest/v1/tunnel_projects?select=*&order=created_at.desc"), headers=_headers())
         r.raise_for_status()
         return r.json()
 
     def tunnel_project_create(self, payload):
         h = _headers()
         h["Prefer"] = "return=representation"
-        r = requests.post(_url("/rest/v1/tunnel_projects"), headers=h, json=payload)
+        r = self.http.post(_url("/rest/v1/tunnel_projects"), headers=h, json=payload)
         r.raise_for_status()
         rows = r.json()
         return rows[0] if isinstance(rows, list) and rows else {}
@@ -692,20 +695,20 @@ class SupabaseHttpRepo:
         q = "/rest/v1/tunnel_alignments?select=*&order=created_at.desc"
         if project_id:
             q = f"/rest/v1/tunnel_alignments?select=*&project_id=eq.{project_id}&order=created_at.desc"
-        r = requests.get(_url(q), headers=_headers())
+        r = self.http.get(_url(q), headers=_headers())
         r.raise_for_status()
         return r.json()
 
     def tunnel_alignment_create(self, payload):
         h = _headers()
         h["Prefer"] = "return=representation"
-        r = requests.post(_url("/rest/v1/tunnel_alignments"), headers=h, json=payload)
+        r = self.http.post(_url("/rest/v1/tunnel_alignments"), headers=h, json=payload)
         r.raise_for_status()
         rows = r.json()
         return rows[0] if isinstance(rows, list) and rows else {}
 
     def tunnel_alignment_get(self, alignment_id):
-        r = requests.get(_url(f"/rest/v1/tunnel_alignments?select=*&alignment_id=eq.{alignment_id}&limit=1"), headers=_headers())
+        r = self.http.get(_url(f"/rest/v1/tunnel_alignments?select=*&alignment_id=eq.{alignment_id}&limit=1"), headers=_headers())
         r.raise_for_status()
         rows = r.json()
         return rows[0] if isinstance(rows, list) and rows else None
@@ -714,14 +717,14 @@ class SupabaseHttpRepo:
         q = f"/rest/v1/tunnel_point_mappings?select=*&project_id=eq.{project_id}&order=updated_at.desc"
         if alignment_id:
             q = f"/rest/v1/tunnel_point_mappings?select=*&project_id=eq.{project_id}&alignment_id=eq.{alignment_id}&order=updated_at.desc"
-        r = requests.get(_url(q), headers=_headers())
+        r = self.http.get(_url(q), headers=_headers())
         r.raise_for_status()
         return r.json()
 
     def tunnel_point_mapping_upsert(self, payload):
         h = _headers()
         h["Prefer"] = "return=representation,resolution=merge-duplicates"
-        r = requests.post(
+        r = self.http.post(
             _url("/rest/v1/tunnel_point_mappings?on_conflict=project_id,point_id"),
             headers=h,
             json=payload,
@@ -738,7 +741,7 @@ class SupabaseHttpRepo:
             q += f"&ts=gte.{start}"
         if end:
             q += f"&ts=lte.{end}"
-        r = requests.get(_url(q), headers=_headers())
+        r = self.http.get(_url(q), headers=_headers())
         r.raise_for_status()
         return r.json()
 
@@ -750,14 +753,14 @@ class SupabaseHttpRepo:
             q += f"&chainage_m=gte.{start_chainage}"
         if end_chainage is not None:
             q += f"&chainage_m=lte.{end_chainage}"
-        r = requests.get(_url(q), headers=_headers())
+        r = self.http.get(_url(q), headers=_headers())
         r.raise_for_status()
         return r.json()
 
     def tbm_telemetry_upsert(self, payload):
         h = _headers()
         h["Prefer"] = "return=representation,resolution=merge-duplicates"
-        r = requests.post(
+        r = self.http.post(
             _url("/rest/v1/tbm_telemetry?on_conflict=project_id,machine_id,ts"),
             headers=h,
             json=payload,
@@ -768,7 +771,7 @@ class SupabaseHttpRepo:
 
     def tbm_progress(self, project_id, machine_id):
         q = f"/rest/v1/tbm_telemetry?select=record_id,project_id,machine_id,ts,chainage_m,ring_no,status&project_id=eq.{project_id}&machine_id=eq.{machine_id}&order=ts.desc&limit=1"
-        r = requests.get(_url(q), headers=_headers())
+        r = self.http.get(_url(q), headers=_headers())
         r.raise_for_status()
         rows = r.json()
         return rows[0] if isinstance(rows, list) and rows else None

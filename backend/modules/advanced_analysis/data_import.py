@@ -8,7 +8,10 @@ Imports:
 """
 
 import os
-import requests
+try:
+    from modules.db.http_compat import requests  # 本地/云端 MySQL 兼容层
+except ImportError:
+    import requests
 import pandas as pd
 from docx import Document
 

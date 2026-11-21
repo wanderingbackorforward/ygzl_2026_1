@@ -4,7 +4,10 @@ Event Service - Construction event management and impact analysis
 """
 
 import os
-import requests
+try:
+    from modules.db.http_compat import requests  # 本地/云端 MySQL 兼容层
+except ImportError:
+    import requests
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 
