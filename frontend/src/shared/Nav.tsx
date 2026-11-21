@@ -13,7 +13,7 @@ const MOBILE_HIDDEN_KEYS = ['modules', 'three']
 
 export default function Nav() {
   const { pathname } = useLocation()
-  const { modules } = useModules()
+  const { modules, error: modulesError } = useModules()
   const { user, logout, isAuthEnabled } = useAuth()
   const [pending, setPending] = useState<AppModule | null>(null)
   const [moreOpen, setMoreOpen] = useState(false)
@@ -27,22 +27,7 @@ export default function Nav() {
     return () => clearInterval(timer)
   }, [fetchBadge])
 
-  const items = useMemo<AppModule[]>(() => {
-    if (modules.length) return modules
-    return [
-      { module_key: 'cover', route_path: '/cover', display_name: '首页', icon_class: 'fas fa-home', sort_order: 10, status: 'developed' },
-      { module_key: 'settlement', route_path: '/settlement', display_name: '沉降', icon_class: 'fas fa-chart-area', sort_order: 20, status: 'developed' },
-      { module_key: 'temperature', route_path: '/temperature', display_name: '温度', icon_class: 'fas fa-thermometer-half', sort_order: 30, status: 'developed' },
-      { module_key: 'cracks', route_path: '/cracks', display_name: '裂缝', icon_class: 'fas fa-bug', sort_order: 40, status: 'developed' },
-      { module_key: 'vibration', route_path: '/vibration', display_name: '振动', icon_class: 'fas fa-wave-square', sort_order: 50, status: 'developed' },
-      { module_key: 'insar', route_path: '/insar', display_name: 'InSAR', icon_class: 'fas fa-satellite', sort_order: 60, status: 'developed' },
-      { module_key: 'advanced', route_path: '/advanced', display_name: '高级分析', icon_class: 'fas fa-microscope', sort_order: 65, status: 'developed' },
-      { module_key: 'overview', route_path: '/overview', display_name: '数据总览', icon_class: 'fas fa-chart-line', sort_order: 70, status: 'developed' },
-      { module_key: 'three', route_path: '/three', display_name: '3D模型', icon_class: 'fas fa-cubes', sort_order: 80, status: 'developed' },
-      { module_key: 'tickets', route_path: '/tickets', display_name: '工单', icon_class: 'fas fa-ticket-alt', sort_order: 90, status: 'developed' },
-      { module_key: 'shield-trajectory', route_path: '/shield-trajectory', display_name: '盾构轨迹', icon_class: 'fas fa-route', sort_order: 95, status: 'developed' },
-    ]
-  }, [modules])
+  const items = useMemo<AppModule[]>(() => modules, [modules])
 
   /* ---- 手机：底部 Tab 栏 + 侧抽屉 ---- */
   if (IS_MOBILE) {
@@ -74,6 +59,11 @@ export default function Nav() {
               <div style={{ padding: '0 16px 12px', fontSize: 14, color: '#8bb8e0', borderBottom: '1px solid rgba(64,174,255,.15)' }}>
                 更多模块
               </div>
+              {moreItems.length === 0 && (
+                <div style={{ padding: '10px 16px', fontSize: 13, color: '#fbbf24' }}>
+                  {modulesError || '模块配置接口不可用'}
+                </div>
+              )}
               {moreItems.map(m => (
                 <Link
                   key={m.module_key}
@@ -181,6 +171,12 @@ export default function Nav() {
             </Link>
           )
         })}
+
+        {items.length === 0 && (
+          <span style={{ color: '#fbbf24', fontSize: 15 }}>
+            {modulesError || '模块配置接口不可用，导航暂不可用'}
+          </span>
+        )}
 
         {isAuthEnabled && user && (
           <button
