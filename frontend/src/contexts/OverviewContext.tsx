@@ -27,8 +27,8 @@ export const OverviewProvider: React.FC<{ children: ReactNode }> = ({ children }
       const dataSnapshot = {
         summary: {
           totalSettlementPoints: data.settlement.total_points,
-          settlementAlertCount: data.settlement.alert_count,
-          maxSettlement: data.settlement.max_value,
+          settlementAlertCount: data.settlement.abnormal_count ?? data.settlement.alert_count,
+          maxSettlement: data.settlement.max_settlement ?? data.settlement.max_value,
           totalCrackPoints: data.cracks.total_points,
           criticalCracks: data.cracks.critical_count,
           expandingCracks: data.cracks.expanding_count,
@@ -41,8 +41,8 @@ export const OverviewProvider: React.FC<{ children: ReactNode }> = ({ children }
         },
         statistics: {
           totalCount: data.settlement.total_points + data.cracks.total_points + data.temperature.total_sensors,
-          anomalyCount: data.settlement.alert_count + data.cracks.critical_count,
-          normalCount: (data.settlement.total_points - data.settlement.alert_count) + (data.cracks.total_points - data.cracks.critical_count),
+          anomalyCount: (data.settlement.abnormal_count ?? data.settlement.alert_count) + data.cracks.critical_count,
+          normalCount: (data.settlement.total_points - (data.settlement.abnormal_count ?? data.settlement.alert_count)) + (data.cracks.total_points - data.cracks.critical_count),
         },
         selectedItems: [],
       };

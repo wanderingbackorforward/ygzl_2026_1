@@ -14,12 +14,22 @@
 export interface DiagnosisInput {
   points: {
     point_id: string;
-    alert_level: string;       // 'normal' | 'warning' | 'alert'
+    alert_level: string;       // 'normal' | 'warning' | 'alert'，来自后端 rules 模块
     total_change: number;      // mm, 负值=沉降
     trend_slope: number;       // mm/d
     trend_type: string;        // 'stable' | 'increasing' | 'decreasing'
     predicted_change_30d: number;
   }[];
+  // 后端沉降聚合结论；页面不再自行重新统计
+  status?: {
+    total_points?: number;
+    alert_count?: number;
+    warning_count?: number;
+    abnormal_count?: number;
+    max_settlement?: number | null;
+    max_settlement_point?: string | null;
+    level?: string;
+  };
   anomalies: {
     point_id: string;
     type: string;
@@ -84,7 +94,7 @@ export interface DiagnosisResult {
 
 // ── 诊断引擎 ──────────────────────────────────
 export function diagnose(input: DiagnosisInput): DiagnosisResult {
-  const { points, anomalies, recommendations } = input;
+  const { points, anomalies, recommendations, status } = input;
   const now = new Date().toISOString();
 
   // 数据完整度
@@ -101,7 +111,7 @@ export function diagnose(input: DiagnosisInput): DiagnosisResult {
   const actions = generateActions(points, anomalies, recommendations);
 
   // ── 诊断句 ──
-  const sentence = composeSentence(points, anomalies, score, level);
+  const sentence = composeSentence(points, anomalies, score, level, status);
 
   return {
     sentence,
@@ -124,19 +134,10 @@ function computeScore(
 
   let score = 100;
 
-  // 报警/预警扣分
+  // 只按后端已定级的结果扣分，不在前端重复判定阈值
   for (const p of points) {
     if (p.alert_level === 'alert') score -= 12;
     if (p.alert_level === 'warning') score -= 4;
-
-    // 加速沉降额外扣分
-    if (p.trend_type === 'increasing' && p.trend_slope < -0.5) {
-      score -= 6;
-    }
-
-    // 超大沉降量扣分
-    if (p.total_change < -30) score -= 8;
-    else if (p.total_change < -20) score -= 4;
   }
 
   // 严重异常扣分
@@ -319,14 +320,15 @@ function composeSentence(
   anomalies: DiagnosisInput['anomalies'],
   score: number,
   level: HealthLevel,
+  status?: DiagnosisInput['status'],
 ): string {
   if (points.length === 0) return '暂无监测数据，无法生成诊断。';
 
-  const totalPoints = points.length;
-  const alertCount = points.filter(p => p.alert_level === 'alert').length;
-  const warnCount = points.filter(p => p.alert_level === 'warning').length;
-  const maxSett = Math.min(...points.map(p => p.total_change));
-  const worstPoint = points.find(p => p.total_change === maxSett);
+  const totalPoints = status?.total_points ?? points.length;
+  const alertCount = status?.alert_count ?? points.filter(p => p.alert_level === 'alert').length;
+  const warnCount = status?.warning_count ?? points.filter(p => p.alert_level === 'warning').length;
+  const maxSett = status?.max_settlement ?? Math.min(...points.map(p => p.total_change));
+  const worstPointId = status?.max_settlement_point ?? points.find(p => p.total_change === maxSett)?.point_id;
 
   if (level === 'healthy') {
     return `${totalPoints} 个监测点全部正常，项目整体安全稳定。`;
@@ -334,7 +336,7 @@ function composeSentence(
 
   if (level === 'danger') {
     const critAnom = anomalies.filter(a => a.severity === 'critical');
-    return `${alertCount} 个监测点报警！${worstPoint?.point_id || ''} 累计沉降 ${maxSett.toFixed(1)}mm，` +
+    return `${alertCount} 个监测点报警！${worstPointId || ''} 累计沉降 ${Number(maxSett ?? 0).toFixed(1)}mm，` +
       (critAnom.length > 0 ? `检测到 ${critAnom.length} 处严重异常，` : '') +
       '建议立即启动应急预案。';
   }
@@ -352,7 +354,7 @@ function composeSentence(
   const statusStr = parts.join('、');
 
   if (level === 'warn') {
-    return `项目存在风险：${statusStr}。最大沉降 ${worstPoint?.point_id || ''} 达 ${maxSett.toFixed(1)}mm，建议48小时内复测确认。`;
+    return `项目存在风险：${statusStr}。最大沉降 ${worstPointId || ''} 达 ${Number(maxSett ?? 0).toFixed(1)}mm，建议48小时内复测确认。`;
   }
 
   return `项目基本稳定，需关注：${statusStr}。持续监测中。`;

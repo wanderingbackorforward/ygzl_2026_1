@@ -7,8 +7,15 @@ import { apiGet } from '../lib/api';
 export interface OverviewSummary {
     settlement: {
         total_points: number;
-        max_value: number;
+        normal_count?: number;
+        warning_count?: number;
         alert_count: number;
+        abnormal_count?: number;
+        max_settlement?: number | null;
+        max_settlement_point?: string | null;
+        max_value: number;
+        level?: 'normal' | 'warning' | 'alert';
+        level_cn?: string;
         trend_distribution: Record<string, number>;
         error?: string;
     };
@@ -22,6 +29,13 @@ export interface OverviewSummary {
     };
     temperature: {
         total_sensors: number;
+        analyzed_sensors?: number;
+        normal_count?: number;
+        warning_count?: number;
+        alert_count?: number;
+        abnormal_count?: number;
+        level?: 'normal' | 'warning' | 'alert';
+        level_cn?: string;
         avg_temp: number;
         min_temp: number;
         max_temp: number;

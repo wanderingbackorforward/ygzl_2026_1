@@ -73,26 +73,20 @@ export const SettlementProvider: React.FC<SettlementProviderProps> = ({ children
     // 计算统计数据
     const totalCount = summaryData.length;
     const anomalyCount = summaryData.filter(item => {
-      const alertLevel = item.alert_level?.toLowerCase() || '';
-      return alertLevel.includes('warning') ||
-             alertLevel.includes('danger') ||
-             alertLevel.includes('critical') ||
-             alertLevel.includes('high') ||
-             alertLevel.includes('警告') ||
-             alertLevel.includes('异常');
+      // 只读后端 rules 模块下发的 level，不在前端重新解释中文/英文词
+      return item.level === 'warning' || item.level === 'alert';
     }).length;
     const normalCount = totalCount - anomalyCount;
 
-    // 计算平均沉降值
+    // 计算平均累计沉降（负值=沉降）
     const avgSettlement = summaryData.reduce((sum, item) => {
-      const value = parseFloat(item.latest_settlement as any) || 0;
-      return sum + value;
+      return sum + (Number(item.total_change) || 0);
     }, 0) / totalCount;
 
-    // 找出最大沉降值
-    const maxSettlement = Math.max(...summaryData.map(item =>
-      parseFloat(item.latest_settlement as any) || 0
-    ));
+    // 最大累计沉降取最小值（负得最多）
+    const maxSettlement = summaryData.length > 0
+      ? Math.min(...summaryData.map(item => Number(item.total_change) || 0))
+      : 0;
 
     // 统计趋势类型
     const trendTypes = summaryData.reduce((acc, item) => {
@@ -101,9 +95,9 @@ export const SettlementProvider: React.FC<SettlementProviderProps> = ({ children
       return acc;
     }, {} as Record<string, number>);
 
-    // 统计风险等级
+    // 统计风险等级（后端统一词表）
     const riskLevels = summaryData.reduce((acc, item) => {
-      const risk = item.risk_level || '未知';
+      const risk = item.level_cn || '未评估';
       acc[risk] = (acc[risk] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);

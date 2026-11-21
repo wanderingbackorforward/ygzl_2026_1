@@ -21,6 +21,7 @@ interface PointSummary {
   trend_slope: number;
   trend_type: string;
   alert_level: string;
+  level?: 'normal' | 'warning' | 'alert';
 }
 
 interface ConsolidationState {
@@ -250,8 +251,8 @@ export function AnomalyConfidenceRadar({ points }: { points: PointSummary[] }) {
     if (points.length === 0) return {};
 
     // 五个维度评分（0-100）
-    const alertRatio = points.filter(p => p.alert_level === 'alert').length / points.length * 100;
-    const warnRatio = points.filter(p => p.alert_level === 'warning').length / points.length * 100;
+    const alertRatio = points.filter(p => p.level === 'alert').length / points.length * 100;
+    const warnRatio = points.filter(p => p.level === 'warning').length / points.length * 100;
     const accelRatio = points.filter(p => p.trend_type === 'increasing').length / points.length * 100;
     const maxSett = Math.min(0, Math.min(...points.map(p => p.total_change)));
     const settScore = Math.min(100, Math.abs(maxSett) * 3);

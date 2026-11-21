@@ -7,6 +7,10 @@ export interface SummaryDataItem {
   avg_value: number;
   total_change: number;
   avg_daily_rate: number;
+  // 后端规则模块下发的唯一结论字段
+  level?: 'normal' | 'warning' | 'alert';
+  level_cn?: string;
+  reason?: string;
 }
 
 export interface PointTimeSeriesData {

@@ -1,8 +1,21 @@
 import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { useModules } from '../contexts/ModulesContext'
 import { useAgentStore } from '../stores/agentStore'
+import { apiGet } from '../lib/api'
 import type { AppModule } from '../types/modules'
 import { StatusTile, type TileTone } from '../components/touchkit/StatusTile'
+
+interface SystemStatus {
+  level: 'normal' | 'warning' | 'alert'
+  level_cn: string
+  headline: string
+  counts: {
+    settlement_abnormal: number
+    pending_tickets: number
+    overdue_tickets: number
+  }
+}
 
 const DEFAULT_MODULES: AppModule[] = [
   { module_key: 'settlement', route_path: '/settlement', display_name: '沉降', icon_class: 'fas fa-chart-area', sort_order: 20, status: 'developed' },
@@ -23,16 +36,30 @@ const SEV_LABEL: Record<string, string> = { critical: '存在危急预警', warn
 export default function Cover() {
   const { modules } = useModules()
   const badge = useAgentStore(s => s.badge)
+  const [status, setStatus] = useState<SystemStatus | null>(null)
+
+  useEffect(() => {
+    apiGet<SystemStatus>('/status/summary')
+      .then(setStatus)
+      .catch(e => console.error('[Cover] fetch status failed', e))
+  }, [])
 
   const source = modules.length ? modules : DEFAULT_MODULES
   const entries = source
     .filter(m => m.module_key !== 'cover' && m.module_key !== 'modules')
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
-  const sev = badge?.max_severity ?? 'info'
-  const statusTone = SEV_TONE[sev] ?? 'normal'
-  const statusLabel = SEV_LABEL[sev] ?? '运行正常'
+  const sev = status?.level ?? badge?.max_severity ?? 'info'
+  const statusTone: TileTone = status
+    ? (status.level === 'alert' ? 'danger' : status.level === 'warning' ? 'warning' : 'normal')
+    : (SEV_TONE[sev] ?? 'normal')
+  const statusLabel = status
+    ? (status.level === 'alert' ? '存在报警' : status.level === 'warning' ? '有预警待处理' : '运行正常')
+    : (SEV_LABEL[sev] ?? '运行正常')
   const statusColor = statusTone === 'danger' ? '#ff8b9a' : statusTone === 'warning' ? '#ffc24d' : '#7dff9d'
+  const abnormalCount = status?.counts.settlement_abnormal ?? badge?.count ?? 0
+  const riskLabel = status?.level_cn
+    ?? (sev === 'critical' ? '危急' : sev === 'warning' ? '预警' : '正常')
 
   return (
     <div
@@ -68,19 +95,24 @@ export default function Cover() {
           <i className="fas fa-shield-halved" style={{ fontSize: 22 }} />
           系统状态：{statusLabel}
         </div>
+        {status && (
+          <div style={{ marginTop: 10, fontSize: 14, color: 'rgba(230,247,255,0.62)' }}>
+            {status.headline}
+          </div>
+        )}
       </div>
 
       {/* 状态 KPI 行 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--wall-gap)' }}>
         <StatusTile label="功能模块" value={entries.length} tone="info" icon="fas fa-th-large" sub="个" />
         <StatusTile
-          label="待处理预警"
-          value={badge?.count ?? 0}
-          tone={statusTone === 'danger' ? 'danger' : statusTone === 'warning' ? 'warning' : 'normal'}
+          label="沉降异常点"
+          value={abnormalCount}
+          tone={statusTone}
           icon="fas fa-bell"
-          sub="条"
+          sub="个"
         />
-        <StatusTile label="风险等级" value={sev === 'critical' ? '危急' : sev === 'warning' ? '预警' : '正常'} tone={statusTone} icon="fas fa-triangle-exclamation" />
+        <StatusTile label="风险等级" value={riskLabel} tone={statusTone} icon="fas fa-triangle-exclamation" />
       </div>
 
       {/* 模块入口大色块网格 */}

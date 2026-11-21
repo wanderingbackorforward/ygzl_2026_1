@@ -47,10 +47,7 @@ export const TemperatureV2Cockpit: React.FC = () => {
         if (id) names[id] = String(r.sensor_name || r.point_name || id);
       });
       const problems: string[] = summary
-        .filter((r: any) => {
-          const a = String(r.alert_level || r.alert_status || '');
-          return ['需关注', '预警', 'warning', 'alert', '高风险', '中风险'].includes(a);
-        })
+        .filter((r: any) => r.level === 'warning' || r.level === 'alert')
         .map((r: any) => String(r.sensor_id || r.SID || ''));
       setSensors([...new Set(ids)] as string[]);
       setSensorNames(names);
@@ -68,7 +65,9 @@ export const TemperatureV2Cockpit: React.FC = () => {
         apiGet<any>('/temperature/v2/intelligence/risk-evaluation'),
         apiGet<any>('/temperature/v2/intelligence/actions'),
       ]);
-      setSnapshot(snapshotResult?.success ? snapshotResult : null);
+      // snapshot 接口返回裸对象，不包 success；只认实际数据体
+      const snapshotPayload = snapshotResult?.data ?? snapshotResult;
+      setSnapshot(snapshotPayload && Object.keys(snapshotPayload).length > 0 ? snapshotPayload : null);
       setRiskItems(Array.isArray(riskResult?.items) ? riskResult.items : []);
       setActionPlans(Array.isArray(actionResult?.plans) ? actionResult.plans : []);
     } catch {

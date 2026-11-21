@@ -18,6 +18,26 @@ interface PointSummary {
   trend_type: string;
   predicted_change_30d: number;
   last_date: string;
+  level?: 'normal' | 'warning' | 'alert';
+  level_cn?: string;
+  reason?: string;
+}
+
+interface SettlementSummary {
+  total_points: number;
+  normal_count: number;
+  warning_count: number;
+  alert_count: number;
+  abnormal_count: number;
+  max_settlement: number | null;
+  max_settlement_point: string | null;
+  level: 'normal' | 'warning' | 'alert';
+  level_cn: string;
+}
+
+interface SummaryResponse {
+  points: PointSummary[];
+  summary: SettlementSummary | null;
 }
 
 interface ProfilePoint {
@@ -42,64 +62,28 @@ interface ProfileData {
 }
 
 // ─────────────────────────────────────────────
-// 工具函数
+// 工具函数（分级只读后端 level，不在页面重算阈值）
 // ─────────────────────────────────────────────
-// 后端 settlement_analysis 的 alert_level 是中文（低风险/正常），
-// 旧代码按英文 alert/warning 判断，导致 12 个低风险点全部显示为正常。
-function normalizeAlert(level: string): 'alert' | 'warning' | 'normal' {
-  const l = (level || '').trim();
-  if (l === 'alert' || l === '高风险' || l === '报警') return 'alert';
-  if (l === 'warning' || l === '中风险' || l === '低风险' || l === '预警' || l === '需关注') return 'warning';
+type RiskLevel = 'alert' | 'warning' | 'normal';
+
+function pointLevel(point?: { level?: string; alert_level?: string } | null): RiskLevel {
+  const level = (point?.level || '').toLowerCase();
+  if (level === 'alert' || level === 'warning' || level === 'normal') return level;
+  // 后端未下发 level 时按正常展示，绝不在这里按中文词或数值重新判级
   return 'normal';
 }
 
-const CN_ALERT_LEVELS = ['高风险', '中风险', '低风险', '正常', '需关注'];
-
-function alertColor(level: string): string {
-  const l = normalizeAlert(level);
-  if (l === 'alert') return '#f87171';
-  if (l === 'warning') return '#fbbf24';
+function alertColor(level: RiskLevel): string {
+  if (level === 'alert') return '#f87171';
+  if (level === 'warning') return '#fbbf24';
   return '#34d399';
 }
 
-function alertLabel(level: string): string {
-  if (CN_ALERT_LEVELS.includes(level)) return level;
-  const l = normalizeAlert(level);
-  if (l === 'alert') return '报警';
-  if (l === 'warning') return '预警';
+function alertLabel(level: RiskLevel, levelCn?: string): string {
+  if (levelCn) return levelCn;
+  if (level === 'alert') return '报警';
+  if (level === 'warning') return '预警';
   return '正常';
-}
-
-// 根据沉降值获取更细粒度的颜色（让"正常"不再千篇一律）
-function valueColor(totalChange: number): string {
-  const abs = Math.abs(totalChange);
-  if (abs >= 5) return '#f87171';     // 超报警线
-  if (abs >= 3) return '#fbbf24';     // 超预警线
-  if (abs >= 2) return '#fb923c';     // 接近预警线
-  if (abs >= 1) return '#a3e635';     // 轻微变形
-  return '#34d399';                   // 稳定
-}
-
-// 细粒度状态标签（让列表有层次感）
-function fineLabel(level: string, totalChange: number): string {
-  if (CN_ALERT_LEVELS.includes(level)) return level;
-  const l = normalizeAlert(level);
-  if (l === 'alert') return '报警';
-  if (l === 'warning') return '预警';
-  const abs = Math.abs(totalChange);
-  if (abs >= 2) return '留意';
-  if (abs >= 1) return '轻微';
-  return '正常';
-}
-
-function fineLabelColor(level: string, totalChange: number): string {
-  const l = normalizeAlert(level);
-  if (l === 'alert') return '#f87171';
-  if (l === 'warning') return '#fbbf24';
-  const abs = Math.abs(totalChange);
-  if (abs >= 2) return '#fb923c';
-  if (abs >= 1) return '#a3e635';
-  return '#34d399';
 }
 
 // ─────────────────────────────────────────────
@@ -127,6 +111,7 @@ const TIME_OPTIONS = [
 
 interface HeroBarProps {
   points: PointSummary[];
+  summary: SettlementSummary | null;
   loading: boolean;
   days: number;
   onDaysChange: (d: number) => void;
@@ -134,7 +119,7 @@ interface HeroBarProps {
   selectedId?: string | null;
 }
 
-function HeroBar({ points, loading, days, onDaysChange, onSelectPoint, selectedId }: HeroBarProps) {
+function HeroBar({ points, summary, loading, days, onDaysChange, onSelectPoint, selectedId }: HeroBarProps) {
   const navigate = useNavigate();
   if (loading) {
     return (
@@ -146,12 +131,16 @@ function HeroBar({ points, loading, days, onDaysChange, onSelectPoint, selectedI
     );
   }
 
-  const alertCount = points.filter(p => normalizeAlert(p.alert_level) === 'alert').length;
-  const warnCount = points.filter(p => normalizeAlert(p.alert_level) === 'warning').length;
-  const maxSettlement = points.length > 0 ? Math.min(...points.map(p => p.total_change ?? 0)) : 0;
-  const maxPoint = points.find(p => p.total_change === maxSettlement);
+  const alertCount = summary?.alert_count ?? 0;
+  const warnCount = summary?.warning_count ?? 0;
+  const maxSettlement = summary?.max_settlement ?? null;
+  const maxPoint = summary?.max_settlement_point
+    ? points.find(p => p.point_id === summary.max_settlement_point)
+    : undefined;
   const avgRate = points.length > 0 ? points.reduce((s, p) => s + (p.trend_slope ?? 0), 0) / points.length : 0;
-  const normalCount = points.length - alertCount - warnCount;
+  const normalCount = summary?.normal_count ?? 0;
+  const riskTone: 'ok' | 'warn' | 'danger' =
+    alertCount > 0 ? 'danger' : warnCount > 0 ? 'warn' : 'ok';
 
   // KPI: 去掉"报警/预警"（Agent已覆盖），换成监测点总览和正常率
   const compactKpis: Array<{
@@ -170,16 +159,16 @@ function HeroBar({ points, loading, days, onDaysChange, onSelectPoint, selectedI
     },
     {
       label: '最大累计沉降',
-      value: maxSettlement.toFixed(2),
+      value: maxSettlement == null ? '--' : maxSettlement.toFixed(2),
       unit: 'mm',
-      tone: maxSettlement < -5 ? 'danger' : maxSettlement < -3 ? 'warn' : 'ok',
+      tone: riskTone,
       sub: maxPoint ? maxPoint.point_id : '--',
     },
     {
       label: '平均日沉降速率',
       value: avgRate.toFixed(4),
       unit: 'mm/d',
-      tone: Math.abs(avgRate) > 0.08 ? 'danger' : Math.abs(avgRate) > 0.03 ? 'warn' : 'ok',
+      tone: riskTone,
       sub: '线性回归',
     },
   ];
@@ -264,8 +253,8 @@ function PointList({ points, loading, selectedId, onSelect }: PointListProps) {
   // 按风险排序：alert > warning > normal，同级按沉降量绝对值排
   const sorted = [...points].sort((a, b) => {
     const order = { alert: 0, warning: 1, normal: 2 };
-    const ao = order[normalizeAlert(a.alert_level)];
-    const bo = order[normalizeAlert(b.alert_level)];
+    const ao = order[pointLevel(a)];
+    const bo = order[pointLevel(b)];
     if (ao !== bo) return ao - bo;
     return Math.abs(b.total_change ?? 0) - Math.abs(a.total_change ?? 0);
   });
@@ -296,12 +285,8 @@ function PointList({ points, loading, selectedId, onSelect }: PointListProps) {
           <div style={{ padding: 12, color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>加载中...</div>
         ) : sorted.map(p => {
           const isSelected = selectedId === p.point_id;
-          const color = alertColor(p.alert_level);
-          const vColor = valueColor(p.total_change ?? 0);
-          const fLabel = fineLabel(p.alert_level, p.total_change ?? 0);
-          const fColor = fineLabelColor(p.alert_level, p.total_change ?? 0);
-          // 沉降量占报警线比例（用于微型进度条）
-          const ratio = Math.min(Math.abs(p.total_change ?? 0) / 5, 1);
+          const level = pointLevel(p);
+          const color = alertColor(level);
           return (
             <button
               key={p.point_id}
@@ -326,36 +311,19 @@ function PointList({ points, loading, selectedId, onSelect }: PointListProps) {
                 </span>
                 <span style={{
                   fontSize: 10,
-                  color: fColor,
-                  background: `${fColor}22`,
-                  border: `1px solid ${fColor}55`,
+                  color,
+                  background: `${color}22`,
+                  border: `1px solid ${color}55`,
                   borderRadius: 3,
                   padding: '1px 4px',
                 }}>
-                  {fLabel}
+                  {alertLabel(level, p.level_cn)}
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 500, color: vColor }}>
+                <span style={{ fontSize: 12, fontWeight: 500, color }}>
                   {(p.total_change ?? 0).toFixed(2)} mm
                 </span>
-              </div>
-              {/* 微型沉降进度条 */}
-              <div style={{
-                height: 2,
-                width: '100%',
-                background: 'rgba(255,255,255,0.06)',
-                borderRadius: 1,
-                marginTop: 1,
-              }}>
-                <div style={{
-                  height: '100%',
-                  width: `${ratio * 100}%`,
-                  background: vColor,
-                  borderRadius: 1,
-                  opacity: 0.7,
-                  transition: 'width 0.3s',
-                }} />
               </div>
             </button>
           );
@@ -401,9 +369,8 @@ function TunnelProfileChart({ profileData, selectedId, points, loading, events, 
     const scatterData = profile.map(p => {
       const summary = points.find(s => s.point_id === p.point_id);
       const isSelected = p.point_id === selectedId;
-      const alert = normalizeAlert(summary?.alert_level ?? 'normal');
-      const color = alert === 'alert' ? '#f87171' : alert === 'warning' ? '#fbbf24'
-        : valueColor(p.cumulative_change);
+      const alert = pointLevel(summary);
+      const color = alertColor(alert);
       return {
         value: [p.chainage_m, p.cumulative_change],
         name: p.point_id,
@@ -412,11 +379,12 @@ function TunnelProfileChart({ profileData, selectedId, points, loading, events, 
           borderColor: isSelected ? '#fff' : 'transparent',
           borderWidth: isSelected ? 2 : 0,
         },
-        symbolSize: isSelected ? 14 : (Math.abs(p.cumulative_change) >= 3 ? 10 : 8),
+        symbolSize: isSelected ? 14 : 8,
         label: { show: isSelected, formatter: p.point_id, color: '#fff', fontSize: 11, position: 'top' as const },
         // 附加数据用于 tooltip
         dailyChange: p.daily_change,
         alertLevel: alert,
+        levelCn: summary?.level_cn,
       };
     });
 
@@ -447,7 +415,7 @@ function TunnelProfileChart({ profileData, selectedId, points, loading, events, 
         formatter: (params: any) => {
           if (params.seriesIndex === 1 && params.data) {
             const d = params.data;
-            const alert = alertLabel(d.alertLevel);
+            const alert = alertLabel(d.alertLevel, d.levelCn);
             return `<b>${d.name}</b><br/>` +
               `里程: ${d.value[0].toFixed(1)} m<br/>` +
               `累计沉降: ${d.value[1].toFixed(2)} mm<br/>` +
@@ -943,6 +911,7 @@ export default function SettlementV2() {
   const [searchParams] = useSearchParams();
   const pointParam = searchParams.get('point');
   const [points, setPoints] = useState<PointSummary[]>([]);
+  const [summary, setSummary] = useState<SettlementSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(pointParam);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
@@ -954,24 +923,30 @@ export default function SettlementV2() {
 
   const fetchSummary = useCallback(async () => {
     setLoading(true);
+    const load = async (url: string): Promise<SummaryResponse> => {
+      const raw = await apiGet<SummaryResponse | PointSummary[]>(url);
+      if (Array.isArray(raw)) return { points: raw, summary: null };
+      return { points: raw?.points ?? [], summary: raw?.summary ?? null };
+    };
     try {
-      let data: PointSummary[] | null = null;
-      // 先尝试带时间范围
+      // 先尝试带时间范围；结论字段由后端 rules 模块统一计算
+      let data: SummaryResponse | null = null;
       if (days > 0) {
-        data = await apiGet<PointSummary[]>(`/summary?days=${days}`);
+        data = await load(`/summary?days=${days}&with_summary=1`);
       }
       // 如果带 days 返回空（数据超出范围），fallback 到全量
-      if (!data || data.length === 0) {
-        data = await apiGet<PointSummary[]>('/summary');
+      if (!data || data.points.length === 0) {
+        data = await load('/summary?with_summary=1');
       }
-      setPoints(data ?? []);
-      if (data && data.length > 0) {
+      setPoints(data.points);
+      setSummary(data.summary);
+      if (data.points.length > 0) {
         setSelectedId(prev => {
-          if (prev && data.some(p => p.point_id === prev)) return prev;
+          if (prev && data.points.some(p => p.point_id === prev)) return prev;
           return (
-            data.find(p => normalizeAlert(p.alert_level) === 'alert') ??
-            data.find(p => normalizeAlert(p.alert_level) === 'warning') ??
-            data[0]
+            data.points.find(p => pointLevel(p) === 'alert') ??
+            data.points.find(p => pointLevel(p) === 'warning') ??
+            data.points[0]
           ).point_id;
         });
       }
@@ -1032,7 +1007,7 @@ export default function SettlementV2() {
   return (
     <div className="ds-page">
       {/* 顶栏：页头 + KPI + 时间范围 + 下一步 */}
-      <HeroBar points={points} loading={loading} days={days} onDaysChange={setDays} onSelectPoint={setSelectedId} selectedId={selectedId} />
+      <HeroBar points={points} summary={summary} loading={loading} days={days} onDaysChange={setDays} onSelectPoint={setSelectedId} selectedId={selectedId} />
 
       {/* 主体：左侧列表 + 右侧（纵断面图 + 裂缝联动） */}
       <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>

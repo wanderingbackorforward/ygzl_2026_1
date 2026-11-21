@@ -26,6 +26,23 @@ interface PointSummary {
   trend_type: string;
   predicted_change_30d: number;
   last_date: string;
+  level?: 'normal' | 'warning' | 'alert';
+  level_cn?: string;
+  reason?: string;
+}
+
+interface SettlementSummary {
+  total_points?: number;
+  normal_count?: number;
+  warning_count?: number;
+  alert_count?: number;
+  abnormal_count?: number;
+  max_settlement?: number | null;
+  max_settlement_point?: string | null;
+  level?: 'normal' | 'warning' | 'alert';
+  level_cn?: string;
+  max_value?: number;
+  trend_distribution?: Record<string, number>;
 }
 
 interface AnalysisData {
@@ -37,9 +54,20 @@ interface AnalysisData {
 
 // 四指标口径来自 /api/overview/summary（见 指标口径.md 第 2 节）
 interface OverviewSummary {
-  settlement?: { total_points?: number; max_value?: number; alert_count?: number };
+  settlement?: SettlementSummary;
   cracks?: { total_points?: number; expanding_count?: number; shrinking_count?: number; stable_count?: number };
-  temperature?: { total_sensors?: number; avg_temp?: number; min_temp?: number; max_temp?: number };
+  temperature?: {
+    total_sensors?: number;
+    analyzed_sensors?: number;
+    normal_count?: number;
+    warning_count?: number;
+    alert_count?: number;
+    abnormal_count?: number;
+    level?: 'normal' | 'warning' | 'alert';
+    avg_temp?: number;
+    min_temp?: number;
+    max_temp?: number;
+  };
   vibration?: { total_datasets?: number };
   safety_score?: number;
 }
@@ -275,18 +303,18 @@ function EvidenceCanvas({ result }: { result: DiagnosisResult | null }) {
 // ─────────────────────────────────────────────
 // 管理概览面板 — 趋势摘要 + 预测迷你图
 // ─────────────────────────────────────────────
-function ManagerOverview({ points }: { points: PointSummary[] }) {
+function ManagerOverview({ points, summary }: { points: PointSummary[]; summary?: SettlementSummary }) {
   // 趋势分类统计
   const stats = useMemo(() => {
     const stable = points.filter(p => p.trend_type === 'stable' || Math.abs(p.trend_slope) < 0.05).length;
     const increasing = points.filter(p => p.trend_type === 'increasing' && p.trend_slope < -0.05).length;
     const decreasing = points.filter(p => p.trend_type === 'decreasing' || p.trend_slope > 0.05).length;
-    const alert = points.filter(p => p.alert_level === 'alert').length;
-    const warn = points.filter(p => p.alert_level === 'warning').length;
-    const maxSett = points.length > 0 ? Math.min(...points.map(p => p.total_change ?? 0)) : 0;
+    const alert = summary?.alert_count ?? 0;
+    const warn = summary?.warning_count ?? 0;
+    const maxSett = summary?.max_settlement ?? 0;
     const avgSlope = points.length > 0 ? points.reduce((s, p) => s + (p.trend_slope ?? 0), 0) / points.length : 0;
-    return { stable, increasing, decreasing, alert, warn, maxSett, avgSlope, total: points.length };
-  }, [points]);
+    return { stable, increasing, decreasing, alert, warn, maxSett, avgSlope, total: summary?.total_points ?? points.length };
+  }, [points, summary]);
 
   // 30天预测分布迷你图
   const predOption: EChartsOption = useMemo(() => {
@@ -394,7 +422,7 @@ const URGENCY_STYLE: Record<string, { label: string; color: string; bg: string }
   week:  { label: '本周', color: '#3b82f6', bg: 'rgba(59,130,246,0.10)' },
 };
 
-function ActionPanel({ result, points }: { result: DiagnosisResult | null; points: PointSummary[] }) {
+function ActionPanel({ result, points, summary }: { result: DiagnosisResult | null; points: PointSummary[]; summary?: SettlementSummary }) {
   const [role, setRole] = useState<RoleTab>('engineer');
 
   const filtered = useMemo(
@@ -435,7 +463,7 @@ function ActionPanel({ result, points }: { result: DiagnosisResult | null; point
           </div>
         ) : role === 'manager' ? (
           /* 管理视角：趋势摘要 + 预测迷你图 */
-          <ManagerOverview points={points} />
+          <ManagerOverview points={points} summary={summary} />
         ) : filtered.length === 0 ? (
           <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, textAlign: 'center', padding: 24 }}>
             当前视角暂无待办事项
@@ -519,7 +547,7 @@ export default function OverviewV2() {
     const input: DiagnosisInput = {
       points: points.map(p => ({
         point_id: p.point_id,
-        alert_level: p.alert_level || 'normal',
+        alert_level: p.level || 'normal',
         total_change: p.total_change ?? 0,
         trend_slope: p.trend_slope ?? 0,
         trend_type: p.trend_type || 'stable',
@@ -527,9 +555,10 @@ export default function OverviewV2() {
       })),
       anomalies: analysis?.anomalies || [],
       recommendations: analysis?.recommendations || [],
+      status: overview?.settlement,
     };
     return diagnose(input);
-  }, [points, analysis, loading]);
+  }, [points, analysis, loading, overview?.settlement]);
 
   const settlement = overview?.settlement;
   const cracks = overview?.cracks;
@@ -540,22 +569,23 @@ export default function OverviewV2() {
     {
       key: 'settlement',
       label: '沉降 · 异常点',
-      value: settlement?.alert_count ?? '—',
+      value: settlement?.abnormal_count ?? '—',
       unit: '个',
-      tone: (settlement?.alert_count ?? 0) > 0 ? ('warn' as const) : ('ok' as const),
+      tone: settlement?.level === 'alert' ? ('danger' as const)
+        : settlement?.level === 'warning' ? ('warn' as const) : ('ok' as const),
       sub: settlement
-        ? `${settlement.total_points ?? 0} 点 · 最高监测 ${Number(settlement.max_value ?? 0).toFixed(2)} mm`
+        ? `${settlement.total_points ?? 0} 点 · 最大累计沉降 ${Number(settlement.max_settlement ?? 0).toFixed(2)} mm`
         : '接口不可用',
       onClick: () => navigate('/settlement?from=overview'),
     },
     {
       key: 'temperature',
       label: '温度 · 监测点',
-      value: temperature?.total_sensors ?? '—',
+      value: temperature?.analyzed_sensors ?? temperature?.total_sensors ?? '—',
       unit: '个',
       tone: 'info' as const,
       sub: temperature
-        ? `均值 ${Number(temperature.avg_temp ?? 0).toFixed(1)}℃ · 最高 ${Number(temperature.max_temp ?? 0).toFixed(1)}℃`
+        ? `正常 ${temperature.normal_count ?? 0} · 需关注 ${temperature.warning_count ?? 0} · 均值 ${Number(temperature.avg_temp ?? 0).toFixed(1)}℃`
         : '接口不可用',
       onClick: () => navigate('/temperature?from=overview'),
     },
@@ -624,7 +654,7 @@ export default function OverviewV2() {
       {/* 第二层 + 第三层：证据画布 + 行动面板（响应式） */}
       <div className="ov2-main">
         <EvidenceCanvas result={diagnosis} />
-        <ActionPanel result={diagnosis} points={points} />
+        <ActionPanel result={diagnosis} points={points} summary={settlement} />
       </div>
     </div>
   );

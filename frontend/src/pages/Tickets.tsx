@@ -334,6 +334,7 @@ export default function Tickets() {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const [stats, setStats] = useState<TicketStats | null>(null)
+  const [systemStatus, setSystemStatus] = useState<{ counts: { settlement_abnormal: number } } | null>(null)
   const [config, setConfig] = useState<TicketConfig>({})
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -347,6 +348,7 @@ export default function Tickets() {
     loadConfig()
     loadStats()
     loadTickets()
+    loadSystemStatus()
   }, [statusFilter, priorityFilter])
 
   useEffect(() => {
@@ -365,6 +367,15 @@ export default function Tickets() {
       setConfig({ types, status, priority })
     } catch (err) {
       console.error('Failed to load config:', err)
+    }
+  }
+
+  async function loadSystemStatus() {
+    try {
+      const data = await apiGet<{ counts: { settlement_abnormal: number } }>('/status/summary')
+      setSystemStatus(data)
+    } catch (err) {
+      console.error('Failed to load system status:', err)
     }
   }
 
@@ -504,6 +515,11 @@ export default function Tickets() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-semibold text-white">工单</h1>
+            {systemStatus && (
+              <span className="rounded border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-sm text-cyan-300">
+                监测点异常 {systemStatus.counts.settlement_abnormal}
+              </span>
+            )}
             {stats && (
               <div className="flex items-center gap-2 text-sm">
                 <span className="rounded border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 text-yellow-400">
