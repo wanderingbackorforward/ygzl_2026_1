@@ -1,0 +1,3 @@
+# Backward-compatible alias for Aliyun deploy scripts.
+# Canonical list: backend/requirements.txt
+-r requirements.txt

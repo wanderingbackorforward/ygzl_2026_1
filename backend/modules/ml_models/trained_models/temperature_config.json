@@ -1,0 +1,18 @@
+{
+  "model": "temperature_informer",
+  "seq_len": 6,
+  "pred_len": 2,
+  "label_len": 3,
+  "features": [
+    "avg_temperature",
+    "min_temperature",
+    "max_temperature",
+    "std_temperature",
+    "temperature_range"
+  ],
+  "d_model": 64,
+  "n_sensors": 244,
+  "epochs": 100,
+  "device": "cuda",
+  "train_time_sec": 93.4
+}

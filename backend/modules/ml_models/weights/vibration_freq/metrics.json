@@ -1,0 +1,6 @@
+{
+  "val_accuracy": 0.74375,
+  "epochs": 300,
+  "n_samples": 800,
+  "device": "cuda"
+}

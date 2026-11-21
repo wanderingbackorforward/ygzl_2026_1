@@ -1,0 +1,6 @@
+{
+  "val_mae_real": 0.6561230421066284,
+  "epochs": 200,
+  "n_samples": 172,
+  "device": "cuda"
+}

@@ -1,0 +1,989 @@
+"""
+工单系统API接口
+提供工单的创建、查询、更新、评论等功能
+"""
+
+from flask import Blueprint, request, jsonify
+from datetime import datetime, timedelta
+import json
+import traceback
+import os
+
+from ..models import ticket_model, comment_model
+from ..config import (
+    TICKET_TYPES, TICKET_STATUS, TICKET_PRIORITY,
+    can_transition_status, get_ticket_type, get_ticket_status, get_priority
+)
+
+# 创建工单API蓝图
+ticket_bp = Blueprint('ticket', __name__, url_prefix='/api/tickets')
+
+
+def create_response(data=None, message="", success=True, code=200):
+    """创建统一格式的API响应"""
+    response = {
+        "success": success,
+        "message": message,
+        "data": data,
+        "timestamp": datetime.now().isoformat()
+    }
+    return jsonify(response), code
+
+
+def _get_user_email(user_id: str):
+    if not user_id:
+        return None
+
+    candidates = [
+        f"USER_EMAIL_{user_id}",
+        f"USER_EMAIL_{str(user_id).lower()}",
+        f"USER_EMAIL_{str(user_id).upper()}",
+    ]
+    for key in candidates:
+        value = os.environ.get(key)
+        if value:
+            return value
+
+    try:
+        from modules.db.vendor import get_repo
+        repo = get_repo()
+        getter = getattr(repo, 'user_get_email', None)
+        if callable(getter):
+            return getter(user_id)
+    except Exception:
+        return None
+
+    return None
+
+
+@ticket_bp.route('', methods=['GET'])
+def get_tickets():
+    """获取工单列表"""
+    try:
+        # 获取查询参数
+        filters = {}
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 20, type=int)
+        search = request.args.get('search', '')
+
+        if search:
+            filters['search_keyword'] = search
+
+        # 状态筛选
+        status = request.args.get('status')
+        if status:
+            filters['status'] = status
+
+        # 类型筛选
+        ticket_type = request.args.get('type')
+        if ticket_type:
+            filters['ticket_type'] = ticket_type
+
+        # 优先级筛选
+        priority = request.args.get('priority')
+        if priority:
+            filters['priority'] = priority
+
+        # 创建人筛选
+        creator_id = request.args.get('creator_id')
+        if creator_id:
+            filters['creator_id'] = creator_id
+
+        # 处理人筛选
+        assignee_id = request.args.get('assignee_id')
+        if assignee_id:
+            filters['assignee_id'] = assignee_id
+
+        # 监测点筛选
+        monitoring_point_id = request.args.get('monitoring_point_id')
+        if monitoring_point_id:
+            filters['monitoring_point_id'] = monitoring_point_id
+
+        # 计算分页偏移量
+        offset = (page - 1) * limit
+
+        # 获取工单列表
+        tickets = ticket_model.get_tickets(filters, limit, offset)
+
+        # 获取总数（这里简化处理，实际应该单独查询）
+        total = len(tickets) if tickets else 0
+
+        return create_response({
+            'tickets': tickets,
+            'pagination': {
+                'page': page,
+                'limit': limit,
+                'total': total,
+                'pages': (total + limit - 1) // limit
+            },
+            'filters': filters
+        }, "获取工单列表成功")
+
+    except Exception as e:
+        print(f"❌ 获取工单列表失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"获取工单列表失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('', methods=['POST'])
+def create_ticket():
+    """创建新工单"""
+    try:
+        data = request.get_json()
+        if not data:
+            return create_response(None, "请求数据不能为空", False, 400)
+
+        # 验证必填字段
+        required_fields = ['title', 'ticket_type', 'creator_id', 'creator_name']
+        for field in required_fields:
+            if not data.get(field):
+                return create_response(None, f"缺少必填字段: {field}", False, 400)
+
+        # 验证工单类型
+        ticket_type_info = get_ticket_type(data['ticket_type'])
+        if not ticket_type_info:
+            return create_response(None, "无效的工单类型", False, 400)
+
+        # 验证优先级
+        priority_info = get_priority(data.get('priority', 'MEDIUM'))
+        if not priority_info:
+            return create_response(None, "无效的优先级", False, 400)
+
+        # 验证状态
+        status_info = get_ticket_status(data.get('status', 'PENDING'))
+        if not status_info:
+            return create_response(None, "无效的工单状态", False, 400)
+
+        due_at_raw = data.get('due_at') or data.get('due_date')
+        if due_at_raw:
+            s = str(due_at_raw).strip()
+            if s.endswith('Z'):
+                s = s[:-1] + '+00:00'
+            try:
+                if 'T' in s:
+                    datetime.fromisoformat(s)
+                else:
+                    datetime.fromisoformat(s + 'T23:59:59')
+            except Exception:
+                return create_response(None, "无效的到期日期格式", False, 400)
+
+        due_in_days_raw = data.get('due_in_days')
+        if due_in_days_raw is not None and str(due_in_days_raw).strip() != "":
+            try:
+                due_in_days = float(due_in_days_raw)
+            except Exception:
+                return create_response(None, "无效的延后天数", False, 400)
+            if due_in_days < 0:
+                return create_response(None, "延后天数不能为负数", False, 400)
+            if due_in_days > 3650:
+                return create_response(None, "延后天数过大", False, 400)
+
+        # 创建工单
+        ticket = ticket_model.create_ticket(data)
+
+        try:
+            if data.get('send_email', True) is not False:
+                from ..services import ticket_notifier
+                assignee_id = ticket.get('assignee_id') or data.get('assignee_id')
+                assignee_email = data.get('assignee_email') or _get_user_email(assignee_id)
+                if assignee_email:
+                    ticket_notifier.notify_ticket_created(ticket, assignee_email)
+        except Exception as notify_err:
+            print(f"⚠️ 工单创建邮件通知失败: {notify_err}")
+
+        return create_response(ticket, "工单创建成功", True, 201)
+
+    except Exception as e:
+        print(f"❌ 创建工单失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"创建工单失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/<int:ticket_id>', methods=['GET'])
+def get_ticket_detail(ticket_id):
+    """获取工单详情"""
+    try:
+        ticket = ticket_model.get_ticket_by_id(ticket_id)
+        if not ticket:
+            return create_response(None, "工单不存在", False, 404)
+
+        # 获取工单评论
+        comments = comment_model.get_comments(ticket_id)
+
+        # 合并数据
+        ticket['comments'] = comments
+
+        return create_response(ticket, "获取工单详情成功")
+
+    except Exception as e:
+        print(f"❌ 获取工单详情失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"获取工单详情失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/number/<string:ticket_number>', methods=['GET'])
+def get_ticket_by_number(ticket_number):
+    """根据工单编号获取工单详情"""
+    try:
+        ticket = ticket_model.get_ticket_by_number(ticket_number)
+        if not ticket:
+            return create_response(None, "工单不存在", False, 404)
+
+        # 获取工单评论
+        comments = comment_model.get_comments(ticket['id'])
+
+        # 合并数据
+        ticket['comments'] = comments
+
+        return create_response(ticket, "获取工单详情成功")
+
+    except Exception as e:
+        print(f"❌ 获取工单详情失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"获取工单详情失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/<int:ticket_id>', methods=['PUT'])
+def update_ticket(ticket_id):
+    """更新工单信息"""
+    try:
+        data = request.get_json()
+        if not data:
+            return create_response(None, "请求数据不能为空", False, 400)
+
+        # 检查工单是否存在
+        ticket = ticket_model.get_ticket_by_id(ticket_id)
+        if not ticket:
+            return create_response(None, "工单不存在", False, 404)
+
+        # 更新工单
+        success = ticket_model.update_ticket(ticket_id, data)
+        if not success:
+            return create_response(None, "更新工单失败", False, 500)
+
+        # 返回更新后的工单信息
+        updated_ticket = ticket_model.get_ticket_by_id(ticket_id)
+
+        return create_response(updated_ticket, "工单更新成功")
+
+    except Exception as e:
+        print(f"❌ 更新工单失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"更新工单失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/<int:ticket_id>/status', methods=['PUT'])
+def update_ticket_status(ticket_id):
+    """更新工单状态"""
+    try:
+        data = request.get_json()
+        if not data:
+            return create_response(None, "请求数据不能为空", False, 400)
+
+        new_status = data.get('status')
+        user_id = data.get('user_id')
+        user_role = data.get('user_role', 'operator')
+        comment = data.get('comment', '')
+
+        if not new_status or not user_id:
+            return create_response(None, "缺少状态或用户信息", False, 400)
+
+        # 检查工单是否存在
+        ticket = ticket_model.get_ticket_by_id(ticket_id)
+        if not ticket:
+            return create_response(None, "工单不存在", False, 404)
+
+        old_status = ticket.get('status')
+
+        # 验证状态流转是否合法
+        if not can_transition_status(ticket['status'], new_status, user_role):
+            return create_response(None, "不允许的状态流转", False, 400)
+
+        # 更新状态
+        success = ticket_model.update_ticket_status(ticket_id, new_status, user_id, comment)
+        if not success:
+            return create_response(None, "更新状态失败", False, 500)
+
+        # 返回更新后的工单信息
+        updated_ticket = ticket_model.get_ticket_by_id(ticket_id)
+
+        try:
+            if data.get('send_email', True) is not False:
+                if old_status and old_status != new_status and updated_ticket:
+                    from ..services import ticket_notifier
+                    creator_id = updated_ticket.get('creator_id') or ticket.get('creator_id')
+                    creator_email = data.get('creator_email') or _get_user_email(creator_id)
+                    if creator_email:
+                        ticket_notifier.notify_status_changed(
+                            updated_ticket,
+                            old_status=str(old_status),
+                            new_status=str(new_status),
+                            changed_by=str(user_id),
+                            recipient_email=creator_email,
+                        )
+        except Exception as notify_err:
+            print(f"⚠️ 工单状态变更邮件通知失败: {notify_err}")
+
+        return create_response(updated_ticket, "工单状态更新成功")
+
+    except Exception as e:
+        print(f"❌ 更新工单状态失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"更新工单状态失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/<int:ticket_id>/assign', methods=['PUT'])
+def assign_ticket(ticket_id):
+    """分配工单"""
+    try:
+        data = request.get_json()
+        if not data:
+            return create_response(None, "请求数据不能为空", False, 400)
+
+        assignee_id = data.get('assignee_id')
+        assignee_name = data.get('assignee_name')
+
+        if not assignee_id or not assignee_name:
+            return create_response(None, "缺少处理人信息", False, 400)
+
+        # 检查工单是否存在
+        ticket = ticket_model.get_ticket_by_id(ticket_id)
+        if not ticket:
+            return create_response(None, "工单不存在", False, 404)
+
+        # 分配工单
+        success = ticket_model.assign_ticket(ticket_id, assignee_id, assignee_name)
+        if not success:
+            return create_response(None, "分配工单失败", False, 500)
+
+        # 返回更新后的工单信息
+        updated_ticket = ticket_model.get_ticket_by_id(ticket_id)
+
+        try:
+            if data.get('send_email', True) is not False:
+                from ..services import ticket_notifier
+                assignee_email = data.get('assignee_email') or _get_user_email(assignee_id)
+                if assignee_email and updated_ticket:
+                    ticket_notifier.notify_ticket_assigned(updated_ticket, assignee_email)
+        except Exception as notify_err:
+            print(f"⚠️ 工单分配邮件通知失败: {notify_err}")
+
+        return create_response(updated_ticket, "工单分配成功")
+
+    except Exception as e:
+        print(f"❌ 分配工单失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"分配工单失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/<int:ticket_id>/comments', methods=['GET'])
+def get_ticket_comments(ticket_id):
+    """获取工单评论"""
+    try:
+        # 检查工单是否存在
+        ticket = ticket_model.get_ticket_by_id(ticket_id)
+        if not ticket:
+            return create_response(None, "工单不存在", False, 404)
+
+        # 获取评论列表
+        comments = comment_model.get_comments(ticket_id)
+
+        return create_response(comments, "获取评论列表成功")
+
+    except Exception as e:
+        print(f"❌ 获取评论列表失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"获取评论列表失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/<int:ticket_id>/comments', methods=['POST'])
+def add_ticket_comment(ticket_id):
+    """添加工单评论"""
+    try:
+        data = request.get_json()
+        if not data:
+            return create_response(None, "请求数据不能为空", False, 400)
+
+        # 验证必填字段
+        required_fields = ['author_id', 'author_name', 'content']
+        for field in required_fields:
+            if not data.get(field):
+                return create_response(None, f"缺少必填字段: {field}", False, 400)
+
+        # 检查工单是否存在
+        ticket = ticket_model.get_ticket_by_id(ticket_id)
+        if not ticket:
+            return create_response(None, "工单不存在", False, 404)
+
+        # 添加评论
+        comment = comment_model.add_comment(
+            ticket_id=ticket_id,
+            author_id=data['author_id'],
+            author_name=data['author_name'],
+            content=data['content'],
+            comment_type=data.get('comment_type', 'COMMENT'),
+            attachment_paths=data.get('attachment_paths'),
+            metadata=data.get('metadata')
+        )
+
+        return create_response(comment, "评论添加成功", True, 201)
+
+    except Exception as e:
+        print(f"❌ 添加评论失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"添加评论失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/statistics', methods=['GET'])
+def get_ticket_statistics():
+    """获取工单统计信息"""
+    try:
+        statistics = ticket_model.get_ticket_statistics()
+
+        return create_response(statistics, "获取统计信息成功")
+
+    except Exception as e:
+        print(f"❌ 获取统计信息失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"获取统计信息失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/overdue-unresolved', methods=['GET'])
+def get_overdue_unresolved_tickets():
+    try:
+        days = request.args.get('days', 3, type=int)
+        limit = request.args.get('limit', 20, type=int)
+        max_scan = request.args.get('max_scan', 2000, type=int)
+
+        days = 3 if days is None else int(days)
+        days = 1 if days <= 0 else days
+        limit = 20 if limit is None else int(limit)
+        limit = 1 if limit <= 0 else limit
+        max_scan = 2000 if max_scan is None else int(max_scan)
+        max_scan = 100 if max_scan <= 0 else max_scan
+
+        cutoff = datetime.now() - timedelta(days=days)
+        unresolved_status = {'PENDING', 'IN_PROGRESS', 'SUSPENDED'}
+
+        def parse_dt(value):
+            if not value:
+                return None
+            s = str(value).strip()
+            if not s:
+                return None
+            s = s.replace('Z', '+00:00')
+            try:
+                return datetime.fromisoformat(s)
+            except Exception:
+                try:
+                    return datetime.fromisoformat(s.split('.')[0])
+                except Exception:
+                    return None
+
+        overdue = []
+        offset = 0
+        page_size = 200
+        scanned = 0
+
+        while scanned < max_scan:
+            rows = ticket_model.get_tickets(filters={}, limit=page_size, offset=offset)
+            if not rows:
+                break
+            scanned += len(rows)
+            offset += page_size
+
+            for t in rows:
+                status = (t.get('status') or '').upper()
+                if status not in unresolved_status:
+                    continue
+                created_at = parse_dt(t.get('created_at'))
+                if not created_at:
+                    continue
+                if created_at <= cutoff:
+                    age_days = int((datetime.now() - created_at).total_seconds() // 86400)
+                    overdue.append({
+                        'id': t.get('id'),
+                        'ticket_number': t.get('ticket_number'),
+                        'title': t.get('title'),
+                        'status': t.get('status'),
+                        'priority': t.get('priority'),
+                        'assignee_name': t.get('assignee_name'),
+                        'created_at': t.get('created_at'),
+                        'age_days': age_days,
+                    })
+
+            if len(rows) < page_size:
+                break
+
+        overdue.sort(key=lambda x: (x.get('age_days') is None, -(x.get('age_days') or 0), str(x.get('created_at') or '')))
+        top = overdue[:limit]
+
+        return create_response({
+            'days': days,
+            'count': len(overdue),
+            'tickets': top,
+            'server_time': datetime.now().isoformat(),
+        }, "获取超期未解决工单成功")
+
+    except Exception as e:
+        print(f"❌ 获取超期未解决工单失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"获取超期未解决工单失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/config/types', methods=['GET'])
+def get_ticket_types():
+    """获取工单类型配置"""
+    try:
+        return create_response(TICKET_TYPES, "获取工单类型配置成功")
+
+    except Exception as e:
+        print(f"❌ 获取工单类型配置失败: {e}")
+        return create_response(None, f"获取工单类型配置失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/config/status', methods=['GET'])
+def get_ticket_status_config():
+    """获取工单状态配置"""
+    try:
+        return create_response(TICKET_STATUS, "获取工单状态配置成功")
+
+    except Exception as e:
+        print(f"❌ 获取工单状态配置失败: {e}")
+        return create_response(None, f"获取工单状态配置失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/config/priority', methods=['GET'])
+def get_ticket_priority_config():
+    """获取优先级配置"""
+    try:
+        return create_response(TICKET_PRIORITY, "获取优先级配置成功")
+
+    except Exception as e:
+        print(f"❌ 获取优先级配置失败: {e}")
+        return create_response(None, f"获取优先级配置失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/alert-trigger', methods=['POST'])
+def trigger_alert_ticket():
+    """通过预警自动创建工单"""
+    try:
+        data = request.get_json()
+        if not data:
+            return create_response(None, "请求数据不能为空", False, 400)
+
+        # 验证预警数据
+        required_fields = ['alert_type', 'monitoring_point_id', 'alert_value']
+        for field in required_fields:
+            if not data.get(field):
+                return create_response(None, f"缺少必填字段: {field}", False, 400)
+
+        # 根据预警类型确定工单类型
+        alert_type_mapping = {
+            'settlement': 'SETTLEMENT_ALERT',
+            'crack': 'CRACK_ALERT',
+            'equipment': 'EQUIPMENT_FAULT'
+        }
+
+        ticket_type = alert_type_mapping.get(data['alert_type'], 'SETTLEMENT_ALERT')
+
+        # 构建工单数据
+        ticket_data = {
+            'title': f"{data.get('alert_title', '系统预警')} - {data.get('monitoring_point_id', '')}",
+            'description': data.get('description', f"监测点 {data['monitoring_point_id']} 触发预警"),
+            'ticket_type': ticket_type,
+            'priority': data.get('priority', 'HIGH'),
+            'creator_id': 'system',
+            'creator_name': '系统自动',
+            'monitoring_point_id': data['monitoring_point_id'],
+            'location_info': data.get('location_info'),
+            'current_value': data.get('current_value'),
+            'threshold_value': data.get('threshold_value'),
+            'alert_data': data,
+            'metadata': {
+                'auto_created': True,
+                'alert_source': data.get('alert_source', 'system'),
+                'triggered_at': datetime.now().isoformat()
+            }
+        }
+
+        # 创建工单
+        ticket = ticket_model.create_ticket(ticket_data)
+
+        try:
+            if data.get('send_email', True) is not False:
+                from ..services import ticket_notifier
+                assignee_id = ticket.get('assignee_id') or ticket_data.get('assignee_id')
+                assignee_email = ticket_data.get('assignee_email') or _get_user_email(assignee_id)
+                if assignee_email:
+                    ticket_notifier.notify_ticket_created(ticket, assignee_email)
+        except Exception as notify_err:
+            print(f"⚠️ 预警工单创建邮件通知失败: {notify_err}")
+
+        return create_response(ticket, "预警工单创建成功", True, 201)
+
+    except Exception as e:
+        print(f"❌ 创建预警工单失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"创建预警工单失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/<int:ticket_id>', methods=['DELETE'])
+def delete_ticket(ticket_id):
+    """删除工单（仅管理员可用）"""
+    try:
+        # 检查工单是否存在
+        ticket = ticket_model.get_ticket_by_id(ticket_id)
+        if not ticket:
+            return create_response(None, "工单不存在", False, 404)
+
+        # 删除工单
+        success = ticket_model.delete_ticket(ticket_id)
+        if not success:
+            return create_response(None, "删除工单失败", False, 500)
+
+        return create_response(None, "工单删除成功")
+
+    except Exception as e:
+        print(f"[ERROR] 删除工单失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"删除工单失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/batch', methods=['DELETE'])
+def delete_tickets_batch():
+    """批量删除工单"""
+    try:
+        data = request.get_json()
+        if not data:
+            return create_response(None, "请求数据不能为空", False, 400)
+
+        ticket_ids = data.get('ticket_ids', [])
+        if not ticket_ids or not isinstance(ticket_ids, list):
+            return create_response(None, "缺少 ticket_ids 列表", False, 400)
+
+        if len(ticket_ids) > 100:
+            return create_response(None, "单次最多删除100条工单", False, 400)
+
+        # 过滤无效 ID
+        valid_ids = []
+        for tid in ticket_ids:
+            try:
+                valid_ids.append(int(tid))
+            except (ValueError, TypeError):
+                pass
+
+        if not valid_ids:
+            return create_response(None, "没有有效的工单ID", False, 400)
+
+        deleted_count = ticket_model.delete_tickets_batch(valid_ids)
+
+        return create_response({
+            'deleted_count': deleted_count,
+            'requested_ids': valid_ids
+        }, f"成功删除 {deleted_count} 条工单")
+
+    except Exception as e:
+        print(f"[ERROR] 批量删除工单失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"批量删除工单失败: {str(e)}", False, 500)
+
+
+# =========================================================================
+# Archive and Reminder API Endpoints
+# =========================================================================
+
+@ticket_bp.route('/due-soon', methods=['GET'])
+def get_due_soon_tickets():
+    """Get tickets due within 24 hours"""
+    try:
+        from modules.db.vendor import get_repo
+        repo = get_repo()
+        tickets = repo.tickets_get_due_soon(hours=24)
+        return create_response({
+            'tickets': tickets,
+            'count': len(tickets)
+        }, "获取即将到期工单成功")
+
+    except Exception as e:
+        print(f"[ERROR] 获取即将到期工单失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"获取即将到期工单失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/overdue', methods=['GET'])
+def get_overdue_tickets():
+    """Get all overdue tickets"""
+    try:
+        from modules.db.vendor import get_repo
+        repo = get_repo()
+        tickets = repo.tickets_get_overdue()
+        return create_response({
+            'tickets': tickets,
+            'count': len(tickets)
+        }, "获取超期工单成功")
+
+    except Exception as e:
+        print(f"[ERROR] 获取超期工单失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"获取超期工单失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/archive', methods=['GET'])
+def get_archived_tickets():
+    """Get archived tickets"""
+    try:
+        from modules.db.vendor import get_repo
+        repo = get_repo()
+
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 20, type=int)
+        offset = (page - 1) * limit
+
+        tickets = repo.tickets_get_archived(limit=limit, offset=offset)
+        return create_response({
+            'tickets': tickets,
+            'pagination': {
+                'page': page,
+                'limit': limit,
+                'total': len(tickets)
+            }
+        }, "获取归档工单成功")
+
+    except Exception as e:
+        print(f"[ERROR] 获取归档工单失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"获取归档工单失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/<int:ticket_id>/archive', methods=['POST'])
+def archive_ticket(ticket_id):
+    """Archive a single ticket"""
+    try:
+        from modules.db.vendor import get_repo
+        repo = get_repo()
+
+        # Check if ticket exists
+        ticket = ticket_model.get_ticket_by_id(ticket_id)
+        if not ticket:
+            return create_response(None, "工单不存在", False, 404)
+
+        # Check if ticket can be archived (must be CLOSED or REJECTED)
+        if ticket.get('status') not in ['CLOSED', 'REJECTED']:
+            return create_response(None, "仅已关闭或已拒绝的工单可归档", False, 400)
+
+        success = repo.ticket_archive(ticket_id)
+        if not success:
+            return create_response(None, "归档工单失败", False, 500)
+
+        return create_response({'ticket_id': ticket_id}, "工单归档成功")
+
+    except Exception as e:
+        print(f"[ERROR] Archive ticket failed: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"归档工单失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/archive/auto', methods=['POST'])
+def auto_archive_tickets():
+    """Auto archive eligible tickets (closed/rejected > 7 days)"""
+    try:
+        from modules.db.vendor import get_repo
+        repo = get_repo()
+
+        result = repo.tickets_auto_archive()
+        return create_response(result, f"已自动归档 {result.get('archived_count', 0)} 条工单")
+
+    except Exception as e:
+        print(f"[ERROR] Auto archive tickets failed: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"自动归档工单失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/scheduler/status', methods=['GET'])
+def get_scheduler_status():
+    """Get ticket scheduler status"""
+    try:
+        from ..services import ticket_scheduler
+        status = ticket_scheduler.get_status()
+        return create_response(status, "获取定时任务状态成功")
+
+    except Exception as e:
+        print(f"[ERROR] 获取定时任务状态失败: {e}")
+        return create_response(None, f"获取定时任务状态失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/scheduler/run', methods=['POST'])
+def run_scheduler_once():
+    """Manually trigger scheduler tasks"""
+    try:
+        from ..services import ticket_scheduler
+        results = ticket_scheduler.run_once()
+        return create_response(results, "定时任务执行完成")
+
+    except Exception as e:
+        print(f"[ERROR] 执行定时任务失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"执行定时任务失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/active', methods=['GET'])
+def get_active_tickets():
+    """Get active (non-archived) tickets only"""
+    try:
+        from modules.db.vendor import get_repo
+        repo = get_repo()
+
+        # Get query parameters
+        filters = {}
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 20, type=int)
+        search = request.args.get('search', '')
+
+        if search:
+            filters['search_keyword'] = search
+
+        status = request.args.get('status')
+        if status:
+            filters['status'] = status
+
+        ticket_type = request.args.get('type')
+        if ticket_type:
+            filters['ticket_type'] = ticket_type
+
+        priority = request.args.get('priority')
+        if priority:
+            filters['priority'] = priority
+
+        creator_id = request.args.get('creator_id')
+        if creator_id:
+            filters['creator_id'] = creator_id
+
+        assignee_id = request.args.get('assignee_id')
+        if assignee_id:
+            filters['assignee_id'] = assignee_id
+
+        monitoring_point_id = request.args.get('monitoring_point_id')
+        if monitoring_point_id:
+            filters['monitoring_point_id'] = monitoring_point_id
+
+        offset = (page - 1) * limit
+
+        tickets = repo.tickets_get_active(filters, limit, offset)
+
+        return create_response({
+            'tickets': tickets,
+            'pagination': {
+                'page': page,
+                'limit': limit,
+                'total': len(tickets)
+            },
+            'filters': filters
+        }, "获取活跃工单成功")
+
+    except Exception as e:
+        print(f"[ERROR] 获取活跃工单失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"获取活跃工单失败: {str(e)}", False, 500)
+
+
+@ticket_bp.route('/parse-quick-input', methods=['POST'])
+def parse_quick_input():
+    """
+    AI 智能解析快速输入
+    用户输入一句话（如"DB-001沉降15mm"），AI自动解析出工单字段
+    """
+    try:
+        data = request.get_json()
+        user_input = data.get('input', '').strip()
+
+        if not user_input:
+            return create_response(None, "输入不能为空", False, 400)
+
+        # 使用简单规则解析（不依赖 LLM，避免网络不稳定）
+        parsed = _parse_quick_input_rule_based(user_input)
+
+        return create_response(parsed, "解析成功")
+
+    except Exception as e:
+        print(f"[ERROR] 解析快速输入失败: {e}")
+        print(traceback.format_exc())
+        return create_response(None, f"解析失败: {str(e)}", False, 500)
+
+
+def _parse_quick_input_rule_based(user_input: str) -> dict:
+    """
+    基于规则的快速输入解析（不依赖 LLM）
+
+    支持的模式：
+    - "DB-001 沉降 15mm" → 监测点 + 类型 + 数值
+    - "裂缝异常 DB-002" → 类型 + 监测点
+    - "温度超限 35度 DB-003" → 类型 + 数值 + 监测点
+    """
+    import re
+
+    result = {
+        'title': '',
+        'ticket_type': '',
+        'priority': 'MEDIUM',
+        'monitoring_point_id': '',
+        'current_value': None,
+        'description': ''
+    }
+
+    # 提取监测点编号（DB-xxx, CK-xxx, WD-xxx, ZD-xxx）
+    point_match = re.search(r'(DB|CK|WD|ZD)-?\d+', user_input, re.IGNORECASE)
+    if point_match:
+        result['monitoring_point_id'] = point_match.group(0).upper()
+
+    # 提取数值（带单位）
+    value_patterns = [
+        (r'(\d+\.?\d*)\s*(mm|毫米)', 'mm'),
+        (r'(\d+\.?\d*)\s*(度|℃|°C)', '℃'),
+        (r'(\d+\.?\d*)\s*(m/s²|米每秒平方)', 'm/s²'),
+    ]
+    for pattern, unit in value_patterns:
+        value_match = re.search(pattern, user_input, re.IGNORECASE)
+        if value_match:
+            result['current_value'] = float(value_match.group(1))
+            break
+
+    # 识别工单类型和优先级
+    type_keywords = {
+        'SETTLEMENT_ALERT': ['沉降', '下沉', '变形'],
+        'CRACK_ALERT': ['裂缝', '裂纹', '开裂'],
+        'TEMPERATURE_ALERT': ['温度', '高温', '低温', '温差'],
+        'VIBRATION_ALERT': ['振动', '震动', '加速度'],
+        'EQUIPMENT_FAILURE': ['设备', '故障', '损坏', '失效'],
+        'DATA_MISSING': ['数据', '缺失', '丢失', '中断'],
+    }
+
+    for ticket_type, keywords in type_keywords.items():
+        if any(kw in user_input for kw in keywords):
+            result['ticket_type'] = ticket_type
+            break
+
+    # 根据关键词判断优先级
+    if any(kw in user_input for kw in ['紧急', '严重', '超限', '告警', '危险']):
+        result['priority'] = 'CRITICAL'
+    elif any(kw in user_input for kw in ['重要', '异常', '超过']):
+        result['priority'] = 'HIGH'
+    elif any(kw in user_input for kw in ['一般', '正常', '轻微']):
+        result['priority'] = 'LOW'
+
+    # 生成标题
+    if result['monitoring_point_id'] and result['ticket_type']:
+        type_name = get_ticket_type(result['ticket_type']).get('name', '异常')
+        result['title'] = f"{result['monitoring_point_id']} {type_name}"
+    else:
+        result['title'] = user_input[:50]  # 截取前50字符
+
+    # 生成描述
+    desc_parts = [f"用户输入：{user_input}"]
+    if result['monitoring_point_id']:
+        desc_parts.append(f"监测点：{result['monitoring_point_id']}")
+    if result['current_value'] is not None:
+        desc_parts.append(f"当前值：{result['current_value']}")
+    result['description'] = '\n'.join(desc_parts)
+
+    return result

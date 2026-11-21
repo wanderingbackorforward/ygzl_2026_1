@@ -1,0 +1,36 @@
+{
+  "model_type": "TBMNet",
+  "seq_len": 8,
+  "pred_len": 4,
+  "n_tbms": 5,
+  "tbm_ids": [
+    "TBM001",
+    "TBM20251009001750",
+    "TBM20251009003110",
+    "TBM20251009005713",
+    "TBM20251009163016"
+  ],
+  "features": [
+    "thrust_force",
+    "cutter_torque",
+    "cutter_speed",
+    "cutout_pressure",
+    "penetration_rate",
+    "advance_speed",
+    "mud_flow_in",
+    "mud_flow_out",
+    "pressure_down",
+    "pressure_up",
+    "pressure_right_up",
+    "pressure_right_down",
+    "pressure_left_down",
+    "pressure_left_up"
+  ],
+  "targets": [
+    "tail_vertical_deviation",
+    "tail_horizontal_deviation",
+    "head_vertical_deviation",
+    "head_horizontal_deviation"
+  ],
+  "interval": "5min"
+}
