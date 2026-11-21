@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>领导驾驶舱 - 经济运行可视化平台</title>
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+/* ===== 屏幕10特有样式 ===== */
+.screen-canvas {
+  background: linear-gradient(180deg, rgba(20,54,98,1) 0%, rgba(4,22,46,1) 100%);
+  font-family: 'Source Han Sans CN', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+/* 地理图背景 */
+.bg-geomap {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(7,131,250,0.15) 0%, rgba(4,22,46,0) 60%),
+    linear-gradient(135deg, rgba(20,54,98,0.4) 0%, rgba(4,22,46,0.6) 100%);
+  opacity: 0.72; pointer-events: none;
+}
+/* 散光椭圆 */
+.bg-glow {
+  position: absolute; left: 988px; top: 216px;
+  width: 1864px; height: 647px;
+  background: radial-gradient(ellipse at center, rgba(7,131,250,0.64) 0%, rgba(7,131,250,0) 70%);
+  filter: blur(250px); opacity: 0.64; pointer-events: none;
+}
+/* 地图网格 */
+.bg-grid {
+  position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(124,191,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124,191,255,0.04) 1px, transparent 1px);
+  background-size: 80px 80px;
+}
+
+/* ===== 顶部大标题 ===== */
+.main-title {
+  position: absolute; left: 32px; top: 16px;
+  width: 440px; height: 60px; z-index: 20;
+  display: flex; align-items: center;
+}
+.main-title .mt-text {
+  font-family: 'ABeeZee', 'Source Han Sans CN', sans-serif;
+  font-size: 40px; font-weight: 400;
+  background: linear-gradient(180deg, #FFFFFF 29%, #56ADFF 78%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 0.25em;
+  filter: drop-shadow(0 2px 8px rgba(7,131,250,0.5));
+}
+/* 顶部右侧时间 */
+.top-right-info {
+  position: absolute; right: 32px; top: 28px; z-index: 20;
+  display: flex; align-items: center; gap: 24px;
+  color: #E0F0FF; font-family: 'D-DIN', 'ABeeZee', sans-serif;
+  font-size: 18px; letter-spacing: 0.1em;
+}
+.top-right-info .tri-date { color: #7CBFFF; }
+.top-right-info .tri-week { color: #C6D1DB; font-size: 15px; }
+.top-right-info .tri-weather {
+  display: flex; align-items: center; gap: 6px;
+  color: #FFD15C; font-size: 15px;
+}
+
+/* ===== 通用面板 ===== */
+.ld-panel {
+  position: absolute;
+  background: linear-gradient(90deg, rgba(5,41,75,1) 0%, rgba(2,31,58,1) 50%, rgba(5,41,75,0) 100%);
+  border: 1px solid rgba(7,131,250,0.3);
+  box-shadow: inset 0px 3px 0px rgba(21,177,255,1), 0px 2px 6px rgba(13,93,169,0.72);
+}
+.ld-panel .decor-corner { width: 14px; height: 14px; border-width: 1px; border-color: #07D1FA; }
+/* 面板标题栏 430×50 */
+.ld-title-bar {
+  position: relative; width: 100%; height: 50px;
+  display: flex; align-items: center; padding: 0 18px;
+  border-bottom: 1px solid rgba(7,131,250,0.25);
+}
+.ld-title-bar .ltb-dots {
+  display: flex; gap: 4px; margin-right: 12px;
+}
+.ld-title-bar .ltb-dots span {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: rgba(124,191,255,0.4);
+}
+.ld-title-bar .ltb-dots span:nth-child(1) { background: #07D1FA; box-shadow: 0 0 4px #07D1FA; }
+.ld-title-bar .ltb-title {
+  color: #FFFFFF; font-family: 'ABeeZee', 'Source Han Sans CN', sans-serif;
+  font-size: 20px; font-weight: 400; letter-spacing: 0.05em;
+  text-shadow: 0 0 9px rgba(21,142,255,1); flex: 1;
+}
+.ld-title-bar .ltb-divider {
+  width: 1px; height: 20px; background: rgba(124,191,255,0.3); margin: 0 10px;
+}
+.ld-title-bar .ltb-rect {
+  width: 30px; height: 4px; background: #FFD15C;
+  box-shadow: 0 0 6px rgba(255,209,92,0.6);
+}
+
+/* ===== 中央地图 ===== */
+.center-map {
+  position: absolute; left: 1000px; top: 90px;
+  width: 1840px; height: 920px; z-index: 5;
+  pointer-events: none;
+}
+.center-map-svg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0.85;
+}
+/* 城市数据点 */
+.city-node {
+  position: absolute; z-index: 6;
+  display: flex; flex-direction: column; align-items: center;
+}
+.city-node .cn-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #07D1FA; box-shadow: 0 0 12px #07D1FA;
+  position: relative;
+}
+.city-node .cn-dot::after {
+  content: ''; position: absolute; inset: -6px;
+  border: 1px solid #07D1FA; border-radius: 50%;
+  animation: ripple 2.5s ease-out infinite;
+}
+.city-node.gold .cn-dot { background: #FFD15C; box-shadow: 0 0 12px #FFD15C; }
+.city-node.gold .cn-dot::after { border-color: #FFD15C; }
+.city-node.blue .cn-dot { background: #0783FA; box-shadow: 0 0 12px #0783FA; }
+.city-node.blue .cn-dot::after { border-color: #0783FA; }
+@keyframes ripple { 0%{transform:scale(0.5);opacity:0.8;} 100%{transform:scale(3);opacity:0;} }
+.city-node .cn-label {
+  margin-top: 6px; padding: 2px 8px;
+  background: rgba(5,41,75,0.8);
+  border: 1px solid rgba(7,209,250,0.4);
+  border-radius: 2px;
+  color: #E0F0FF; font-size: 12px; white-space: nowrap;
+}
+.city-node .cn-label .cnv {
+  color: #FFD15C; font-family: 'D-DIN', sans-serif; font-weight: 700;
+  margin-left: 4px;
+}
+/* 中央核心数据 */
+.center-core {
+  position: absolute; left: 50%; top: 45%;
+  transform: translate(-50%,-50%); z-index: 7;
+  text-align: center;
+}
+.center-core .cc-ring {
+  width: 280px; height: 280px; margin: 0 auto;
+  border: 2px solid rgba(7,209,250,0.3);
+  border-radius: 50%; position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.center-core .cc-ring::before {
+  content: ''; position: absolute; inset: -20px;
+  border: 1px dashed rgba(7,209,250,0.2); border-radius: 50%;
+  animation: spin 30s linear infinite;
+}
+.center-core .cc-ring::after {
+  content: ''; position: absolute; inset: 20px;
+  border: 1px solid rgba(255,209,92,0.2); border-radius: 50%;
+}
+@keyframes spin { from{transform:rotate(0);} to{transform:rotate(360deg);} }
+.center-core .cc-inner { text-align: center; }
+.center-core .cc-label { color: #C6D1DB; font-size: 16px; letter-spacing: 0.1em; }
+.center-core .cc-val {
+  color: #FFD15C; font-family: 'DIN Alternate', 'D-DIN', sans-serif;
+  font-size: 56px; font-weight: 700; line-height: 1.1;
+  text-shadow: 0 0 20px rgba(255,209,92,0.5);
+}
+.center-core .cc-unit { color: #7CBFFF; font-size: 18px; }
+.center-core .cc-trend { color: #07D1FA; font-size: 14px; margin-top: 6px; }
+
+/* ===== 财政总收入 ===== */
+.finance-panel { padding: 16px 20px; }
+.finance-total { text-align: center; margin-bottom: 14px; }
+.finance-total .ft-label { color: #C6D1DB; font-size: 14px; letter-spacing: 0.1em; }
+.finance-total .ft-val {
+  color: #FFD15C; font-family: 'DIN Alternate', 'D-DIN', sans-serif;
+  font-size: 42px; font-weight: 700; line-height: 1.2;
+  text-shadow: 0 0 16px rgba(255,209,92,0.4);
+}
+.finance-total .ft-unit { color: #7CBFFF; font-size: 16px; margin-left: 4px; }
+.finance-total .ft-trend { color: #07D1FA; font-size: 13px; margin-top: 4px; }
+.finance-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.finance-item {
+  text-align: center; padding: 10px 6px;
+  background: rgba(7,131,250,0.08);
+  border: 1px solid rgba(7,131,250,0.2);
+  border-radius: 3px;
+}
+.finance-item .fi-label { color: #B4C0CC; font-size: 12px; margin-bottom: 4px; }
+.finance-item .fi-val {
+  color: #E0F0FF; font-family: 'D-DIN', sans-serif;
+  font-size: 20px; font-weight: 700;
+}
+.finance-item .fi-val .fiu { color: #7CBFFF; font-size: 11px; }
+.finance-item .fi-rate { color: #07D1FA; font-size: 11px; margin-top: 2px; }
+.finance-item .fi-rate.down { color: #FF6B6B; }
+
+/* ===== 各乡镇生产总值排名 ===== */
+.rank-panel { padding: 14px 18px; }
+.rank-list { margin-top: 6px; }
+.rank-row {
+  display: flex; align-items: center; gap: 10px;
+  height: 36px; padding: 0 6px; margin-bottom: 4px;
+  background: linear-gradient(90deg, rgba(7,131,250,0.15) 0%, rgba(7,131,250,0) 100%);
+  border-left: 2px solid #0783FA;
+}
+.rank-row:nth-child(1) { border-left-color: #FFD15C; }
+.rank-row:nth-child(2) { border-left-color: #FADE96; }
+.rank-row:nth-child(3) { border-left-color: #7CBFFF; }
+.rank-no {
+  width: 24px; height: 24px; flex-shrink: 0;
+  text-align: center; line-height: 24px;
+  font-family: 'ABeeZee', sans-serif; font-size: 13px; font-weight: 700;
+  color: #6C8297; background: rgba(108,130,151,0.2); border-radius: 2px;
+}
+.rank-row:nth-child(1) .rank-no { color: #000; background: #FFD15C; }
+.rank-row:nth-child(2) .rank-no { color: #000; background: #FADE96; }
+.rank-row:nth-child(3) .rank-no { color: #000; background: #7CBFFF; }
+.rank-name {
+  flex: 1; color: #E0F0FF; font-size: 14px;
+  font-family: 'Source Han Sans CN', sans-serif;
+}
+.rank-bar-wrap {
+  width: 110px; height: 8px; background: rgba(108,130,151,0.2);
+  border-radius: 4px; overflow: hidden;
+}
+.rank-bar {
+  height: 100%; border-radius: 4px;
+  background: linear-gradient(90deg, rgba(0,85,255,0.3), rgba(7,131,250,1));
+  box-shadow: 0 0 6px rgba(7,131,250,0.5);
+}
+.rank-row:nth-child(1) .rank-bar { background: linear-gradient(90deg, rgba(255,209,92,0.3), #FFD15C); box-shadow: 0 0 6px rgba(255,209,92,0.5); }
+.rank-val {
+  width: 70px; text-align: right;
+  color: #FFD15C; font-family: 'D-DIN', sans-serif;
+  font-size: 15px; font-weight: 700;
+}
+.rank-val .rvu { color: #7CBFFF; font-size: 10px; }
+
+/* ===== 税收收入占比 环形图 ===== */
+.tax-panel { padding: 16px 18px; }
+.tax-chart-wrap {
+  display: flex; align-items: center; gap: 16px; margin-top: 8px;
+}
+.tax-ring {
+  width: 150px; height: 150px; position: relative; flex-shrink: 0;
+}
+.tax-ring-center {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  text-align: center;
+}
+.tax-ring-center .trc-val {
+  color: #FFD15C; font-family: 'DIN Alternate', sans-serif;
+  font-size: 28px; font-weight: 700;
+  text-shadow: 0 0 10px rgba(255,209,92,0.4);
+}
+.tax-ring-center .trc-label { color: #C6D1DB; font-size: 11px; }
+.tax-legend { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.tax-legend-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; background: rgba(7,131,250,0.06);
+  border-radius: 2px;
+}
+.tax-legend-item .tli-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.tax-legend-item .tli-name { flex: 1; color: #E0F0FF; font-size: 12px; }
+.tax-legend-item .tli-val {
+  color: #FFD15C; font-family: 'D-DIN', sans-serif;
+  font-size: 14px; font-weight: 700;
+}
+
+/* ===== 生产总值增速 柱状图 ===== */
+.growth-panel { padding: 14px 18px; }
+.growth-bar-chart {
+  height: 140px; display: flex; align-items: flex-end;
+  justify-content: space-between; padding: 24px 4px 26px;
+  border-bottom: 1px solid rgba(108,130,151,0.3);
+  position: relative; margin-top: 10px;
+}
+.growth-bar {
+  width: 28px; border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, rgba(0,85,255,0) 0%, rgba(7,131,250,1) 100%);
+  position: relative;
+  box-shadow: 0 0 8px rgba(7,131,250,0.4);
+}
+.growth-bar.gold { background: linear-gradient(180deg, rgba(255,209,92,0) 0%, #FFD15C 100%); box-shadow: 0 0 8px rgba(255,209,92,0.4); }
+.growth-bar-val {
+  position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
+  color: #E0F0FF; font-family: 'D-DIN', sans-serif;
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.growth-bar-label {
+  position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
+  color: #B4C0CC; font-size: 11px; white-space: nowrap;
+}
+.growth-summary {
+  display: flex; justify-content: space-around; margin-top: 16px;
+}
+.growth-summary .gs-item { text-align: center; }
+.growth-summary .gs-val {
+  color: #07D1FA; font-family: 'DIN Alternate', sans-serif;
+  font-size: 22px; font-weight: 700;
+  text-shadow: 0 0 8px rgba(7,209,250,0.4);
+}
+.growth-summary .gs-label { color: #C6D1DB; font-size: 12px; margin-top: 2px; }
+
+/* ===== 项目概况 ===== */
+.project-panel { padding: 16px 18px; }
+.project-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+.project-stat {
+  padding: 12px; text-align: center;
+  background: rgba(7,131,250,0.08);
+  border: 1px solid rgba(7,131,250,0.2);
+  border-radius: 3px;
+}
+.project-stat .ps-val {
+  color: #FFD15C; font-family: 'DIN Alternate', sans-serif;
+  font-size: 28px; font-weight: 700;
+  text-shadow: 0 0 10px rgba(255,209,92,0.3);
+}
+.project-stat .ps-val .psu { color: #7CBFFF; font-size: 12px; }
+.project-stat .ps-label { color: #C6D1DB; font-size: 12px; margin-top: 4px; }
+.project-stat.cyan .ps-val { color: #07D1FA; text-shadow: 0 0 10px rgba(7,209,250,0.3); }
+.project-progress { margin-top: 12px; }
+.project-progress .pp-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+}
+.project-progress .pp-label { color: #B4C0CC; font-size: 12px; width: 70px; }
+.project-progress .pp-bar {
+  flex: 1; height: 8px; background: rgba(108,130,151,0.2);
+  border-radius: 4px; overflow: hidden;
+}
+.project-progress .pp-fill {
+  height: 100%; border-radius: 4px;
+  background: linear-gradient(90deg, #0783FA, #07D1FA);
+  box-shadow: 0 0 6px rgba(7,209,250,0.5);
+}
+.project-progress .pp-val {
+  color: #E0F0FF; font-family: 'D-DIN', sans-serif;
+  font-size: 13px; font-weight: 700; width: 50px; text-align: right;
+}
+
+/* ===== 项目类别 饼图 ===== */
+.category-panel { padding: 14px 18px; }
+.category-chart-wrap {
+  display: flex; align-items: center; gap: 14px; margin-top: 8px;
+}
+.category-pie { width: 130px; height: 130px; flex-shrink: 0; }
+.category-legend { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.category-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 8px; background: rgba(7,131,250,0.05);
+  border-radius: 2px; font-size: 12px;
+}
+.category-item .ci-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.category-item .ci-name { flex: 1; color: #E0F0FF; }
+.category-item .ci-val { color: #FFD15C; font-family: 'D-DIN', sans-serif; font-weight: 700; }
+
+/* ===== 分析工具 ===== */
+.tools-panel { padding: 14px 18px; }
+.tools-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.tool-item {
+  padding: 10px 12px;
+  background: rgba(7,131,250,0.08);
+  border: 1px solid rgba(7,131,250,0.2);
+  border-radius: 3px;
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; transition: all .3s;
+}
+.tool-item:hover { background: rgba(7,209,250,0.15); border-color: #07D1FA; }
+.tool-item .ti-icon {
+  width: 32px; height: 32px; flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(7,131,250,0.3), rgba(7,209,250,0.2));
+  border: 1px solid rgba(7,209,250,0.4);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  color: #07D1FA; font-size: 16px; font-weight: 700;
+}
+.tool-item .ti-name { color: #E0F0FF; font-size: 13px; }
+.tool-item .ti-desc { color: #B4C0CC; font-size: 10px; margin-top: 2px; }
+
+/* ===== 企业营业收入分布 ===== */
+.enterprise-panel { padding: 14px 18px; }
+.enterprise-chart {
+  height: 120px; margin-top: 10px; position: relative;
+  border-left: 1px solid rgba(108,130,151,0.3);
+  border-bottom: 1px solid rgba(108,130,151,0.3);
+}
+.enterprise-bars {
+  height: 100%; display: flex; align-items: flex-end;
+  justify-content: space-around; padding: 0 8px;
+}
+.ebar {
+  width: 22px; border-radius: 2px 2px 0 0;
+  background: linear-gradient(180deg, rgba(7,209,250,0) 0%, #07D1FA 100%);
+  position: relative;
+}
+.ebar.gold { background: linear-gradient(180deg, rgba(255,209,92,0) 0%, #FFD15C 100%); }
+.ebar-val {
+  position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
+  color: #E0F0FF; font-family: 'D-DIN', sans-serif;
+  font-size: 9px; white-space: nowrap;
+}
+.enterprise-summary {
+  display: flex; justify-content: space-around; margin-top: 14px;
+  padding-top: 10px; border-top: 1px solid rgba(108,130,151,0.2);
+}
+.enterprise-summary .es-item { text-align: center; }
+.enterprise-summary .es-val {
+  color: #FFD15C; font-family: 'DIN Alternate', sans-serif;
+  font-size: 20px; font-weight: 700;
+}
+.enterprise-summary .es-val.cyan { color: #07D1FA; }
+.enterprise-summary .es-label { color: #C6D1DB; font-size: 11px; margin-top: 2px; }
+
+/* ===== 底部状态栏 ===== */
+.bottom-status {
+  position: absolute; left: 50%; bottom: 16px;
+  transform: translateX(-50%); z-index: 15;
+  display: flex; align-items: center; gap: 30px;
+  padding: 8px 32px;
+  background: linear-gradient(90deg, rgba(5,41,75,0.8), rgba(2,31,58,0.9), rgba(5,41,75,0.8));
+  border: 1px solid rgba(7,131,250,0.3);
+  border-radius: 4px;
+  box-shadow: 0 0 16px rgba(7,131,250,0.2);
+}
+.bottom-status .bs-item { display: flex; align-items: center; gap: 8px; }
+.bottom-status .bs-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #07D1FA; box-shadow: 0 0 8px #07D1FA;
+  animation: pulse 2s infinite;
+}
+.bottom-status .bs-label { color: #C6D1DB; font-size: 13px; }
+.bottom-status .bs-val {
+  color: #FFD15C; font-family: 'D-DIN', sans-serif;
+  font-size: 16px; font-weight: 700;
+}
+.bottom-status .bs-divider { width: 1px; height: 20px; background: rgba(124,191,255,0.3); }
+
+/* 入场动画 */
+.anim-slide-l { animation: slideInL .6s ease-out both; }
+.anim-slide-r { animation: slideInR .6s ease-out both; }
+.anim-fade { animation: fadeIn .8s ease-out both; }
+.anim-delay-1 { animation-delay: .1s; }
+.anim-delay-2 { animation-delay: .2s; }
+.anim-delay-3 { animation-delay: .3s; }
+.anim-delay-4 { animation-delay: .4s; }
+.anim-delay-5 { animation-delay: .5s; }
+@keyframes slideInL { from{opacity:0;transform:translateX(-30px);} to{opacity:1;transform:translateX(0);} }
+@keyframes slideInR { from{opacity:0;transform:translateX(30px);} to{opacity:1;transform:translateX(0);} }
+</style>
+</head>
+<body>
+<div class="screen-canvas" id="canvas" style="width:3840px;height:1080px;">
+  <!-- 背景层 -->
+  <div class="bg-geomap"></div>
+  <div class="bg-glow"></div>
+  <div class="bg-grid"></div>
+
+  <!-- 顶部大标题 -->
+  <div class="main-title anim-fade">
+    <span class="mt-text">经济运行可视化平台</span>
+  </div>
+
+  <!-- 顶部右侧信息 -->
+  <div class="top-right-info anim-fade">
+    <span class="tri-date">2026-06-20</span>
+    <span class="tri-week">星期六</span>
+    <span class="tri-weather">☀ 26°C 晴</span>
+  </div>
+
+  <!-- 中央地图区 -->
+  <div class="center-map anim-fade anim-delay-2">
+    <svg class="center-map-svg" viewBox="0 0 1840 920" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <radialGradient id="mapGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="rgba(7,131,250,0.15)"/>
+          <stop offset="100%" stop-color="rgba(7,131,250,0)"/>
+        </radialGradient>
+        <linearGradient id="mapLine" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="rgba(7,209,250,0)"/>
+          <stop offset="50%" stop-color="rgba(7,209,250,0.6)"/>
+          <stop offset="100%" stop-color="rgba(7,209,250,0)"/>
+        </linearGradient>
+      </defs>
+      <!-- 区域光晕 -->
+      <ellipse cx="920" cy="460" rx="700" ry="380" fill="url(#mapGlow)"/>
+      <!-- 地图区域多边形(模拟行政区划) -->
+      <g fill="rgba(7,131,250,0.06)" stroke="rgba(7,209,250,0.35)" stroke-width="1.2">
+        <path d="M 300,200 L 520,180 L 700,220 L 880,200 L 1060,240 L 1240,210 L 1420,250 L 1560,230 L 1560,420 L 1420,440 L 1240,410 L 1060,450 L 880,430 L 700,460 L 520,440 L 300,460 Z"/>
+        <path d="M 300,480 L 520,460 L 700,490 L 880,470 L 1060,500 L 1240,480 L 1420,510 L 1560,490 L 1560,700 L 1420,720 L 1240,690 L 1060,730 L 880,710 L 700,740 L 520,720 L 300,740 Z"/>
+      </g>
+      <!-- 区块分割线 -->
+      <g stroke="rgba(124,191,255,0.2)" stroke-width="1" stroke-dasharray="4 3" fill="none">
+        <path d="M 520,180 L 520,440 L 520,720"/>
+        <path d="M 700,220 L 700,460 L 700,740"/>
+        <path d="M 880,200 L 880,430 L 880,710"/>
+        <path d="M 1060,240 L 1060,450 L 1060,730"/>
+        <path d="M 1240,210 L 1240,410 L 1240,690"/>
+        <path d="M 1420,250 L 1420,440 L 1420,720"/>
+      </g>
+      <!-- 飞线连接 -->
+      <g stroke="url(#mapLine)" stroke-width="1.5" fill="none">
+        <path d="M 600,300 Q 760,180 920,260"/>
+        <path d="M 920,260 Q 1080,360 1240,300"/>
+        <path d="M 760,560 Q 920,460 1080,580"/>
+        <path d="M 1240,300 Q 1340,440 1280,600"/>
+        <path d="M 600,300 Q 500,460 600,560"/>
+      </g>
+      <!-- 飞线动画点 -->
+      <g fill="#FFD15C">
+        <circle r="3"><animateMotion dur="3s" repeatCount="indefinite" path="M 600,300 Q 760,180 920,260"/></circle>
+        <circle r="3"><animateMotion dur="3.5s" repeatCount="indefinite" path="M 920,260 Q 1080,360 1240,300"/></circle>
+        <circle r="3" fill="#07D1FA"><animateMotion dur="4s" repeatCount="indefinite" path="M 760,560 Q 920,460 1080,580"/></circle>
+      </g>
+    </svg>
+    <!-- 城市数据点 -->
+    <div class="city-node gold" style="left:32%; top:28%;">
+      <div class="cn-dot"></div>
+      <div class="cn-label">城东区<span class="cnv">¥86.4亿</span></div>
+    </div>
+    <div class="city-node" style="left:50%; top:22%;">
+      <div class="cn-dot"></div>
+      <div class="cn-label">中心区<span class="cnv">¥128.6亿</span></div>
+    </div>
+    <div class="city-node blue" style="left:68%; top:30%;">
+      <div class="cn-dot"></div>
+      <div class="cn-label">城南区<span class="cnv">¥64.2亿</span></div>
+    </div>
+    <div class="city-node" style="left:40%; top:62%;">
+      <div class="cn-dot"></div>
+      <div class="cn-label">城西区<span class="cnv">¥52.8亿</span></div>
+    </div>
+    <div class="city-node gold" style="left:60%; top:66%;">
+      <div class="cn-dot"></div>
+      <div class="cn-label">城北区<span class="cnv">¥74.5亿</span></div>
+    </div>
+    <div class="city-node blue" style="left:24%; top:48%;">
+      <div class="cn-dot"></div>
+      <div class="cn-label">高新区<span class="cnv">¥96.3亿</span></div>
+    </div>
+    <div class="city-node" style="left:78%; top:54%;">
+      <div class="cn-dot"></div>
+      <div class="cn-label">经开区<span class="cnv">¥58.7亿</span></div>
+    </div>
+    <!-- 中央核心数据 -->
+    <div class="center-core">
+      <div class="cc-ring">
+        <div class="cc-inner">
+          <div class="cc-label">全区GDP</div>
+          <div class="cc-val">561.5</div>
+          <div class="cc-unit">亿元</div>
+          <div class="cc-trend">同比增长 8.6%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 左侧面板组 ===== -->
+  <!-- 财政总收入 -->
+  <div class="ld-panel anim-slide-l anim-delay-1" style="left:548px; top:150px; width:430px;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="ld-title-bar">
+      <div class="ltb-dots"><span></span><span></span><span></span></div>
+      <span class="ltb-title">财政总收入</span>
+      <span class="ltb-divider"></span>
+      <span class="ltb-rect"></span>
+    </div>
+    <div class="finance-panel">
+      <div class="finance-total">
+        <div class="ft-label">本年度累计</div>
+        <div><span class="ft-val">98.62</span><span class="ft-unit">亿元</span></div>
+        <div class="ft-trend">同比增长 12.4% ▲</div>
+      </div>
+      <div class="finance-grid">
+        <div class="finance-item">
+          <div class="fi-label">税收收入</div>
+          <div class="fi-val">72.46<span class="fiu">亿</span></div>
+          <div class="fi-rate">+14.2%</div>
+        </div>
+        <div class="finance-item">
+          <div class="fi-label">非税收入</div>
+          <div class="fi-val">26.16<span class="fiu">亿</span></div>
+          <div class="fi-rate">+6.8%</div>
+        </div>
+        <div class="finance-item">
+          <div class="fi-label">上级补助</div>
+          <div class="fi-val">18.32<span class="fiu">亿</span></div>
+          <div class="fi-rate down">-2.1%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 各乡镇生产总值排名 -->
+  <div class="ld-panel anim-slide-l anim-delay-2" style="left:70px; top:459px; width:430px;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="ld-title-bar">
+      <div class="ltb-dots"><span></span><span></span><span></span></div>
+      <span class="ltb-title">各乡镇生产总值排名</span>
+      <span class="ltb-divider"></span>
+      <span class="ltb-rect"></span>
+    </div>
+    <div class="rank-panel">
+      <div class="rank-list">
+        <div class="rank-row"><span class="rank-no">1</span><span class="rank-name">中心街道</span><div class="rank-bar-wrap"><div class="rank-bar" style="width:100%;"></div></div><span class="rank-val">128.6<span class="rvu">亿</span></span></div>
+        <div class="rank-row"><span class="rank-no">2</span><span class="rank-name">高新区</span><div class="rank-bar-wrap"><div class="rank-bar" style="width:75%;"></div></div><span class="rank-val">96.3<span class="rvu">亿</span></span></div>
+        <div class="rank-row"><span class="rank-no">3</span><span class="rank-name">城东街道</span><div class="rank-bar-wrap"><div class="rank-bar" style="width:67%;"></div></div><span class="rank-val">86.4<span class="rvu">亿</span></span></div>
+        <div class="rank-row"><span class="rank-no">4</span><span class="rank-name">城北街道</span><div class="rank-bar-wrap"><div class="rank-bar" style="width:58%;"></div></div><span class="rank-val">74.5<span class="rvu">亿</span></span></div>
+        <div class="rank-row"><span class="rank-no">5</span><span class="rank-name">城南街道</span><div class="rank-bar-wrap"><div class="rank-bar" style="width:50%;"></div></div><span class="rank-val">64.2<span class="rvu">亿</span></span></div>
+        <div class="rank-row"><span class="rank-no">6</span><span class="rank-name">经开区</span><div class="rank-bar-wrap"><div class="rank-bar" style="width:46%;"></div></div><span class="rank-val">58.7<span class="rvu">亿</span></span></div>
+        <div class="rank-row"><span class="rank-no">7</span><span class="rank-name">城西街道</span><div class="rank-bar-wrap"><div class="rank-bar" style="width:41%;"></div></div><span class="rank-val">52.8<span class="rvu">亿</span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 税收收入占比 -->
+  <div class="ld-panel anim-slide-l anim-delay-3" style="left:548px; top:459px; width:430px;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="ld-title-bar">
+      <div class="ltb-dots"><span></span><span></span><span></span></div>
+      <span class="ltb-title">税收收入占比</span>
+      <span class="ltb-divider"></span>
+      <span class="ltb-rect"></span>
+    </div>
+    <div class="tax-panel">
+      <div class="tax-chart-wrap">
+        <div class="tax-ring">
+          <svg width="150" height="150" viewBox="0 0 150 150">
+            <circle cx="75" cy="75" r="60" fill="none" stroke="rgba(108,130,151,0.2)" stroke-width="14"/>
+            <circle cx="75" cy="75" r="60" fill="none" stroke="#FFD15C" stroke-width="14"
+                    stroke-dasharray="226 377" stroke-dashoffset="0" transform="rotate(-90 75 75)"
+                    stroke-linecap="round" style="filter:drop-shadow(0 0 6px rgba(255,209,92,0.5));"/>
+            <circle cx="75" cy="75" r="60" fill="none" stroke="#07D1FA" stroke-width="14"
+                    stroke-dasharray="113 377" stroke-dashoffset="-226" transform="rotate(-90 75 75)"
+                    stroke-linecap="round" style="filter:drop-shadow(0 0 6px rgba(7,209,250,0.5));"/>
+            <circle cx="75" cy="75" r="60" fill="none" stroke="#0783FA" stroke-width="14"
+                    stroke-dasharray="38 377" stroke-dashoffset="-339" transform="rotate(-90 75 75)"
+                    stroke-linecap="round"/>
+          </svg>
+          <div class="tax-ring-center">
+            <div class="trc-val">73.5%</div>
+            <div class="trc-label">税收占比</div>
+          </div>
+        </div>
+        <div class="tax-legend">
+          <div class="tax-legend-item">
+            <span class="tli-dot" style="background:#FFD15C;box-shadow:0 0 6px #FFD15C;"></span>
+            <span class="tli-name">增值税</span>
+            <span class="tli-val">42.6亿</span>
+          </div>
+          <div class="tax-legend-item">
+            <span class="tli-dot" style="background:#07D1FA;box-shadow:0 0 6px #07D1FA;"></span>
+            <span class="tli-name">企业所得税</span>
+            <span class="tli-val">21.3亿</span>
+          </div>
+          <div class="tax-legend-item">
+            <span class="tli-dot" style="background:#0783FA;box-shadow:0 0 6px #0783FA;"></span>
+            <span class="tli-name">个人所得税</span>
+            <span class="tli-val">8.56亿</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 生产总值增速 -->
+  <div class="ld-panel anim-slide-l anim-delay-4" style="left:70px; top:761px; width:430px;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="ld-title-bar">
+      <div class="ltb-dots"><span></span><span></span><span></span></div>
+      <span class="ltb-title">生产总值增速</span>
+      <span class="ltb-divider"></span>
+      <span class="ltb-rect"></span>
+    </div>
+    <div class="growth-panel">
+      <div class="growth-bar-chart">
+        <div class="growth-bar" style="height:45%;"><span class="growth-bar-val">5.2%</span><span class="growth-bar-label">2021</span></div>
+        <div class="growth-bar" style="height:58%;"><span class="growth-bar-val">6.4%</span><span class="growth-bar-label">2022</span></div>
+        <div class="growth-bar" style="height:68%;"><span class="growth-bar-val">7.2%</span><span class="growth-bar-label">2023</span></div>
+        <div class="growth-bar" style="height:78%;"><span class="growth-bar-val">7.8%</span><span class="growth-bar-label">2024</span></div>
+        <div class="growth-bar gold" style="height:88%;"><span class="growth-bar-val">8.6%</span><span class="growth-bar-label">2025</span></div>
+      </div>
+      <div class="growth-summary">
+        <div class="gs-item"><div class="gs-val">8.6%</div><div class="gs-label">本年增速</div></div>
+        <div class="gs-item"><div class="gs-val">7.04%</div><div class="gs-label">五年均值</div></div>
+        <div class="gs-item"><div class="gs-val">+0.8%</div><div class="gs-label">同比提升</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 右侧面板组 ===== -->
+  <!-- 项目概况 -->
+  <div class="ld-panel anim-slide-r anim-delay-1" style="left:3416px; top:150px; width:430px;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="ld-title-bar">
+      <div class="ltb-dots"><span></span><span></span><span></span></div>
+      <span class="ltb-title">项目概况</span>
+      <span class="ltb-divider"></span>
+      <span class="ltb-rect"></span>
+    </div>
+    <div class="project-panel">
+      <div class="project-stats">
+        <div class="project-stat">
+          <div class="ps-val">186<span class="psu">个</span></div>
+          <div class="ps-label">在建项目</div>
+        </div>
+        <div class="project-stat cyan">
+          <div class="ps-val">342<span class="psu">个</span></div>
+          <div class="ps-label">储备项目</div>
+        </div>
+        <div class="project-stat">
+          <div class="ps-val">128<span class="psu">个</span></div>
+          <div class="ps-label">竣工项目</div>
+        </div>
+        <div class="project-stat cyan">
+          <div class="ps-val">656<span class="psu">亿</span></div>
+          <div class="ps-label">总投资额</div>
+        </div>
+      </div>
+      <div class="project-progress">
+        <div class="pp-row">
+          <span class="pp-label">开工率</span>
+          <div class="pp-bar"><div class="pp-fill" style="width:86%;"></div></div>
+          <span class="pp-val">86%</span>
+        </div>
+        <div class="pp-row">
+          <span class="pp-label">投资完成</span>
+          <div class="pp-bar"><div class="pp-fill" style="width:64%;"></div></div>
+          <span class="pp-val">64%</span>
+        </div>
+        <div class="pp-row">
+          <span class="pp-label">验收率</span>
+          <div class="pp-bar"><div class="pp-fill" style="width:42%;"></div></div>
+          <span class="pp-val">42%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 项目类别 -->
+  <div class="ld-panel anim-slide-r anim-delay-2" style="left:3416px; top:407px; width:430px;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="ld-title-bar">
+      <div class="ltb-dots"><span></span><span></span><span></span></div>
+      <span class="ltb-title">项目类别</span>
+      <span class="ltb-divider"></span>
+      <span class="ltb-rect"></span>
+    </div>
+    <div class="category-panel">
+      <div class="category-chart-wrap">
+        <svg class="category-pie" viewBox="0 0 130 130">
+          <!-- 饼图: 基础设施40%, 产业项目30%, 民生工程20%, 其他10% -->
+          <circle cx="65" cy="65" r="50" fill="none" stroke="rgba(108,130,151,0.15)" stroke-width="20"/>
+          <circle cx="65" cy="65" r="50" fill="none" stroke="#FFD15C" stroke-width="20"
+                  stroke-dasharray="126 314" transform="rotate(-90 65 65)" stroke-linecap="butt"
+                  style="filter:drop-shadow(0 0 4px rgba(255,209,92,0.4));"/>
+          <circle cx="65" cy="65" r="50" fill="none" stroke="#07D1FA" stroke-width="20"
+                  stroke-dasharray="94 314" stroke-dashoffset="-126" transform="rotate(-90 65 65)"/>
+          <circle cx="65" cy="65" r="50" fill="none" stroke="#0783FA" stroke-width="20"
+                  stroke-dasharray="63 314" stroke-dashoffset="-220" transform="rotate(-90 65 65)"/>
+          <circle cx="65" cy="65" r="50" fill="none" stroke="#7CBFFF" stroke-width="20"
+                  stroke-dasharray="31 314" stroke-dashoffset="-283" transform="rotate(-90 65 65)"/>
+        </svg>
+        <div class="category-legend">
+          <div class="category-item">
+            <span class="ci-dot" style="background:#FFD15C;"></span>
+            <span class="ci-name">基础设施</span>
+            <span class="ci-val">40%</span>
+          </div>
+          <div class="category-item">
+            <span class="ci-dot" style="background:#07D1FA;"></span>
+            <span class="ci-name">产业项目</span>
+            <span class="ci-val">30%</span>
+          </div>
+          <div class="category-item">
+            <span class="ci-dot" style="background:#0783FA;"></span>
+            <span class="ci-name">民生工程</span>
+            <span class="ci-val">20%</span>
+          </div>
+          <div class="category-item">
+            <span class="ci-dot" style="background:#7CBFFF;"></span>
+            <span class="ci-name">其他项目</span>
+            <span class="ci-val">10%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 分析工具 -->
+  <div class="ld-panel anim-slide-r anim-delay-3" style="left:3416px; top:709px; width:430px;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="ld-title-bar">
+      <div class="ltb-dots"><span></span><span></span><span></span></div>
+      <span class="ltb-title">分析工具</span>
+      <span class="ltb-divider"></span>
+      <span class="ltb-rect"></span>
+    </div>
+    <div class="tools-panel">
+      <div class="tools-grid">
+        <div class="tool-item">
+          <div class="ti-icon">趋</div>
+          <div><div class="ti-name">趋势分析</div><div class="ti-desc">多维数据预测</div></div>
+        </div>
+        <div class="tool-item">
+          <div class="ti-icon">比</div>
+          <div><div class="ti-name">对比分析</div><div class="ti-desc">区域横向对比</div></div>
+        </div>
+        <div class="tool-item">
+          <div class="ti-icon">预</div>
+          <div><div class="ti-name">预警模型</div><div class="ti-desc">风险智能识别</div></div>
+        </div>
+        <div class="tool-item">
+          <div class="ti-icon">报</div>
+          <div><div class="ti-name">报表导出</div><div class="ti-desc">一键生成报告</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 企业营业收入分布 -->
+  <div class="ld-panel anim-slide-r anim-delay-4" style="left:2938px; top:753px; width:430px;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="ld-title-bar">
+      <div class="ltb-dots"><span></span><span></span><span></span></div>
+      <span class="ltb-title">企业营业收入分布</span>
+      <span class="ltb-divider"></span>
+      <span class="ltb-rect"></span>
+    </div>
+    <div class="enterprise-panel">
+      <div class="enterprise-chart">
+        <div class="enterprise-bars">
+          <div class="ebar" style="height:42%;"><span class="ebar-val">42</span></div>
+          <div class="ebar" style="height:58%;"><span class="ebar-val">58</span></div>
+          <div class="ebar gold" style="height:88%;"><span class="ebar-val">96</span></div>
+          <div class="ebar" style="height:72%;"><span class="ebar-val">72</span></div>
+          <div class="ebar" style="height:64%;"><span class="ebar-val">64</span></div>
+          <div class="ebar gold" style="height:82%;"><span class="ebar-val">84</span></div>
+          <div class="ebar" style="height:50%;"><span class="ebar-val">50</span></div>
+          <div class="ebar" style="height:46%;"><span class="ebar-val">46</span></div>
+          <div class="ebar" style="height:38%;"><span class="ebar-val">38</span></div>
+          <div class="ebar" style="height:34%;"><span class="ebar-val">34</span></div>
+        </div>
+      </div>
+      <div class="enterprise-summary">
+        <div class="es-item"><div class="es-val">1,286</div><div class="es-label">企业总数</div></div>
+        <div class="es-item"><div class="es-val cyan">486.2亿</div><div class="es-label">营收总额</div></div>
+        <div class="es-item"><div class="es-val">+9.6%</div><div class="es-label">同比增长</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部状态栏 -->
+  <div class="bottom-status anim-fade anim-delay-5">
+    <div class="bs-item"><span class="bs-dot"></span><span class="bs-label">系统状态</span><span class="bs-val">运行正常</span></div>
+    <div class="bs-divider"></div>
+    <div class="bs-item"><span class="bs-label">数据更新</span><span class="bs-val">实时</span></div>
+    <div class="bs-divider"></div>
+    <div class="bs-item"><span class="bs-label">监控指标</span><span class="bs-val">128项</span></div>
+    <div class="bs-divider"></div>
+    <div class="bs-item"><span class="bs-label">预警事件</span><span class="bs-val">3件</span></div>
+    <div class="bs-divider"></div>
+    <div class="bs-item"><span class="bs-label">在线用户</span><span class="bs-val">268</span></div>
+  </div>
+
+</div>
+
+<script>
+function scaleCanvas(){
+  var c=document.getElementById('canvas');
+  // 超宽屏 3840×1080,以宽度为基准自适应
+  var s=Math.min(window.innerWidth/3840,window.innerHeight/1080);
+  c.style.transform='scale('+s+')';
+}
+scaleCanvas();window.addEventListener('resize',scaleCanvas);
+</script>
+</body>
+</html>

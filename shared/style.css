@@ -1,0 +1,279 @@
+/* ========================================
+   智慧大屏共享设计系统 — Design Tokens
+   从 Figma 文件 Nbt5VNfA0x5PIs8831ioXi 提取
+   ======================================== */
+
+:root {
+  /* === 底色 === */
+  --color-bg: #090909;
+  --color-bg-alt: #030609;
+  --color-bg-panel: rgba(9, 20, 40, 0.6);
+
+  /* === 主色 === */
+  --color-primary: #1283FF;
+  --color-primary-light: #54C2FC;
+  --color-accent: #20F8FF;
+  --color-accent-2: #21E7FB;
+  --color-accent-3: #25FFF3;
+
+  /* === 告警色 === */
+  --color-alert: #EF3042;
+  --color-alert-dark: #C02232;
+  --color-warning: #FAC46E;
+  --color-success: #19CDFA;
+
+  /* === 文字色 === */
+  --color-text-main: #F4F8FF;
+  --color-text-sub: #ACC9E6;
+  --color-text-label: #E6F7FF;
+  --color-text-dim: #8FABBF;
+  --color-text-white: #FFFFFF;
+  --color-text-gray: #E1E4E8;
+  --color-text-muted: #989CA3;
+
+  /* === 辅助色 === */
+  --color-blue-light: #BFEAFF;
+  --color-blue-pale: #DCF3FF;
+  --color-cyan: #56C5F6;
+  --color-gold: #C5A743;
+  --color-purple: #5041FF;
+  --color-orange: #F86A49;
+  --color-green: #66FFD9;
+
+  /* === 渐变 === */
+  --grad-bar-blue: linear-gradient(180deg, rgba(62,199,252,1) 0%, rgba(0,102,198,1) 100%);
+  --grad-bar-red: linear-gradient(180deg, rgba(255,40,54,1) 0%, rgba(207,137,138,1) 100%);
+  --grad-bar-cyan: linear-gradient(180deg, rgba(32,248,255,0.9) 25%, rgba(32,248,255,0) 100%);
+  --grad-bar-blue-fade: linear-gradient(180deg, rgba(18,131,255,1) 27%, rgba(18,131,255,0) 100%);
+  --grad-panel-left: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(5,5,23,0.65) 32%, rgba(18,131,255,0) 95%);
+  --grad-panel-right: linear-gradient(270deg, rgba(0,0,0,1) 0%, rgba(5,5,23,0.65) 32%, rgba(18,131,255,0) 95%);
+  --grad-bottom-fade: linear-gradient(180deg, rgba(18,131,255,0) 17%, rgba(6,45,88,0.65) 84%, rgba(0,0,0,1) 96%);
+  --grad-top-fade: linear-gradient(180deg, rgba(3,3,3,1) 0%, rgba(18,131,255,0) 100%);
+  --grad-progress: linear-gradient(90deg, rgba(84,161,247,1) 1%, rgba(117,251,253,1) 100%);
+
+  /* === 字体 === */
+  --font-title: 'YouSheBiaoTiHei', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-body: 'Source Han Sans CN', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-number: 'DIN Alternate', 'ABeeZee', 'Arial', sans-serif;
+  --font-din: 'DIN', 'DIN Alternate', 'Arial', sans-serif;
+  --font-swis: 'Swis721 Cn BT', 'Arial', sans-serif;
+  --font-puhui: 'Alibaba PuHuiTi', 'Source Han Sans CN', sans-serif;
+
+  /* === 效果 === */
+  --shadow-glow-blue: 0 0 8px rgba(0,117,255,1), inset 0 0 1px rgba(0,117,255,1);
+  --shadow-glow-cyan: 0 0 8px rgba(28,160,255,1);
+  --shadow-text-title: 0 4px 20px rgba(0,117,255,1);
+  --shadow-text-cyan: 0 0 10px rgba(0,187,255,1);
+  --shadow-text-glow: 0 0 20px rgba(19,128,255,1);
+  --shadow-card: 0 0 8px rgba(58,218,247,0.61);
+  --blur-title: blur(75px);
+  --blur-title-lg: blur(150px);
+}
+
+/* === 基础重置 === */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%; background: #000; overflow: hidden;
+  font-family: var(--font-body);
+}
+
+/* === 画布容器 === */
+.screen-canvas {
+  position: relative; background: var(--color-bg); overflow: hidden;
+  transform-origin: top left;
+}
+
+/* === 背景层 === */
+.bg-layer { position: absolute; pointer-events: none; }
+.bg-grad-left {
+  position: absolute; left: 0; top: 0; width: 501px; height: 1080px;
+  background: var(--grad-panel-left);
+}
+.bg-grad-right {
+  position: absolute; right: 0; top: 0; width: 501px; height: 1080px;
+  background: var(--grad-panel-right);
+}
+.bg-grad-top {
+  position: absolute; left: 0; top: 0; width: 100%; height: 278px;
+  background: var(--grad-top-fade);
+}
+.bg-grad-bottom {
+  position: absolute; left: 0; bottom: 0; width: 100%; height: 328px;
+  background: var(--grad-bottom-fade);
+}
+
+/* === 标题栏 === */
+.screen-header {
+  position: absolute; left: 50%; transform: translateX(-50%); top: -42px;
+  width: 868px; height: 121px; text-align: center; z-index: 10;
+}
+.header-glow {
+  position: absolute; left: 0; top: 0; width: 100%; height: 67px;
+  background: rgba(18,137,221,0.6); border: 2px solid var(--color-text-white);
+  border-radius: 50%; filter: var(--blur-title);
+}
+.header-title {
+  position: relative; color: var(--color-text-main);
+  font-family: var(--font-title); font-size: 34px; line-height: 48px;
+  letter-spacing: 0.14em; text-shadow: var(--shadow-text-title);
+}
+.header-subtitle {
+  position: relative; color: var(--color-text-main);
+  font-family: var(--font-title); font-size: 12px; line-height: 48px;
+  letter-spacing: 0.04em;
+}
+
+/* === 面板标题栏 === */
+.panel-title-bar {
+  position: absolute; width: 320px; height: 48px;
+  display: flex; align-items: center; padding: 0 20px;
+}
+.panel-title {
+  color: var(--color-text-main); font-family: var(--font-title);
+  font-size: 26px; line-height: 48px; letter-spacing: 0.02em;
+}
+.panel-subtitle {
+  color: var(--color-text-white); font-family: var(--font-title);
+  font-size: 12px; line-height: 48px; margin-left: auto;
+}
+
+/* === 区块标题 === */
+.section-header {
+  display: flex; align-items: center; gap: 11px; margin-bottom: 12px;
+}
+.section-dot {
+  width: 6px; height: 6px; background: var(--color-accent-2);
+  border-radius: 50%; box-shadow: var(--shadow-glow-blue); flex-shrink: 0;
+}
+.section-title {
+  color: var(--color-text-sub); font-family: var(--font-body);
+  font-size: 14px; font-weight: 500; line-height: 44px;
+}
+
+/* === 数据指标 === */
+.metric-card { display: inline-flex; flex-direction: column; }
+.metric-label {
+  color: var(--color-text-label); font-family: var(--font-body);
+  font-size: 11.58px; font-weight: 300;
+}
+.metric-value {
+  color: var(--color-text-white); font-family: var(--font-number);
+  font-size: 23.16px;
+}
+.metric-value-lg {
+  color: var(--color-text-white); font-family: var(--font-number);
+  font-size: 26px;
+}
+.metric-unit {
+  color: #18B8FF; font-family: var(--font-body);
+  font-size: 11.58px; font-weight: 300;
+}
+
+/* === 柱状图 === */
+.chart-bars {
+  display: flex; align-items: flex-end; gap: 12px; height: 150px;
+}
+.bar {
+  width: 28px; border-radius: 4px 4px 0 0;
+  background: var(--grad-bar-blue);
+  position: relative; transition: height 1s ease-out;
+}
+.bar.alert { background: var(--grad-bar-red); }
+.bar-value {
+  position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
+  color: var(--color-blue-light); font-family: var(--font-din);
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.bar-label {
+  position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
+  color: var(--color-text-dim); font-size: 9px; white-space: nowrap;
+}
+
+/* === 环形图 === */
+.ring-chart { position: relative; display: inline-block; }
+.ring-svg { width: 100%; height: 100%; }
+.ring-center {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  text-align: center;
+}
+.ring-num {
+  color: var(--color-accent); font-family: var(--font-number);
+  font-size: 26px; letter-spacing: 0.1em; text-shadow: var(--shadow-text-cyan);
+}
+.ring-text {
+  color: #ACCDE6; font-family: var(--font-body); font-size: 10px; margin-top: 2px;
+}
+
+/* === 事件列表 === */
+.event-list { width: 100%; }
+.event-row {
+  display: flex; align-items: center; height: 38px; padding: 0 12px;
+  border-bottom: 1px solid rgba(143,171,191,0.15);
+}
+.event-row:nth-child(odd) { background: rgba(230,247,255,0.03); }
+.event-time {
+  color: var(--color-cyan); font-family: var(--font-din); font-size: 12px;
+  width: 70px; letter-spacing: 0.1em;
+}
+.event-name {
+  color: var(--color-text-gray); font-family: var(--font-body); font-size: 12px;
+  flex: 1; padding-left: 12px;
+}
+.event-status {
+  color: var(--color-success); font-family: var(--font-body); font-size: 11px;
+  padding: 2px 8px; border: 1px solid rgba(8,165,156,0.5); border-radius: 2px;
+}
+.event-status.alert { color: var(--color-alert); border-color: rgba(207,137,138,0.5); }
+
+/* === 底部数据栏 === */
+.bottom-bar {
+  display: flex; justify-content: space-around; align-items: center;
+}
+.bottom-item { text-align: center; }
+.bottom-num {
+  color: var(--color-accent); font-family: var(--font-number);
+  font-size: 28px; letter-spacing: 0.1em; text-shadow: var(--shadow-text-glow);
+}
+.bottom-num.alert { color: var(--color-alert); }
+.bottom-label {
+  color: #ACCDE6; font-family: var(--font-body); font-size: 12px;
+  margin-top: 4px; letter-spacing: 0.1em;
+}
+.bottom-divider {
+  width: 1px; height: 50px;
+  background: linear-gradient(180deg, transparent, rgba(84,194,252,0.4), transparent);
+}
+
+/* === 进度条 === */
+.progress-bar {
+  height: 10px; border-radius: 5px;
+  background: var(--grad-progress);
+}
+
+/* === 装饰边框 === */
+.decor-corner {
+  position: absolute; width: 20px; height: 20px;
+  border: 2px solid var(--color-primary);
+}
+.decor-corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; }
+.decor-corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; }
+.decor-corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; }
+.decor-corner.br { bottom: 0; right: 0; border-left: none; border-top: none; }
+
+/* === 动画 === */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+@keyframes scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}

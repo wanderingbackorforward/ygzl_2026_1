@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>TemplateGUI-01.BIM - BIMデータ大屏</title>
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+/* ===== 屏幕特有样式 ===== */
+.screen-canvas {
+  background: #000416;
+  font-family: 'Open Sans', 'Source Han Sans CN', 'Microsoft YaHei', sans-serif;
+}
+
+/* BIM 建筑背景层 */
+.bim-bg {
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  z-index: 1;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(24,199,254,0.15) 0%, rgba(0,4,22,0.6) 50%, rgba(0,4,22,0.9) 90%),
+    linear-gradient(180deg, #000416 0%, #001028 50%, #000416 100%);
+  border: 1px solid rgba(24,199,254,0.3);
+  box-shadow: 0 0 30px rgba(24,254,254,0.2), inset 0 0 60px rgba(24,199,254,0.08);
+}
+.bim-bg::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(24,254,254,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(24,254,254,0.04) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+/* 顶部/底部黑色渐变遮罩 */
+.bim-mask-top {
+  position: absolute; left: 0; top: 0;
+  width: 100%; height: 120px;
+  background: linear-gradient(180deg, #000416 0%, rgba(0,4,22,0) 100%);
+  z-index: 2; pointer-events: none;
+}
+.bim-mask-bottom {
+  position: absolute; left: 0; bottom: 0;
+  width: 100%; height: 180px;
+  background: linear-gradient(0deg, #000416 0%, rgba(0,4,22,0) 100%);
+  z-index: 2; pointer-events: none;
+}
+/* 左右模糊面板 */
+.bim-blur-left, .bim-blur-right {
+  position: absolute; top: 97px; height: 772px;
+  z-index: 3; pointer-events: none;
+  backdrop-filter: blur(14.5px);
+  -webkit-backdrop-filter: blur(14.5px);
+}
+.bim-blur-left {
+  left: 0; width: 450px;
+  background: linear-gradient(90deg, rgba(0,4,22,0.85) 0%, rgba(0,4,22,0.4) 80%, transparent 100%);
+}
+.bim-blur-right {
+  right: 0; width: 290px;
+  background: linear-gradient(270deg, rgba(0,4,22,0.85) 0%, rgba(0,4,22,0.4) 80%, transparent 100%);
+}
+
+/* NAV 导航栏 */
+.bim-nav {
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%; height: 97px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  padding: 36px 24px;
+  background: linear-gradient(180deg, rgba(0,4,22,0.9) 0%, rgba(0,4,22,0) 100%);
+}
+.nav-logo {
+  display: flex; align-items: center; gap: 12px;
+}
+.nav-logo-icon {
+  width: 36px; height: 36px;
+  border: 2px solid #18FEFE;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  color: #18FEFE;
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  box-shadow: 0 0 12px rgba(24,254,254,0.5);
+}
+.nav-logo-text {
+  color: #FFFFFF;
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 0.05em;
+}
+.nav-logo-text .sub {
+  display: block;
+  color: rgba(255,255,255,0.5);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  margin-top: 2px;
+}
+.nav-items {
+  margin-left: auto;
+  display: flex; gap: 6px;
+}
+.nav-item {
+  padding: 10px 22px;
+  color: rgba(255,255,255,0.7);
+  font-family: 'Open Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+.nav-item.active {
+  color: #18FEFE;
+  background: rgba(24,254,254,0.1);
+  border: 1px solid rgba(24,254,254,0.4);
+  box-shadow: 0 0 12px rgba(24,254,254,0.3);
+}
+.nav-item:hover { color: #FFFFFF; }
+.nav-time {
+  margin-left: 20px;
+  color: rgba(255,255,255,0.6);
+  font-family: 'Open Sans', sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}
+
+/* 通用 BIM 面板标题 */
+.bim-section-title {
+  position: absolute;
+  height: 44px;
+  display: flex; align-items: center;
+  padding: 0 16px;
+  background: rgba(0,0,0,0.4);
+  border-left: 3px solid #18FEFE;
+  z-index: 6;
+}
+.bim-section-title .bst-icon {
+  width: 20px; height: 20px;
+  margin-right: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: #18FEFE;
+}
+.bim-section-title .bst-text {
+  color: #FFFFFF;
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: 0.03em;
+}
+.bim-section-title .bst-right {
+  margin-left: auto;
+  color: #18FEFE;
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+}
+.bim-section-title .bst-right .small {
+  color: rgba(255,255,255,0.5);
+  font-size: 12px;
+  font-weight: 400;
+  margin-right: 8px;
+}
+
+/* 通用面板内容容器 */
+.bim-panel-body {
+  position: absolute;
+  background: rgba(0,4,22,0.5);
+  border: 1px solid rgba(24,254,254,0.15);
+  border-radius: 0 0 4px 4px;
+  z-index: 5;
+  animation: fadeIn 0.6s ease-out both;
+}
+
+/* 情報概要内容 */
+.info-overview {
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.io-card {
+  padding: 10px;
+  background: rgba(24,254,254,0.05);
+  border: 1px solid rgba(24,254,254,0.15);
+  border-radius: 4px;
+  display: flex; align-items: center; gap: 10px;
+}
+.io-icon {
+  width: 36px; height: 36px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: rgba(24,254,254,0.15);
+  border: 1px solid rgba(24,254,254,0.4);
+  display: flex; align-items: center; justify-content: center;
+  color: #18FEFE;
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+}
+.io-info { flex: 1; min-width: 0; }
+.io-label { color: rgba(255,255,255,0.5); font-size: 11px; font-family: 'Open Sans', sans-serif; }
+.io-value {
+  color: #FFFFFF;
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.02em;
+}
+.io-value .unit { color: #18FEFE; font-size: 11px; font-weight: 400; margin-left: 3px; }
+
+/* D/W/M 切换 */
+.dwm-switch {
+  display: inline-flex;
+  border: 1px solid rgba(24,254,254,0.3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.dwm-switch .dwm-item {
+  padding: 3px 10px;
+  color: rgba(255,255,255,0.5);
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+.dwm-switch .dwm-item.active {
+  background: rgba(24,254,254,0.2);
+  color: #18FEFE;
+}
+
+/* 数据统计内容 */
+.data-stats-body { padding: 14px 16px; }
+.ds-tabs {
+  display: flex; gap: 8px;
+  margin-bottom: 12px;
+}
+.ds-tab {
+  width: 132px; height: 44px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: rgba(24,254,254,0.05);
+  border: 1px solid rgba(24,254,254,0.2);
+  border-radius: 4px;
+}
+.ds-tab.active {
+  background: rgba(24,254,254,0.15);
+  border-color: #18FEFE;
+  box-shadow: 0 0 10px rgba(24,254,254,0.3);
+}
+.ds-tab .dst-label { color: rgba(255,255,255,0.5); font-size: 10px; font-family: 'Open Sans', sans-serif; }
+.ds-tab.active .dst-label { color: #18FEFE; }
+.ds-tab .dst-val {
+  color: #FFFFFF; font-family: 'Open Sans', sans-serif;
+  font-weight: 700; font-size: 16px;
+}
+.ds-chart {
+  height: 150px;
+  margin-top: 8px;
+  position: relative;
+}
+.ds-chart svg { width: 100%; height: 100%; }
+
+/* 情報リスト テーブル */
+.info-table { width: 100%; }
+.it-head, .it-row {
+  display: flex; align-items: center;
+  height: 36px;
+  padding: 0 12px;
+  font-family: 'Open Sans', sans-serif;
+  font-size: 12px;
+}
+.it-head {
+  background: rgba(24,254,254,0.1);
+  border-bottom: 1px solid rgba(24,254,254,0.3);
+  color: #18FEFE;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.it-row {
+  border-bottom: 1px solid rgba(24,254,254,0.08);
+  color: rgba(255,255,255,0.8);
+}
+.it-row:nth-child(odd) { background: rgba(24,254,254,0.03); }
+.it-id { flex: 0.6; color: #18FEFE; font-weight: 700; }
+.it-name { flex: 1.4; }
+.it-cat { flex: 1; color: rgba(255,255,255,0.5); }
+.it-val { flex: 0.8; text-align: right; color: #FFFFFF; font-weight: 700; }
+.it-status { flex: 0.6; text-align: center; }
+.it-status .tag {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 10px;
+  border-radius: 2px;
+}
+.it-status .tag.ok { color: #18FEFE; background: rgba(24,254,254,0.15); border: 1px solid rgba(24,254,254,0.4); }
+.it-status .tag.warn { color: #FAC46E; background: rgba(250,196,110,0.15); border: 1px solid rgba(250,196,110,0.4); }
+.it-status .tag.err { color: #EF3042; background: rgba(239,48,66,0.15); border: 1px solid rgba(239,48,66,0.4); }
+
+/* 右侧数据解析柱状图 */
+.analysis-chart {
+  padding: 16px 14px;
+  height: 100%;
+  display: flex; flex-direction: column;
+}
+.ac-title {
+  color: #FFFFFF;
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 12px;
+  display: flex; align-items: center;
+}
+.ac-title::before {
+  content: ''; display: inline-block;
+  width: 4px; height: 14px;
+  background: #18FEFE; margin-right: 8px;
+  box-shadow: 0 0 6px #18FEFE;
+}
+.ac-bars {
+  flex: 1;
+  display: flex; align-items: flex-end; justify-content: space-around;
+  gap: 8px;
+  padding-bottom: 24px;
+  position: relative;
+}
+.ac-bars::before {
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: 24px;
+  height: 1px;
+  background: rgba(24,254,254,0.2);
+}
+.ac-bar-col { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+.ac-bar {
+  width: 100%;
+  max-width: 24px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, rgba(24,254,254,0.9) 0%, rgba(24,199,254,0.4) 100%);
+  position: relative;
+  transition: height 1s ease-out;
+  box-shadow: 0 0 8px rgba(24,254,254,0.4);
+}
+.ac-bar.alert { background: linear-gradient(180deg, rgba(239,48,66,0.9) 0%, rgba(239,48,66,0.4) 100%); box-shadow: 0 0 8px rgba(239,48,66,0.4); }
+.ac-bar-val {
+  position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
+  color: #18FEFE; font-family: 'Open Sans', sans-serif;
+  font-size: 9px; font-weight: 700; white-space: nowrap;
+}
+.ac-bar-label {
+  color: rgba(255,255,255,0.5); font-size: 10px;
+  font-family: 'Open Sans', sans-serif;
+}
+
+/* GIS 热力图 */
+.heat-map-body { padding: 12px; }
+.heat-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(6, 1fr);
+  gap: 3px;
+  height: 160px;
+}
+.heat-cell {
+  border-radius: 2px;
+  background: rgba(24,254,254,0.1);
+  transition: all 0.3s;
+}
+.heat-cell.l1 { background: rgba(24,254,254,0.25); }
+.heat-cell.l2 { background: rgba(24,254,254,0.45); }
+.heat-cell.l3 { background: rgba(24,254,254,0.65); box-shadow: 0 0 6px rgba(24,254,254,0.4); }
+.heat-cell.l4 { background: rgba(24,254,254,0.85); box-shadow: 0 0 8px rgba(24,254,254,0.6); }
+.heat-cell.l5 { background: #18FEFE; box-shadow: 0 0 12px #18FEFE; }
+.heat-legend {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 10px;
+  font-size: 10px; color: rgba(255,255,255,0.5);
+  font-family: 'Open Sans', sans-serif;
+}
+.heat-legend-bar {
+  flex: 1; height: 6px;
+  background: linear-gradient(90deg, rgba(24,254,254,0.1), rgba(24,254,254,0.5), #18FEFE);
+  border-radius: 3px;
+}
+
+/* 中央 BIM 3D 模型区域 */
+.bim-3d-area {
+  position: absolute;
+  left: 816px; top: 173px;
+  width: 687px; height: 547px;
+  z-index: 4;
+  pointer-events: none;
+}
+.bim-3d-bg {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 60%, rgba(24,254,254,0.18) 0%, rgba(0,4,22,0.4) 50%, rgba(0,4,22,0.8) 90%),
+    linear-gradient(180deg, rgba(0,4,22,0.3) 0%, rgba(24,199,254,0.08) 50%, rgba(0,4,22,0.6) 100%);
+  border: 1px solid rgba(24,254,254,0.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.bim-3d-bg::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(24,254,254,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(24,254,254,0.06) 1px, transparent 1px);
+  background-size: 30px 30px;
+  transform: perspective(800px) rotateX(60deg) translateY(20%);
+  transform-origin: center bottom;
+}
+/* 模拟 BIM 建筑模型 */
+.bim-building {
+  position: absolute;
+  left: 50%; bottom: 25%;
+  transform: translateX(-50%);
+  display: flex; gap: 8px;
+  align-items: flex-end;
+}
+.bim-tower {
+  width: 60px;
+  background: linear-gradient(180deg, rgba(24,254,254,0.4) 0%, rgba(24,199,254,0.15) 100%);
+  border: 1px solid rgba(24,254,254,0.5);
+  border-bottom: none;
+  position: relative;
+  box-shadow: 0 0 20px rgba(24,254,254,0.3);
+}
+.bim-tower::before {
+  content: '';
+  position: absolute; inset: 4px;
+  background-image:
+    linear-gradient(rgba(24,254,254,0.3) 1px, transparent 1px);
+  background-size: 100% 12px;
+}
+.bim-tower::after {
+  content: '';
+  position: absolute; left: 50%; top: -8px;
+  transform: translateX(-50%);
+  width: 4px; height: 8px;
+  background: #18FEFE;
+  box-shadow: 0 0 8px #18FEFE;
+  animation: pulse 2s ease-in-out infinite;
+}
+.bim-tower.t1 { height: 180px; }
+.bim-tower.t2 { height: 260px; }
+.bim-tower.t3 { height: 320px; }
+.bim-tower.t4 { height: 220px; }
+.bim-tower.t5 { height: 160px; }
+.bim-base {
+  position: absolute;
+  left: 50%; bottom: 22%;
+  transform: translateX(-50%);
+  width: 460px; height: 30px;
+  background: linear-gradient(180deg, rgba(24,254,254,0.3) 0%, rgba(24,199,254,0.1) 100%);
+  border: 1px solid rgba(24,254,254,0.4);
+  border-bottom: none;
+  transform: translateX(-50%) perspective(400px) rotateX(50deg);
+  transform-origin: center top;
+}
+.bim-scan-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #18FEFE, transparent);
+  box-shadow: 0 0 12px #18FEFE;
+  animation: scanBim 4s ease-in-out infinite;
+}
+@keyframes scanBim {
+  0% { top: 0; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+.bim-3d-label {
+  position: absolute;
+  color: #18FEFE;
+  font-family: 'Open Sans', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 8px rgba(24,254,254,0.6);
+}
+.bim-3d-label::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  background: #18FEFE;
+  border-radius: 50%;
+  margin-right: 6px;
+  box-shadow: 0 0 6px #18FEFE;
+  vertical-align: middle;
+}
+.bim-3d-label.l1 { left: 20px; top: 40px; }
+.bim-3d-label.l2 { right: 20px; top: 80px; }
+.bim-3d-label.l3 { left: 30px; bottom: 80px; }
+.bim-3d-label.l4 { right: 30px; bottom: 120px; }
+
+/* 底部设备信息栏 */
+.device-info-bar {
+  position: absolute;
+  left: 458px; top: 869px;
+  width: 1144px; height: 190px;
+  z-index: 6;
+  display: flex;
+  gap: 14px;
+}
+.di-block {
+  background: rgba(0,4,22,0.6);
+  border: 1px solid rgba(24,254,254,0.2);
+  border-radius: 4px;
+  padding: 12px 16px;
+  position: relative;
+  animation: fadeIn 0.6s ease-out 0.3s both;
+}
+.di-block .di-head {
+  display: flex; align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(24,254,254,0.2);
+}
+.di-block .di-head .dh-icon {
+  width: 18px; height: 18px;
+  margin-right: 8px;
+  color: #18FEFE;
+}
+.di-block .di-head .dh-title {
+  color: #FFFFFF;
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.03em;
+}
+.di-block .di-head .dh-right {
+  margin-left: auto;
+  color: #18FEFE;
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+}
+/* 设备信息内容 - 2组设备数据 */
+.di-devices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.did-item {
+  padding: 8px 10px;
+  background: rgba(24,254,254,0.05);
+  border: 1px solid rgba(24,254,254,0.15);
+  border-radius: 3px;
+}
+.did-name { color: rgba(255,255,255,0.6); font-size: 11px; font-family: 'Open Sans', sans-serif; }
+.did-val {
+  color: #FFFFFF;
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  margin-top: 2px;
+}
+.did-val .unit { color: #18FEFE; font-size: 11px; font-weight: 400; margin-left: 3px; }
+.did-status {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 1px 6px;
+  font-size: 9px;
+  border-radius: 2px;
+  color: #18FEFE;
+  background: rgba(24,254,254,0.15);
+  border: 1px solid rgba(24,254,254,0.3);
+}
+/* 中央数据区 - 70% 进度 */
+.di-center {
+  flex: 1;
+  display: flex; flex-direction: column;
+}
+.dc-metrics {
+  display: flex;
+  gap: 14px;
+  margin-top: 4px;
+}
+.dc-metric {
+  flex: 1;
+  text-align: center;
+  padding: 8px 6px;
+  background: rgba(24,254,254,0.05);
+  border: 1px solid rgba(24,254,254,0.15);
+  border-radius: 3px;
+}
+.dc-metric .dcm-val {
+  color: #18FEFE;
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  text-shadow: 0 0 8px rgba(24,254,254,0.5);
+}
+.dc-metric .dcm-label {
+  color: rgba(255,255,255,0.5);
+  font-size: 10px;
+  font-family: 'Open Sans', sans-serif;
+  margin-top: 2px;
+}
+.dc-progress {
+  margin-top: 10px;
+  display: flex; align-items: center; gap: 12px;
+}
+.dc-progress-label {
+  color: rgba(255,255,255,0.7);
+  font-family: 'Open Sans', sans-serif;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.dc-progress-bar {
+  flex: 1; height: 12px;
+  background: rgba(24,254,254,0.1);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+.dc-progress-fill {
+  height: 100%;
+  width: 70%;
+  background: linear-gradient(90deg, rgba(24,199,254,0.8), #18FEFE);
+  border-radius: 6px;
+  box-shadow: 0 0 10px rgba(24,254,254,0.6);
+  position: relative;
+}
+.dc-progress-fill::after {
+  content: '';
+  position: absolute; right: 0; top: 0; bottom: 0;
+  width: 20px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5));
+  animation: shimmer 2s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+.dc-progress-val {
+  color: #18FEFE;
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  text-shadow: 0 0 10px rgba(24,254,254,0.6);
+  min-width: 60px;
+  text-align: right;
+}
+</style>
+</head>
+<body>
+<div class="screen-canvas" id="canvas" style="width:1920px;height:1080px;">
+  <!-- BIM 背景 -->
+  <div class="bim-bg"></div>
+  <div class="bim-mask-top"></div>
+  <div class="bim-mask-bottom"></div>
+  <div class="bim-blur-left"></div>
+  <div class="bim-blur-right"></div>
+
+  <!-- NAV 导航栏 -->
+  <div class="bim-nav">
+    <div class="nav-logo">
+      <div class="nav-logo-icon">B</div>
+      <div class="nav-logo-text">
+        BIM Manager
+        <span class="sub">TemplateGUI-01.BIM</span>
+      </div>
+    </div>
+    <div class="nav-items">
+      <span class="nav-item active">ホーム</span>
+      <span class="nav-item">データ</span>
+      <span class="nav-item">デバイス</span>
+      <span class="nav-item">解析</span>
+      <span class="nav-item">レポート</span>
+      <span class="nav-item">設定</span>
+    </div>
+    <div class="nav-time">2026/06/20 14:32 JST</div>
+  </div>
+
+  <!-- 左侧面板1: 情報の概要 -->
+  <div class="bim-section-title" style="left:20px; top:99px; width:410px;">
+    <span class="bst-icon">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#18FEFE" stroke-width="1.5"/><circle cx="8" cy="8" r="2" fill="#18FEFE"/></svg>
+    </span>
+    <span class="bst-text">情報の概要</span>
+    <span class="bst-right">INFO</span>
+  </div>
+  <div class="bim-panel-body" style="left:19px; top:147px; width:409px; height:209px;">
+    <div class="info-overview">
+      <div class="io-card">
+        <div class="io-icon">建</div>
+        <div class="io-info">
+          <div class="io-label">建物数</div>
+          <div class="io-value">12<span class="unit">棟</span></div>
+        </div>
+      </div>
+      <div class="io-card">
+        <div class="io-icon">面</div>
+        <div class="io-info">
+          <div class="io-label">総面積</div>
+          <div class="io-value">86,420<span class="unit">m²</span></div>
+        </div>
+      </div>
+      <div class="io-card">
+        <div class="io-icon">階</div>
+        <div class="io-info">
+          <div class="io-label">階数</div>
+          <div class="io-value">28<span class="unit">F</span></div>
+        </div>
+      </div>
+      <div class="io-card">
+        <div class="io-icon">点</div>
+        <div class="io-info">
+          <div class="io-label">計測点</div>
+          <div class="io-value">3,486<span class="unit">点</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 左侧面板2: データ統計 -->
+  <div class="bim-section-title" style="left:20px; top:357px; width:410px;">
+    <span class="bst-icon">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="8" width="3" height="6" fill="#18FEFE"/><rect x="6.5" y="4" width="3" height="10" fill="#18FEFE"/><rect x="11" y="6" width="3" height="8" fill="#18FEFE"/></svg>
+    </span>
+    <span class="bst-text">データ統計</span>
+    <span class="bst-right">
+      <span class="dwm-switch">
+        <span class="dwm-item active">D</span>
+        <span class="dwm-item">W</span>
+        <span class="dwm-item">M</span>
+      </span>
+    </span>
+  </div>
+  <div class="bim-panel-body" style="left:19px; top:417px; width:411px; height:256px;">
+    <div class="data-stats-body">
+      <div class="ds-tabs">
+        <div class="ds-tab active">
+          <span class="dst-label">電力</span>
+          <span class="dst-val">4,000 KW</span>
+        </div>
+        <div class="ds-tab">
+          <span class="dst-label">温度</span>
+          <span class="dst-val">24.6 ℃</span>
+        </div>
+        <div class="ds-tab">
+          <span class="dst-label">湿度</span>
+          <span class="dst-val">58 %</span>
+        </div>
+      </div>
+      <div class="ds-chart">
+        <svg viewBox="0 0 380 150" preserveAspectRatio="none">
+          <g stroke="rgba(24,254,254,0.1)" stroke-width="1">
+            <line x1="0" y1="30" x2="380" y2="30"/>
+            <line x1="0" y1="70" x2="380" y2="70"/>
+            <line x1="0" y1="110" x2="380" y2="110"/>
+          </g>
+          <!-- 折线 -->
+          <polyline points="20,100 60,80 100,90 140,60 180,70 220,50 260,65 300,40 340,55 370,45"
+                    fill="none" stroke="#18FEFE" stroke-width="2" stroke-linejoin="round"/>
+          <!-- 填充区 -->
+          <polygon points="20,100 60,80 100,90 140,60 180,70 220,50 260,65 300,40 340,55 370,45 370,140 20,140"
+                   fill="rgba(24,254,254,0.15)"/>
+          <g fill="#18FEFE">
+            <circle cx="20" cy="100" r="3"/><circle cx="60" cy="80" r="3"/>
+            <circle cx="100" cy="90" r="3"/><circle cx="140" cy="60" r="3"/>
+            <circle cx="180" cy="70" r="3"/><circle cx="220" cy="50" r="3"/>
+            <circle cx="260" cy="65" r="3"/><circle cx="300" cy="40" r="3"/>
+            <circle cx="340" cy="55" r="3"/><circle cx="370" cy="45" r="3"/>
+          </g>
+          <g fill="rgba(255,255,255,0.5)" font-size="9" font-family="Open Sans" text-anchor="middle">
+            <text x="20" y="148">00</text><text x="80" y="148">04</text>
+            <text x="140" y="148">08</text><text x="200" y="148">12</text>
+            <text x="260" y="148">16</text><text x="320" y="148">20</text>
+            <text x="370" y="148">24</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- 左侧面板3: 情報リスト -->
+  <div class="bim-section-title" style="left:20px; top:689px; width:410px;">
+    <span class="bst-icon">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><line x1="3" y1="4" x2="13" y2="4" stroke="#18FEFE" stroke-width="1.5"/><line x1="3" y1="8" x2="13" y2="8" stroke="#18FEFE" stroke-width="1.5"/><line x1="3" y1="12" x2="13" y2="12" stroke="#18FEFE" stroke-width="1.5"/></svg>
+    </span>
+    <span class="bst-text">情報リスト</span>
+    <span class="bst-right"><span class="small">合計：</span>112,000</span>
+  </div>
+  <div class="bim-panel-body" style="left:20px; top:749px; width:410px; height:317px;">
+    <div class="info-table">
+      <div class="it-head">
+        <span class="it-id">ID</span>
+        <span class="it-name">設備名</span>
+        <span class="it-cat">分類</span>
+        <span class="it-val">値</span>
+        <span class="it-status">状態</span>
+      </div>
+      <div class="it-row"><span class="it-id">#001</span><span class="it-name">空調システム-A</span><span class="it-cat">空調</span><span class="it-val">128 KW</span><span class="it-status"><span class="tag ok">正常</span></span></div>
+      <div class="it-row"><span class="it-id">#002</span><span class="it-name">照明-1F</span><span class="it-cat">照明</span><span class="it-val">24 KW</span><span class="it-status"><span class="tag ok">正常</span></span></div>
+      <div class="it-row"><span class="it-id">#003</span><span class="it-name">エレベーター-1</span><span class="it-cat">輸送</span><span class="it-val">18 KW</span><span class="it-status"><span class="tag warn">点検</span></span></div>
+      <div class="it-row"><span class="it-id">#004</span><span class="it-name">給排水ポンプ</span><span class="it-cat">水道</span><span class="it-val">32 KW</span><span class="it-status"><span class="tag ok">正常</span></span></div>
+      <div class="it-row"><span class="it-id">#005</span><span class="it-name">換気扇-B2</span><span class="it-cat">空調</span><span class="it-val">8 KW</span><span class="it-status"><span class="tag err">異常</span></span></div>
+      <div class="it-row"><span class="it-id">#006</span><span class="it-name">セキュリティ</span><span class="it-cat">安防</span><span class="it-val">6 KW</span><span class="it-status"><span class="tag ok">正常</span></span></div>
+      <div class="it-row"><span class="it-id">#007</span><span class="it-name">サーバー室</span><span class="it-cat">IT</span><span class="it-val">186 KW</span><span class="it-status"><span class="tag warn">点検</span></span></div>
+    </div>
+  </div>
+
+  <!-- 右侧面板1: データ解析 -->
+  <div class="bim-section-title" style="left:1644px; top:103px; width:256px;">
+    <span class="bst-icon">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 14 L6 8 L10 11 L14 4" stroke="#18FEFE" stroke-width="1.5" fill="none"/></svg>
+    </span>
+    <span class="bst-text" style="font-size:13px;">[DAY] Data-Analysis</span>
+  </div>
+  <div class="bim-panel-body" style="left:1643px; top:157px; width:257px; height:580px;">
+    <div class="analysis-chart">
+      <div class="ac-title">時間別電力消費</div>
+      <div class="ac-bars">
+        <div class="ac-bar-col"><div class="ac-bar" style="height:40%;"><span class="ac-bar-val">120</span></div><span class="ac-bar-label">00</span></div>
+        <div class="ac-bar-col"><div class="ac-bar" style="height:30%;"><span class="ac-bar-val">90</span></div><span class="ac-bar-label">02</span></div>
+        <div class="ac-bar-col"><div class="ac-bar" style="height:25%;"><span class="ac-bar-val">75</span></div><span class="ac-bar-label">04</span></div>
+        <div class="ac-bar-col"><div class="ac-bar" style="height:35%;"><span class="ac-bar-val">105</span></div><span class="ac-bar-label">06</span></div>
+        <div class="ac-bar-col"><div class="ac-bar" style="height:60%;"><span class="ac-bar-val">180</span></div><span class="ac-bar-label">08</span></div>
+        <div class="ac-bar-col"><div class="ac-bar alert" style="height:90%;"><span class="ac-bar-val">270</span></div><span class="ac-bar-label">10</span></div>
+        <div class="ac-bar-col"><div class="ac-bar alert" style="height:95%;"><span class="ac-bar-val">285</span></div><span class="ac-bar-label">12</span></div>
+        <div class="ac-bar-col"><div class="ac-bar" style="height:80%;"><span class="ac-bar-val">240</span></div><span class="ac-bar-label">14</span></div>
+        <div class="ac-bar-col"><div class="ac-bar" style="height:70%;"><span class="ac-bar-val">210</span></div><span class="ac-bar-label">16</span></div>
+        <div class="ac-bar-col"><div class="ac-bar" style="height:55%;"><span class="ac-bar-val">165</span></div><span class="ac-bar-label">18</span></div>
+        <div class="ac-bar-col"><div class="ac-bar" style="height:45%;"><span class="ac-bar-val">135</span></div><span class="ac-bar-label">20</span></div>
+        <div class="ac-bar-col"><div class="ac-bar" style="height:38%;"><span class="ac-bar-val">114</span></div><span class="ac-bar-label">22</span></div>
+      </div>
+      <div class="ac-title" style="margin-top:14px;">設備別消費比率</div>
+      <div style="display:flex; gap:6px; margin-top:8px;">
+        <div style="flex:42; height:18px; background:rgba(24,254,254,0.7); border-radius:2px; position:relative;">
+          <span style="position:absolute; left:4px; top:1px; color:#000; font-size:9px; font-weight:700;">42%</span>
+        </div>
+        <div style="flex:28; height:18px; background:rgba(18,131,255,0.7); border-radius:2px; position:relative;">
+          <span style="position:absolute; left:4px; top:1px; color:#fff; font-size:9px; font-weight:700;">28%</span>
+        </div>
+        <div style="flex:18; height:18px; background:rgba(250,196,110,0.7); border-radius:2px; position:relative;">
+          <span style="position:absolute; left:4px; top:1px; color:#000; font-size:9px; font-weight:700;">18%</span>
+        </div>
+        <div style="flex:12; height:18px; background:rgba(102,255,217,0.7); border-radius:2px; position:relative;">
+          <span style="position:absolute; left:2px; top:1px; color:#000; font-size:9px; font-weight:700;">12%</span>
+        </div>
+      </div>
+      <div style="display:flex; gap:6px; margin-top:4px; font-size:9px; color:rgba(255,255,255,0.5); font-family:'Open Sans',sans-serif;">
+        <span style="flex:42;">空調</span><span style="flex:28;">照明</span><span style="flex:18;">輸送</span><span style="flex:12;">その他</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧面板2: GIS データ分析 -->
+  <div class="bim-section-title" style="left:1644px; top:773px; width:256px;">
+    <span class="bst-icon">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" stroke="#18FEFE" stroke-width="1.2"/><rect x="9" y="2" width="5" height="5" stroke="#18FEFE" stroke-width="1.2"/><rect x="2" y="9" width="5" height="5" stroke="#18FEFE" stroke-width="1.2"/><rect x="9" y="9" width="5" height="5" stroke="#18FEFE" stroke-width="1.2"/></svg>
+    </span>
+    <span class="bst-text" style="font-size:12px;">[GIS] Data-Analysis</span>
+  </div>
+  <div class="bim-panel-body" style="left:1643px; top:837px; width:257px; height:222px;">
+    <div class="heat-map-body">
+      <div class="heat-grid">
+        <div class="heat-cell"></div><div class="heat-cell l1"></div><div class="heat-cell l2"></div><div class="heat-cell l2"></div><div class="heat-cell l1"></div><div class="heat-cell"></div><div class="heat-cell"></div><div class="heat-cell"></div>
+        <div class="heat-cell l1"></div><div class="heat-cell l2"></div><div class="heat-cell l3"></div><div class="heat-cell l4"></div><div class="heat-cell l3"></div><div class="heat-cell l2"></div><div class="heat-cell l1"></div><div class="heat-cell"></div>
+        <div class="heat-cell l2"></div><div class="heat-cell l3"></div><div class="heat-cell l4"></div><div class="heat-cell l5"></div><div class="heat-cell l4"></div><div class="heat-cell l3"></div><div class="heat-cell l2"></div><div class="heat-cell l1"></div>
+        <div class="heat-cell l2"></div><div class="heat-cell l3"></div><div class="heat-cell l4"></div><div class="heat-cell l4"></div><div class="heat-cell l3"></div><div class="heat-cell l3"></div><div class="heat-cell l2"></div><div class="heat-cell l1"></div>
+        <div class="heat-cell l1"></div><div class="heat-cell l2"></div><div class="heat-cell l3"></div><div class="heat-cell l3"></div><div class="heat-cell l2"></div><div class="heat-cell l2"></div><div class="heat-cell l1"></div><div class="heat-cell"></div>
+        <div class="heat-cell"></div><div class="heat-cell l1"></div><div class="heat-cell l2"></div><div class="heat-cell l1"></div><div class="heat-cell l1"></div><div class="heat-cell"></div><div class="heat-cell"></div><div class="heat-cell"></div>
+      </div>
+      <div class="heat-legend">
+        <span>低</span>
+        <span class="heat-legend-bar"></span>
+        <span>高</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 中央 BIM 3D 模型区域 -->
+  <div class="bim-3d-area">
+    <div class="bim-3d-bg">
+      <div class="bim-scan-line"></div>
+      <div class="bim-base"></div>
+      <div class="bim-building">
+        <div class="bim-tower t1"></div>
+        <div class="bim-tower t2"></div>
+        <div class="bim-tower t3"></div>
+        <div class="bim-tower t4"></div>
+        <div class="bim-tower t5"></div>
+      </div>
+      <div class="bim-3d-label l1">Block-A · 28F</div>
+      <div class="bim-3d-label l2">Block-B · 24F</div>
+      <div class="bim-3d-label l3">Block-C · 18F</div>
+      <div class="bim-3d-label l4">Block-D · 12F</div>
+    </div>
+  </div>
+
+  <!-- 底部设备信息栏 -->
+  <div class="device-info-bar">
+    <!-- デバイス情報 -->
+    <div class="di-block" style="width:416px;">
+      <div class="di-head">
+        <span class="dh-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="4" width="14" height="10" rx="1" stroke="#18FEFE" stroke-width="1.5"/><line x1="2" y1="8" x2="16" y2="8" stroke="#18FEFE" stroke-width="1.5"/><circle cx="13" cy="11" r="1" fill="#18FEFE"/></svg>
+        </span>
+        <span class="dh-title">デバイス情報</span>
+        <span class="dh-right">総動作電力：4,000 KW</span>
+      </div>
+      <div class="di-devices">
+        <div class="did-item">
+          <div class="did-name">空調システム</div>
+          <div class="did-val">1,680<span class="unit">KW</span></div>
+          <span class="did-status">稼働中</span>
+        </div>
+        <div class="did-item">
+          <div class="did-name">照明システム</div>
+          <div class="did-val">1,120<span class="unit">KW</span></div>
+          <span class="did-status">稼働中</span>
+        </div>
+        <div class="did-item">
+          <div class="did-name">輸送設備</div>
+          <div class="did-val">720<span class="unit">KW</span></div>
+          <span class="did-status">稼働中</span>
+        </div>
+        <div class="did-item">
+          <div class="did-name">その他</div>
+          <div class="did-val">480<span class="unit">KW</span></div>
+          <span class="did-status">稼働中</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 中央数据区 -->
+    <div class="di-block di-center">
+      <div class="di-head">
+        <span class="dh-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="#18FEFE" stroke-width="1.5"/><path d="M9 5 L9 9 L12 11" stroke="#18FEFE" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </span>
+        <span class="dh-title">稼働状況サマリー</span>
+        <span class="dh-right">LIVE</span>
+      </div>
+      <div class="dc-metrics">
+        <div class="dc-metric"><div class="dcm-val">3,486</div><div class="dcm-label">計測点</div></div>
+        <div class="dc-metric"><div class="dcm-val">98.6%</div><div class="dcm-label">稼働率</div></div>
+        <div class="dc-metric"><div class="dcm-val">12</div><div class="dcm-label">異常</div></div>
+        <div class="dc-metric"><div class="dcm-val">46ms</div><div class="dcm-label">遅延</div></div>
+      </div>
+      <div class="dc-progress">
+        <span class="dc-progress-label">負荷率</span>
+        <div class="dc-progress-bar"><div class="dc-progress-fill"></div></div>
+        <span class="dc-progress-val">70%</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function scaleCanvas(){
+  var c=document.getElementById('canvas');
+  var s=Math.min(window.innerWidth/1920,window.innerHeight/1080);
+  c.style.transform='scale('+s+')';
+}
+scaleCanvas();window.addEventListener('resize',scaleCanvas);
+</script>
+</body>
+</html>

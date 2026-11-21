@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>示例大屏 - 通用数据展示</title>
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+/* ===== 屏幕特有样式 ===== */
+.screen-canvas {
+  background: #0A0F14;
+  background-image:
+    radial-gradient(ellipse at 50% 100%, rgba(18,131,255,0.18) 0%, rgba(10,15,20,0) 55%),
+    radial-gradient(ellipse at 100% 0%, rgba(32,248,255,0.10) 0%, rgba(10,15,20,0) 45%),
+    radial-gradient(ellipse at 0% 0%, rgba(102,217,255,0.08) 0%, rgba(10,15,20,0) 40%);
+}
+
+/* 顶部大标题 */
+.big-header {
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%; height: 122px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.big-title {
+  color: #EDF6FF;
+  font-family: var(--font-title);
+  font-size: 44px;
+  letter-spacing: 0.2273em;
+  text-shadow: 0 4px 20px rgba(0,117,255,0.8), 0 0 30px rgba(32,248,255,0.4);
+  white-space: nowrap;
+}
+.title-deco {
+  position: absolute;
+  right: 60px; top: 36px;
+  width: 377px; height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.title-deco .td-line {
+  flex: 1; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(102,217,255,0.6));
+}
+.title-deco .td-tag {
+  padding: 6px 16px;
+  color: #66D9FF;
+  font-family: var(--font-din);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  border: 1px solid rgba(102,217,255,0.4);
+  border-radius: 3px;
+  background: rgba(102,217,255,0.08);
+  text-shadow: 0 0 8px rgba(102,217,255,0.6);
+}
+.title-deco-left {
+  position: absolute;
+  left: 60px; top: 36px;
+  display: flex; align-items: center; gap: 12px;
+}
+.title-deco-left .td-tag {
+  padding: 6px 16px;
+  color: #66D9FF;
+  font-family: var(--font-din);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  border: 1px solid rgba(102,217,255,0.4);
+  border-radius: 3px;
+  background: rgba(102,217,255,0.08);
+}
+.title-deco-left .td-line {
+  width: 120px; height: 1px;
+  background: linear-gradient(270deg, transparent, rgba(102,217,255,0.6));
+}
+
+/* 底部装饰线 */
+.bottom-deco {
+  position: absolute;
+  left: 14px; bottom: 12px;
+  width: 1891px; height: 17px;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+}
+.bottom-deco .bd-line {
+  flex: 1; height: 1px;
+  background: linear-gradient(90deg, rgba(102,217,255,0.8) 0%, rgba(102,217,255,0.2) 50%, rgba(102,217,255,0.8) 100%);
+}
+.bottom-deco .bd-dot {
+  width: 8px; height: 8px;
+  background: #66D9FF;
+  box-shadow: 0 0 12px #66D9FF, 0 0 24px rgba(102,217,255,0.6);
+  border-radius: 1px;
+}
+.bottom-deco .bd-dot.l { margin-right: 14px; }
+.bottom-deco .bd-dot.r { margin-left: 14px; }
+
+/* 通用面板 */
+.dash-panel {
+  position: absolute;
+  background: rgba(10,20,35,0.55);
+  border: 1px solid rgba(102,217,255,0.18);
+  border-radius: 4px;
+  z-index: 5;
+  animation: fadeIn 0.6s ease-out both;
+}
+.dash-panel .dp-head {
+  height: 38px;
+  display: flex; align-items: center;
+  padding: 0 14px;
+  background: linear-gradient(90deg, rgba(102,217,255,0.25) 0%, rgba(102,217,255,0) 100%);
+  border-left: 3px solid #66D9FF;
+}
+.dash-panel .dp-title {
+  color: var(--color-text-main);
+  font-family: var(--font-title);
+  font-size: 17px;
+  letter-spacing: 0.05em;
+}
+.dash-panel .dp-sub {
+  margin-left: auto;
+  color: #66D9FF;
+  font-family: var(--font-din);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+.dash-panel .dp-body { padding: 12px 14px; }
+.dash-panel .decor-corner { width: 10px; height: 10px; border-width: 1px; border-color: #66D9FF; }
+
+/* 指标卡组 */
+.metric-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.mg-card {
+  padding: 10px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(102,217,255,0.12);
+  border-radius: 3px;
+  text-align: center;
+}
+.mg-num {
+  color: #66D9FF;
+  font-family: var(--font-number);
+  font-size: 24px;
+  text-shadow: 0 0 10px rgba(102,217,255,0.5);
+  letter-spacing: 0.02em;
+}
+.mg-num.alert { color: var(--color-alert); text-shadow: 0 0 10px rgba(239,48,66,0.5); }
+.mg-num.success { color: var(--color-success); text-shadow: 0 0 10px rgba(25,205,250,0.5); }
+.mg-unit { color: #66D9FF; font-size: 11px; margin-left: 2px; }
+.mg-label { color: var(--color-text-dim); font-size: 11px; margin-top: 4px; display: block; }
+
+/* 大数字卡 */
+.big-num-card {
+  text-align: center;
+  padding: 8px 0;
+}
+.big-num-card .bnc-label { color: var(--color-text-dim); font-size: 12px; }
+.big-num-card .bnc-num {
+  color: #66D9FF; font-family: var(--font-number);
+  font-size: 38px; text-shadow: 0 0 14px rgba(102,217,255,0.6);
+  line-height: 1.1;
+}
+.big-num-card .bnc-trend { color: var(--color-success); font-size: 11px; margin-top: 4px; }
+
+/* 排行列表 */
+.rank-list-dash { margin-top: 4px; }
+.rld-row {
+  display: flex; align-items: center; gap: 8px;
+  height: 28px;
+  padding: 0 4px;
+  border-bottom: 1px solid rgba(102,217,255,0.08);
+}
+.rld-row:last-child { border-bottom: none; }
+.rld-no {
+  width: 18px; height: 18px; flex-shrink: 0;
+  text-align: center; line-height: 18px;
+  font-family: var(--font-din); font-size: 10px; font-weight: 700;
+  color: var(--color-text-dim);
+  background: rgba(102,217,255,0.12);
+  border-radius: 2px;
+}
+.rld-row:nth-child(1) .rld-no { color: #fff; background: #EF3042; }
+.rld-row:nth-child(2) .rld-no { color: #fff; background: #F86A49; }
+.rld-row:nth-child(3) .rld-no { color: #fff; background: #FAC46E; }
+.rld-name { flex: 1; color: var(--color-text-gray); font-size: 12px; }
+.rld-bar-wrap { width: 80px; height: 5px; background: rgba(102,217,255,0.1); border-radius: 3px; overflow: hidden; }
+.rld-bar { height: 100%; background: linear-gradient(90deg, #1283FF, #66D9FF); border-radius: 3px; }
+.rld-val { width: 46px; text-align: right; color: #66D9FF; font-family: var(--font-din); font-size: 11px; font-weight: 700; }
+
+/* 柱状图 */
+.bar-chart-dash {
+  display: flex; align-items: flex-end; justify-content: space-around;
+  height: 130px; padding: 0 8px;
+}
+.bcd-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.bcd-bar {
+  width: 22px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, rgba(102,217,255,0.9) 0%, rgba(18,131,255,0.6) 100%);
+  position: relative;
+  transition: height 1s ease-out;
+}
+.bcd-bar.alert { background: linear-gradient(180deg, rgba(255,40,54,0.9) 0%, rgba(207,137,138,0.6) 100%); }
+.bcd-val {
+  position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+  color: #BFEAFF; font-family: var(--font-din);
+  font-size: 9px; font-weight: 700; white-space: nowrap;
+}
+.bcd-label { color: var(--color-text-dim); font-size: 10px; }
+
+/* 环形图 */
+.ring-mini-wrap {
+  display: flex; align-items: center; gap: 12px;
+}
+.ring-mini {
+  position: relative;
+  width: 100px; height: 100px;
+  flex-shrink: 0;
+}
+.ring-mini-legend { flex: 1; }
+.rml-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; margin-bottom: 6px;
+}
+.rml-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.rml-name { color: var(--color-text-gray); flex: 1; }
+.rml-val { color: #66D9FF; font-family: var(--font-din); font-weight: 700; }
+
+/* 中间大图 - 模拟3D/地图视图 */
+.center-view {
+  position: relative;
+  width: 100%; height: 100%;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(102,217,255,0.12) 0%, rgba(10,15,20,0.6) 60%, rgba(10,15,20,0.3) 90%);
+  overflow: hidden;
+}
+.center-view::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(102,217,255,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(102,217,255,0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+.center-orbit {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%,-50%);
+  border: 1px dashed rgba(102,217,255,0.3);
+  border-radius: 50%;
+}
+.center-orbit.o1 { width: 200px; height: 200px; animation: spin 30s linear infinite; }
+.center-orbit.o2 { width: 340px; height: 340px; animation: spin 50s linear infinite reverse; }
+.center-orbit.o3 { width: 480px; height: 480px; animation: spin 70s linear infinite; }
+@keyframes spin { from { transform: translate(-50%,-50%) rotate(0deg); } to { transform: translate(-50%,-50%) rotate(360deg); } }
+.center-core {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%,-50%);
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(102,217,255,0.5) 0%, rgba(18,131,255,0.2) 50%, transparent 100%);
+  box-shadow: 0 0 60px rgba(102,217,255,0.4);
+  display: flex; align-items: center; justify-content: center;
+}
+.center-core .cc-num {
+  color: #fff; font-family: var(--font-number);
+  font-size: 32px; text-shadow: 0 0 14px rgba(102,217,255,0.8);
+}
+.center-core .cc-label { color: #BFEAFF; font-size: 11px; margin-top: 2px; }
+.orbit-node {
+  position: absolute;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #66D9FF;
+  box-shadow: 0 0 10px #66D9FF;
+}
+.center-stat-row {
+  position: absolute;
+  left: 50%; bottom: 16px;
+  transform: translateX(-50%);
+  display: flex; gap: 30px;
+}
+.csr-item { text-align: center; }
+.csr-num { color: #66D9FF; font-family: var(--font-number); font-size: 22px; text-shadow: 0 0 10px rgba(102,217,255,0.5); }
+.csr-label { color: var(--color-text-dim); font-size: 11px; margin-top: 2px; }
+
+/* 中间小卡 (Group24) */
+.center-side-card {
+  position: absolute;
+  right: 14px; top: 50px;
+  width: 132px;
+  padding: 12px 10px;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(102,217,255,0.25);
+  border-radius: 3px;
+}
+.csc-title { color: #66D9FF; font-size: 11px; margin-bottom: 8px; }
+.csc-item { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px; }
+.csc-item .ci-name { color: var(--color-text-gray); }
+.csc-item .ci-val { color: #66D9FF; font-family: var(--font-din); font-weight: 700; }
+
+/* 底部面板 */
+.bottom-panel {
+  position: absolute;
+  left: 462px; top: 817px;
+  width: 996px; height: 205px;
+  z-index: 5;
+  animation: fadeIn 0.6s ease-out 0.4s both;
+}
+.bp-title-bar {
+  height: 34px;
+  display: flex; align-items: center;
+  padding: 0 16px;
+  background: linear-gradient(90deg, rgba(102,217,255,0.25) 0%, rgba(102,217,255,0) 100%);
+  border-left: 3px solid #66D9FF;
+}
+.bp-title { color: var(--color-text-main); font-family: var(--font-title); font-size: 16px; letter-spacing: 0.05em; }
+.bp-sub { margin-left: auto; color: #66D9FF; font-family: var(--font-din); font-size: 11px; }
+.bp-stripe {
+  height: 26px;
+  margin: 6px 12px 0;
+  background: rgba(61,85,102,0.16);
+  border-left: 2px solid rgba(102,217,255,0.4);
+  display: flex; align-items: center;
+  padding: 0 12px;
+  font-size: 11px; color: var(--color-text-dim);
+}
+.bp-stripe .bps-time { color: #66D9FF; font-family: var(--font-din); width: 80px; }
+.bp-stripe .bps-content { flex: 1; color: var(--color-text-gray); }
+.bp-stripe .bps-tag { padding: 1px 8px; font-size: 10px; border-radius: 2px; }
+.bp-stripe .bps-tag.ok { color: var(--color-success); border: 1px solid rgba(25,205,250,0.4); }
+.bp-stripe .bps-tag.warn { color: var(--color-warning); border: 1px solid rgba(250,196,110,0.4); }
+.bp-stripe .bps-tag.err { color: var(--color-alert); border: 1px solid rgba(239,48,66,0.4); }
+
+/* 数据表格 */
+.dash-table { width: 100%; }
+.dth-row, .dtb-row {
+  display: flex; align-items: center;
+  height: 28px; padding: 0 8px;
+  font-size: 11px;
+}
+.dth-row {
+  background: rgba(102,217,255,0.12);
+  border: 1px solid rgba(102,217,255,0.25);
+  border-radius: 2px;
+  color: #BFEAFF;
+}
+.dtb-row {
+  border-bottom: 1px solid rgba(102,217,255,0.08);
+  color: var(--color-text-gray);
+}
+.dtb-row:nth-child(odd) { background: rgba(102,217,255,0.03); }
+.dt-col1 { flex: 1.2; }
+.dt-col2 { flex: 1; text-align: center; }
+.dt-col3 { flex: 1; text-align: center; }
+.dt-col4 { flex: 0.8; text-align: center; }
+.dt-up { color: var(--color-success); }
+.dt-down { color: var(--color-alert); }
+</style>
+</head>
+<body>
+<div class="screen-canvas" id="canvas" style="width:1920px;height:1080px;">
+  <!-- 背景层 -->
+  <div class="bg-grad-top"></div>
+  <div class="bg-grad-bottom"></div>
+
+  <!-- 顶部大标题 -->
+  <div class="big-header">
+    <div class="title-deco-left">
+      <span class="td-tag">DATA · 2026</span>
+      <span class="td-line"></span>
+    </div>
+    <span class="big-title">二月UI设计素材铺</span>
+    <div class="title-deco">
+      <span class="td-line"></span>
+      <span class="td-tag">SYSTEM ONLINE</span>
+    </div>
+  </div>
+
+  <!-- 左侧面板 -->
+  <div class="dash-panel" style="left:36px; top:143px; width:400px; height:200px;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="dp-head">
+      <span class="dp-title">核心指标总览</span>
+      <span class="dp-sub">OVERVIEW</span>
+    </div>
+    <div class="dp-body">
+      <div class="metric-grid">
+        <div class="mg-card"><div><span class="mg-num">86,452</span><span class="mg-unit">件</span></div><span class="mg-label">素材总数</span></div>
+        <div class="mg-card"><div><span class="mg-num success">12,684</span><span class="mg-unit">个</span></div><span class="mg-label">今日新增</span></div>
+        <div class="mg-card"><div><span class="mg-num">3,286</span><span class="mg-unit">人</span></div><span class="mg-label">在线用户</span></div>
+        <div class="mg-card"><div><span class="mg-num alert">128</span><span class="mg-unit">条</span></div><span class="mg-label">待处理</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-panel" style="left:36px; top:372px; width:400px; height:200px; animation-delay:0.1s;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="dp-head">
+      <span class="dp-title">素材分类排行</span>
+      <span class="dp-sub">TOP RANK</span>
+    </div>
+    <div class="dp-body">
+      <div class="rank-list-dash">
+        <div class="rld-row"><span class="rld-no">1</span><span class="rld-name">UI 组件库</span><div class="rld-bar-wrap"><div class="rld-bar" style="width:100%;"></div></div><span class="rld-val">4862</span></div>
+        <div class="rld-row"><span class="rld-no">2</span><span class="rld-name">图标素材</span><div class="rld-bar-wrap"><div class="rld-bar" style="width:88%;"></div></div><span class="rld-val">4276</span></div>
+        <div class="rld-row"><span class="rld-no">3</span><span class="rld-name">插画配图</span><div class="rld-bar-wrap"><div class="rld-bar" style="width:76%;"></div></div><span class="rld-val">3684</span></div>
+        <div class="rld-row"><span class="rld-no">4</span><span class="rld-name">字体设计</span><div class="rld-bar-wrap"><div class="rld-bar" style="width:64%;"></div></div><span class="rld-val">3102</span></div>
+        <div class="rld-row"><span class="rld-no">5</span><span class="rld-name">模板页面</span><div class="rld-bar-wrap"><div class="rld-bar" style="width:52%;"></div></div><span class="rld-val">2518</span></div>
+        <div class="rld-row"><span class="rld-no">6</span><span class="rld-name">动效素材</span><div class="rld-bar-wrap"><div class="rld-bar" style="width:40%;"></div></div><span class="rld-val">1936</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-panel" style="left:36px; top:600px; width:400px; height:183px; animation-delay:0.2s;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="dp-head">
+      <span class="dp-title">访问来源分布</span>
+      <span class="dp-sub">SOURCE</span>
+    </div>
+    <div class="dp-body">
+      <div class="ring-mini-wrap">
+        <div class="ring-mini">
+          <svg width="100" height="100" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(102,217,255,0.12)" stroke-width="10"/>
+            <circle cx="50" cy="50" r="40" fill="none" stroke="#66D9FF" stroke-width="10"
+                    stroke-dasharray="105.5 251.2" transform="rotate(-90 50 50)" stroke-linecap="round"/>
+            <circle cx="50" cy="50" r="40" fill="none" stroke="#1283FF" stroke-width="10"
+                    stroke-dasharray="75.4 251.2" stroke-dashoffset="-105.5" transform="rotate(-90 50 50)" stroke-linecap="round"/>
+            <circle cx="50" cy="50" r="40" fill="none" stroke="#FAC46E" stroke-width="10"
+                    stroke-dasharray="50.2 251.2" stroke-dashoffset="-180.9" transform="rotate(-90 50 50)" stroke-linecap="round"/>
+          </svg>
+          <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center;">
+            <div style="color:#66D9FF; font-family:var(--font-number); font-size:18px;">86k</div>
+            <div style="color:var(--color-text-dim); font-size:9px;">总访问</div>
+          </div>
+        </div>
+        <div class="ring-mini-legend">
+          <div class="rml-item"><span class="rml-dot" style="background:#66D9FF;"></span><span class="rml-name">搜索引擎</span><span class="rml-val">42%</span></div>
+          <div class="rml-item"><span class="rml-dot" style="background:#1283FF;"></span><span class="rml-name">直接访问</span><span class="rml-val">30%</span></div>
+          <div class="rml-item"><span class="rml-dot" style="background:#FAC46E;"></span><span class="rml-name">社交分享</span><span class="rml-val">20%</span></div>
+          <div class="rml-item"><span class="rml-dot" style="background:#66FFD9;"></span><span class="rml-name">其他渠道</span><span class="rml-val">8%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-panel" style="left:36px; top:828px; width:400px; height:200px; animation-delay:0.3s;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="dp-head">
+      <span class="dp-title">月度活跃趋势</span>
+      <span class="dp-sub">TREND</span>
+    </div>
+    <div class="dp-body">
+      <div class="bar-chart-dash">
+        <div class="bcd-col"><div class="bcd-bar" style="height:60px;"><span class="bcd-val">5.2k</span></div><span class="bcd-label">1月</span></div>
+        <div class="bcd-col"><div class="bcd-bar" style="height:75px;"><span class="bcd-val">6.8k</span></div><span class="bcd-label">2月</span></div>
+        <div class="bcd-col"><div class="bcd-bar" style="height:90px;"><span class="bcd-val">8.4k</span></div><span class="bcd-label">3月</span></div>
+        <div class="bcd-col"><div class="bcd-bar alert" style="height:115px;"><span class="bcd-val">12.6k</span></div><span class="bcd-label">4月</span></div>
+        <div class="bcd-col"><div class="bcd-bar" style="height:100px;"><span class="bcd-val">10.2k</span></div><span class="bcd-label">5月</span></div>
+        <div class="bcd-col"><div class="bcd-bar" style="height:85px;"><span class="bcd-val">8.8k</span></div><span class="bcd-label">6月</span></div>
+        <div class="bcd-col"><div class="bcd-bar" style="height:95px;"><span class="bcd-val">9.6k</span></div><span class="bcd-label">7月</span></div>
+        <div class="bcd-col"><div class="bcd-bar" style="height:110px;"><span class="bcd-val">11.4k</span></div><span class="bcd-label">8月</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧面板 -->
+  <div class="dash-panel" style="left:1496px; top:132px; width:400px; height:191px;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="dp-head">
+      <span class="dp-title">实时数据流</span>
+      <span class="dp-sub">REAL-TIME</span>
+    </div>
+    <div class="dp-body">
+      <div class="big-num-card">
+        <div class="bnc-label">今日累计下载量</div>
+        <div><span class="bnc-num">48,620</span></div>
+        <div class="bnc-trend">较昨日 +12.8%  |  峰值 14:32</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-panel" style="left:1464px; top:361px; width:432px; height:204px; animation-delay:0.1s;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="dp-head">
+      <span class="dp-title">热门搜索词</span>
+      <span class="dp-sub">HOT KEYWORDS</span>
+    </div>
+    <div class="dp-body">
+      <div class="rank-list-dash">
+        <div class="rld-row"><span class="rld-no">1</span><span class="rld-name">后台管理模板</span><div class="rld-bar-wrap"><div class="rld-bar" style="width:100%;"></div></div><span class="rld-val">9.8k</span></div>
+        <div class="rld-row"><span class="rld-no">2</span><span class="rld-name">数据可视化大屏</span><div class="rld-bar-wrap"><div class="rld-bar" style="width:92%;"></div></div><span class="rld-val">9.1k</span></div>
+        <div class="rld-row"><span class="rld-no">3</span><span class="rld-name">移动端 UI Kit</span><div class="rld-bar-wrap"><div class="rld-bar" style="width:80%;"></div></div><span class="rld-val">7.9k</span></div>
+        <div class="rld-row"><span class="rld-no">4</span><span class="rld-name">商务图标包</span><div class="rld-bar-wrap"><div class="rld-bar" style="width:68%;"></div></div><span class="rld-val">6.7k</span></div>
+        <div class="rld-row"><span class="rld-no">5</span><span class="rld-name">扁平插画</span><div class="rld-bar-wrap"><div class="rld-bar" style="width:56%;"></div></div><span class="rld-val">5.5k</span></div>
+        <div class="rld-row"><span class="rld-no">6</span><span class="rld-name">中文字体</span><div class="rld-bar-wrap"><div class="rld-bar" style="width:44%;"></div></div><span class="rld-val">4.3k</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-panel" style="left:1492px; top:589px; width:404px; height:200px; animation-delay:0.2s;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="dp-head">
+      <span class="dp-title">用户地域分布</span>
+      <span class="dp-sub">REGION</span>
+    </div>
+    <div class="dp-body">
+      <div class="bar-chart-dash">
+        <div class="bcd-col"><div class="bcd-bar" style="height:100px;"><span class="bcd-val">28%</span></div><span class="bcd-label">华东</span></div>
+        <div class="bcd-col"><div class="bcd-bar" style="height:85px;"><span class="bcd-val">24%</span></div><span class="bcd-label">华南</span></div>
+        <div class="bcd-col"><div class="bcd-bar" style="height:70px;"><span class="bcd-val">19%</span></div><span class="bcd-label">华北</span></div>
+        <div class="bcd-col"><div class="bcd-bar" style="height:55px;"><span class="bcd-val">15%</span></div><span class="bcd-label">西部</span></div>
+        <div class="bcd-col"><div class="bcd-bar" style="height:40px;"><span class="bcd-val">9%</span></div><span class="bcd-label">东北</span></div>
+        <div class="bcd-col"><div class="bcd-bar" style="height:25px;"><span class="bcd-val">5%</span></div><span class="bcd-label">海外</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-panel" style="left:1492px; top:817px; width:404px; height:202px; animation-delay:0.3s;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="dp-head">
+      <span class="dp-title">系统性能监控</span>
+      <span class="dp-sub">SYSTEM</span>
+    </div>
+    <div class="dp-body">
+      <div class="metric-grid">
+        <div class="mg-card"><div><span class="mg-num success">68</span><span class="mg-unit">%</span></div><span class="mg-label">CPU 使用率</span></div>
+        <div class="mg-card"><div><span class="mg-num">72</span><span class="mg-unit">%</span></div><span class="mg-label">内存占用</span></div>
+        <div class="mg-card"><div><span class="mg-num">46</span><span class="mg-unit">ms</span></div><span class="mg-label">响应延迟</span></div>
+        <div class="mg-card"><div><span class="mg-num success">99.9</span><span class="mg-unit">%</span></div><span class="mg-label">可用率</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 中间面板 -->
+  <div class="dash-panel" style="left:477px; top:132px; width:996px; height:649px; animation-delay:0.15s;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="dp-head">
+      <span class="dp-title">全局数据中枢</span>
+      <span class="dp-sub">DATA HUB · LIVE</span>
+    </div>
+    <div class="dp-body" style="padding:0; height:calc(100% - 38px);">
+      <div class="center-view">
+        <div class="center-orbit o1"></div>
+        <div class="center-orbit o2"></div>
+        <div class="center-orbit o3"></div>
+        <!-- 轨道节点 -->
+        <div class="orbit-node" style="left:50%; top:calc(50% - 100px); transform:translate(-50%,-50%);"></div>
+        <div class="orbit-node" style="left:calc(50% + 100px); top:50%; transform:translate(-50%,-50%); background:#FAC46E; box-shadow:0 0 10px #FAC46E;"></div>
+        <div class="orbit-node" style="left:50%; top:calc(50% + 100px); transform:translate(-50%,-50%); background:#66FFD9; box-shadow:0 0 10px #66FFD9;"></div>
+        <div class="orbit-node" style="left:calc(50% - 100px); top:50%; transform:translate(-50%,-50%); background:#1283FF; box-shadow:0 0 10px #1283FF;"></div>
+        <div class="orbit-node" style="left:calc(50% + 240px); top:calc(50% - 60px); transform:translate(-50%,-50%);"></div>
+        <div class="orbit-node" style="left:calc(50% - 240px); top:calc(50% + 60px); transform:translate(-50%,-50%); background:#FAC46E; box-shadow:0 0 10px #FAC46E;"></div>
+        <div class="orbit-node" style="left:calc(50% + 170px); top:calc(50% + 170px); transform:translate(-50%,-50%); background:#66FFD9; box-shadow:0 0 10px #66FFD9;"></div>
+        <div class="orbit-node" style="left:calc(50% - 170px); top:calc(50% - 170px); transform:translate(-50%,-50%); background:#EF3042; box-shadow:0 0 10px #EF3042;"></div>
+        <!-- 中心核心 -->
+        <div class="center-core">
+          <div style="text-align:center;">
+            <div class="cc-num">86k</div>
+            <div class="cc-label">实时在线</div>
+          </div>
+        </div>
+        <!-- 中间侧边小卡 -->
+        <div class="center-side-card">
+          <div class="csc-title">实时节点</div>
+          <div class="csc-item"><span class="ci-name">节点 A</span><span class="ci-val">在线</span></div>
+          <div class="csc-item"><span class="ci-name">节点 B</span><span class="ci-val">在线</span></div>
+          <div class="csc-item"><span class="ci-name">节点 C</span><span class="ci-val" style="color:var(--color-warning);">繁忙</span></div>
+          <div class="csc-item"><span class="ci-name">节点 D</span><span class="ci-val">在线</span></div>
+          <div class="csc-item"><span class="ci-name">节点 E</span><span class="ci-val" style="color:var(--color-alert);">离线</span></div>
+        </div>
+        <!-- 底部统计行 -->
+        <div class="center-stat-row">
+          <div class="csr-item"><div class="csr-num">128</div><div class="csr-label">活跃节点</div></div>
+          <div class="csr-item"><div class="csr-num">3.2k</div><div class="csr-label">每秒请求</div></div>
+          <div class="csr-item"><div class="csr-num">46ms</div><div class="csr-label">平均延迟</div></div>
+          <div class="csr-item"><div class="csr-num">99.9%</div><div class="csr-label">可用率</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部面板 -->
+  <div class="bottom-panel">
+    <span class="decor-corner tl" style="border-color:#66D9FF;"></span>
+    <span class="decor-corner tr" style="border-color:#66D9FF;"></span>
+    <span class="decor-corner bl" style="border-color:#66D9FF;"></span>
+    <span class="decor-corner br" style="border-color:#66D9FF;"></span>
+    <div class="bp-title-bar">
+      <span class="bp-title">实时操作日志</span>
+      <span class="bp-sub">OPERATION LOG · LIVE</span>
+    </div>
+    <div class="bp-stripe">
+      <span class="bps-time">14:32:08</span>
+      <span class="bps-content">用户 admin 上传素材「数据可视化大屏模板 V2.0」至分类「模板页面」</span>
+      <span class="bps-tag ok">成功</span>
+    </div>
+    <div class="bp-stripe">
+      <span class="bps-time">14:28:42</span>
+      <span class="bps-content">用户 designer_02 下载素材「商务图标包-线性风格」共 1 次</span>
+      <span class="bps-tag ok">成功</span>
+    </div>
+    <div class="bp-stripe">
+      <span class="bps-time">14:25:17</span>
+      <span class="bps-content">系统检测到分类「动效素材」存储空间不足,剩余 12.6%</span>
+      <span class="bps-tag warn">警告</span>
+    </div>
+    <div class="bp-stripe">
+      <span class="bps-time">14:18:53</span>
+      <span class="bps-content">用户 guest_3852 上传失败,文件大小超过限制 50MB</span>
+      <span class="bps-tag err">失败</span>
+    </div>
+  </div>
+
+  <!-- 底部装饰线 -->
+  <div class="bottom-deco">
+    <span class="bd-dot l"></span>
+    <span class="bd-line"></span>
+    <span class="bd-dot r"></span>
+  </div>
+</div>
+
+<script>
+function scaleCanvas(){
+  var c=document.getElementById('canvas');
+  var s=Math.min(window.innerWidth/1920,window.innerHeight/1080);
+  c.style.transform='scale('+s+')';
+}
+scaleCanvas();window.addEventListener('resize',scaleCanvas);
+</script>
+</body>
+</html>

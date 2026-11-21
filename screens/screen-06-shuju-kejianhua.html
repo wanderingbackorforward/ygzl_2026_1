@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>能耗监控大屏 - 数据可视化</title>
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+/* ===== 屏幕特有样式 ===== */
+.screen-canvas { background: #00010F; }
+
+/* 中央图片背景层 */
+.center-bg {
+  position: absolute;
+  left: 480px; top: 90px;
+  width: 960px; height: 900px;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(18,131,255,0.18) 0%, rgba(0,1,15,0.6) 55%, rgba(0,1,15,0.2) 85%),
+    linear-gradient(180deg, rgba(0,1,15,0.3) 0%, rgba(0,1,15,0.6) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+.center-bg::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(32,248,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(32,248,255,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+/* 左右黑色渐变遮罩 */
+.mask-left, .mask-right {
+  position: absolute; top: 0; height: 1080px; z-index: 2; pointer-events: none;
+}
+.mask-left { left: 0; width: 480px; background: linear-gradient(90deg, #00010F 0%, rgba(0,1,15,0.6) 70%, transparent 100%); }
+.mask-right { right: 0; width: 480px; background: linear-gradient(270deg, #00010F 0%, rgba(0,1,15,0.6) 70%, transparent 100%); }
+
+/* 顶部标题栏 */
+.top-header {
+  position: absolute;
+  left: 0; top: 21px;
+  width: 100%; height: 59px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(18,131,255,0.15) 0%, rgba(0,1,15,0) 100%);
+}
+.top-header::before, .top-header::after {
+  content: '';
+  position: absolute; top: 50%;
+  width: 380px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(32,248,255,0.6), transparent);
+}
+.top-header::before { left: 200px; }
+.top-header::after { right: 200px; }
+.header-text {
+  color: var(--color-text-main);
+  font-family: var(--font-title);
+  font-size: 32px;
+  letter-spacing: 0.18em;
+  text-shadow: var(--shadow-text-title);
+}
+.header-deco {
+  position: absolute;
+  color: var(--color-accent);
+  font-family: var(--font-din);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}
+.header-deco.left { left: 60px; }
+.header-deco.right { right: 60px; }
+
+/* 面板通用 */
+.energy-panel {
+  position: absolute;
+  background: rgba(9,20,40,0.55);
+  border: 1px solid rgba(32,248,255,0.15);
+  border-radius: 4px;
+  z-index: 5;
+  animation: fadeIn 0.6s ease-out both;
+}
+.energy-panel .panel-head {
+  position: relative;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  background: linear-gradient(90deg, rgba(18,131,255,0.35) 0%, rgba(18,131,255,0) 100%);
+  border-left: 3px solid var(--color-accent);
+}
+.energy-panel .panel-head .ph-title {
+  color: var(--color-text-main);
+  font-family: var(--font-title);
+  font-size: 18px;
+  letter-spacing: 0.05em;
+}
+.energy-panel .panel-head .ph-sub {
+  margin-left: auto;
+  color: var(--color-text-dim);
+  font-family: var(--font-din);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+.energy-panel .panel-body { padding: 12px 14px; }
+.energy-panel .decor-corner { width: 10px; height: 10px; border-width: 1px; }
+
+/* 能耗总量统计 - 4 个指标卡 */
+.energy-total-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.et-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: rgba(0,1,15,0.5);
+  border: 1px solid rgba(32,248,255,0.1);
+  border-radius: 3px;
+}
+.et-icon {
+  width: 52px; height: 52px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-din);
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  position: relative;
+}
+.et-icon.orange { background: radial-gradient(circle, rgba(237,119,53,0.9) 0%, rgba(237,119,53,0.3) 100%); box-shadow: 0 0 12px rgba(237,119,53,0.6); }
+.et-icon.cyan { background: radial-gradient(circle, rgba(32,248,255,0.9) 0%, rgba(32,248,255,0.3) 100%); box-shadow: 0 0 12px rgba(32,248,255,0.6); }
+.et-icon.blue { background: radial-gradient(circle, rgba(18,131,255,0.9) 0%, rgba(18,131,255,0.3) 100%); box-shadow: 0 0 12px rgba(18,131,255,0.6); }
+.et-icon.green { background: radial-gradient(circle, rgba(102,255,217,0.9) 0%, rgba(102,255,217,0.3) 100%); box-shadow: 0 0 12px rgba(102,255,217,0.6); }
+.et-info { flex: 1; min-width: 0; }
+.et-label {
+  display: inline-block;
+  padding: 1px 6px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  border-radius: 2px;
+  margin-bottom: 4px;
+}
+.et-label.orange { color: #ED7735; background: rgba(237,119,53,0.15); border: 1px solid rgba(237,119,53,0.4); }
+.et-label.cyan { color: var(--color-accent); background: rgba(32,248,255,0.12); border: 1px solid rgba(32,248,255,0.35); }
+.et-label.blue { color: var(--color-primary-light); background: rgba(18,131,255,0.15); border: 1px solid rgba(18,131,255,0.4); }
+.et-label.green { color: var(--color-green); background: rgba(102,255,217,0.12); border: 1px solid rgba(102,255,217,0.35); }
+.et-value {
+  color: var(--color-text-white);
+  font-family: var(--font-number);
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  text-shadow: var(--shadow-text-cyan);
+}
+.et-unit { color: #18B8FF; font-size: 11px; margin-left: 2px; }
+
+/* 能耗趋势图 */
+.trend-chart {
+  position: relative;
+  height: 230px;
+  margin-top: 8px;
+}
+.trend-svg { width: 100%; height: 100%; }
+.trend-legend {
+  position: absolute;
+  top: 0; right: 0;
+  display: flex; gap: 12px;
+  font-size: 11px;
+  color: var(--color-text-dim);
+}
+.trend-legend .lg-dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+
+/* 设备占比环形图 */
+.device-ring-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 0;
+}
+.device-ring {
+  position: relative;
+  width: 130px; height: 130px;
+  flex-shrink: 0;
+}
+.device-ring-legend { flex: 1; }
+.dr-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+.dr-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.dr-name { color: var(--color-text-gray); flex: 1; }
+.dr-val { color: var(--color-accent); font-family: var(--font-din); font-weight: 700; }
+
+/* 区域能耗柱状图 */
+.region-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 180px;
+  padding: 0 10px;
+  margin-top: 8px;
+}
+.rb-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.rb-bar {
+  width: 28px;
+  border-radius: 3px 3px 0 0;
+  background: var(--grad-bar-blue);
+  position: relative;
+  transition: height 1s ease-out;
+}
+.rb-bar.alert { background: var(--grad-bar-red); }
+.rb-bar.cyan { background: var(--grad-bar-cyan); }
+.rb-val {
+  position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
+  color: var(--color-blue-light); font-family: var(--font-din);
+  font-size: 10px; font-weight: 700; white-space: nowrap;
+}
+.rb-label {
+  color: var(--color-text-dim); font-size: 11px;
+  margin-top: 4px;
+}
+
+/* 能耗预警列表 */
+.warn-list { width: 100%; }
+.warn-row {
+  display: flex; align-items: center;
+  height: 36px;
+  padding: 0 10px;
+  border-bottom: 1px solid rgba(143,171,191,0.12);
+  font-size: 12px;
+}
+.warn-row:nth-child(odd) { background: rgba(230,247,255,0.03); }
+.warn-level {
+  width: 50px; flex-shrink: 0;
+  text-align: center;
+  padding: 2px 0;
+  font-size: 11px;
+  border-radius: 2px;
+  margin-right: 10px;
+}
+.warn-level.high { color: #fff; background: var(--color-alert); }
+.warn-level.mid { color: #fff; background: var(--color-orange); }
+.warn-level.low { color: #fff; background: var(--color-warning); }
+.warn-time { color: var(--color-cyan); font-family: var(--font-din); width: 70px; }
+.warn-area { flex: 1; color: var(--color-text-gray); padding: 0 10px; }
+.warn-val { color: var(--color-alert); font-family: var(--font-din); font-weight: 700; }
+
+/* 开关记录表 */
+.switch-table { width: 100%; }
+.st-head, .st-row {
+  display: flex; align-items: center;
+  height: 32px;
+  font-size: 12px;
+  padding: 0 8px;
+}
+.st-head {
+  background: rgba(2,169,255,0.15);
+  border: 1px solid rgba(2,169,255,0.3);
+  border-radius: 2px;
+  color: var(--color-text-label);
+}
+.st-row {
+  border-bottom: 1px solid rgba(143,171,191,0.1);
+  color: var(--color-text-gray);
+}
+.st-row:nth-child(odd) { background: rgba(230,247,255,0.02); }
+.st-time { flex: 1; color: var(--color-cyan); font-family: var(--font-din); }
+.st-device { flex: 1.4; }
+.st-action { flex: 0.8; }
+.st-action.on { color: var(--color-success); }
+.st-action.off { color: var(--color-alert); }
+.st-user { flex: 1; color: var(--color-text-dim); }
+
+/* 底部设备报警滚动栏 */
+.alarm-bar {
+  position: absolute;
+  left: 513px; top: 850px;
+  width: 788px; height: 200px;
+  z-index: 6;
+  background: rgba(9,20,40,0.7);
+  border: 1px solid rgba(239,48,66,0.3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.alarm-head {
+  height: 36px;
+  display: flex; align-items: center;
+  padding: 0 14px;
+  background: linear-gradient(90deg, rgba(239,48,66,0.3) 0%, rgba(239,48,66,0) 100%);
+  border-left: 3px solid var(--color-alert);
+}
+.alarm-head .ah-title {
+  color: var(--color-text-main);
+  font-family: var(--font-title);
+  font-size: 16px;
+  letter-spacing: 0.05em;
+}
+.alarm-head .ah-count {
+  margin-left: auto;
+  color: var(--color-alert);
+  font-family: var(--font-din);
+  font-size: 14px;
+  font-weight: 700;
+}
+.alarm-scroll {
+  height: 156px;
+  overflow: hidden;
+  position: relative;
+}
+.alarm-track {
+  position: absolute;
+  width: 100%;
+  animation: scrollUp 18s linear infinite;
+}
+@keyframes scrollUp {
+  from { top: 0; }
+  to { top: -50%; }
+}
+.alarm-item {
+  display: flex; align-items: center;
+  height: 32px;
+  padding: 0 14px;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(239,48,66,0.1);
+}
+.alarm-item:nth-child(odd) { background: rgba(239,48,66,0.04); }
+.alarm-icon {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--color-alert);
+  box-shadow: 0 0 8px var(--color-alert);
+  margin-right: 10px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+.alarm-time { color: var(--color-cyan); font-family: var(--font-din); width: 70px; }
+.alarm-device { flex: 1; color: var(--color-text-gray); padding: 0 10px; }
+.alarm-msg { color: var(--color-warning); width: 200px; }
+.alarm-level-tag {
+  padding: 2px 8px; font-size: 11px; border-radius: 2px;
+  color: #fff; background: var(--color-alert);
+}
+
+/* 中央弹窗 */
+.center-popup {
+  position: absolute;
+  left: 875px; top: 231px;
+  width: 374px; height: 226px;
+  z-index: 20;
+  background: linear-gradient(135deg, rgba(18,131,255,0.25) 0%, rgba(0,1,15,0.85) 100%);
+  border: 1px solid var(--color-accent);
+  border-radius: 6px;
+  box-shadow: 0 0 30px rgba(32,248,255,0.3), inset 0 0 20px rgba(32,248,255,0.08);
+  padding: 18px 20px;
+  animation: fadeIn 0.8s ease-out 0.3s both;
+}
+.center-popup .cp-head {
+  display: flex; align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(32,248,255,0.3);
+}
+.center-popup .cp-icon {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  display: flex; align-items: center; justify-content: center;
+  color: #000; font-weight: 700; font-size: 14px;
+  margin-right: 10px;
+}
+.center-popup .cp-title {
+  color: var(--color-text-main);
+  font-family: var(--font-title);
+  font-size: 16px;
+  letter-spacing: 0.05em;
+}
+.center-popup .cp-close {
+  margin-left: auto;
+  color: var(--color-text-dim);
+  cursor: pointer;
+  font-size: 16px;
+}
+.center-popup .cp-body { font-size: 12px; color: var(--color-text-sub); line-height: 1.7; }
+.center-popup .cp-stat {
+  display: flex; justify-content: space-around;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(32,248,255,0.2);
+}
+.center-popup .cp-stat-item { text-align: center; }
+.center-popup .cp-stat-num {
+  color: var(--color-accent); font-family: var(--font-number);
+  font-size: 22px; text-shadow: var(--shadow-text-cyan);
+}
+.center-popup .cp-stat-label { color: var(--color-text-dim); font-size: 11px; margin-top: 2px; }
+
+/* 小弹窗 */
+.mini-popup {
+  position: absolute;
+  left: 609px; top: 592px;
+  width: 349px; height: 118px;
+  z-index: 19;
+  background: linear-gradient(135deg, rgba(102,255,217,0.2) 0%, rgba(0,1,15,0.85) 100%);
+  border: 1px solid var(--color-green);
+  border-radius: 6px;
+  box-shadow: 0 0 20px rgba(102,255,217,0.25);
+  padding: 12px 16px;
+  animation: fadeIn 0.8s ease-out 0.5s both;
+}
+.mini-popup .mp-title {
+  color: var(--color-green);
+  font-family: var(--font-title);
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+  display: flex; align-items: center;
+}
+.mini-popup .mp-title::before {
+  content: ''; display: inline-block;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--color-green); margin-right: 8px;
+  box-shadow: 0 0 8px var(--color-green);
+}
+.mini-popup .mp-body {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.mini-popup .mp-text { font-size: 12px; color: var(--color-text-sub); line-height: 1.6; flex: 1; }
+.mini-popup .mp-val {
+  color: var(--color-green); font-family: var(--font-number);
+  font-size: 28px; font-weight: 700;
+  text-shadow: 0 0 10px rgba(102,255,217,0.6);
+}
+</style>
+</head>
+<body>
+<div class="screen-canvas" id="canvas" style="width:1920px;height:1080px;">
+  <!-- 背景层 -->
+  <div class="bg-grad-top"></div>
+  <div class="bg-grad-bottom"></div>
+  <div class="center-bg"></div>
+  <div class="mask-left"></div>
+  <div class="mask-right"></div>
+
+  <!-- 顶部标题栏 -->
+  <div class="top-header">
+    <span class="header-deco left">2026-06-20  14:32:08</span>
+    <span class="header-text">能耗监控数据可视化大屏</span>
+    <span class="header-deco right">SYSTEM ONLINE · v2.4.1</span>
+  </div>
+
+  <!-- 左侧面板1: 能耗总量统计 -->
+  <div class="energy-panel" style="left:21px; top:104px; width:441px; height:190px;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="panel-head">
+      <span class="ph-title">能耗总量统计</span>
+      <span class="ph-sub">TOTAL ENERGY</span>
+    </div>
+    <div class="panel-body">
+      <div class="energy-total-grid">
+        <div class="et-card">
+          <div class="et-icon orange">电</div>
+          <div class="et-info">
+            <span class="et-label orange">本月总用电量</span>
+            <div><span class="et-value">86,452</span><span class="et-unit">度</span></div>
+          </div>
+        </div>
+        <div class="et-card">
+          <div class="et-icon cyan">煤</div>
+          <div class="et-info">
+            <span class="et-label cyan">本月总用标准煤</span>
+            <div><span class="et-value">10.62</span><span class="et-unit">吨</span></div>
+          </div>
+        </div>
+        <div class="et-card">
+          <div class="et-icon blue">年</div>
+          <div class="et-info">
+            <span class="et-label blue">本年总用电量</span>
+            <div><span class="et-value">524,860</span><span class="et-unit">度</span></div>
+          </div>
+        </div>
+        <div class="et-card">
+          <div class="et-icon green">标</div>
+          <div class="et-info">
+            <span class="et-label green">本年总用标准煤</span>
+            <div><span class="et-value">64.48</span><span class="et-unit">吨</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 左侧面板2: 能耗趋势统计 -->
+  <div class="energy-panel" style="left:19px; top:349px; width:441px; height:345px; animation-delay:0.1s;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="panel-head">
+      <span class="ph-title">能耗趋势统计</span>
+      <span class="ph-sub">TREND · 12M</span>
+    </div>
+    <div class="panel-body">
+      <div class="trend-chart">
+        <div class="trend-legend">
+          <span><span class="lg-dot" style="background:#1283FF;"></span>用电量</span>
+          <span><span class="lg-dot" style="background:#20F8FF;"></span>标准煤</span>
+        </div>
+        <svg class="trend-svg" viewBox="0 0 420 220" preserveAspectRatio="none">
+          <!-- 网格 -->
+          <g stroke="rgba(32,248,255,0.08)" stroke-width="1">
+            <line x1="0" y1="40" x2="420" y2="40"/>
+            <line x1="0" y1="90" x2="420" y2="90"/>
+            <line x1="0" y1="140" x2="420" y2="140"/>
+            <line x1="0" y1="190" x2="420" y2="190"/>
+          </g>
+          <!-- Y轴标签 -->
+          <g fill="#8FABBF" font-size="9" font-family="DIN Alternate">
+            <text x="2" y="44">100k</text>
+            <text x="2" y="94">75k</text>
+            <text x="2" y="144">50k</text>
+            <text x="2" y="194">25k</text>
+          </g>
+          <!-- 柱状图 - 用电量 -->
+          <g fill="rgba(18,131,255,0.6)">
+            <rect x="30" y="120" width="14" height="80"/>
+            <rect x="62" y="100" width="14" height="100"/>
+            <rect x="94" y="85" width="14" height="115"/>
+            <rect x="126" y="70" width="14" height="130"/>
+            <rect x="158" y="90" width="14" height="110"/>
+            <rect x="190" y="60" width="14" height="140"/>
+            <rect x="222" y="75" width="14" height="125"/>
+            <rect x="254" y="55" width="14" height="145"/>
+            <rect x="286" y="65" width="14" height="135"/>
+            <rect x="318" y="50" width="14" height="150"/>
+            <rect x="350" y="45" width="14" height="155"/>
+            <rect x="382" y="40" width="14" height="160"/>
+          </g>
+          <!-- 折线图 - 标准煤 -->
+          <polyline points="37,130 69,115 101,100 133,85 165,105 197,75 229,90 261,70 293,80 325,65 357,60 389,55"
+                    fill="none" stroke="#20F8FF" stroke-width="2" stroke-linejoin="round"/>
+          <g fill="#20F8FF">
+            <circle cx="37" cy="130" r="3"/><circle cx="69" cy="115" r="3"/>
+            <circle cx="101" cy="100" r="3"/><circle cx="133" cy="85" r="3"/>
+            <circle cx="165" cy="105" r="3"/><circle cx="197" cy="75" r="3"/>
+            <circle cx="229" cy="90" r="3"/><circle cx="261" cy="70" r="3"/>
+            <circle cx="293" cy="80" r="3"/><circle cx="325" cy="65" r="3"/>
+            <circle cx="357" cy="60" r="3"/><circle cx="389" cy="55" r="3"/>
+          </g>
+          <!-- X轴标签 -->
+          <g fill="#8FABBF" font-size="9" font-family="DIN Alternate" text-anchor="middle">
+            <text x="37" y="212">1月</text><text x="69" y="212">2月</text>
+            <text x="101" y="212">3月</text><text x="133" y="212">4月</text>
+            <text x="165" y="212">5月</text><text x="197" y="212">6月</text>
+            <text x="229" y="212">7月</text><text x="261" y="212">8月</text>
+            <text x="293" y="212">9月</text><text x="325" y="212">10月</text>
+            <text x="357" y="212">11月</text><text x="389" y="212">12月</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- 左侧面板3: 设备统计 -->
+  <div class="energy-panel" style="left:20px; top:732px; width:443px; height:271px; animation-delay:0.2s;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="panel-head">
+      <span class="ph-title">设备统计</span>
+      <span class="ph-sub">DEVICE RATIO</span>
+    </div>
+    <div class="panel-body">
+      <div style="color:var(--color-text-dim); font-size:13px; margin-bottom:6px;">设备占比</div>
+      <div class="device-ring-wrap">
+        <div class="device-ring">
+          <svg width="130" height="130" viewBox="0 0 130 130">
+            <circle cx="65" cy="65" r="52" fill="none" stroke="rgba(143,171,191,0.15)" stroke-width="14"/>
+            <!-- 空调 42% -->
+            <circle cx="65" cy="65" r="52" fill="none" stroke="#1283FF" stroke-width="14"
+                    stroke-dasharray="137.3 326.7" stroke-dashoffset="0" transform="rotate(-90 65 65)"
+                    stroke-linecap="round"/>
+            <!-- 照明 28% -->
+            <circle cx="65" cy="65" r="52" fill="none" stroke="#20F8FF" stroke-width="14"
+                    stroke-dasharray="91.5 326.7" stroke-dashoffset="-137.3" transform="rotate(-90 65 65)"
+                    stroke-linecap="round"/>
+            <!-- 电梯 18% -->
+            <circle cx="65" cy="65" r="52" fill="none" stroke="#FAC46E" stroke-width="14"
+                    stroke-dasharray="58.8 326.7" stroke-dashoffset="-228.8" transform="rotate(-90 65 65)"
+                    stroke-linecap="round"/>
+            <!-- 其他 12% -->
+            <circle cx="65" cy="65" r="52" fill="none" stroke="#66FFD9" stroke-width="14"
+                    stroke-dasharray="39.2 326.7" stroke-dashoffset="-287.6" transform="rotate(-90 65 65)"
+                    stroke-linecap="round"/>
+          </svg>
+          <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center;">
+            <div style="color:var(--color-accent); font-family:var(--font-number); font-size:22px; text-shadow:var(--shadow-text-cyan);">328</div>
+            <div style="color:#ACCDE6; font-size:10px;">设备总数</div>
+          </div>
+        </div>
+        <div class="device-ring-legend">
+          <div class="dr-item"><span class="dr-dot" style="background:#1283FF;"></span><span class="dr-name">空调设备</span><span class="dr-val">42%</span></div>
+          <div class="dr-item"><span class="dr-dot" style="background:#20F8FF;"></span><span class="dr-name">照明设备</span><span class="dr-val">28%</span></div>
+          <div class="dr-item"><span class="dr-dot" style="background:#FAC46E;"></span><span class="dr-name">电梯设备</span><span class="dr-val">18%</span></div>
+          <div class="dr-item"><span class="dr-dot" style="background:#66FFD9;"></span><span class="dr-name">其他设备</span><span class="dr-val">12%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧面板1: 区域能耗统计 -->
+  <div class="energy-panel" style="left:1329px; top:104px; width:537px; height:265px; animation-delay:0.15s;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="panel-head">
+      <span class="ph-title">区域能耗统计</span>
+      <span class="ph-sub">REGION · kWh</span>
+    </div>
+    <div class="panel-body">
+      <div class="region-bars">
+        <div class="rb-col"><div class="rb-bar" style="height:120px;"><span class="rb-val">8645</span></div><span class="rb-label">A区办公</span></div>
+        <div class="rb-col"><div class="rb-bar alert" style="height:155px;"><span class="rb-val">12480</span></div><span class="rb-label">B区生产</span></div>
+        <div class="rb-col"><div class="rb-bar cyan" style="height:90px;"><span class="rb-val">6230</span></div><span class="rb-label">C区仓储</span></div>
+        <div class="rb-col"><div class="rb-bar" style="height:135px;"><span class="rb-val">9870</span></div><span class="rb-label">D区研发</span></div>
+        <div class="rb-col"><div class="rb-bar cyan" style="height:75px;"><span class="rb-val">5180</span></div><span class="rb-label">E区餐饮</span></div>
+        <div class="rb-col"><div class="rb-bar" style="height:110px;"><span class="rb-val">7920</span></div><span class="rb-label">F区公共</span></div>
+        <div class="rb-col"><div class="rb-bar alert" style="height:145px;"><span class="rb-val">11260</span></div><span class="rb-label">G区机房</span></div>
+        <div class="rb-col"><div class="rb-bar cyan" style="height:65px;"><span class="rb-val">4320</span></div><span class="rb-label">H区其他</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧面板2: 能耗预警 -->
+  <div class="energy-panel" style="left:1329px; top:405px; width:567px; height:268px; animation-delay:0.25s;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="panel-head">
+      <span class="ph-title">能耗预警</span>
+      <span class="ph-sub">ALERTS · 6</span>
+    </div>
+    <div class="panel-body" style="padding:6px 8px;">
+      <div class="warn-list">
+        <div class="warn-row">
+          <span class="warn-level high">高</span>
+          <span class="warn-time">14:28</span>
+          <span class="warn-area">B区生产车间-3号流水线</span>
+          <span class="warn-val">超限 32%</span>
+        </div>
+        <div class="warn-row">
+          <span class="warn-level high">高</span>
+          <span class="warn-time">14:15</span>
+          <span class="warn-area">G区机房-UPS系统</span>
+          <span class="warn-val">超限 28%</span>
+        </div>
+        <div class="warn-row">
+          <span class="warn-level mid">中</span>
+          <span class="warn-time">13:52</span>
+          <span class="warn-area">A区办公-中央空调</span>
+          <span class="warn-val">超限 18%</span>
+        </div>
+        <div class="warn-row">
+          <span class="warn-level mid">中</span>
+          <span class="warn-time">13:30</span>
+          <span class="warn-area">D区研发-实验室设备</span>
+          <span class="warn-val">超限 15%</span>
+        </div>
+        <div class="warn-row">
+          <span class="warn-level low">低</span>
+          <span class="warn-time">12:48</span>
+          <span class="warn-area">F区公共-照明系统</span>
+          <span class="warn-val">超限 8%</span>
+        </div>
+        <div class="warn-row">
+          <span class="warn-level low">低</span>
+          <span class="warn-time">11:20</span>
+          <span class="warn-area">E区餐饮-厨房设备</span>
+          <span class="warn-val">超限 6%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧面板3: 开关纪录 -->
+  <div class="energy-panel" style="left:1329px; top:704px; width:571px; height:322px; animation-delay:0.35s;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="panel-head">
+      <span class="ph-title">开关纪录</span>
+      <span class="ph-sub">SWITCH LOG</span>
+    </div>
+    <div class="panel-body" style="padding:8px;">
+      <div class="switch-table">
+        <div class="st-head">
+          <span class="st-time">时间</span>
+          <span class="st-device">设备名称</span>
+          <span class="st-action">操作</span>
+          <span class="st-user">操作人</span>
+        </div>
+        <div class="st-row">
+          <span class="st-time">14:32:08</span>
+          <span class="st-device">B区-3号流水线</span>
+          <span class="st-action off">关闭</span>
+          <span class="st-user">张工</span>
+        </div>
+        <div class="st-row">
+          <span class="st-time">14:18:42</span>
+          <span class="st-device">A区-中央空调</span>
+          <span class="st-action on">开启</span>
+          <span class="st-user">李工</span>
+        </div>
+        <div class="st-row">
+          <span class="st-time">14:05:17</span>
+          <span class="st-device">G区-UPS系统</span>
+          <span class="st-action off">关闭</span>
+          <span class="st-user">王工</span>
+        </div>
+        <div class="st-row">
+          <span class="st-time">13:48:53</span>
+          <span class="st-device">D区-实验室照明</span>
+          <span class="st-action on">开启</span>
+          <span class="st-user">赵工</span>
+        </div>
+        <div class="st-row">
+          <span class="st-time">13:32:29</span>
+          <span class="st-device">F区-公共照明</span>
+          <span class="st-action off">关闭</span>
+          <span class="st-user">陈工</span>
+        </div>
+        <div class="st-row">
+          <span class="st-time">13:15:04</span>
+          <span class="st-device">E区-厨房设备</span>
+          <span class="st-action on">开启</span>
+          <span class="st-user">刘工</span>
+        </div>
+        <div class="st-row">
+          <span class="st-time">12:58:36</span>
+          <span class="st-device">C区-仓储通风</span>
+          <span class="st-action on">开启</span>
+          <span class="st-user">周工</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 中央弹窗 -->
+  <div class="center-popup">
+    <div class="cp-head">
+      <div class="cp-icon">!</div>
+      <span class="cp-title">实时能耗异常提醒</span>
+      <span class="cp-close">×</span>
+    </div>
+    <div class="cp-body">
+      检测到 <b style="color:var(--color-alert);">B区生产车间</b> 3号流水线能耗超出阈值,当前功率 <b style="color:var(--color-warning);">128.6 kW</b>,建议立即排查设备运行状态并优化用电策略。
+    </div>
+    <div class="cp-stat">
+      <div class="cp-stat-item">
+        <div class="cp-stat-num">128.6</div>
+        <div class="cp-stat-label">当前功率 kW</div>
+      </div>
+      <div class="cp-stat-item">
+        <div class="cp-stat-num" style="color:var(--color-warning);">+32%</div>
+        <div class="cp-stat-label">超限幅度</div>
+      </div>
+      <div class="cp-stat-item">
+        <div class="cp-stat-num" style="color:var(--color-success);">3</div>
+        <div class="cp-stat-label">关联设备</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 小弹窗 -->
+  <div class="mini-popup">
+    <div class="mp-title">节能优化建议</div>
+    <div class="mp-body">
+      <div class="mp-text">
+        建议在 14:00-16:00 时段对 B区生产设备执行错峰调度,预计可降低峰值负荷。
+      </div>
+      <div class="mp-val">-18%</div>
+    </div>
+  </div>
+
+  <!-- 底部设备报警滚动栏 -->
+  <div class="alarm-bar">
+    <div class="alarm-head">
+      <span class="ah-title">设备报警</span>
+      <span class="ah-count">实时报警 8 条</span>
+    </div>
+    <div class="alarm-scroll">
+      <div class="alarm-track">
+        <div class="alarm-item"><span class="alarm-icon"></span><span class="alarm-time">14:31</span><span class="alarm-device">B区-3号流水线电机</span><span class="alarm-msg">过载报警</span><span class="alarm-level-tag">紧急</span></div>
+        <div class="alarm-item"><span class="alarm-icon"></span><span class="alarm-time">14:26</span><span class="alarm-device">G区-UPS电池组</span><span class="alarm-msg">电压异常</span><span class="alarm-level-tag">紧急</span></div>
+        <div class="alarm-item"><span class="alarm-icon"></span><span class="alarm-time">14:12</span><span class="alarm-device">A区-空调压缩机</span><span class="alarm-msg">温度过高</span><span class="alarm-level-tag">重要</span></div>
+        <div class="alarm-item"><span class="alarm-icon"></span><span class="alarm-time">13:58</span><span class="alarm-device">D区-实验室电源</span><span class="alarm-msg">电流不稳</span><span class="alarm-level-tag">重要</span></div>
+        <div class="alarm-item"><span class="alarm-icon"></span><span class="alarm-time">13:42</span><span class="alarm-device">F区-照明控制器</span><span class="alarm-msg">通讯中断</span><span class="alarm-level-tag">一般</span></div>
+        <div class="alarm-item"><span class="alarm-icon"></span><span class="alarm-time">13:25</span><span class="alarm-device">E区-厨房排风</span><span class="alarm-msg">转速异常</span><span class="alarm-level-tag">一般</span></div>
+        <div class="alarm-item"><span class="alarm-icon"></span><span class="alarm-time">14:31</span><span class="alarm-device">B区-3号流水线电机</span><span class="alarm-msg">过载报警</span><span class="alarm-level-tag">紧急</span></div>
+        <div class="alarm-item"><span class="alarm-icon"></span><span class="alarm-time">14:26</span><span class="alarm-device">G区-UPS电池组</span><span class="alarm-msg">电压异常</span><span class="alarm-level-tag">紧急</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function scaleCanvas(){
+  var c=document.getElementById('canvas');
+  var s=Math.min(window.innerWidth/1920,window.innerHeight/1080);
+  c.style.transform='scale('+s+')';
+}
+scaleCanvas();window.addEventListener('resize',scaleCanvas);
+</script>
+</body>
+</html>

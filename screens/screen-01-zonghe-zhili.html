@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>综合治理 - 智慧街道一体化管理平台</title>
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+/* ===== 屏幕特有样式 ===== */
+.screen-canvas { background: #090909; }
+
+/* 标题栏位置微调 */
+.screen-header { top: 18px; }
+
+/* 侧边面板容器 */
+.side-panel {
+  position: absolute;
+  z-index: 5;
+}
+.side-panel .panel-title-bar {
+  position: relative;
+  width: 100%;
+  height: 48px;
+  background: linear-gradient(90deg, rgba(18,131,255,0.35) 0%, rgba(18,131,255,0) 100%);
+  border-left: 3px solid var(--color-accent);
+  margin-bottom: 18px;
+}
+.side-panel .panel-title { font-size: 24px; }
+.side-panel .panel-subtitle { font-size: 11px; color: var(--color-text-dim); }
+
+/* 区块卡片 */
+.panel-block {
+  background: rgba(9,20,40,0.45);
+  border: 1px solid rgba(32,248,255,0.12);
+  border-radius: 4px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  position: relative;
+}
+.panel-block .decor-corner { width: 12px; height: 12px; border-width: 1px; }
+
+/* 指标卡组 */
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 8px;
+}
+.metric-mini { text-align: center; flex: 1; }
+.metric-mini .metric-value { font-size: 26px; color: var(--color-accent); text-shadow: var(--shadow-text-cyan); }
+.metric-mini .metric-label { font-size: 12px; margin-top: 4px; display: block; }
+.metric-mini .metric-unit { font-size: 11px; }
+
+/* 柱状图容器 */
+.bar-chart-box {
+  height: 150px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 24px 6px 22px;
+  margin-top: 10px;
+  border-bottom: 1px solid rgba(143,171,191,0.2);
+  position: relative;
+}
+.bar-chart-box::before {
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(84,194,246,0.5), transparent);
+}
+.bar-col { display: flex; flex-direction: column; align-items: center; flex: 1; }
+.bar {
+  width: 26px;
+  border-radius: 3px 3px 0 0;
+  background: var(--grad-bar-blue);
+  position: relative;
+  box-shadow: 0 0 6px rgba(18,131,255,0.4);
+}
+.bar.alert { background: var(--grad-bar-red); box-shadow: 0 0 8px rgba(239,48,66,0.5); }
+.bar-value {
+  position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
+  color: var(--color-blue-light); font-family: var(--font-din);
+  font-size: 12px; font-weight: 700;
+}
+.bar.alert .bar-value { color: var(--color-alert); }
+.bar-label {
+  margin-top: 8px;
+  color: var(--color-text-dim); font-size: 10px; white-space: nowrap;
+}
+
+/* 事件列表 */
+.event-list-box { margin-top: 6px; }
+.event-row { height: 36px; }
+.event-time { width: 56px; }
+.event-name { font-size: 12px; }
+.event-status { font-size: 10px; }
+.event-status.proc { color: var(--color-accent); border-color: rgba(32,248,255,0.5); }
+
+/* 右侧环形图 */
+.ring-group {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  margin-top: 10px;
+}
+.ring-item { text-align: center; }
+.ring-chart { width: 130px; height: 130px; }
+.ring-num { font-size: 28px; }
+.ring-text { font-size: 12px; }
+
+/* 人口指标大卡 */
+.pop-cards {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.pop-card {
+  flex: 1;
+  text-align: center;
+  padding: 10px 4px;
+  background: linear-gradient(180deg, rgba(18,131,255,0.18) 0%, rgba(18,131,255,0) 100%);
+  border: 1px solid rgba(32,248,255,0.15);
+  border-radius: 4px;
+  margin: 0 4px;
+}
+.pop-card .pop-num {
+  color: var(--color-text-white); font-family: var(--font-number);
+  font-size: 24px; text-shadow: var(--shadow-text-cyan);
+}
+.pop-card .pop-unit { color: #18B8FF; font-size: 11px; }
+.pop-card .pop-label { color: var(--color-text-label); font-size: 11px; display: block; margin-top: 4px; }
+.pop-card.warn .pop-num { color: var(--color-warning); }
+
+/* 底部数据栏 */
+.bottom-bar {
+  position: absolute;
+  left: 40px; right: 40px;
+  bottom: 30px;
+  height: 90px;
+  background: linear-gradient(90deg, rgba(9,20,40,0.7) 0%, rgba(18,131,255,0.15) 50%, rgba(9,20,40,0.7) 100%);
+  border-top: 1px solid rgba(32,248,255,0.25);
+  border-bottom: 1px solid rgba(32,248,255,0.25);
+  z-index: 6;
+}
+.bottom-item .bottom-num { font-size: 30px; }
+.bottom-item .bottom-label { font-size: 12px; }
+
+/* 中央装饰 */
+.center-decor {
+  position: absolute;
+  left: 510px; top: 180px;
+  width: 960px; height: 720px;
+  z-index: 1;
+  pointer-events: none;
+}
+.center-ring {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%,-50%);
+  width: 520px; height: 520px;
+  border: 1px dashed rgba(32,248,255,0.18);
+  border-radius: 50%;
+  animation: spin 60s linear infinite;
+}
+.center-ring.inner {
+  width: 360px; height: 360px;
+  border-color: rgba(18,131,255,0.22);
+  animation: spin 40s linear infinite reverse;
+}
+.center-core {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%,-50%);
+  width: 180px; height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(18,131,255,0.35) 0%, rgba(18,131,255,0) 70%);
+  filter: blur(8px);
+}
+.center-label {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%,-50%);
+  text-align: center;
+  color: var(--color-text-main);
+  font-family: var(--font-title);
+  font-size: 22px;
+  letter-spacing: 0.1em;
+  text-shadow: var(--shadow-text-glow);
+}
+.center-label small { display: block; font-size: 12px; color: var(--color-text-dim); margin-top: 6px; letter-spacing: 0.04em; }
+@keyframes spin { from { transform: translate(-50%,-50%) rotate(0deg);} to { transform: translate(-50%,-50%) rotate(360deg);} }
+
+/* 扫描线 */
+.scan-line {
+  position: absolute;
+  left: 510px; top: 180px;
+  width: 960px; height: 720px;
+  overflow: hidden;
+  z-index: 2;
+  pointer-events: none;
+}
+.scan-line::after {
+  content: '';
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 520px; height: 520px;
+  transform: translate(-50%,-50%);
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(32,248,255,0.12) 0deg, transparent 60deg, transparent 360deg);
+  animation: spin 8s linear infinite;
+}
+</style>
+</head>
+<body>
+<div class="screen-canvas" id="canvas" style="width:1920px;height:1080px;">
+  <!-- 背景层 -->
+  <div class="bg-grad-left"></div>
+  <div class="bg-grad-right"></div>
+  <div class="bg-grad-top"></div>
+  <div class="bg-grad-bottom"></div>
+
+  <!-- 标题栏 -->
+  <div class="screen-header">
+    <div class="header-glow"></div>
+    <h1 class="header-title">智慧街道一体化管理平台</h1>
+    <p class="header-subtitle">Comprehensive exhibition of Nanjing smart Street</p>
+  </div>
+
+  <!-- 中央装饰 -->
+  <div class="center-decor">
+    <div class="center-ring"></div>
+    <div class="center-ring inner"></div>
+    <div class="center-core"></div>
+    <div class="center-label">综合治理<small>COMPREHENSIVE GOVERNANCE</small></div>
+  </div>
+  <div class="scan-line"></div>
+
+  <!-- 左侧面板:综合网格 -->
+  <div class="side-panel" style="left:20px; top:128px; width:460px;">
+    <div class="panel-title-bar">
+      <span class="panel-title">综合网格</span>
+      <span class="panel-subtitle">Population management</span>
+    </div>
+
+    <!-- 各网格数量 -->
+    <div class="panel-block">
+      <span class="decor-corner tl"></span>
+      <span class="decor-corner tr"></span>
+      <span class="decor-corner bl"></span>
+      <span class="decor-corner br"></span>
+      <div class="section-header">
+        <span class="section-dot"></span>
+        <span class="section-title">各网格数量</span>
+      </div>
+      <div class="metric-row">
+        <div class="metric-mini">
+          <span class="metric-value">21</span>
+          <span class="metric-label">网格数量</span>
+          <span class="metric-unit">个</span>
+        </div>
+        <div class="metric-mini">
+          <span class="metric-value">4</span>
+          <span class="metric-label">在线网格员</span>
+          <span class="metric-unit">人</span>
+        </div>
+        <div class="metric-mini">
+          <span class="metric-value">56</span>
+          <span class="metric-label">网格员数量</span>
+          <span class="metric-unit">人</span>
+        </div>
+      </div>
+      <div class="bar-chart-box">
+        <div class="bar-col"><div class="bar" style="height:57%;"><span class="bar-value">12</span></div><span class="bar-label">网格1</span></div>
+        <div class="bar-col"><div class="bar" style="height:76%;"><span class="bar-value">16</span></div><span class="bar-label">网格2</span></div>
+        <div class="bar-col"><div class="bar" style="height:100%;"><span class="bar-value">21</span></div><span class="bar-label">网格3</span></div>
+        <div class="bar-col"><div class="bar alert" style="height:38%;"><span class="bar-value">8</span></div><span class="bar-label">网格4</span></div>
+        <div class="bar-col"><div class="bar" style="height:71%;"><span class="bar-value">15</span></div><span class="bar-label">网格5</span></div>
+        <div class="bar-col"><div class="bar" style="height:90%;"><span class="bar-value">19</span></div><span class="bar-label">网格6</span></div>
+        <div class="bar-col"><div class="bar" style="height:52%;"><span class="bar-value">11</span></div><span class="bar-label">网格7</span></div>
+        <div class="bar-col"><div class="bar" style="height:67%;"><span class="bar-value">14</span></div><span class="bar-label">网格8</span></div>
+      </div>
+    </div>
+
+    <!-- 近期事件 -->
+    <div class="panel-block">
+      <span class="decor-corner tl"></span>
+      <span class="decor-corner tr"></span>
+      <span class="decor-corner bl"></span>
+      <span class="decor-corner br"></span>
+      <div class="section-header">
+        <span class="section-dot"></span>
+        <span class="section-title">近期事件</span>
+      </div>
+      <div class="event-list event-list-box">
+        <div class="event-row">
+          <span class="event-time">08:32</span>
+          <span class="event-name">网格3 垃圾堆积报警</span>
+          <span class="event-status alert">待处理</span>
+        </div>
+        <div class="event-row">
+          <span class="event-time">09:15</span>
+          <span class="event-name">网格7 占道经营反馈</span>
+          <span class="event-status proc">处理中</span>
+        </div>
+        <div class="event-row">
+          <span class="event-time">10:04</span>
+          <span class="event-name">网格1 设施损坏上报</span>
+          <span class="event-status">已完成</span>
+        </div>
+        <div class="event-row">
+          <span class="event-time">11:28</span>
+          <span class="event-name">网格5 违规搭建巡查</span>
+          <span class="event-status alert">待处理</span>
+        </div>
+        <div class="event-row">
+          <span class="event-time">13:46</span>
+          <span class="event-name">网格2 路灯故障维修</span>
+          <span class="event-status proc">处理中</span>
+        </div>
+        <div class="event-row">
+          <span class="event-time">15:09</span>
+          <span class="event-name">网格6 环境卫生整治</span>
+          <span class="event-status">已完成</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧面板:人口管理 -->
+  <div class="side-panel" style="left:1490px; top:180px; width:412px;">
+    <div class="panel-title-bar">
+      <span class="panel-title">人口管理</span>
+      <span class="panel-subtitle">Population management</span>
+    </div>
+
+    <div class="panel-block">
+      <span class="decor-corner tl"></span>
+      <span class="decor-corner tr"></span>
+      <span class="decor-corner bl"></span>
+      <span class="decor-corner br"></span>
+      <div class="section-header">
+        <span class="section-dot"></span>
+        <span class="section-title">人口概况</span>
+      </div>
+      <div class="pop-cards">
+        <div class="pop-card">
+          <span class="pop-num">12856</span>
+          <span class="pop-unit">人</span>
+          <span class="pop-label">常住人口</span>
+        </div>
+        <div class="pop-card">
+          <span class="pop-num">3247</span>
+          <span class="pop-unit">人</span>
+          <span class="pop-label">流动人口</span>
+        </div>
+        <div class="pop-card warn">
+          <span class="pop-num">86</span>
+          <span class="pop-unit">人</span>
+          <span class="pop-label">重点人员</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-block">
+      <span class="decor-corner tl"></span>
+      <span class="decor-corner tr"></span>
+      <span class="decor-corner bl"></span>
+      <span class="decor-corner br"></span>
+      <div class="section-header">
+        <span class="section-dot"></span>
+        <span class="section-title">人口结构占比</span>
+      </div>
+      <div class="ring-group">
+        <div class="ring-item">
+          <div class="ring-chart">
+            <svg class="ring-svg" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(143,171,191,0.15)" stroke-width="9"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="url(#g1)" stroke-width="9"
+                      stroke-dasharray="219.9 314" stroke-linecap="round"
+                      transform="rotate(-90 60 60)"/>
+              <defs>
+                <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#54C2FC"/>
+                  <stop offset="100%" stop-color="#1283FF"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <div class="ring-center">
+              <span class="ring-num">70%</span>
+              <span class="ring-text">户籍人口</span>
+            </div>
+          </div>
+        </div>
+        <div class="ring-item">
+          <div class="ring-chart">
+            <svg class="ring-svg" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(143,171,191,0.15)" stroke-width="9"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="url(#g2)" stroke-width="9"
+                      stroke-dasharray="109.9 314" stroke-linecap="round"
+                      transform="rotate(-90 60 60)"/>
+              <defs>
+                <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#20F8FF"/>
+                  <stop offset="100%" stop-color="#21E7FB"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <div class="ring-center">
+              <span class="ring-num">35%</span>
+              <span class="ring-text">流动人口</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部数据栏 -->
+  <div class="bottom-bar">
+    <div class="bottom-item">
+      <span class="bottom-num">12856</span>
+      <span class="bottom-label">总人口</span>
+    </div>
+    <div class="bottom-divider"></div>
+    <div class="bottom-item">
+      <span class="bottom-num">21</span>
+      <span class="bottom-label">网格总数</span>
+    </div>
+    <div class="bottom-divider"></div>
+    <div class="bottom-item">
+      <span class="bottom-num">56</span>
+      <span class="bottom-label">网格员</span>
+    </div>
+    <div class="bottom-divider"></div>
+    <div class="bottom-item">
+      <span class="bottom-num">342</span>
+      <span class="bottom-label">本月事件</span>
+    </div>
+    <div class="bottom-divider"></div>
+    <div class="bottom-item">
+      <span class="bottom-num alert">7</span>
+      <span class="bottom-label">待处理</span>
+    </div>
+    <div class="bottom-divider"></div>
+    <div class="bottom-item">
+      <span class="bottom-num">98.2%</span>
+      <span class="bottom-label">办结率</span>
+    </div>
+  </div>
+</div>
+
+<script>
+function scaleCanvas(){
+  var c=document.getElementById('canvas');
+  var s=Math.min(window.innerWidth/1920,window.innerHeight/1080);
+  c.style.transform='scale('+s+')';
+}
+scaleCanvas();window.addEventListener('resize',scaleCanvas);
+</script>
+</body>
+</html>

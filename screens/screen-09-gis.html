@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>GISデータ監視大画面 - TemplateGUI-02.GIS</title>
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+/* ===== 屏幕9特有样式 ===== */
+.screen-canvas {
+  background: #00020A;
+  border: 1px solid rgba(24,199,254,0.3);
+  box-shadow: 0 0 30px rgba(24,254,254,0.2);
+  font-family: 'Open Sans', 'PingFang SC', 'Source Han Sans CN', sans-serif;
+}
+/* 径向渐变背景 */
+.bg-radial {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(20,194,249,0.08) 0%, rgba(0,2,9,0) 100%);
+  pointer-events: none;
+}
+/* 顶部黑色渐变遮罩 */
+.bg-nav-mask {
+  position: absolute; left: 0; top: 0; width: 100%; height: 120px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 60%, rgba(0,0,0,0) 100%);
+  pointer-events: none; z-index: 2;
+}
+
+/* ===== NAV导航栏 ===== */
+.nav-bar {
+  position: absolute; left: 0; top: 0; width: 1919px; height: 97px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 36px 24px; z-index: 10;
+}
+.nav-logo { display: flex; align-items: center; gap: 12px; }
+.nav-logo .logo-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, #18FEFE 0%, #00CDF5 100%);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 12px rgba(24,254,254,0.5);
+}
+.nav-logo .logo-icon::before {
+  content: ''; width: 14px; height: 14px;
+  border: 2px solid #00020A; border-radius: 50%;
+}
+.nav-logo .logo-title {
+  color: #FFFFFF; font-size: 18px; font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.nav-logo .logo-sub {
+  color: rgba(255,255,255,0.5); font-size: 11px; margin-top: 2px;
+}
+.nav-menu { display: flex; gap: 4px; }
+.nav-menu .nm-item {
+  padding: 8px 18px; color: rgba(255,255,255,0.6);
+  font-size: 13px; cursor: pointer; border-radius: 3px;
+  transition: all .3s;
+}
+.nav-menu .nm-item.active {
+  color: #18FEFE; background: rgba(24,254,254,0.1);
+  border: 1px solid rgba(24,254,254,0.4);
+  text-shadow: 0 0 8px rgba(24,254,254,0.6);
+}
+.nav-right { display: flex; align-items: center; gap: 16px; }
+.nav-time {
+  color: #18FEFE; font-family: 'DIN Alternate', 'Open Sans', sans-serif;
+  font-size: 16px; letter-spacing: 0.05em;
+  text-shadow: 0 0 8px rgba(24,254,254,0.4);
+}
+.nav-status {
+  display: flex; align-items: center; gap: 6px;
+  color: rgba(255,255,255,0.7); font-size: 12px;
+}
+.nav-status .ns-dot {
+  width: 8px; height: 8px; background: #18FEFE; border-radius: 50%;
+  box-shadow: 0 0 8px #18FEFE; animation: pulse 2s infinite;
+}
+
+/* ===== 中央地图区 ===== */
+.map-area {
+  position: absolute; left: 455px; top: 98px;
+  width: 1009px; height: 727px;
+  background: #040A0B;
+  border: 1px solid rgba(24,199,254,0.2);
+  overflow: hidden;
+}
+.map-satellite {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 40% 45%, rgba(20,194,249,0.15) 0%, rgba(4,10,11,0.6) 60%),
+    linear-gradient(135deg, #0a1a2a 0%, #061218 50%, #040A0B 100%);
+}
+.map-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(24,254,254,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(24,254,254,0.04) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+/* 地图地形 SVG */
+.map-terrain {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%,-50%);
+  width: 90%; height: 90%; opacity: 0.6;
+}
+/* 地图数据点 */
+.map-point {
+  position: absolute; width: 10px; height: 10px;
+  border-radius: 50%; z-index: 3;
+}
+.map-point::after {
+  content: ''; position: absolute; inset: -8px;
+  border: 1px solid currentColor; border-radius: 50%;
+  opacity: 0.6; animation: ripple 2.5s ease-out infinite;
+}
+.map-point.cyan { background: #18FEFE; color: #18FEFE; box-shadow: 0 0 12px #18FEFE; }
+.map-point.blue { background: #00CDF5; color: #00CDF5; box-shadow: 0 0 12px #00CDF5; }
+.map-point.white { background: #FFFFFF; color: #FFFFFF; box-shadow: 0 0 10px #FFFFFF; }
+.map-point.warn { background: #FFB84D; color: #FFB84D; box-shadow: 0 0 12px #FFB84D; }
+@keyframes ripple { 0%{transform:scale(0.5);opacity:0.8;} 100%{transform:scale(3);opacity:0;} }
+/* 地图标签 */
+.map-label {
+  position: absolute; z-index: 4;
+  background: rgba(0,2,10,0.8);
+  border: 1px solid rgba(24,254,254,0.4);
+  border-radius: 3px; padding: 4px 10px;
+  color: #18FEFE; font-size: 11px;
+  white-space: nowrap;
+  box-shadow: 0 0 8px rgba(24,254,254,0.2);
+}
+.map-label .ml-val { color: #FFFFFF; font-family: 'DIN Alternate', sans-serif; font-weight: 700; }
+/* 地图飞线 */
+.map-line {
+  position: absolute; z-index: 2;
+}
+/* 地图罗盘 */
+.map-compass {
+  position: absolute; right: 20px; top: 20px;
+  width: 60px; height: 60px; z-index: 5;
+  border: 1px solid rgba(24,254,254,0.4);
+  border-radius: 50%;
+  background: rgba(0,2,10,0.6);
+  display: flex; align-items: center; justify-content: center;
+  color: #18FEFE; font-size: 11px; font-weight: 700;
+}
+.map-compass::before {
+  content: 'N'; position: absolute; top: 4px;
+  color: #FF6B6B; font-size: 12px; font-weight: 700;
+}
+/* 地图比例尺 */
+.map-scale {
+  position: absolute; left: 20px; bottom: 20px; z-index: 5;
+  display: flex; align-items: center; gap: 8px;
+  color: rgba(255,255,255,0.6); font-size: 11px;
+}
+.map-scale .ms-bar {
+  width: 80px; height: 4px;
+  background: linear-gradient(90deg, #18FEFE 0%, #18FEFE 25%, transparent 25%, transparent 50%, #18FEFE 50%, #18FEFE 75%, transparent 75%);
+}
+
+/* ===== 通用面板 ===== */
+.gis-panel {
+  position: absolute;
+  background: rgba(0,2,10,0.5);
+  border: 1px solid rgba(24,199,254,0.25);
+  box-shadow: 0 0 20px rgba(24,254,254,0.08);
+}
+.gis-panel .decor-corner { width: 12px; height: 12px; border-width: 1px; border-color: #18FEFE; }
+/* 面板标题栏 */
+.gis-title-bar {
+  position: relative; width: 100%; height: 44px;
+  background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; padding: 0 16px;
+  border-bottom: 1px solid rgba(24,199,254,0.2);
+}
+.gis-title-bar .gtb-dot {
+  width: 6px; height: 6px; background: #18FEFE;
+  border-radius: 50%; margin-right: 10px;
+  box-shadow: 0 0 8px #18FEFE;
+}
+.gis-title-bar .gtb-title {
+  color: #FFFFFF; font-size: 14px; font-weight: 600;
+  letter-spacing: 0.05em; flex: 1;
+}
+.gis-title-bar .gtb-sub {
+  color: rgba(255,255,255,0.5); font-size: 11px;
+}
+.gis-title-bar .gtb-rect {
+  width: 24px; height: 3px; background: #18FEFE;
+  margin-left: 10px; box-shadow: 0 0 6px #18FEFE;
+}
+
+/* ===== 左侧面板 ===== */
+/* 左上内容区 */
+.left-top-content { padding: 14px 16px; }
+.lt-stat-row { display: flex; justify-content: space-between; margin-bottom: 14px; }
+.lt-stat {
+  flex: 1; text-align: center;
+  border-right: 1px solid rgba(63,79,91,0.5);
+}
+.lt-stat:last-child { border-right: none; }
+.lt-stat .lts-label { color: rgba(255,255,255,0.6); font-size: 11px; margin-bottom: 4px; }
+.lt-stat .lts-val {
+  color: #18FEFE; font-family: 'DIN Alternate', sans-serif;
+  font-size: 22px; font-weight: 700;
+  text-shadow: 0 0 8px rgba(24,254,254,0.4);
+}
+.lt-stat .lts-unit { color: rgba(255,255,255,0.5); font-size: 10px; margin-left: 2px; }
+/* 左上柱状图 */
+.lt-bar-chart {
+  height: 120px; display: flex; align-items: flex-end;
+  justify-content: space-between; padding: 20px 4px 24px;
+  border-bottom: 1px solid rgba(63,79,91,0.4);
+  position: relative;
+}
+.lt-bar {
+  width: 18px; border-radius: 2px 2px 0 0;
+  background: linear-gradient(180deg, rgba(24,254,254,0.9) 0%, rgba(0,205,245,0.3) 100%);
+  position: relative; box-shadow: 0 0 6px rgba(24,254,254,0.3);
+}
+.lt-bar.alt { background: linear-gradient(180deg, rgba(0,205,245,0.9) 0%, rgba(0,205,245,0.2) 100%); }
+.lt-bar-val {
+  position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
+  color: rgba(255,255,255,0.8); font-family: 'DIN Alternate', sans-serif;
+  font-size: 9px; white-space: nowrap;
+}
+.lt-bar-label {
+  position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
+  color: rgba(255,255,255,0.5); font-size: 9px; white-space: nowrap;
+}
+/* 左上底部指标 */
+.lt-mini-row { display: flex; gap: 10px; margin-top: 16px; }
+.lt-mini {
+  flex: 1; height: 48px; padding: 6px 10px;
+  background: rgba(24,254,254,0.05);
+  border: 1px solid rgba(24,254,254,0.15);
+  border-radius: 3px;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.lt-mini .lm-label { color: rgba(255,255,255,0.5); font-size: 10px; }
+.lt-mini .lm-val {
+  color: #FFFFFF; font-family: 'DIN Alternate', sans-serif;
+  font-size: 16px; font-weight: 700;
+}
+.lt-mini .lm-val .lmu { color: #18FEFE; font-size: 10px; margin-left: 2px; }
+
+/* 左下面板 */
+.left-bottom-content { padding: 14px 16px; }
+.lb-sub-title {
+  color: #FFFFFF; font-size: 14px; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.lb-sub-title::before {
+  content: ''; width: 3px; height: 12px; background: #18FEFE;
+  box-shadow: 0 0 6px #18FEFE;
+}
+/* 双折线图 */
+.lb-line-chart {
+  height: 130px; position: relative;
+  border-bottom: 1px solid rgba(63,79,91,0.4);
+  border-left: 1px solid rgba(63,79,91,0.4);
+  margin-bottom: 12px;
+}
+.lb-line-grid {
+  position: absolute; inset: 0;
+  background-image: linear-gradient(rgba(85,85,85,0.2) 1px, transparent 1px);
+  background-size: 100% 26px;
+}
+/* mini indicators */
+.lb-indicators { display: flex; gap: 12px; margin-bottom: 12px; }
+.lb-indicator {
+  flex: 1; height: 48px; padding: 6px 10px;
+  background: rgba(0,205,245,0.06);
+  border-left: 2px solid #00CDF5;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.lb-indicator .li-label { color: rgba(255,255,255,0.5); font-size: 10px; }
+.lb-indicator .li-val {
+  color: #00CDF5; font-family: 'DIN Alternate', sans-serif;
+  font-size: 18px; font-weight: 700;
+}
+.lb-indicator .li-val .liu { color: rgba(255,255,255,0.5); font-size: 10px; }
+/* 底部数据组 */
+.lb-data-group {
+  height: 95px; display: flex; flex-direction: column;
+  justify-content: space-around; padding: 8px 0;
+  border-top: 1px solid rgba(63,79,91,0.4);
+}
+.lb-data-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 0;
+}
+.lb-data-row .ldr-label { color: rgba(255,255,255,0.6); font-size: 11px; }
+.lb-data-row .ldr-val {
+  color: #18FEFE; font-family: 'DIN Alternate', sans-serif;
+  font-size: 14px; font-weight: 700;
+}
+.lb-data-row .ldr-bar {
+  flex: 1; height: 4px; margin: 0 12px;
+  background: rgba(63,79,91,0.4); border-radius: 2px; overflow: hidden;
+}
+.lb-data-row .ldr-bar-fill {
+  height: 100%; background: linear-gradient(90deg, #00CDF5, #18FEFE);
+  border-radius: 2px;
+}
+
+/* ===== 右侧面板 ===== */
+/* ID卡片 */
+.id-card { padding: 18px 20px; }
+.id-card-top { display: flex; gap: 16px; }
+.id-card-left { flex: 1; }
+.id-number {
+  color: #18FEFE; font-family: 'Open Sans', sans-serif;
+  font-size: 42px; font-weight: 700; line-height: 1;
+  text-shadow: 0 0 34px rgba(24,254,254,0.25);
+  letter-spacing: 0.02em;
+}
+.id-name {
+  color: #FFFFFF; font-size: 16px; font-weight: 700;
+  margin-top: 8px; letter-spacing: 0.05em;
+}
+.id-meta { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.id-meta-row { display: flex; align-items: baseline; gap: 8px; }
+.id-meta-row .imr-label { color: rgba(255,255,255,0.5); font-size: 11px; width: 70px; }
+.id-meta-row .imr-val {
+  color: #FFFFFF; font-family: 'DIN Alternate', sans-serif;
+  font-size: 15px; font-weight: 700;
+}
+.id-meta-row .imr-val.down { color: #FF6B6B; }
+.id-meta-row .imr-val.up { color: #18FEFE; }
+.id-avatar {
+  width: 144px; height: 146px; flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.4);
+  background: linear-gradient(135deg, rgba(24,254,254,0.1), rgba(0,205,245,0.05));
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.id-avatar::before {
+  content: ''; width: 60px; height: 60px;
+  border: 2px solid rgba(24,254,254,0.5); border-radius: 50%;
+}
+.id-avatar::after {
+  content: ''; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px; height: 80px;
+  border: 1px dashed rgba(255,255,255,0.2); border-radius: 50%;
+  animation: spin 12s linear infinite;
+}
+@keyframes spin { from{transform:translate(-50%,-50%) rotate(0);} to{transform:translate(-50%,-50%) rotate(360deg);} }
+/* ID卡下方数据组 */
+.id-data-group { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(63,79,91,0.4); }
+.id-data-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.id-data-item {
+  text-align: center; padding: 8px 4px;
+  background: rgba(24,254,254,0.04);
+  border: 1px solid rgba(24,254,254,0.12);
+  border-radius: 3px;
+}
+.id-data-item .idi-label { color: rgba(255,255,255,0.5); font-size: 10px; margin-bottom: 4px; }
+.id-data-item .idi-val {
+  color: #18FEFE; font-family: 'DIN Alternate', sans-serif;
+  font-size: 18px; font-weight: 700;
+}
+.id-data-item .idi-unit { color: rgba(255,255,255,0.5); font-size: 10px; }
+
+/* 右中 - 数据统计切换 */
+.rb-tabs {
+  display: flex; gap: 0; padding: 10px 16px 0;
+}
+.rb-tab {
+  padding: 6px 16px; color: rgba(255,255,255,0.5);
+  font-size: 12px; cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.rb-tab.active {
+  color: #18FEFE; border-bottom-color: #18FEFE;
+  text-shadow: 0 0 6px rgba(24,254,254,0.4);
+}
+/* 柱状图带Y轴 */
+.rb-bar-chart {
+  height: 164px; padding: 10px 16px;
+  display: flex; gap: 8px;
+}
+.rb-y-axis {
+  width: 30px; display: flex; flex-direction: column-reverse;
+  justify-content: space-between; padding-bottom: 20px;
+  color: rgba(255,255,255,0.4); font-size: 9px;
+  font-family: 'DIN Alternate', sans-serif;
+}
+.rb-chart-area {
+  flex: 1; display: flex; align-items: flex-end;
+  justify-content: space-between; padding-bottom: 20px;
+  border-left: 1px solid rgba(85,85,85,0.4);
+  border-bottom: 1px solid rgba(85,85,85,0.4);
+  position: relative;
+}
+.rb-chart-area::before {
+  content: ''; position: absolute; inset: 0;
+  background-image: linear-gradient(rgba(85,85,85,0.15) 1px, transparent 1px);
+  background-size: 100% 16.4px;
+}
+.rb-bar {
+  width: 16px; border-radius: 2px 2px 0 0;
+  background: linear-gradient(180deg, #18FEFE 0%, rgba(0,205,245,0.2) 100%);
+  position: relative; z-index: 1;
+  box-shadow: 0 0 6px rgba(24,254,254,0.3);
+}
+.rb-bar.alt { background: linear-gradient(180deg, #00CDF5 0%, rgba(0,205,245,0.2) 100%); }
+.rb-bar-label {
+  position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%);
+  color: rgba(255,255,255,0.5); font-size: 9px; white-space: nowrap;
+}
+
+/* 右下 - 指标组 */
+.rb-metrics { display: flex; padding: 14px 16px; gap: 0; }
+.rb-metric {
+  flex: 1; height: 44px; text-align: center;
+  border-right: 1px solid #3F4F5B;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.rb-metric:last-child { border-right: none; }
+.rb-metric .rm-val {
+  color: #18FEFE; font-family: 'DIN Alternate', sans-serif;
+  font-size: 20px; font-weight: 700;
+  text-shadow: 0 0 6px rgba(24,254,254,0.3);
+}
+.rb-metric .rm-label { color: rgba(255,255,255,0.5); font-size: 10px; margin-top: 2px; }
+.rb-bottom-data { padding: 0 16px 14px; display: flex; gap: 12px; }
+.rb-data-card {
+  flex: 1; height: 40px; padding: 0 12px;
+  background: rgba(0,205,245,0.06);
+  border-left: 2px solid #00CDF5;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.rb-data-card .rdc-label { color: rgba(255,255,255,0.5); font-size: 11px; }
+.rb-data-card .rdc-val {
+  color: #FFFFFF; font-family: 'DIN Alternate', sans-serif;
+  font-size: 15px; font-weight: 700;
+}
+
+/* ===== 底部面板 ===== */
+/* 运维监控 */
+.ops-monitor { padding: 14px 18px; }
+.ops-title {
+  color: #FFFFFF; font-size: 16px; font-weight: 600;
+  margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+}
+.ops-title::before {
+  content: ''; width: 4px; height: 14px; background: #18FEFE;
+  box-shadow: 0 0 6px #18FEFE;
+}
+.ops-data-row {
+  display: flex; justify-content: space-between; margin-bottom: 10px;
+}
+.ops-data-item { text-align: center; flex: 1; }
+.ops-data-item .odi-label { color: rgba(255,255,255,0.6); font-size: 10px; margin-bottom: 2px; }
+.ops-data-item .odi-val {
+  color: #18FEFE; font-family: 'DIN Alternate', sans-serif;
+  font-size: 14px; font-weight: 700;
+}
+.ops-data-item .odi-val .ou { color: rgba(255,255,255,0.5); font-size: 9px; margin-left: 2px; }
+/* 折线图 */
+.ops-line-chart {
+  height: 60px; position: relative; margin-bottom: 10px;
+}
+/* 数据卡片 */
+.ops-cards { display: flex; gap: 8px; }
+.ops-card {
+  flex: 1; height: 65px; padding: 8px 10px;
+  background: rgba(24,254,254,0.05);
+  border: 1px solid rgba(24,254,254,0.15);
+  border-radius: 3px;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.ops-card .oc-label { color: rgba(255,255,255,0.5); font-size: 10px; }
+.ops-card .oc-val {
+  color: #FFFFFF; font-family: 'DIN Alternate', sans-serif;
+  font-size: 18px; font-weight: 700; margin-top: 2px;
+}
+.ops-card .oc-val .ocu { color: #18FEFE; font-size: 10px; }
+.ops-card .oc-trend { color: #18FEFE; font-size: 10px; margin-top: 2px; }
+
+/* 左下三列数据 */
+.bottom-left-cols { display: flex; padding: 14px 12px; gap: 8px; }
+.blc-col {
+  flex: 1; display: flex; flex-direction: column; gap: 8px;
+  padding: 0 8px;
+  border-right: 1px solid rgba(63,79,91,0.4);
+}
+.blc-col:last-child { border-right: none; flex: 1.6; }
+.blc-col-title {
+  color: rgba(255,255,255,0.6); font-size: 11px;
+  padding-bottom: 6px; border-bottom: 1px solid rgba(63,79,91,0.3);
+}
+.blc-item { display: flex; justify-content: space-between; align-items: center; }
+.blc-item .bi-label { color: rgba(255,255,255,0.5); font-size: 10px; }
+.blc-item .bi-val {
+  color: #18FEFE; font-family: 'DIN Alternate', sans-serif;
+  font-size: 13px; font-weight: 700;
+}
+.blc-item .bi-val.alt { color: #00CDF5; }
+.blc-item .bi-val.white { color: #FFFFFF; }
+
+/* 入场动画 */
+.anim-slide { animation: slideIn .6s ease-out both; }
+.anim-fade { animation: fadeIn .8s ease-out both; }
+.anim-delay-1 { animation-delay: .1s; }
+.anim-delay-2 { animation-delay: .2s; }
+.anim-delay-3 { animation-delay: .3s; }
+.anim-delay-4 { animation-delay: .4s; }
+.anim-delay-5 { animation-delay: .5s; }
+</style>
+</head>
+<body>
+<div class="screen-canvas" id="canvas" style="width:1920px;height:1080px;">
+  <!-- 背景层 -->
+  <div class="bg-radial"></div>
+  <div class="bg-nav-mask"></div>
+
+  <!-- NAV导航栏 -->
+  <div class="nav-bar anim-fade">
+    <div class="nav-logo">
+      <div class="logo-icon"></div>
+      <div>
+        <div class="logo-title">GIS MONITOR</div>
+        <div class="logo-sub">TemplateGUI-02.GIS</div>
+      </div>
+    </div>
+    <div class="nav-menu">
+      <span class="nm-item active">ホーム</span>
+      <span class="nm-item">マップ表示</span>
+      <span class="nm-item">データ分析</span>
+      <span class="nm-item">デバイス管理</span>
+      <span class="nm-item">アラート</span>
+      <span class="nm-item">システム設定</span>
+    </div>
+    <div class="nav-right">
+      <div class="nav-status"><span class="ns-dot"></span>システム正常</div>
+      <div class="nav-time">2026-06-20 14:32:08</div>
+    </div>
+  </div>
+
+  <!-- 中央地图区 -->
+  <div class="map-area anim-fade anim-delay-1">
+    <div class="map-satellite">
+      <div class="map-grid"></div>
+      <!-- 地形 SVG -->
+      <svg class="map-terrain" viewBox="0 0 900 650" preserveAspectRatio="xMidYMid meet">
+        <!-- 等高线 -->
+        <g fill="none" stroke="rgba(24,254,254,0.15)" stroke-width="1">
+          <path d="M 150,200 Q 300,150 450,180 Q 600,210 750,170"/>
+          <path d="M 120,280 Q 280,230 460,260 Q 620,290 780,250"/>
+          <path d="M 100,360 Q 260,310 470,340 Q 640,370 800,330"/>
+          <path d="M 140,440 Q 300,390 480,420 Q 620,450 760,410"/>
+          <path d="M 180,520 Q 340,470 500,500 Q 640,530 740,490"/>
+        </g>
+        <!-- 区域多边形 -->
+        <path d="M 200,250 L 380,220 L 520,280 L 680,240 L 720,380 L 580,420 L 420,400 L 280,440 L 200,350 Z"
+              fill="rgba(24,254,254,0.04)" stroke="rgba(24,254,254,0.3)" stroke-width="1" stroke-dasharray="5 3"/>
+        <!-- 道路 -->
+        <path d="M 100,300 L 350,320 L 600,300 L 820,330" fill="none" stroke="rgba(0,205,245,0.25)" stroke-width="1.5"/>
+        <path d="M 400,100 L 420,300 L 440,550" fill="none" stroke="rgba(0,205,245,0.2)" stroke-width="1.5"/>
+        <!-- 飞线 -->
+        <path d="M 250,280 Q 400,150 580,220" fill="none" stroke="rgba(24,254,254,0.5)" stroke-width="1" stroke-dasharray="4 4">
+          <animate attributeName="stroke-dashoffset" from="0" to="-16" dur="1s" repeatCount="indefinite"/>
+        </path>
+        <path d="M 580,220 Q 500,350 350,420" fill="none" stroke="rgba(0,205,245,0.5)" stroke-width="1" stroke-dasharray="4 4">
+          <animate attributeName="stroke-dashoffset" from="0" to="-16" dur="1.2s" repeatCount="indefinite"/>
+        </path>
+        <path d="M 620,380 Q 700,300 680,200" fill="none" stroke="rgba(24,254,254,0.4)" stroke-width="1" stroke-dasharray="4 4">
+          <animate attributeName="stroke-dashoffset" from="0" to="-16" dur="1.5s" repeatCount="indefinite"/>
+        </path>
+      </svg>
+      <!-- 数据点 -->
+      <div class="map-point cyan" style="left:28%; top:38%;"></div>
+      <div class="map-point blue" style="left:45%; top:30%;"></div>
+      <div class="map-point white" style="left:62%; top:42%;"></div>
+      <div class="map-point warn" style="left:38%; top:58%;"></div>
+      <div class="map-point cyan" style="left:70%; top:55%;"></div>
+      <div class="map-point blue" style="left:55%; top:68%;"></div>
+      <div class="map-point white" style="left:22%; top:52%;"></div>
+      <!-- 标签 -->
+      <div class="map-label" style="left:30%; top:32%;">エリアA <span class="ml-val">1284</span></div>
+      <div class="map-label" style="left:64%; top:36%;">エリアB <span class="ml-val">962</span></div>
+      <div class="map-label" style="left:40%; top:64%;">エリアC <span class="ml-val">756</span></div>
+    </div>
+    <!-- 罗盘 -->
+    <div class="map-compass">+</div>
+    <!-- 比例尺 -->
+    <div class="map-scale"><div class="ms-bar"></div>0 5km</div>
+  </div>
+
+  <!-- 左侧面板 - 上组 -->
+  <div class="gis-panel anim-slide anim-delay-1" style="left:20px; top:108px; width:410px;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="gis-title-bar">
+      <span class="gtb-dot"></span>
+      <span class="gtb-title">エリアデータ概況</span>
+      <span class="gtb-sub">AREA DATA</span>
+      <span class="gtb-rect"></span>
+    </div>
+    <div class="left-top-content">
+      <!-- 统计行 -->
+      <div class="lt-stat-row">
+        <div class="lt-stat">
+          <div class="lts-label">総面積</div>
+          <div><span class="lts-val">8,642</span><span class="lts-unit">km²</span></div>
+        </div>
+        <div class="lt-stat">
+          <div class="lts-label">監視点</div>
+          <div><span class="lts-val">326</span><span class="lts-unit">箇所</span></div>
+        </div>
+        <div class="lt-stat">
+          <div class="lts-label">オンライン</div>
+          <div><span class="lts-val">98.2</span><span class="lts-unit">%</span></div>
+        </div>
+      </div>
+      <!-- 柱状图 -->
+      <div class="lt-bar-chart">
+        <div class="lt-bar" style="height:60%;"><span class="lt-bar-val">62</span><span class="lt-bar-label">1月</span></div>
+        <div class="lt-bar" style="height:75%;"><span class="lt-bar-val">78</span><span class="lt-bar-label">2月</span></div>
+        <div class="lt-bar alt" style="height:90%;"><span class="lt-bar-val">92</span><span class="lt-bar-label">3月</span></div>
+        <div class="lt-bar" style="height:70%;"><span class="lt-bar-val">73</span><span class="lt-bar-label">4月</span></div>
+        <div class="lt-bar" style="height:85%;"><span class="lt-bar-val">86</span><span class="lt-bar-label">5月</span></div>
+        <div class="lt-bar alt" style="height:95%;"><span class="lt-bar-val">96</span><span class="lt-bar-label">6月</span></div>
+        <div class="lt-bar" style="height:80%;"><span class="lt-bar-val">82</span><span class="lt-bar-label">7月</span></div>
+        <div class="lt-bar" style="height:65%;"><span class="lt-bar-val">68</span><span class="lt-bar-label">8月</span></div>
+      </div>
+      <!-- mini指标 -->
+      <div class="lt-mini-row">
+        <div class="lt-mini">
+          <span class="lm-label">平均応答</span>
+          <span class="lm-val">128<span class="lmu">ms</span></span>
+        </div>
+        <div class="lt-mini">
+          <span class="lm-label">データ量</span>
+          <span class="lm-val">4.2<span class="lmu">GB</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 左侧面板 - 下组 -->
+  <div class="gis-panel anim-slide anim-delay-2" style="left:20px; top:520px; width:410px; height:534px;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="gis-title-bar">
+      <span class="gtb-dot"></span>
+      <span class="gtb-title">データ統計</span>
+      <span class="gtb-sub">DATA STATISTICS</span>
+      <span class="gtb-rect"></span>
+    </div>
+    <div class="left-bottom-content">
+      <div class="lb-sub-title">月次トレンド分析</div>
+      <!-- 折线图 -->
+      <div class="lb-line-chart">
+        <div class="lb-line-grid"></div>
+        <svg width="100%" height="100%" viewBox="0 0 360 130" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="lbGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="rgba(24,254,254,0.4)"/>
+              <stop offset="100%" stop-color="rgba(24,254,254,0)"/>
+            </linearGradient>
+          </defs>
+          <path d="M 0,80 L 40,60 L 80,70 L 120,40 L 160,55 L 200,30 L 240,45 L 280,25 L 320,35 L 360,20 L 360,130 L 0,130 Z" fill="url(#lbGrad)"/>
+          <path d="M 0,80 L 40,60 L 80,70 L 120,40 L 160,55 L 200,30 L 240,45 L 280,25 L 320,35 L 360,20" fill="none" stroke="#18FEFE" stroke-width="1.5"/>
+          <path d="M 0,95 L 40,85 L 80,90 L 120,75 L 160,80 L 200,65 L 240,70 L 280,60 L 320,68 L 360,55" fill="none" stroke="#00CDF5" stroke-width="1.5" stroke-dasharray="3 3"/>
+        </svg>
+      </div>
+      <!-- mini indicators -->
+      <div class="lb-indicators">
+        <div class="lb-indicator">
+          <span class="li-label">ピーク値</span>
+          <span class="li-val">96.4<span class="liu">k</span></span>
+        </div>
+        <div class="lb-indicator">
+          <span class="li-label">平均値</span>
+          <span class="li-val">72.8<span class="liu">k</span></span>
+        </div>
+      </div>
+      <!-- 底部数据组 -->
+      <div class="lb-data-group">
+        <div class="lb-data-row">
+          <span class="ldr-label">データ処理量</span>
+          <div class="ldr-bar"><div class="ldr-bar-fill" style="width:82%;"></div></div>
+          <span class="ldr-val">82%</span>
+        </div>
+        <div class="lb-data-row">
+          <span class="ldr-label">ストレージ使用率</span>
+          <div class="ldr-bar"><div class="ldr-bar-fill" style="width:64%;"></div></div>
+          <span class="ldr-val">64%</span>
+        </div>
+        <div class="lb-data-row">
+          <span class="ldr-label">帯域幅利用率</span>
+          <div class="ldr-bar"><div class="ldr-bar-fill" style="width:48%;"></div></div>
+          <span class="ldr-val">48%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧面板 - 上组 ID卡 -->
+  <div class="gis-panel anim-slide anim-delay-1" style="left:1490px; top:114px; width:411px;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="gis-title-bar">
+      <span class="gtb-dot"></span>
+      <span class="gtb-title">ユーザー情報</span>
+      <span class="gtb-sub">USER INFO</span>
+      <span class="gtb-rect"></span>
+    </div>
+    <div class="id-card">
+      <div class="id-card-top">
+        <div class="id-card-left">
+          <div class="id-number">ID-1890F2X</div>
+          <div class="id-name">JACK CUI</div>
+          <div class="id-meta">
+            <div class="id-meta-row">
+              <span class="imr-label">データ量</span>
+              <span class="imr-val">82.03<span style="color:rgba(255,255,255,0.5);font-size:11px;">M</span></span>
+            </div>
+            <div class="id-meta-row">
+              <span class="imr-label">変動率</span>
+              <span class="imr-val down">-2.06%</span>
+            </div>
+            <div class="id-meta-row">
+              <span class="imr-label">ポイント</span>
+              <span class="imr-val">40,000</span>
+            </div>
+          </div>
+        </div>
+        <div class="id-avatar"></div>
+      </div>
+      <div class="id-data-group">
+        <div class="id-data-grid">
+          <div class="id-data-item">
+            <div class="idi-label">接続数</div>
+            <div class="idi-val">1,284<span class="idi-unit">回</span></div>
+          </div>
+          <div class="id-data-item">
+            <div class="idi-label">アクティブ</div>
+            <div class="idi-val">96.2<span class="idi-unit">%</span></div>
+          </div>
+          <div class="id-data-item">
+            <div class="idi-label">スコア</div>
+            <div class="idi-val">4.86<span class="idi-unit">/5</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧面板 - 中组 数据统计 -->
+  <div class="gis-panel anim-slide anim-delay-2" style="left:1489px; top:537px; width:412px;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="gis-title-bar">
+      <span class="gtb-dot"></span>
+      <span class="gtb-title">データ統計</span>
+      <span class="gtb-sub">STATISTICS</span>
+      <span class="gtb-rect"></span>
+    </div>
+    <div class="rb-tabs">
+      <span class="rb-tab active">データ統計-01</span>
+      <span class="rb-tab">データ統計-02</span>
+    </div>
+    <div class="rb-bar-chart">
+      <div class="rb-y-axis">
+        <span>210</span><span>220</span><span>230</span><span>240</span>
+        <span>250</span><span>260</span><span>270</span><span>280</span>
+        <span>290</span><span>300</span>
+      </div>
+      <div class="rb-chart-area">
+        <div class="rb-bar" style="height:45%;"><span class="rb-bar-label">Q1</span></div>
+        <div class="rb-bar alt" style="height:62%;"><span class="rb-bar-label">Q2</span></div>
+        <div class="rb-bar" style="height:78%;"><span class="rb-bar-label">Q3</span></div>
+        <div class="rb-bar alt" style="height:90%;"><span class="rb-bar-label">Q4</span></div>
+        <div class="rb-bar" style="height:70%;"><span class="rb-bar-label">Q5</span></div>
+        <div class="rb-bar alt" style="height:85%;"><span class="rb-bar-label">Q6</span></div>
+        <div class="rb-bar" style="height:55%;"><span class="rb-bar-label">Q7</span></div>
+        <div class="rb-bar alt" style="height:68%;"><span class="rb-bar-label">Q8</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧面板 - 下组 指标 -->
+  <div class="gis-panel anim-slide anim-delay-3" style="left:1489px; top:816px; width:412px;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="gis-title-bar">
+      <span class="gtb-dot"></span>
+      <span class="gtb-title">パフォーマンス指標</span>
+      <span class="gtb-sub">METRICS</span>
+      <span class="gtb-rect"></span>
+    </div>
+    <div class="rb-metrics">
+      <div class="rb-metric">
+        <div class="rm-val">96.2</div>
+        <div class="rm-label">CPU使用率</div>
+      </div>
+      <div class="rb-metric">
+        <div class="rm-val">64.8</div>
+        <div class="rm-label">メモリ</div>
+      </div>
+      <div class="rb-metric">
+        <div class="rm-val">42.5</div>
+        <div class="rm-label">ディスク</div>
+      </div>
+      <div class="rb-metric">
+        <div class="rm-val">88.1</div>
+        <div class="rm-label">ネットワーク</div>
+      </div>
+    </div>
+    <div class="rb-bottom-data">
+      <div class="rb-data-card">
+        <span class="rdc-label">スループット</span>
+        <span class="rdc-val">1.28 GB/s</span>
+      </div>
+      <div class="rb-data-card">
+        <span class="rdc-label">遅延</span>
+        <span class="rdc-val">12.4 ms</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部 - 运维监控 -->
+  <div class="gis-panel anim-fade anim-delay-3" style="left:932px; top:843px; width:532px; height:211px;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="ops-monitor">
+      <div class="ops-title">運用データの監視</div>
+      <div class="ops-data-row">
+        <div class="ops-data-item">
+          <div class="odi-label">タイミング</div>
+          <div class="odi-val">900<span class="ou">MB</span></div>
+        </div>
+        <div class="ops-data-item">
+          <div class="odi-label">データノード</div>
+          <div class="odi-val">09/08</div>
+        </div>
+        <div class="ops-data-item">
+          <div class="odi-label">PLC</div>
+          <div class="odi-val">5.89</div>
+        </div>
+        <div class="ops-data-item">
+          <div class="odi-label">AGE</div>
+          <div class="odi-val">18.00</div>
+        </div>
+      </div>
+      <!-- 折线图 -->
+      <div class="ops-line-chart">
+        <svg width="100%" height="100%" viewBox="0 0 480 60" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="opsGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="rgba(24,254,254,0.6)"/>
+              <stop offset="100%" stop-color="rgba(24,254,254,0)"/>
+            </linearGradient>
+          </defs>
+          <path d="M 0,40 L 40,35 L 80,42 L 120,28 L 160,32 L 200,20 L 240,25 L 280,15 L 320,22 L 360,10 L 400,18 L 440,8 L 480,12 L 480,60 L 0,60 Z" fill="url(#opsGrad)"/>
+          <path d="M 0,40 L 40,35 L 80,42 L 120,28 L 160,32 L 200,20 L 240,25 L 280,15 L 320,22 L 360,10 L 400,18 L 440,8 L 480,12" fill="none" stroke="#18FEFE" stroke-width="1"/>
+        </svg>
+      </div>
+      <!-- 数据卡片 -->
+      <div class="ops-cards">
+        <div class="ops-card">
+          <span class="oc-label">正常稼働率</span>
+          <span class="oc-val">99.8<span class="ocu">%</span></span>
+          <span class="oc-trend">▲ 0.2%</span>
+        </div>
+        <div class="ops-card">
+          <span class="oc-label">アラート数</span>
+          <span class="oc-val">3<span class="ocu">件</span></span>
+          <span class="oc-trend">▼ 2件</span>
+        </div>
+        <div class="ops-card">
+          <span class="oc-label">処理成功率</span>
+          <span class="oc-val">98.6<span class="ocu">%</span></span>
+          <span class="oc-trend">▲ 1.4%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部左 - 三列数据 -->
+  <div class="gis-panel anim-fade anim-delay-4" style="left:455px; top:846px; width:452px; height:206px;">
+    <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+    <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+    <div class="bottom-left-cols">
+      <div class="blc-col">
+        <div class="blc-col-title">デバイス状態</div>
+        <div class="blc-item"><span class="bi-label">稼働中</span><span class="bi-val">248</span></div>
+        <div class="blc-item"><span class="bi-label">待機中</span><span class="bi-val alt">42</span></div>
+        <div class="blc-item"><span class="bi-label">異常</span><span class="bi-val white">6</span></div>
+        <div class="blc-item"><span class="bi-label">オフライン</span><span class="bi-val white">12</span></div>
+      </div>
+      <div class="blc-col">
+        <div class="blc-col-title">通信状態</div>
+        <div class="blc-item"><span class="bi-label">4G接続</span><span class="bi-val">186</span></div>
+        <div class="blc-item"><span class="bi-label">5G接続</span><span class="bi-val alt">98</span></div>
+        <div class="blc-item"><span class="bi-label">光ファイバ</span><span class="bi-val">42</span></div>
+        <div class="blc-item"><span class="bi-label">信号強度</span><span class="bi-val">-68dBm</span></div>
+      </div>
+      <div class="blc-col">
+        <div class="blc-col-title">リアルタイムログ</div>
+        <div class="blc-item"><span class="bi-label">14:32:08</span><span class="bi-val">OK</span></div>
+        <div class="blc-item"><span class="bi-label">14:31:52</span><span class="bi-val alt">SYNC</span></div>
+        <div class="blc-item"><span class="bi-label">14:31:36</span><span class="bi-val">OK</span></div>
+        <div class="blc-item"><span class="bi-label">14:31:20</span><span class="bi-val white">WARN</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function scaleCanvas(){
+  var c=document.getElementById('canvas');
+  var s=Math.min(window.innerWidth/1920,window.innerHeight/1080);
+  c.style.transform='scale('+s+')';
+}
+scaleCanvas();window.addEventListener('resize',scaleCanvas);
+</script>
+</body>
+</html>

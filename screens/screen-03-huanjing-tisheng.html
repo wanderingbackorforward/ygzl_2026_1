@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>环境提升 - 智慧街道一体化管理平台</title>
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+/* ===== 屏幕特有样式 ===== */
+.screen-canvas { background: #090909; }
+.screen-header { top: 18px; }
+
+/* 中央装饰区域 */
+.center-decor {
+  position: absolute;
+  left: 500px; top: 130px;
+  width: 980px; height: 760px;
+  z-index: 1;
+  pointer-events: none;
+}
+.river-bg {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(32,248,255,0.1) 0%, rgba(9,20,40,0.3) 50%, rgba(9,9,9,0.1) 85%),
+    linear-gradient(180deg, rgba(20,40,70,0.3) 0%, rgba(10,25,45,0.25) 100%);
+  border: 1px solid rgba(32,248,255,0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.river-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(84,194,246,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(84,194,246,0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+/* 河道流线 */
+.river-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(32,248,255,0.5), transparent);
+}
+.river-wave {
+  position: absolute;
+  left: 10%; right: 10%;
+  height: 60px;
+  border-bottom: 2px solid rgba(32,248,255,0.3);
+  border-radius: 0 0 50% 50%/0 0 100% 100%;
+}
+.center-title {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%,-50%);
+  text-align: center;
+  color: var(--color-text-main);
+  font-family: var(--font-title);
+  font-size: 26px;
+  letter-spacing: 0.12em;
+  text-shadow: var(--shadow-text-glow);
+}
+.center-title small { display:block; font-size:12px; color:var(--color-text-dim); margin-top:8px; letter-spacing:0.04em; }
+/* AI 监测扫描 */
+.ai-scan {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%,-50%);
+  width: 360px; height: 360px;
+  border: 1px dashed rgba(32,248,255,0.25);
+  border-radius: 50%;
+  animation: spin 30s linear infinite;
+}
+.ai-scan::before {
+  content: '';
+  position: absolute;
+  left: 50%; top: 0;
+  width: 2px; height: 50%;
+  background: linear-gradient(180deg, var(--color-accent), transparent);
+  transform: translateX(-50%);
+}
+.ai-scan.inner { width: 220px; height: 220px; border-color: rgba(18,131,255,0.3); animation: spin 20s linear infinite reverse; }
+@keyframes spin { from{transform:translate(-50%,-50%) rotate(0);} to{transform:translate(-50%,-50%) rotate(360deg);} }
+.ai-core {
+  position: absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width: 120px; height: 120px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(32,248,255,0.3) 0%, rgba(18,131,255,0) 70%);
+  filter: blur(6px);
+}
+.monitor-node {
+  position: absolute;
+  width: 12px; height: 12px;
+  background: var(--color-accent);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--color-accent);
+}
+.monitor-node::after {
+  content: attr(data-label);
+  position: absolute;
+  left: 18px; top: -4px;
+  white-space: nowrap;
+  color: var(--color-text-sub);
+  font-size: 11px;
+  font-family: var(--font-body);
+}
+
+/* 侧边面板 */
+.side-panel { position: absolute; z-index: 5; }
+.side-panel .panel-title-bar {
+  position: relative; width: 100%; height: 48px;
+  background: linear-gradient(90deg, rgba(18,131,255,0.35) 0%, rgba(18,131,255,0) 100%);
+  border-left: 3px solid var(--color-accent);
+  margin-bottom: 16px;
+}
+.side-panel .panel-title { font-size: 22px; }
+.side-panel .panel-subtitle { font-size: 11px; color: var(--color-text-dim); }
+
+.panel-block {
+  background: rgba(9,20,40,0.45);
+  border: 1px solid rgba(32,248,255,0.12);
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  position: relative;
+}
+.panel-block .decor-corner { width: 12px; height: 12px; border-width: 1px; }
+
+/* 识别统计大数 */
+.recog-row { display: flex; gap: 12px; }
+.recog-card {
+  flex: 1;
+  text-align: center;
+  padding: 14px 6px;
+  background: linear-gradient(180deg, rgba(18,131,255,0.2) 0%, rgba(18,131,255,0) 100%);
+  border: 1px solid rgba(32,248,255,0.18);
+  border-radius: 4px;
+}
+.recog-card .rc-icon {
+  width: 36px; height: 36px; margin: 0 auto 8px;
+  border: 1px solid rgba(32,248,255,0.4);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--color-accent); font-size: 16px;
+  background: rgba(9,20,40,0.6);
+}
+.recog-card .rc-num { color: var(--color-accent); font-family: var(--font-number); font-size: 28px; text-shadow: var(--shadow-text-cyan); }
+.recog-card .rc-unit { color: #18B8FF; font-size: 11px; }
+.recog-card .rc-label { color: var(--color-text-label); font-size: 12px; display: block; margin-top: 4px; }
+
+/* 标签按钮 */
+.tab-btns { display: flex; gap: 10px; margin: 14px 0 4px; }
+.tab-btn {
+  flex: 1;
+  text-align: center;
+  padding: 9px 4px;
+  border: 1px solid rgba(32,248,255,0.25);
+  border-radius: 3px;
+  color: var(--color-text-sub);
+  font-size: 12px;
+  font-family: var(--font-body);
+  background: rgba(9,20,40,0.5);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.tab-btn.active {
+  background: linear-gradient(180deg, rgba(18,131,255,0.4) 0%, rgba(18,131,255,0.1) 100%);
+  color: var(--color-text-white);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 8px rgba(32,248,255,0.3);
+}
+
+/* 进度条项 */
+.prog-item { margin-bottom: 14px; }
+.prog-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.prog-label { color: var(--color-text-label); font-size: 12px; }
+.prog-val { color: var(--color-accent); font-family: var(--font-number); font-size: 18px; }
+.prog-val .pu { color: #18B8FF; font-size: 11px; }
+.prog-track {
+  height: 8px;
+  background: rgba(143,171,191,0.15);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.prog-fill {
+  height: 100%;
+  background: var(--grad-progress);
+  border-radius: 4px;
+  box-shadow: 0 0 6px rgba(32,248,255,0.5);
+}
+
+/* 监测数据网格 */
+.monitor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+.mon-item {
+  padding: 10px;
+  background: rgba(9,20,40,0.5);
+  border: 1px solid rgba(32,248,255,0.12);
+  border-radius: 3px;
+  text-align: center;
+}
+.mon-item .mi-label { color: var(--color-text-dim); font-size: 11px; display: block; }
+.mon-item .mi-val { color: var(--color-text-white); font-family: var(--font-number); font-size: 20px; }
+.mon-item .mi-unit { color: #18B8FF; font-size: 10px; }
+.mon-item .mi-status { color: var(--color-success); font-size: 10px; display: block; margin-top: 2px; }
+.mon-item.warn .mi-status { color: var(--color-warning); }
+
+/* 右侧环境监测 */
+.env-metric { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(143,171,191,0.12); }
+.env-metric:last-child { border-bottom: none; }
+.env-icon {
+  width: 40px; height: 40px; flex-shrink: 0;
+  border: 1px solid rgba(32,248,255,0.3);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--color-accent); font-size: 18px;
+  background: rgba(9,20,40,0.6);
+}
+.env-info { flex: 1; }
+.env-info .ei-label { color: var(--color-text-dim); font-size: 11px; }
+.env-info .ei-val { color: var(--color-text-white); font-family: var(--font-number); font-size: 22px; }
+.env-info .ei-val .eu { color: #18B8FF; font-size: 11px; }
+.env-trend { font-size: 11px; font-family: var(--font-din); }
+.env-trend.up { color: var(--color-alert); }
+.env-trend.down { color: var(--color-success); }
+
+/* 空气质量仪表 */
+.aqi-gauge { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+.aqi-ring { width: 110px; height: 110px; position: relative; flex-shrink: 0; }
+.aqi-info .ai-level { color: var(--color-success); font-family: var(--font-title); font-size: 20px; }
+.aqi-info .ai-desc { color: var(--color-text-dim); font-size: 11px; margin-top: 4px; }
+.aqi-info .ai-items { margin-top: 8px; font-size: 11px; color: var(--color-text-sub); line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="screen-canvas" id="canvas" style="width:1920px;height:1080px;">
+  <!-- 背景层 -->
+  <div class="bg-grad-left"></div>
+  <div class="bg-grad-right"></div>
+  <div class="bg-grad-top"></div>
+  <div class="bg-grad-bottom"></div>
+
+  <!-- 标题栏 -->
+  <div class="screen-header">
+    <div class="header-glow"></div>
+    <h1 class="header-title">智慧街道一体化管理平台</h1>
+    <p class="header-subtitle">Comprehensive exhibition of Nanjing smart Street</p>
+  </div>
+
+  <!-- 中央装饰 -->
+  <div class="center-decor">
+    <div class="river-bg">
+      <div class="river-grid"></div>
+      <div class="river-wave" style="left:8%; right:8%; top:30%;"></div>
+      <div class="river-wave" style="left:12%; right:12%; top:62%;"></div>
+      <div class="ai-scan"></div>
+      <div class="ai-scan inner"></div>
+      <div class="ai-core"></div>
+      <div class="monitor-node" style="left:22%; top:28%;" data-label="监测点A"></div>
+      <div class="monitor-node" style="left:70%; top:24%;" data-label="监测点B"></div>
+      <div class="monitor-node" style="left:30%; top:68%;" data-label="监测点C"></div>
+      <div class="monitor-node" style="left:74%; top:64%;" data-label="监测点D"></div>
+      <div class="center-title">河道AI智能监测<small>AI INTELLIGENT MONITORING</small></div>
+    </div>
+  </div>
+
+  <!-- 左侧面板:河道AI智能监测 -->
+  <div class="side-panel" style="left:20px; top:468px; width:460px;">
+    <div class="panel-title-bar">
+      <span class="panel-title">河道AI智能监测</span>
+      <span class="panel-subtitle">AI Intelligent monitoring</span>
+    </div>
+
+    <div class="panel-block">
+      <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+      <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+      <div class="section-header">
+        <span class="section-dot"></span>
+        <span class="section-title">AI识别统计</span>
+      </div>
+      <div class="recog-row">
+        <div class="recog-card">
+          <div class="rc-icon">异物</div>
+          <span class="rc-num">372</span><span class="rc-unit">次</span>
+          <span class="rc-label">异物识别</span>
+        </div>
+        <div class="recog-card">
+          <div class="rc-icon">漂浮</div>
+          <span class="rc-num">837</span><span class="rc-unit">次</span>
+          <span class="rc-label">漂浮物识别</span>
+        </div>
+      </div>
+      <div class="tab-btns">
+        <div class="tab-btn active">本月河道巡检统计</div>
+        <div class="tab-btn">本月防汛监测统计</div>
+      </div>
+    </div>
+
+    <div class="panel-block">
+      <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+      <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+      <div class="section-header">
+        <span class="section-dot"></span>
+        <span class="section-title">保洁与绿化</span>
+      </div>
+      <div class="prog-item">
+        <div class="prog-head">
+          <span class="prog-label">河面保洁</span>
+          <span class="prog-val">1500<span class="pu">个</span></span>
+        </div>
+        <div class="prog-track"><div class="prog-fill" style="width:82%;"></div></div>
+      </div>
+      <div class="prog-item">
+        <div class="prog-head">
+          <span class="prog-label">河道绿化</span>
+          <span class="prog-val">930<span class="pu">个</span></span>
+        </div>
+        <div class="prog-track"><div class="prog-fill" style="width:64%;"></div></div>
+      </div>
+      <div class="monitor-grid">
+        <div class="mon-item">
+          <span class="mi-label">水质等级</span>
+          <span class="mi-val">III<span class="mi-unit">类</span></span>
+          <span class="mi-status">达标</span>
+        </div>
+        <div class="mon-item">
+          <span class="mi-label">水位高度</span>
+          <span class="mi-val">3.6<span class="mi-unit">m</span></span>
+          <span class="mi-status">正常</span>
+        </div>
+        <div class="mon-item warn">
+          <span class="mi-label">水流速度</span>
+          <span class="mi-val">1.8<span class="mi-unit">m/s</span></span>
+          <span class="mi-status">偏高</span>
+        </div>
+        <div class="mon-item">
+          <span class="mi-label">水体浊度</span>
+          <span class="mi-val">12<span class="mi-unit">NTU</span></span>
+          <span class="mi-status">达标</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧面板:环境监测 -->
+  <div class="side-panel" style="left:1491px; top:162px; width:410px;">
+    <div class="panel-title-bar">
+      <span class="panel-title">环境监测</span>
+      <span class="panel-subtitle">Environment monitoring</span>
+    </div>
+
+    <div class="panel-block">
+      <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+      <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+      <div class="section-header">
+        <span class="section-dot"></span>
+        <span class="section-title">空气质量指数</span>
+      </div>
+      <div class="aqi-gauge">
+        <div class="aqi-ring">
+          <svg viewBox="0 0 120 120" style="width:100%;height:100%;">
+            <circle cx="60" cy="60" r="48" fill="none" stroke="rgba(143,171,191,0.15)" stroke-width="10"/>
+            <circle cx="60" cy="60" r="48" fill="none" stroke="url(#aqi)" stroke-width="10"
+                    stroke-dasharray="180 301.6" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+            <defs>
+              <linearGradient id="aqi" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#66FFD9"/>
+                <stop offset="100%" stop-color="#19CDFA"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="ring-center">
+            <span class="ring-num" style="font-size:24px;">58</span>
+            <span class="ring-text">AQI</span>
+          </div>
+        </div>
+        <div class="aqi-info">
+          <div class="ai-level">良</div>
+          <div class="ai-desc">空气质量良好</div>
+          <div class="ai-items">PM2.5: 32 μg/m³<br>PM10: 56 μg/m³<br>主污染物: 臭氧</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-block">
+      <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+      <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+      <div class="section-header">
+        <span class="section-dot"></span>
+        <span class="section-title">实时监测数据</span>
+      </div>
+      <div class="env-metric">
+        <div class="env-icon">温</div>
+        <div class="env-info">
+          <div class="ei-label">环境温度</div>
+          <div class="ei-val">26.4<span class="eu">°C</span></div>
+        </div>
+        <div class="env-trend up">+1.2</div>
+      </div>
+      <div class="env-metric">
+        <div class="env-icon">湿</div>
+        <div class="env-info">
+          <div class="ei-label">空气湿度</div>
+          <div class="ei-val">68<span class="eu">%</span></div>
+        </div>
+        <div class="env-trend down">-3</div>
+      </div>
+      <div class="env-metric">
+        <div class="env-icon">噪</div>
+        <div class="env-info">
+          <div class="ei-label">环境噪声</div>
+          <div class="ei-val">52<span class="eu">dB</span></div>
+        </div>
+        <div class="env-trend down">-2</div>
+      </div>
+      <div class="env-metric">
+        <div class="env-icon">风</div>
+        <div class="env-info">
+          <div class="ei-label">风速</div>
+          <div class="ei-val">3.2<span class="eu">m/s</span></div>
+        </div>
+        <div class="env-trend up">+0.4</div>
+      </div>
+      <div class="env-metric">
+        <div class="env-icon">尘</div>
+        <div class="env-info">
+          <div class="ei-label">扬尘浓度</div>
+          <div class="ei-val">0.18<span class="eu">mg/m³</span></div>
+        </div>
+        <div class="env-trend down">-0.03</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function scaleCanvas(){
+  var c=document.getElementById('canvas');
+  var s=Math.min(window.innerWidth/1920,window.innerHeight/1080);
+  c.style.transform='scale('+s+')';
+}
+scaleCanvas();window.addEventListener('resize',scaleCanvas);
+</script>
+</body>
+</html>

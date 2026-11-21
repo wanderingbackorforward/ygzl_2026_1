@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>应急保障 - 智慧街道一体化管理平台</title>
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+/* ===== 屏幕特有样式 ===== */
+.screen-canvas { background: #090909; }
+.screen-header { top: 18px; }
+
+/* 中央装饰 */
+.center-decor {
+  position: absolute;
+  left: 500px; top: 130px;
+  width: 980px; height: 760px;
+  z-index: 1;
+  pointer-events: none;
+}
+.emer-bg {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(239,48,66,0.08) 0%, rgba(9,20,40,0.3) 50%, rgba(9,9,9,0.1) 85%),
+    linear-gradient(180deg, rgba(20,40,70,0.3) 0%, rgba(10,25,45,0.25) 100%);
+  border: 1px solid rgba(32,248,255,0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.emer-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(84,194,246,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(84,194,246,0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+.emer-radar {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%,-50%);
+  width: 460px; height: 460px;
+  border: 1px solid rgba(32,248,255,0.2);
+  border-radius: 50%;
+}
+.emer-radar::before, .emer-radar::after {
+  content: '';
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%,-50%);
+  border: 1px dashed rgba(32,248,255,0.15);
+  border-radius: 50%;
+}
+.emer-radar::before { width: 320px; height: 320px; }
+.emer-radar::after { width: 180px; height: 180px; }
+.emer-sweep {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%,-50%);
+  width: 460px; height: 460px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(32,248,255,0.18) 0deg, transparent 70deg, transparent 360deg);
+  animation: spin 6s linear infinite;
+}
+@keyframes spin { from{transform:translate(-50%,-50%) rotate(0);} to{transform:translate(-50%,-50%) rotate(360deg);} }
+.emer-core {
+  position: absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width: 100px; height: 100px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(239,48,66,0.4) 0%, rgba(239,48,66,0) 70%);
+  filter: blur(6px);
+  animation: pulse 2s ease-in-out infinite;
+}
+.emer-title {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%,-50%);
+  text-align: center;
+  color: var(--color-text-main);
+  font-family: var(--font-title);
+  font-size: 24px;
+  letter-spacing: 0.12em;
+  text-shadow: var(--shadow-text-glow);
+}
+.emer-title small { display:block; font-size:11px; color:var(--color-text-dim); margin-top:6px; letter-spacing:0.04em; }
+.emer-point {
+  position: absolute;
+  width: 10px; height: 10px;
+  background: var(--color-alert);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--color-alert);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+.emer-point.cyan { background: var(--color-accent); box-shadow: 0 0 10px var(--color-accent); }
+.emer-point::after {
+  content: attr(data-label);
+  position: absolute;
+  left: 16px; top: -4px;
+  white-space: nowrap;
+  color: var(--color-text-sub);
+  font-size: 11px;
+}
+
+/* 侧边面板 */
+.side-panel { position: absolute; z-index: 5; }
+.side-panel .panel-title-bar {
+  position: relative; width: 100%; height: 44px;
+  background: linear-gradient(90deg, rgba(18,131,255,0.35) 0%, rgba(18,131,255,0) 100%);
+  border-left: 3px solid var(--color-accent);
+  margin-bottom: 14px;
+}
+.side-panel .panel-title { font-size: 22px; line-height: 44px; }
+.side-panel .panel-subtitle { font-size: 11px; color: var(--color-text-dim); line-height: 44px; }
+
+.panel-block {
+  background: rgba(9,20,40,0.45);
+  border: 1px solid rgba(32,248,255,0.12);
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  position: relative;
+}
+.panel-block .decor-corner { width: 12px; height: 12px; border-width: 1px; }
+
+/* 值班人员 */
+.duty-list { margin-top: 6px; }
+.duty-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(143,171,191,0.1);
+}
+.duty-row:last-child { border-bottom: none; }
+.duty-avatar {
+  width: 36px; height: 36px; flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(18,131,255,0.4), rgba(32,248,255,0.2));
+  border: 1px solid rgba(32,248,255,0.4);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--color-text-white); font-family: var(--font-title); font-size: 14px;
+}
+.duty-info { flex: 1; }
+.duty-info .di-name { color: var(--color-text-white); font-size: 13px; font-family: var(--font-body); }
+.duty-info .di-role { color: var(--color-text-dim); font-size: 11px; }
+.duty-status {
+  font-size: 10px; padding: 2px 8px; border-radius: 2px;
+  color: var(--color-success); border: 1px solid rgba(25,205,250,0.5);
+}
+.duty-status.off { color: var(--color-text-dim); border-color: rgba(143,171,191,0.3); }
+
+/* 应急物资 */
+.supply-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+.supply-item {
+  padding: 10px;
+  background: rgba(9,20,40,0.5);
+  border: 1px solid rgba(32,248,255,0.12);
+  border-radius: 3px;
+  text-align: center;
+}
+.supply-item .si-icon {
+  width: 30px; height: 30px; margin: 0 auto 6px;
+  border: 1px solid rgba(32,248,255,0.35);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--color-accent); font-size: 14px;
+}
+.supply-item .si-val { color: var(--color-text-white); font-family: var(--font-number); font-size: 20px; }
+.supply-item .si-unit { color: #18B8FF; font-size: 10px; }
+.supply-item .si-label { color: var(--color-text-label); font-size: 11px; display: block; margin-top: 2px; }
+
+/* 实时通告表格 */
+.notice-table { width: 100%; margin-top: 6px; }
+.notice-row {
+  display: flex; align-items: center;
+  height: 40px;
+  background: #04253D;
+  border: 1px solid rgba(2,169,255,0.4);
+  margin-bottom: 6px;
+  border-radius: 2px;
+  transition: all 0.3s;
+}
+.notice-row:hover { background: rgba(2,169,255,0.15); box-shadow: 0 0 8px rgba(2,169,255,0.3); }
+.notice-row .nc-time {
+  width: 104px; flex-shrink: 0;
+  text-align: center;
+  color: var(--color-cyan); font-family: var(--font-din); font-size: 12px;
+  border-right: 1px solid rgba(2,169,255,0.3);
+  letter-spacing: 0.05em;
+}
+.notice-row .nc-cat {
+  width: 58px; flex-shrink: 0;
+  text-align: center;
+  font-size: 11px;
+  border-right: 1px solid rgba(2,169,255,0.3);
+}
+.notice-row .nc-cat.alert { color: var(--color-alert); }
+.notice-row .nc-cat.warn { color: var(--color-warning); }
+.notice-row .nc-cat.info { color: var(--color-accent); }
+.notice-row .nc-desc {
+  width: 196px; flex: 1;
+  padding: 0 10px;
+  color: var(--color-text-gray); font-size: 11px;
+  font-family: var(--font-body);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.notice-table-head {
+  display: flex; align-items: center;
+  height: 30px;
+  background: rgba(2,169,255,0.15);
+  border: 1px solid rgba(2,169,255,0.4);
+  border-radius: 2px;
+  margin-bottom: 8px;
+}
+.notice-table-head span {
+  color: var(--color-text-label); font-size: 11px; text-align: center;
+}
+.notice-table-head .nth-time { width: 104px; border-right: 1px solid rgba(2,169,255,0.3); }
+.notice-table-head .nth-cat { width: 58px; border-right: 1px solid rgba(2,169,255,0.3); }
+.notice-table-head .nth-desc { flex: 1; padding: 0 10px; text-align: left; }
+
+/* 右侧应急资源 */
+.res-stat { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(143,171,191,0.12); }
+.res-stat:last-child { border-bottom: none; }
+.res-icon {
+  width: 44px; height: 44px; flex-shrink: 0;
+  border: 1px solid rgba(32,248,255,0.3);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--color-accent); font-size: 18px;
+  background: rgba(9,20,40,0.6);
+}
+.res-info { flex: 1; }
+.res-info .ri-label { color: var(--color-text-dim); font-size: 11px; }
+.res-info .ri-val { color: var(--color-text-white); font-family: var(--font-number); font-size: 24px; }
+.res-info .ri-val .ru { color: #18B8FF; font-size: 11px; }
+.res-bar { width: 60px; height: 6px; background: rgba(143,171,191,0.15); border-radius: 3px; overflow: hidden; }
+.res-bar .rb-fill { height: 100%; background: var(--grad-progress); border-radius: 3px; }
+
+/* 应急队伍环形 */
+.team-rings { display: flex; justify-content: space-around; margin-top: 8px; }
+.team-ring { text-align: center; }
+.team-ring .ring-chart { width: 100px; height: 100px; }
+.team-ring .ring-num { font-size: 20px; }
+.team-ring .ring-text { font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="screen-canvas" id="canvas" style="width:1920px;height:1080px;">
+  <!-- 背景层 -->
+  <div class="bg-grad-left"></div>
+  <div class="bg-grad-right"></div>
+  <div class="bg-grad-top"></div>
+  <div class="bg-grad-bottom"></div>
+
+  <!-- 标题栏 -->
+  <div class="screen-header">
+    <div class="header-glow"></div>
+    <h1 class="header-title">智慧街道一体化管理平台</h1>
+    <p class="header-subtitle">Comprehensive exhibition of Nanjing smart Street</p>
+  </div>
+
+  <!-- 中央装饰 -->
+  <div class="center-decor">
+    <div class="emer-bg">
+      <div class="emer-grid"></div>
+      <div class="emer-radar"></div>
+      <div class="emer-sweep"></div>
+      <div class="emer-core"></div>
+      <div class="emer-point" style="left:24%; top:30%;" data-label="应急点A"></div>
+      <div class="emer-point cyan" style="left:68%; top:26%;" data-label="应急点B"></div>
+      <div class="emer-point cyan" style="left:30%; top:66%;" data-label="应急点C"></div>
+      <div class="emer-point" style="left:72%; top:62%;" data-label="应急点D"></div>
+      <div class="emer-point cyan" style="left:50%; top:20%;" data-label="指挥中心"></div>
+      <div class="emer-title">应急指挥调度<small>EMERGENCY COMMAND</small></div>
+    </div>
+  </div>
+
+  <!-- 左侧面板1:应急值守 -->
+  <div class="side-panel" style="left:20px; top:128px; width:460px;">
+    <div class="panel-title-bar">
+      <span class="panel-title">应急值守</span>
+      <span class="panel-subtitle">Emergency duty</span>
+    </div>
+
+    <div class="panel-block">
+      <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+      <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+      <div class="section-header">
+        <span class="section-dot"></span>
+        <span class="section-title">值班人员</span>
+      </div>
+      <div class="duty-list">
+        <div class="duty-row">
+          <div class="duty-avatar">王</div>
+          <div class="duty-info"><div class="di-name">王志强</div><div class="di-role">总值班长</div></div>
+          <span class="duty-status">在岗</span>
+        </div>
+        <div class="duty-row">
+          <div class="duty-avatar">李</div>
+          <div class="duty-info"><div class="di-name">李建华</div><div class="di-role">值班员</div></div>
+          <span class="duty-status">在岗</span>
+        </div>
+        <div class="duty-row">
+          <div class="duty-avatar">张</div>
+          <div class="duty-info"><div class="di-name">张明远</div><div class="di-role">值班员</div></div>
+          <span class="duty-status">在岗</span>
+        </div>
+        <div class="duty-row">
+          <div class="duty-avatar">陈</div>
+          <div class="duty-info"><div class="di-name">陈思雨</div><div class="di-role">备勤</div></div>
+          <span class="duty-status off">备勤</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-block">
+      <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+      <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+      <div class="section-header">
+        <span class="section-dot"></span>
+        <span class="section-title">应急物资统计</span>
+      </div>
+      <div class="supply-grid">
+        <div class="supply-item">
+          <div class="si-icon">救</div>
+          <span class="si-val">1280</span><span class="si-unit">件</span>
+          <span class="si-label">救生器材</span>
+        </div>
+        <div class="supply-item">
+          <div class="si-icon">医</div>
+          <span class="si-val">860</span><span class="si-unit">箱</span>
+          <span class="si-label">医疗物资</span>
+        </div>
+        <div class="supply-item">
+          <div class="si-icon">通</div>
+          <span class="si-val">156</span><span class="si-unit">台</span>
+          <span class="si-label">通讯设备</span>
+        </div>
+        <div class="supply-item">
+          <div class="si-icon">粮</div>
+          <span class="si-val">3200</span><span class="si-unit">份</span>
+          <span class="si-label">应急食品</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 左侧面板2:实时通告 -->
+  <div class="side-panel" style="left:20px; top:640px; width:460px;">
+    <div class="panel-title-bar">
+      <span class="panel-title">实时通告</span>
+      <span class="panel-subtitle">Real time notification</span>
+    </div>
+
+    <div class="panel-block" style="padding:12px 14px;">
+      <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+      <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+      <div class="notice-table">
+        <div class="notice-table-head">
+          <span class="nth-time">时间</span>
+          <span class="nth-cat">类别</span>
+          <span class="nth-desc">通告描述</span>
+        </div>
+        <div class="notice-row">
+          <span class="nc-time">14:32</span>
+          <span class="nc-cat alert">紧急</span>
+          <span class="nc-desc">网格3 突发火情预警,已派员处置</span>
+        </div>
+        <div class="notice-row">
+          <span class="nc-time">13:58</span>
+          <span class="nc-cat warn">预警</span>
+          <span class="nc-desc">气象台发布雷雨大风黄色预警</span>
+        </div>
+        <div class="notice-row">
+          <span class="nc-time">12:15</span>
+          <span class="nc-cat info">通知</span>
+          <span class="nc-desc">应急演练定于本周五下午开展</span>
+        </div>
+        <div class="notice-row">
+          <span class="nc-time">10:46</span>
+          <span class="nc-cat info">通知</span>
+          <span class="nc-desc">防汛物资盘点完成,库存充足</span>
+        </div>
+        <div class="notice-row">
+          <span class="nc-time">09:20</span>
+          <span class="nc-cat warn">预警</span>
+          <span class="nc-desc">河道水位上涨,启动防汛响应</span>
+        </div>
+        <div class="notice-row">
+          <span class="nc-time">08:05</span>
+          <span class="nc-cat info">通知</span>
+          <span class="nc-desc">今日值班交接完成,人员到岗</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧面板:应急资源统计 -->
+  <div class="side-panel" style="left:1490px; top:180px; width:412px;">
+    <div class="panel-title-bar">
+      <span class="panel-title">应急资源</span>
+      <span class="panel-subtitle">Emergency resources</span>
+    </div>
+
+    <div class="panel-block">
+      <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+      <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+      <div class="section-header">
+        <span class="section-dot"></span>
+        <span class="section-title">资源储备</span>
+      </div>
+      <div class="res-stat">
+        <div class="res-icon">队</div>
+        <div class="res-info">
+          <div class="ri-label">应急队伍</div>
+          <div class="ri-val">12<span class="ru">支</span></div>
+        </div>
+        <div class="res-bar"><div class="rb-fill" style="width:80%;"></div></div>
+      </div>
+      <div class="res-stat">
+        <div class="res-icon">车</div>
+        <div class="res-info">
+          <div class="ri-label">应急车辆</div>
+          <div class="ri-val">36<span class="ru">辆</span></div>
+        </div>
+        <div class="res-bar"><div class="rb-fill" style="width:65%;"></div></div>
+      </div>
+      <div class="res-stat">
+        <div class="res-icon">库</div>
+        <div class="res-info">
+          <div class="ri-label">物资仓库</div>
+          <div class="ri-val">8<span class="ru">个</span></div>
+        </div>
+        <div class="res-bar"><div class="rb-fill" style="width:90%;"></div></div>
+      </div>
+      <div class="res-stat">
+        <div class="res-icon">避</div>
+        <div class="res-info">
+          <div class="ri-label">避难场所</div>
+          <div class="ri-val">15<span class="ru">处</span></div>
+        </div>
+        <div class="res-bar"><div class="rb-fill" style="width:75%;"></div></div>
+      </div>
+    </div>
+
+    <div class="panel-block">
+      <span class="decor-corner tl"></span><span class="decor-corner tr"></span>
+      <span class="decor-corner bl"></span><span class="decor-corner br"></span>
+      <div class="section-header">
+        <span class="section-dot"></span>
+        <span class="section-title">队伍就绪率</span>
+      </div>
+      <div class="team-rings">
+        <div class="team-ring">
+          <div class="ring-chart">
+            <svg class="ring-svg" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(143,171,191,0.15)" stroke-width="9"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#1283FF" stroke-width="9"
+                      stroke-dasharray="263.8 314" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+            </svg>
+            <div class="ring-center"><span class="ring-num">84%</span><span class="ring-text">消防</span></div>
+          </div>
+        </div>
+        <div class="team-ring">
+          <div class="ring-chart">
+            <svg class="ring-svg" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(143,171,191,0.15)" stroke-width="9"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#20F8FF" stroke-width="9"
+                      stroke-dasharray="282.6 314" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+            </svg>
+            <div class="ring-center"><span class="ring-num">90%</span><span class="ring-text">医疗</span></div>
+          </div>
+        </div>
+        <div class="team-ring">
+          <div class="ring-chart">
+            <svg class="ring-svg" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(143,171,191,0.15)" stroke-width="9"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#FAC46E" stroke-width="9"
+                      stroke-dasharray="251.2 314" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+            </svg>
+            <div class="ring-center"><span class="ring-num">80%</span><span class="ring-text">民兵</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function scaleCanvas(){
+  var c=document.getElementById('canvas');
+  var s=Math.min(window.innerWidth/1920,window.innerHeight/1080);
+  c.style.transform='scale('+s+')';
+}
+scaleCanvas();window.addEventListener('resize',scaleCanvas);
+</script>
+</body>
+</html>
