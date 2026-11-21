@@ -1127,12 +1127,18 @@ def get_status_summary():
 
     try:
         settlement_info = settlement_rules.summarize_points(repo.get_summary() or [])
+        if not settlement_info.get('total_points'):
+            settlement_info = {}
+            errors['settlement'] = '无有效沉降点位'
     except Exception as e:
         settlement_info = {}
         errors['settlement'] = str(e)
 
     try:
         temperature_info = temperature_rules.summarize_points(repo.temperature_get_points() or [])
+        if not temperature_info.get('total_points'):
+            temperature_info = {}
+            errors['temperature'] = '无有效温度点位'
     except Exception as e:
         temperature_info = {}
         errors['temperature'] = str(e)
@@ -1153,6 +1159,7 @@ def get_status_summary():
         settlement=settlement_info,
         temperature=temperature_info,
         tickets=tickets_info,
+        unavailable=list(errors.keys()),
     )
     if errors:
         payload['errors'] = errors

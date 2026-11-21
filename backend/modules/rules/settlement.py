@@ -29,6 +29,15 @@ def _to_float(value: Any) -> Optional[float]:
         return None
 
 
+def _first_value(row: Dict[str, Any], *keys: str) -> Any:
+    """按顺序取第一个非 None 的字段，避免 dict.get 默认值掩盖空值。"""
+    for key in keys:
+        value = row.get(key)
+        if value is not None:
+            return value
+    return None
+
+
 def classify_point(
     total_change: Any = None,
     trend_slope: Any = None,
@@ -50,6 +59,14 @@ def classify_point(
     abs_change = abs(change) if change is not None else None
     abs_rate = abs(slope) if slope is not None else None
 
+    if abs_change is None and abs_rate is None:
+        return {
+            'level': None,
+            'level_cn': '未评估',
+            'value': None,
+            'reason': '缺少累计沉降与速率数据',
+        }
+
     if (abs_change is not None and abs_change >= THRESHOLDS['cumulative_alert']) or (
         abs_rate is not None and abs_rate >= THRESHOLDS['rate_alert']
     ):
@@ -69,7 +86,7 @@ def classify_point(
         return {'level': 'warning', 'level_cn': LEVEL_LABELS['warning'], 'value': change, 'reason': reason}
 
     if change is None:
-        reason = '缺少累计沉降数据'
+        reason = f'日沉降速率 {slope:.4f} mm/d，未超过预警阈值 {THRESHOLDS["rate_warning"]:.2f} mm/d'
     else:
         reason = f'累计沉降 {change:.2f} mm，未超过预警阈值 {THRESHOLDS["cumulative_warning"]:.2f} mm'
     return {'level': 'normal', 'level_cn': LEVEL_LABELS['normal'], 'value': change, 'reason': reason}
@@ -79,8 +96,8 @@ def enrich_point(row: Dict[str, Any]) -> Dict[str, Any]:
     """给 /api/summary 的单点补 level / level_cn / reason，原字段保持不变。"""
     result = dict(row)
     info = classify_point(
-        total_change=row.get('total_change', row.get('cumulative_change')),
-        trend_slope=row.get('trend_slope', row.get('avg_daily_rate')),
+        total_change=_first_value(row, 'total_change', 'cumulative_change'),
+        trend_slope=_first_value(row, 'trend_slope', 'avg_daily_rate'),
         stored_level=row.get('alert_level'),
     )
     result.update(info)
@@ -100,7 +117,7 @@ def summarize_points(points: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
             unknown += 1
             continue
         counts[level] += 1
-        change = _to_float(row.get('total_change', row.get('cumulative_change')))
+        change = _to_float(_first_value(row, 'total_change', 'cumulative_change'))
         if change is not None:
             values.append({'point_id': row.get('point_id'), 'total_change': change})
 

@@ -6,7 +6,7 @@
 """
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from .common import level_label, max_level
 
@@ -16,6 +16,7 @@ def build_status(
     temperature: Optional[Dict[str, Any]] = None,
     cracks: Optional[Dict[str, Any]] = None,
     tickets: Optional[Dict[str, Any]] = None,
+    unavailable: Optional[Iterable[str]] = None,
     as_of: Optional[str] = None,
 ) -> Dict[str, Any]:
     settlement = settlement or {}
@@ -48,15 +49,30 @@ def build_status(
         parts.append(f'{pending_tickets} 张工单待处理')
 
     if not parts:
-        headline = '各项监测指标正常，无待处理工单。'
+        base_headline = '各项监测指标正常，无待处理工单。'
     else:
         prefix = '存在报警：' if overall == 'alert' else '存在预警：'
-        headline = prefix + '、'.join(parts) + '。'
+        base_headline = prefix + '、'.join(parts) + '。'
+
+    missing: List[str] = [str(item) for item in (unavailable or []) if item]
+    if missing:
+        labels = {'settlement': '沉降', 'temperature': '温度', 'cracks': '裂缝', 'tickets': '工单'}
+        missing_text = '、'.join(labels.get(item, item) for item in missing)
+        if overall == 'normal':
+            overall = 'warning'
+        if parts:
+            headline = f'数据不完整：{missing_text}暂不可用。' + base_headline
+        else:
+            headline = f'数据不完整：{missing_text}暂不可用，其余来源暂无异常。'
+    else:
+        headline = base_headline
 
     return {
         'level': overall,
         'level_cn': level_label(overall),
         'headline': headline,
+        'degraded': bool(missing),
+        'unavailable': missing,
         'as_of': as_of or datetime.now().isoformat(timespec='seconds'),
         'counts': {
             'settlement_total': int(settlement.get('total_points') or 0),
