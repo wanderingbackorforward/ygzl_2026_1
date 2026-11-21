@@ -19,9 +19,22 @@ type DataRange = {
   generated_at?: string
 }
 
+type InsarDatasetItem = {
+  name: string
+  source: string
+  updated_at: string | null
+}
+
+type InsarMeta = {
+  items?: InsarDatasetItem[]
+  source?: string
+  updated_at?: string | null
+}
+
 // 同一会话只拉一次，页面切换不重复请求
 let cached: DataRange | null = null
 let inflight: Promise<DataRange> | null = null
+let cachedInsar: InsarMeta | null = null
 
 function loadDataRange(): Promise<DataRange> {
   if (cached) return Promise.resolve(cached)
@@ -69,6 +82,8 @@ export default function DataCutoffBar() {
   const { pathname } = useLocation()
   const [range, setRange] = useState<DataRange | null>(cached)
   const [failed, setFailed] = useState(false)
+  const [insarMeta, setInsarMeta] = useState<InsarMeta | null>(cachedInsar)
+  const [insarFailed, setInsarFailed] = useState(false)
 
   const isHidden =
     HIDDEN_PREFIXES.includes(pathname) || pathname.startsWith('/cover')
@@ -83,12 +98,46 @@ export default function DataCutoffBar() {
     return () => { alive = false }
   }, [isHidden])
 
+  // InSAR 是文件数据集（Shapefile + GeoJSON），单独取数据集清单与更新时间
+  useEffect(() => {
+    if (!pathname.startsWith('/insar')) return
+    if (cachedInsar) {
+      setInsarMeta(cachedInsar)
+      return
+    }
+    let alive = true
+    apiGet<InsarMeta>('/insar/datasets')
+      .then(data => {
+        cachedInsar = data
+        if (alive) {
+          setInsarMeta(data)
+          setInsarFailed(false)
+        }
+      })
+      .catch(() => { if (alive) setInsarFailed(true) })
+    return () => { alive = false }
+  }, [pathname])
+
   if (isHidden) return null
 
   if (pathname.startsWith('/insar')) {
+    const items = insarMeta?.items || []
     return (
       <div style={barStyle}>
-        <span style={{ color: '#fbbf24' }}>InSAR：库内无对应数据表，页面数据来源待确认</span>
+        <span style={{ color: '#6b8db5' }}>InSAR 文件数据集</span>
+        {insarFailed && (
+          <span style={{ color: '#fbbf24' }}>数据集清单接口不可用（/api/insar/datasets）</span>
+        )}
+        {!insarFailed && !insarMeta && (
+          <span style={{ color: '#8bb8e0' }}>加载中…</span>
+        )}
+        {items.map(item => (
+          <span key={item.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ color: '#b0cfee' }}>{item.name}</span>
+            <span style={{ color: '#8bb8e0' }}>{item.source || '—'}</span>
+            <span style={{ color: '#8bb8e0' }}>更新 {fmt(item.updated_at)}</span>
+          </span>
+        ))}
       </div>
     )
   }

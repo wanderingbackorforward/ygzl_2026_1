@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { API_BASE } from '../../lib/api';
+import { API_BASE, createAlertTicket } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
 
 interface TemperatureIntelligencePanelProps {
@@ -121,32 +121,24 @@ export const TemperatureIntelligencePanel: React.FC<TemperatureIntelligencePanel
 
     setTicketSubmitting(true);
     try {
-      const response = await fetch(`${API_BASE}/analysis/v2/temperature/create-ticket`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          anomaly_id: event?.id || `temperature-risk:${sensorId}`,
-          point_id: sensorId,
-          title,
-          description: descriptionLines.join('\n'),
-          severity,
-          anomaly_type: event?.event_type || 'temperature_intelligence',
-          current_value: getCurrentValueForEvent(event),
-          threshold: getThresholdForEvent(event),
-          send_email: sendEmail,
-        }),
+      const ticket = await createAlertTicket({
+        dataType: 'temperature',
+        pointId: sensorId,
+        title,
+        description: descriptionLines.join('\n'),
+        severity,
+        anomalyType: event?.event_type || 'temperature_intelligence',
+        currentValue: getCurrentValueForEvent(event),
+        threshold: getThresholdForEvent(event),
+        sendEmail,
+        source: 'temperature_intelligence',
       });
-      const result = await response.json();
-      if (result?.success) {
-        showNotice(`工单 ${result.data?.ticket_number || ''} 已创建，正在跳转工单中心`, 'success');
-        const ticketId = result.data?.ticket_id;
-        if (ticketId) {
-          navigate(`/tickets?ticketId=${ticketId}&created=1`);
-        } else {
-          navigate('/tickets');
-        }
+      showNotice(`工单 ${ticket.ticket_number || ''} 已创建，正在跳转工单中心`, 'success');
+      const ticketId = ticket.id;
+      if (ticketId) {
+        navigate(`/tickets?ticketId=${ticketId}&created=1`);
       } else {
-        showNotice(`工单创建失败：${result?.message || '未知错误'}`, 'error');
+        navigate('/tickets');
       }
     } catch (error) {
       showNotice(`工单创建失败：${error instanceof Error ? error.message : '网络错误'}`, 'error');

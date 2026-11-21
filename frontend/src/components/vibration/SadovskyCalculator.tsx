@@ -3,8 +3,8 @@
  * 输入药量/距离，预测PPV
  */
 
-import React, { useState, useMemo } from 'react'
-import { predictPPV, SITE_COEFFICIENTS } from '@/utils/vibration/gb6722'
+import React, { useState, useEffect } from 'react'
+import { calculateVibration } from '@/lib/api'
 import type { SiteType } from '@/utils/vibration/types'
 
 interface SadovskyCalculatorProps {
@@ -18,19 +18,36 @@ export const SadovskyCalculator: React.FC<SadovskyCalculatorProps> = ({
 }) => {
   const [Q, setQ] = useState<number>(100)  // 药量 kg
   const [R, setR] = useState<number>(100)  // 距离 m
+  const [predictedPPV, setPredictedPPV] = useState<number | null>(null)
+  const [coefficients, setCoefficients] = useState<{ K: number; alpha: number } | null>(null)
+  const [calcError, setCalcError] = useState<string>('')
 
-  // 获取场地系数
-  const coefficients = SITE_COEFFICIENTS[siteType]
-
-  // 预测 PPV
-  const predictedPPV = useMemo(() => {
-    return predictPPV({
-      K: coefficients.K,
-      alpha: coefficients.alpha,
-      Q,
-      R
-    })
-  }, [coefficients, Q, R])
+  // Sadovsky 预测由后端 /api/vibration/calculate 计算（防抖）
+  useEffect(() => {
+    if (Q <= 0 || R <= 0) {
+      setPredictedPPV(null)
+      setCalcError('药量与距离必须大于 0')
+      return
+    }
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      try {
+        const result = await calculateVibration({ site_type: siteType, Q, R })
+        if (cancelled) return
+        setPredictedPPV(result.predicted_ppv)
+        setCoefficients(result.coefficients)
+        setCalcError('')
+      } catch (err) {
+        if (cancelled) return
+        setPredictedPPV(null)
+        setCalcError(err instanceof Error ? err.message : '计算失败')
+      }
+    }, 300)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [siteType, Q, R])
 
   // 场地类型选项
   const siteTypeOptions: { value: SiteType; label: string }[] = [
@@ -68,8 +85,11 @@ export const SadovskyCalculator: React.FC<SadovskyCalculatorProps> = ({
           ))}
         </select>
         <div className="mt-1 text-xs text-slate-400">
-          K = {coefficients.K}, α = {coefficients.alpha}
+          K = {coefficients ? coefficients.K : '—'}, α = {coefficients ? coefficients.alpha : '—'}
         </div>
+        {calcError && (
+          <div className="mt-1 text-xs text-red-400">{calcError}</div>
+        )}
       </div>
 
       {/* 齐发药量 */}
@@ -106,7 +126,7 @@ export const SadovskyCalculator: React.FC<SadovskyCalculatorProps> = ({
       <div className="rounded-lg border border-slate-700 bg-slate-800 p-4">
         <div className="text-xs text-slate-400 mb-2">预测 PPV</div>
         <div className="text-3xl font-bold text-cyan-400">
-          {predictedPPV.toFixed(2)}
+          {predictedPPV === null ? '—' : predictedPPV.toFixed(2)}
           <span className="text-lg text-slate-400 ml-2">mm/s</span>
         </div>
       </div>

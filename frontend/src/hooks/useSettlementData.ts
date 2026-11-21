@@ -3,7 +3,6 @@ import { apiGet } from '../lib/api';
 import type {
   SummaryDataItem,
   PointDetailData,
-  TrendStats,
   PointPredictionData,
   PredictionSummaryItem,
   RiskAlertsResponse
@@ -76,35 +75,6 @@ export function usePointData(pointId: string | null): UsePointDataResult {
   }, [fetchData]);
 
   return { data, loading, error, refetch: fetchData };
-}
-
-export interface UseTrendStatsResult {
-  data: TrendStats | null;
-  loading: boolean;
-  error: string | null;
-}
-
-export function useTrendStats(): UseTrendStatsResult {
-  const [data, setData] = useState<TrendStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const result = await apiGet<TrendStats>('/trends');
-        setData(result);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load trends');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  return { data, loading, error };
 }
 
 export function useSettlementPoints(): { points: string[]; loading: boolean } {

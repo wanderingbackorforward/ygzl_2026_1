@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { API_BASE } from '../lib/api';
+import { API_BASE, createAlertTicket } from '../lib/api';
 
 // Types
 export interface ProfilePoint {
@@ -448,25 +448,27 @@ interface CreateTicketResult {
 }
 
 async function createSettlementTicket(payload: CreateTicketPayload): Promise<CreateTicketResult> {
-  const res = await fetch(`${API_BASE}/analysis/v2/settlement/create-ticket`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      point_id: payload.pointId,
-      title: payload.title,
-      description: payload.description,
-      severity: payload.severity === 'critical' ? 'high' : payload.severity,
-      anomaly_type: payload.anomalyType,
-      current_value: payload.currentValue,
-      threshold: payload.threshold,
-      send_email: payload.sendEmail !== false,
-    }),
+  const ticket = await createAlertTicket({
+    dataType: 'settlement',
+    pointId: payload.pointId,
+    title: payload.title,
+    description: payload.description,
+    severity: payload.severity === 'critical' ? 'high' : payload.severity,
+    anomalyType: payload.anomalyType,
+    currentValue: payload.currentValue ?? null,
+    threshold: payload.threshold ?? null,
+    sendEmail: payload.sendEmail !== false,
+    source: 'advanced_analysis',
   });
-  const result = await res.json();
-  if (!res.ok || !result?.success) {
-    throw new Error(result?.message || 'Failed to create ticket');
-  }
-  return result;
+  return {
+    success: true,
+    data: {
+      ticket_id: ticket.id,
+      ticket_number: ticket.ticket_number,
+      point_id: payload.pointId,
+      priority: ticket.priority,
+    },
+  };
 }
 
 export async function createJointAlertTicket(

@@ -35,7 +35,7 @@ export const TemperatureV2Cockpit: React.FC = () => {
   const fetchOverview = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await apiGet<any>('/temperature/v2/overview');
+      const result = await apiGet<any>('/temperature/summary?view=overview');
       const payload = result?.data && result?.success !== undefined ? result.data : result;
       setOverview(payload);
       const summary = payload?.summary || [];

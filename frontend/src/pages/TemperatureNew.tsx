@@ -11,7 +11,7 @@ import { TemperatureRangeChart } from '../components/charts/temperature/Temperat
 import { PointSelector } from '../components/shared/PointSelector';
 import { SensorDetails } from '../components/shared/SensorDetails';
 import { TemperatureSecondaryDataTab } from '../components/analysis-v2';
-import { API_BASE } from '../lib/api';
+import { createAlertTicket } from '../lib/api';
 import type { CardConfig } from '../types/layout';
 import type { AnomalyItem } from '../types/analysis-v2';
 import '../styles/variables.css';
@@ -64,29 +64,19 @@ const TemperatureSecondaryAnalysisCard: React.FC = () => {
 
     setCreating(true);
     try {
-      const response = await fetch(`${API_BASE}/analysis/v2/temperature/create-ticket`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          anomaly_id: anomaly.id,
-          point_id: anomaly.point_id,
-          title: anomaly.title,
-          description: anomaly.description,
-          severity: anomaly.severity,
-          anomaly_type: anomaly.anomaly_type,
-          current_value: anomaly.current_value,
-          threshold: anomaly.threshold,
-          send_email: sendEmail,
-        }),
+      const ticket = await createAlertTicket({
+        dataType: 'temperature',
+        pointId: anomaly.point_id,
+        title: anomaly.title,
+        description: anomaly.description,
+        severity: anomaly.severity,
+        anomalyType: anomaly.anomaly_type,
+        currentValue: anomaly.current_value ?? null,
+        threshold: anomaly.threshold ?? null,
+        sendEmail,
+        source: 'temperature_page',
       });
-
-      const result = await response.json();
-
-      if (result.success) {
-        alert(`工单创建成功!\n\n工单号: ${result.data?.ticket_number || 'N/A'}\n传感器: ${anomaly.point_id}`);
-      } else {
-        alert(`工单创建失败: ${result.message || '未知错误'}`);
-      }
+      alert(`工单创建成功!\n\n工单号: ${ticket.ticket_number || 'N/A'}\n传感器: ${anomaly.point_id}`);
     } catch (error) {
       console.error('Create ticket error:', error);
       alert(`工单创建失败: ${error instanceof Error ? error.message : '网络错误'}`);

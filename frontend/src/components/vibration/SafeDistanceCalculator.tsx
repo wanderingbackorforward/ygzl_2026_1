@@ -3,8 +3,8 @@
  * 输入药量/阈值，计算最小安全距离
  */
 
-import React, { useState, useMemo } from 'react'
-import { calculateSafeDistance, SITE_COEFFICIENTS } from '@/utils/vibration/gb6722'
+import React, { useState, useEffect } from 'react'
+import { calculateVibration } from '@/lib/api'
 import type { SiteType } from '@/utils/vibration/types'
 
 interface SafeDistanceCalculatorProps {
@@ -16,19 +16,36 @@ export const SafeDistanceCalculator: React.FC<SafeDistanceCalculatorProps> = ({
 }) => {
   const [Q, setQ] = useState<number>(100)        // 药量 kg
   const [V_limit, setVLimit] = useState<number>(20) // 允许振速 mm/s
+  const [safeDistance, setSafeDistance] = useState<number | null>(null)
+  const [coefficients, setCoefficients] = useState<{ K: number; alpha: number } | null>(null)
+  const [calcError, setCalcError] = useState<string>('')
 
-  const coefficients = SITE_COEFFICIENTS[siteType]
-
-  // 计算安全距离
-  const safeDistance = useMemo(() => {
-    if (V_limit <= 0 || Q <= 0) return 0
-    return calculateSafeDistance(
-      coefficients.K,
-      coefficients.alpha,
-      Q,
-      V_limit
-    )
-  }, [coefficients, Q, V_limit])
+  // 安全距离由后端 /api/vibration/calculate 反算（防抖）
+  useEffect(() => {
+    if (V_limit <= 0 || Q <= 0) {
+      setSafeDistance(null)
+      setCalcError('药量与允许振速必须大于 0')
+      return
+    }
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      try {
+        const result = await calculateVibration({ site_type: siteType, Q, v_limit: V_limit })
+        if (cancelled) return
+        setSafeDistance(result.safe_distance)
+        setCoefficients(result.coefficients)
+        setCalcError('')
+      } catch (err) {
+        if (cancelled) return
+        setSafeDistance(null)
+        setCalcError(err instanceof Error ? err.message : '计算失败')
+      }
+    }, 300)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [siteType, Q, V_limit])
 
   return (
     <div className="space-y-4">
@@ -66,7 +83,7 @@ export const SafeDistanceCalculator: React.FC<SafeDistanceCalculatorProps> = ({
       <div className="rounded-lg border border-slate-700 bg-slate-800 p-4">
         <div className="text-xs text-slate-400 mb-2">最小安全距离</div>
         <div className="text-3xl font-bold text-cyan-400">
-          {safeDistance.toFixed(1)}
+          {safeDistance === null ? '—' : safeDistance.toFixed(1)}
           <span className="text-lg text-slate-400 ml-2">m</span>
         </div>
       </div>
@@ -77,7 +94,10 @@ export const SafeDistanceCalculator: React.FC<SafeDistanceCalculatorProps> = ({
           <span className="text-cyan-400 font-semibold">公式：</span>
           R = (K/V)<sup>1/α</sup> · Q<sup>1/3</sup>
           <br />
-          当前参数：K={coefficients.K}, α={coefficients.alpha}
+          当前参数：K={coefficients ? coefficients.K : '—'}, α={coefficients ? coefficients.alpha : '—'}
+          {calcError && (
+            <div className="mt-1 text-red-400">{calcError}</div>
+          )}
         </div>
       </div>
     </div>

@@ -70,6 +70,132 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   return resp as T
 }
 
+export interface AlertTicketInput {
+  dataType: 'settlement' | 'temperature'
+  pointId: string
+  title: string
+  description?: string
+  anomalyType?: string
+  severity?: string
+  currentValue?: number | null
+  threshold?: number | null
+  sendEmail?: boolean
+  source?: string
+}
+
+export interface CreatedTicket {
+  id?: number | string
+  ticket_number?: string
+  priority?: string
+}
+
+/**
+ * 唯一的建单入口：POST /api/tickets。
+ * 只提交原始语义（data_type / severity / anomaly_type），
+ * 类型、优先级、子类型映射全部由后端 modules/rules/tickets.py 决定。
+ */
+export async function createAlertTicket(input: AlertTicketInput): Promise<CreatedTicket> {
+  return apiPost<CreatedTicket>('/tickets', {
+    title: input.title,
+    description: input.description || '',
+    data_type: input.dataType,
+    anomaly_type: input.anomalyType || '',
+    severity: input.severity || 'medium',
+    monitoring_point_id: input.pointId,
+    current_value: input.currentValue ?? null,
+    threshold_value: input.threshold ?? null,
+    status: 'PENDING',
+    creator_id: 'system',
+    creator_name: '系统自动',
+    auto_created: true,
+    send_email: input.sendEmail !== false,
+    alert_data: {
+      anomaly_type: input.anomalyType || '',
+      severity: input.severity || '',
+      detected_at: new Date().toISOString(),
+    },
+    metadata: {
+      source: input.source || 'frontend',
+      auto_created: true,
+      data_type: input.dataType,
+    },
+  })
+}
+
+// ==================== 振动规则（GB 6722 由后端 rules/vibration.py 唯一计算）====================
+
+export interface VibrationChannelInput {
+  channel_id: number
+  ppv: number
+  dominant_freq: number
+}
+
+export interface VibrationThresholds {
+  warn: number
+  alert: number
+  stop: number
+  frequency_band?: string
+  frequency_label?: string
+}
+
+export interface VibrationAdvice {
+  level: 'safe' | 'warn' | 'alert' | 'stop'
+  icon: string
+  color: string
+  message: string
+  actions: string[]
+}
+
+export interface VibrationChannelAnalysis {
+  channel_id: number
+  ppv: number
+  dominant_freq: number
+  thresholds: VibrationThresholds
+  alert_level: 'safe' | 'warn' | 'alert' | 'stop'
+  status: 'normal' | 'warning' | 'alert'
+  advice: VibrationAdvice
+}
+
+export interface VibrationSafetyScore {
+  score: number
+  level: 'safe' | 'caution' | 'danger'
+  factors: string[]
+  recommendation: string
+}
+
+export interface VibrationAnalyzeResult {
+  channels: VibrationChannelAnalysis[]
+  summary: {
+    max_ppv: number
+    thresholds: VibrationThresholds
+    alert_count: number
+    exceed_ratio: number
+    score: VibrationSafetyScore
+  } | null
+}
+
+export async function analyzeVibration(input: {
+  structure_type: string
+  condition: string
+  distance: number
+  channels: VibrationChannelInput[]
+}): Promise<VibrationAnalyzeResult> {
+  return apiPost<VibrationAnalyzeResult>('/vibration/analyze', input)
+}
+
+export async function calculateVibration(input: {
+  site_type: string
+  Q: number
+  R?: number
+  v_limit?: number
+}): Promise<{
+  predicted_ppv: number | null
+  safe_distance: number | null
+  coefficients: { K: number; alpha: number }
+}> {
+  return apiPost('/vibration/calculate', input)
+}
+
 export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'PUT',

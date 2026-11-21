@@ -19,10 +19,16 @@ import type {
   SafetyLevel,
   ChannelInfo,
   AlertRecord,
-  Thresholds
+  Thresholds,
+  ConstructionAdvice
 } from '@/utils/vibration/types'
-import { getDynamicThreshold, calculateSafetyScore, getAlertLevel } from '@/utils/vibration/gb6722'
+import { analyzeVibration, type VibrationAnalyzeResult } from '@/lib/api'
 import { exportChannelsCSV } from '@/utils/vibration/exportUtils'
+
+type AnalyzedChannel = ChannelInfo & {
+  thresholds: Thresholds
+  advice: ConstructionAdvice
+}
 
 // 通道颜色配置
 const CHANNEL_COLORS = [
@@ -49,11 +55,18 @@ export const VibrationV2: React.FC = () => {
   const [siteType, setSiteType] = useState<SiteType>('soil')
   const [distance, setDistance] = useState<number>(100)
 
-  // 通道数据（mock）
-  const [channels, setChannels] = useState<ChannelInfo[]>([])
+  // 原始通道数据（mock 波形；阈值/等级由后端规则计算）
+  const [rawChannels, setRawChannels] = useState<
+    { channelId: number; ppv: number; dominantFreq: number; samplingRate: number }[]
+  >([])
+  const [channels, setChannels] = useState<AnalyzedChannel[]>([])
   const [channelTrendData, setChannelTrendData] = useState<any[]>([])
 
-  // 报警记录（mock）
+  // 后端规则计算结果
+  const [analysis, setAnalysis] = useState<VibrationAnalyzeResult | null>(null)
+  const [analysisError, setAnalysisError] = useState<string>('')
+
+  // 报警记录（由后端规则结果派生）
   const [alerts, setAlerts] = useState<AlertRecord[]>([])
 
   // 侧边抽屉
@@ -80,35 +93,16 @@ export const VibrationV2: React.FC = () => {
     setDatasets(mockDatasets)
     setSelectedDatasetId('1')
 
-    // 生成 mock 通道数据
-    const mockChannels: ChannelInfo[] = []
+    // 生成 mock 通道原始数据（PPV/主频固定，阈值由后端计算）
+    const mockChannels: { channelId: number; ppv: number; dominantFreq: number; samplingRate: number }[] = []
     const mockTrendData: any[] = []
-    const mockAlerts: AlertRecord[] = []
 
     for (let i = 1; i <= 8; i++) {
       // 生成随机 PPV 和主频
       const ppv = Math.random() * 15 + 2  // 2-17 mm/s
       const dominantFreq = Math.random() * 40 + 10  // 10-50 Hz
 
-      // 计算阈值
-      const thresholds = getDynamicThreshold({
-        structureType,
-        dominantFreq,
-        distance,
-        condition: structureCondition
-      })
-
-      // 判定预警等级
-      const alertLevel = getAlertLevel(ppv, thresholds)
-
-      mockChannels.push({
-        channelId: i,
-        ppv,
-        dominantFreq,
-        status: alertLevel === 'safe' ? 'normal' : alertLevel === 'warn' ? 'warning' : 'alert',
-        alertLevel,
-        samplingRate: 1000
-      })
+      mockChannels.push({ channelId: i, ppv, dominantFreq, samplingRate: 1000 })
 
       // 生成趋势数据（模拟 10 秒数据）
       const timestamps: number[] = []
@@ -127,84 +121,97 @@ export const VibrationV2: React.FC = () => {
         color: CHANNEL_COLORS[i - 1],
         visible: true
       })
-
-      // 生成报警记录
-      if (alertLevel !== 'safe') {
-        mockAlerts.push({
-          id: `alert-${i}`,
-          timestamp: new Date(Date.now() - Math.random() * 3600000),  // 过去1小时内
-          channelId: i,
-          ppv,
-          threshold: thresholds.warn,
-          level: alertLevel,
-          message: `通道${i} PPV=${ppv.toFixed(1)} mm/s`
-        })
-      }
     }
 
-    // 按时间倒序排序
-    mockAlerts.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-
-    setChannels(mockChannels)
+    setRawChannels(mockChannels)
     setChannelTrendData(mockTrendData)
-    setAlerts(mockAlerts)
-  }, [structureType, structureCondition, distance])
+  }, [])
 
-  // ==================== 计算汇总数据 ====================
+  // ==================== 规则计算（后端 /api/vibration/analyze 唯一出处）====================
+
+  useEffect(() => {
+    if (rawChannels.length === 0) return
+    let cancelled = false
+
+    const timer = setTimeout(async () => {
+      try {
+        const result = await analyzeVibration({
+          structure_type: structureType,
+          condition: structureCondition,
+          distance,
+          channels: rawChannels.map(ch => ({
+            channel_id: ch.channelId,
+            ppv: ch.ppv,
+            dominant_freq: ch.dominantFreq
+          }))
+        })
+        if (cancelled) return
+
+        setAnalysis(result)
+        setAnalysisError('')
+        setChannels(result.channels.map(item => ({
+          channelId: item.channel_id,
+          ppv: item.ppv,
+          dominantFreq: item.dominant_freq,
+          status: item.status,
+          alertLevel: item.alert_level,
+          samplingRate: 1000,
+          thresholds: item.thresholds,
+          advice: item.advice
+        })))
+        setAlerts(
+          result.channels
+            .filter(item => item.alert_level !== 'safe')
+            .map(item => ({
+              id: `alert-${item.channel_id}`,
+              timestamp: new Date(),
+              channelId: item.channel_id,
+              ppv: item.ppv,
+              threshold: item.thresholds.warn,
+              level: item.alert_level,
+              message: `通道${item.channel_id} PPV=${item.ppv.toFixed(1)} mm/s`
+            }))
+        )
+      } catch (err) {
+        if (cancelled) return
+        setAnalysisError(err instanceof Error ? err.message : '振动规则计算失败')
+      }
+    }, 300)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [rawChannels, structureType, structureCondition, distance])
+
+  // ==================== 汇总数据（来自后端规则结果）====================
 
   const summaryData = useMemo(() => {
-    if (channels.length === 0) {
+    if (!analysis?.summary) {
       return {
         maxPPV: 0,
         level: 'safe' as SafetyLevel,
         score: 100,
         alertCount: 0,
         exceedRatio: 0,
-        thresholds: { warn: 0, alert: 0, stop: 0 }
+        thresholds: { warn: 0, alert: 0, stop: 0 },
+        factors: [] as string[],
+        recommendation: ''
       }
     }
 
-    // 找到最大 PPV
-    const maxPPV = Math.max(...channels.map(ch => ch.ppv))
-    const maxChannel = channels.find(ch => ch.ppv === maxPPV)!
-
-    // 计算阈值（使用最大 PPV 通道的主频）
-    const thresholds = getDynamicThreshold({
-      structureType,
-      dominantFreq: maxChannel.dominantFreq,
-      distance,
-      condition: structureCondition
-    })
-
-    // 计算报警次数
-    const alertCount = channels.filter(ch => ch.alertLevel !== 'safe').length
-
-    // 计算超限率（假设每个通道有1000个采样点）
-    const totalPoints = channels.length * 1000
-    const exceedPoints = channels.reduce((sum, ch) => {
-      return sum + (ch.ppv > thresholds.warn ? 100 : 0)  // 简化计算
-    }, 0)
-    const exceedRatio = (exceedPoints / totalPoints) * 100
-
-    // 计算安全评分
-    const scoreResult = calculateSafetyScore({
-      ppvMax: maxPPV,
-      threshold: thresholds.stop,
-      duration: 0.5,  // mock 持续时间
-      alertCount,
-      dominantFreq: maxChannel.dominantFreq,
-      exceedRatio
-    })
-
+    const summary = analysis.summary
     return {
-      maxPPV,
-      level: scoreResult.level,
-      score: scoreResult.score,
-      alertCount,
-      exceedRatio,
-      thresholds
+      maxPPV: summary.max_ppv,
+      level: summary.score.level,
+      score: summary.score.score,
+      alertCount: summary.alert_count,
+      exceedRatio: summary.exceed_ratio,
+      thresholds: summary.thresholds,
+      factors: summary.score.factors,
+      recommendation: summary.score.recommendation
     }
-  }, [channels, structureType, structureCondition, distance])
+  }, [analysis])
 
   // ==================== 事件处理 ====================
 
@@ -283,8 +290,8 @@ export const VibrationV2: React.FC = () => {
                 exportChannelsCSV(channels, summaryData.thresholds, {
                   score: summaryData.score,
                   level: summaryData.level,
-                  factors: [],
-                  recommendation: ''
+                  factors: summaryData.factors,
+                  recommendation: summaryData.recommendation
                 })
               }}
             >
@@ -299,6 +306,13 @@ export const VibrationV2: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* 规则计算失败提示（不静默兜底）*/}
+      {analysisError && (
+        <div className="shrink-0 border-b border-red-500/40 bg-red-500/10 px-6 py-2 text-xs text-red-300">
+          振动规则计算失败：{analysisError}。请检查后端 /api/vibration/analyze，当前展示可能为上一次结果。
+        </div>
+      )}
 
       {/* Hero PPV */}
       <div className="shrink-0 border-b border-slate-700 bg-slate-900">
@@ -389,7 +403,8 @@ export const VibrationV2: React.FC = () => {
             timeData={trendData.timestamps}
             amplitude={trendData.ppvTimeSeries}
             ppvResult={mockPPVResult}
-            thresholds={summaryData.thresholds}
+            thresholds={channel.thresholds}
+            advice={channel.advice}
             features={mockFeatures}
             onClose={() => setIsDrawerOpen(false)}
           />

@@ -18,7 +18,21 @@ interface Ticket {
   monitoring_point_id?: string
   created_at: string
   updated_at?: string
+  allowed_transitions?: TicketStatus[]
   comments?: Comment[]
+}
+
+function transitionAction(from: TicketStatus, to: TicketStatus): { label: string; className: string } {
+  if (to === 'IN_PROGRESS') {
+    return {
+      label: from === 'PENDING' ? '开始处理' : from === 'SUSPENDED' ? '恢复处理' : '重新打开',
+      className: 'bg-blue-600 hover:bg-blue-500',
+    }
+  }
+  if (to === 'RESOLVED') return { label: '标记解决', className: 'bg-green-600 hover:bg-green-500' }
+  if (to === 'CLOSED') return { label: '关闭工单', className: 'bg-slate-600 hover:bg-slate-500' }
+  if (to === 'SUSPENDED') return { label: '挂起', className: 'bg-amber-600 hover:bg-amber-500' }
+  return { label: '拒绝工单', className: 'bg-red-600 hover:bg-red-500' }
 }
 
 interface Comment {
@@ -732,30 +746,18 @@ export default function Tickets() {
               )}
 
               <div className="flex gap-2">
-                {selectedTicket.status === 'PENDING' && (
-                  <button
-                    onClick={() => handleStatusChange(selectedTicket.id, 'IN_PROGRESS')}
-                    className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
-                  >
-                    开始处理
-                  </button>
-                )}
-                {selectedTicket.status === 'IN_PROGRESS' && (
-                  <button
-                    onClick={() => handleStatusChange(selectedTicket.id, 'RESOLVED')}
-                    className="rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-500"
-                  >
-                    标记解决
-                  </button>
-                )}
-                {selectedTicket.status === 'RESOLVED' && (
-                  <button
-                    onClick={() => handleStatusChange(selectedTicket.id, 'CLOSED')}
-                    className="rounded bg-slate-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-500"
-                  >
-                    关闭工单
-                  </button>
-                )}
+                {(selectedTicket.allowed_transitions || []).map((next) => {
+                  const action = transitionAction(selectedTicket.status, next)
+                  return (
+                    <button
+                      key={next}
+                      onClick={() => handleStatusChange(selectedTicket.id, next)}
+                      className={`rounded px-3 py-1.5 text-sm font-medium text-white ${action.className}`}
+                    >
+                      {action.label}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           ) : (

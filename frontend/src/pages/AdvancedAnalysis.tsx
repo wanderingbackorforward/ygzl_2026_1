@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ProfileChart, TimeSlider, JointDashboard, EventManager } from '../components/advanced';
 import { AnomalyDashboard, RecommendationDashboard, PredictionDashboard, CorrelationDashboard, DeepLearningDashboard, ExplainabilityDashboard, KnowledgeGraphDashboard } from '../components/analysis';
 import { useProfileData, useAvailableDates, useProfileStatistics } from '../hooks/useAdvancedAnalysis';
-import { apiGet, apiPost } from '../lib/api';
+import { apiGet, createAlertTicket } from '../lib/api';
 import { PageHeader, KpiCard } from '../components/common/ui';
 
 import '../styles/variables.css';
@@ -83,20 +83,19 @@ const PointContextBar: React.FC<{ pointId: string; from?: string | null }> = ({ 
     setCreating(true);
     setError('');
     try {
-      const url = isTemp
-        ? '/analysis/v2/temperature/create-ticket'
-        : '/analysis/v2/settlement/create-ticket';
-      const res = await apiPost<{ ticket_id?: number | string }>(url, {
-        point_id: info.point_id,
+      const res = await createAlertTicket({
+        dataType: isTemp ? 'temperature' : 'settlement',
+        pointId: info.point_id,
         title: `[${info.point_id}] ${isTemp ? '温度' : '沉降'}异常复核`,
         description: `${info.point_id} 告警级别：${alertLevel || '未知'}；最新值：${latestValue ?? '-'}；数据截止：${info.data_cutoff || '-'}。来源：${from || '高级分析'}`,
         severity: severityFromAlert(alertLevel),
-        anomaly_type: 'threshold_exceeded',
-        current_value: latestValue ?? null,
+        anomalyType: 'threshold_exceeded',
+        currentValue: latestValue ?? null,
         threshold: isTemp ? 30 : -5,
-        send_email: false,
+        sendEmail: false,
+        source: from || 'advanced_analysis',
       });
-      const ticketId = res?.ticket_id;
+      const ticketId = res?.id;
       navigate(ticketId ? `/tickets?ticketId=${ticketId}&created=1` : '/tickets');
     } catch (e) {
       setError(e instanceof Error ? e.message : '建单失败');

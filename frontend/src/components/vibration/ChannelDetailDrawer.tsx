@@ -17,7 +17,6 @@ import type {
   ConstructionAdvice
 } from '@/utils/vibration/types'
 import { performFFT } from '@/utils/vibration/signalProcessing'
-import { getConstructionAdvice } from '@/utils/vibration/gb6722'
 
 interface ChannelDetailDrawerProps {
   channel: ChannelInfo
@@ -25,6 +24,7 @@ interface ChannelDetailDrawerProps {
   amplitude: number[]
   ppvResult: PPVResult
   thresholds: Thresholds
+  advice: ConstructionAdvice
   features: VibrationFeatures
   onClose: () => void
 }
@@ -35,6 +35,7 @@ export const ChannelDetailDrawer: React.FC<ChannelDetailDrawerProps> = ({
   amplitude,
   ppvResult,
   thresholds,
+  advice,
   features,
   onClose
 }) => {
@@ -42,15 +43,6 @@ export const ChannelDetailDrawer: React.FC<ChannelDetailDrawerProps> = ({
   const fftResult: FFTResult = useMemo(() => {
     return performFFT(amplitude, channel.samplingRate)
   }, [amplitude, channel.samplingRate])
-
-  // 生成施工建议
-  const advice: ConstructionAdvice = useMemo(() => {
-    return getConstructionAdvice(
-      channel.ppv,
-      channel.dominantFreq,
-      channel.alertLevel
-    )
-  }, [channel.ppv, channel.dominantFreq, channel.alertLevel])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-end">

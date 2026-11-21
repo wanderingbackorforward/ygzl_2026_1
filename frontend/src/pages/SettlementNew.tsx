@@ -12,7 +12,7 @@ import { PointSelector } from '../components/shared/PointSelector';
 import { PointDetails } from '../components/shared/PointDetails';
 import { RiskAlertCard } from '../components/shared/RiskAlertCard';
 import { SecondaryDataTab } from '../components/analysis-v2';
-import { API_BASE } from '../lib/api';
+import { createAlertTicket } from '../lib/api';
 import type { CardConfig } from '../types/layout';
 import type { AnomalyItem } from '../types/analysis-v2';
 
@@ -101,29 +101,19 @@ const SecondaryAnalysisCard: React.FC = () => {
 
     setCreating(true);
     try {
-      const response = await fetch(`${API_BASE}/analysis/v2/settlement/create-ticket`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          anomaly_id: anomaly.id,
-          point_id: anomaly.point_id,
-          title: anomaly.title,
-          description: anomaly.description,
-          severity: anomaly.severity,
-          anomaly_type: anomaly.anomaly_type,
-          current_value: anomaly.current_value,
-          threshold: anomaly.threshold,
-          send_email: sendEmail,
-        }),
+      const ticket = await createAlertTicket({
+        dataType: 'settlement',
+        pointId: anomaly.point_id,
+        title: anomaly.title,
+        description: anomaly.description,
+        severity: anomaly.severity,
+        anomalyType: anomaly.anomaly_type,
+        currentValue: anomaly.current_value ?? null,
+        threshold: anomaly.threshold ?? null,
+        sendEmail,
+        source: 'settlement_page',
       });
-
-      const result = await response.json();
-
-      if (result.success) {
-        alert(`工单创建成功!\n\n工单号: ${result.data?.ticket_number || 'N/A'}\n监测点: ${anomaly.point_id}`);
-      } else {
-        alert(`工单创建失败: ${result.message || '未知错误'}`);
-      }
+      alert(`工单创建成功!\n\n工单号: ${ticket.ticket_number || 'N/A'}\n监测点: ${anomaly.point_id}`);
     } catch (error) {
       console.error('Create ticket error:', error);
       alert(`工单创建失败: ${error instanceof Error ? error.message : '网络错误'}`);
