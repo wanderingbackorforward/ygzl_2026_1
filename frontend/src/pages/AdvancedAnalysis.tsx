@@ -18,25 +18,30 @@ interface AnalysisTab {
   desc: string;
 }
 
-// 主要分析：信息架构第 2 节，四个标签回答"多严重、为什么"
+// —— 按“值班决策顺序”分组，而不是按算法分组 ——
+// 主流程：① 哪里有问题 → ② 会怎么发展 → ③ 为什么 → ④ 该怎么办
 const PRIMARY_TABS: AnalysisTab[] = [
-  { id: 'anomaly', label: '异常检测', icon: 'exclamation-triangle', desc: '哪些监测点有问题？—— 扫描全部 25 个点位，找出沉降异常并按严重程度标色' },
-  { id: 'prediction', label: '趋势预测', icon: 'chart-area', desc: '未来会怎样？—— 预测每个点位未来 7~30 天的沉降趋势，提前发现可能超限的风险点' },
-  { id: 'correlation', label: '因果与空间', icon: 'project-diagram', desc: '施工导致了哪些影响？—— 量化施工事件对沉降的影响，以及点位之间的空间关联' },
-  { id: 'knowledgegraph', label: '知识图谱', icon: 'share-alt', desc: '文献知识管理 —— 上传文献/笔记，自动提取实体和关系，答案附带来源引用' },
+  { id: 'anomaly', label: '① 哪里有问题', icon: 'exclamation-triangle', desc: '异常检测 —— 扫描全部 25 个点位，找出沉降异常并按严重程度标色' },
+  { id: 'prediction', label: '② 会怎么发展', icon: 'chart-area', desc: '趋势预测 —— 预测每个点位未来 7~30 天的沉降趋势，提前发现可能超限的风险点' },
+  { id: 'correlation', label: '③ 为什么', icon: 'project-diagram', desc: '因果与空间 —— 量化施工事件对沉降的影响，以及点位之间的空间关联' },
+  { id: 'recommendation', label: '④ 该怎么办', icon: 'clipboard-list', desc: '处置建议 —— 根据异常等级生成处置方案：紧急巡检 / 加密监测 / 持续跟踪' },
 ];
 
-// 辅助分析：保留能力，不占主入口（先下导航，观察一轮再删）
-const MORE_TABS: AnalysisTab[] = [
-  { id: 'recommendation', label: '处置建议', icon: 'clipboard-list', desc: '根据异常等级生成处置方案：紧急巡检 / 加密监测 / 持续跟踪' },
-  { id: 'deeplearning', label: '深度学习预测', icon: 'brain', desc: '用深度学习模型做更精准的预测（实验性）' },
-  { id: 'explainability', label: '影响因素分析', icon: 'chart-bar', desc: '找出影响沉降的关键因素排序' },
+// 专题视图：按监测对象查看
+const TOPIC_TABS: AnalysisTab[] = [
   { id: 'profile', label: '纵断面', icon: 'chart-line', desc: '沿线路方向展示所有点位的沉降分布，支持按时间回放' },
-  { id: 'joint', label: '沉降+裂缝', icon: 'link', desc: '同时展示沉降和裂缝数据，观察两者是否联动' },
+  { id: 'joint', label: '沉降 + 裂缝', icon: 'link', desc: '同时展示沉降和裂缝数据，观察两者是否联动' },
   { id: 'events', label: '施工事件', icon: 'calendar-alt', desc: '记录和管理施工事件，为因果分析提供数据支撑' },
 ];
 
-const ALL_TABS: AnalysisTab[] = [...PRIMARY_TABS, ...MORE_TABS];
+// 实验与资料：模型实验、因素分析与文献知识，不属于日常值班主流程
+const LAB_TABS: AnalysisTab[] = [
+  { id: 'explainability', label: '影响因素', icon: 'chart-bar', desc: '找出影响沉降的关键因素排序' },
+  { id: 'deeplearning', label: '深度学习预测', icon: 'brain', desc: '用深度学习模型做更精准的预测（实验性）' },
+  { id: 'knowledgegraph', label: '知识库', icon: 'share-alt', desc: '上传文献/笔记，自动提取实体和关系，答案附带来源引用' },
+];
+
+const ALL_TABS: AnalysisTab[] = [...PRIMARY_TABS, ...TOPIC_TABS, ...LAB_TABS];
 
 // 链路参数：从总览/指标页带过来的点位
 interface PointDetail {
@@ -157,7 +162,18 @@ const AdvancedAnalysis: React.FC = () => {
 
   const navigate = useNavigate();
   const activeInfo = ALL_TABS.find(i => i.id === activeTab) || null;
-  const isMoreTab = !PRIMARY_TABS.some(t => t.id === activeTab);
+  const renderTab = (tab: AnalysisTab) => (
+    <button
+      key={tab.id}
+      type="button"
+      className={`ds-seg__item ${activeTab === tab.id ? 'ds-seg__item--active' : ''}`}
+      onClick={() => setActiveTab(tab.id)}
+      title={tab.desc}
+    >
+      <i className={`fas fa-${tab.icon}`} style={{ marginRight: 5 }} />
+      {tab.label}
+    </button>
+  );
 
   return (
     <div style={styles.container}>
@@ -179,54 +195,28 @@ const AdvancedAnalysis: React.FC = () => {
         }
       />
 
-      {/* 主入口 4 个；其余能力收在"更多分析"，不删代码 */}
+      {/* 按决策顺序分组；所有能力都可见，不再藏在“更多”下拉里 */}
       <div style={{
         flexShrink: 0,
         display: 'flex',
-        alignItems: 'center',
+        flexDirection: 'column',
         gap: 6,
         padding: '8px 20px',
         borderBottom: '1px solid var(--ds-divider)',
-        overflowX: 'auto',
       }}>
-        {PRIMARY_TABS.map(tab => (
-          <button
-            key={tab.id}
-            type="button"
-            className={`ds-seg__item ${activeTab === tab.id ? 'ds-seg__item--active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
-            title={tab.desc}
-          >
-            <i className={`fas fa-${tab.icon}`} style={{ marginRight: 5 }} />
-            {tab.label}
-          </button>
-        ))}
-        <span style={{ flex: 1 }} />
-        <select
-          value={isMoreTab ? activeTab : ''}
-          onChange={e => e.target.value && setActiveTab(e.target.value as TabType)}
-          className="ds-select"
-          style={{
-            height: 'var(--ds-control-h)',
-            padding: '0 10px',
-            fontSize: 'var(--ds-fs-small)',
-            color: isMoreTab ? 'var(--ds-accent-text)' : 'var(--ds-text-muted)',
-            background: 'rgba(0,0,0,0.25)',
-            border: '1px solid var(--ds-border)',
-            borderRadius: 'var(--ds-radius-sm)',
-            outline: 'none',
-            cursor: 'pointer',
-          }}
-        >
-          <option value="" style={{ background: '#0a192f', color: '#a9c4dd' }}>
-            更多分析（辅助）
-          </option>
-          {MORE_TABS.map(tab => (
-            <option key={tab.id} value={tab.id} style={{ background: '#0a192f', color: '#fff' }}>
-              {tab.label}
-            </option>
-          ))}
-        </select>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, color: 'var(--ds-text-muted)', whiteSpace: 'nowrap' }}>主流程</span>
+          {PRIMARY_TABS.map(renderTab)}
+          <span style={{ flex: 1 }} />
+          <span style={{ color: 'var(--ds-text-muted)', fontSize: 11 }}>不确定从哪看？按 ①②③④ 从左到右即可</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, color: 'var(--ds-text-muted)', whiteSpace: 'nowrap' }}>专题视图</span>
+          {TOPIC_TABS.map(renderTab)}
+          <span style={{ width: 12 }} />
+          <span style={{ fontSize: 11, color: 'var(--ds-text-muted)', whiteSpace: 'nowrap' }}>实验与资料</span>
+          {LAB_TABS.map(renderTab)}
+        </div>
       </div>
 
       {activeTab === 'joint' && (
