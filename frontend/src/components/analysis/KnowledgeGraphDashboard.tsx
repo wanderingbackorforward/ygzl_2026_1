@@ -164,7 +164,7 @@ export const KnowledgeGraphDashboard: React.FC = () => {
               <i className="fas fa-cogs" style={{ color: '#10b981', fontSize: '16px' }} />
             </div>
             <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>2. 自动构建</div>
-            <div style={{ fontSize: '14px', color: '#e2e8f0', textAlign: 'center' }}>系统自动提取实体和关系，构建知识图谱</div>
+            <div style={{ fontSize: '14px', color: '#e2e8f0', textAlign: 'center' }}>系统自动整理出人物、工程、地点之间的关系</div>
           </div>
           {/* Arrow */}
           <div style={{ display: 'flex', alignItems: 'center', color: '#4a9eff', fontSize: '18px', flexShrink: 0 }}>
@@ -176,7 +176,7 @@ export const KnowledgeGraphDashboard: React.FC = () => {
               <i className="fas fa-comments" style={{ color: '#fb923c', fontSize: '16px' }} />
             </div>
             <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>3. 智能问答</div>
-            <div style={{ fontSize: '14px', color: '#e2e8f0', textAlign: 'center' }}>基于图谱内容提问，获得精准回答</div>
+            <div style={{ fontSize: '14px', color: '#e2e8f0', textAlign: 'center' }}>直接提问，回答会标出出自哪篇文献</div>
           </div>
         </div>
       )}
@@ -458,7 +458,7 @@ const DocsPanel: React.FC<{ onStatsChange: () => void }> = ({ onStatsChange }) =
           <i className="fas fa-book-open" style={{ fontSize: '36px', color: 'rgba(74,158,255,0.4)' }} />
           <div style={{ fontSize: '15px' }}>暂无文献</div>
           <div style={{ fontSize: '13px', color: '#e2e8f0' }}>
-            点击"添加文献"上传知识内容，系统将自动提取实体和关系
+            点击"添加文献"上传知识内容，系统会自动整理出人物、工程、地点之间的关系
           </div>
         </div>
       ) : (
@@ -482,8 +482,8 @@ const DocsPanel: React.FC<{ onStatsChange: () => void }> = ({ onStatsChange }) =
                       <span style={{ color: '#52c41a' }}>
                         <i className="fas fa-check" style={{ marginRight: '4px' }} />已处理
                       </span>
-                      <span>实体: {doc.entity_count}</span>
-                      <span>关系: {doc.relation_count}</span>
+                      <span>要点: {doc.entity_count}</span>
+                      <span>关联: {doc.relation_count}</span>
                     </>
                   )}
                   {!doc.processed && (
@@ -554,7 +554,7 @@ const ExplorePanel: React.FC = () => {
   return (
     <div style={styles.panelContent}>
       <div style={styles.paramRow}>
-        <label style={styles.paramLabel}>中心点位:</label>
+        <label style={styles.paramLabel}>基准点位:</label>
         <select value={selectedPoint} onChange={e => setSelectedPoint(e.target.value)} style={styles.select}>
           {pointIds.map(pid => <option key={pid} value={pid}>{pid}</option>)}
         </select>
@@ -739,7 +739,7 @@ const QAPanel: React.FC<{ initialQuestion?: string; onQuestionConsumed?: () => v
                       color: item.a.confidence > 0.7 ? '#52c41a' : item.a.confidence > 0.5 ? '#facc15' : '#fb923c',
                     }}>
                       <i className="fas fa-chart-line" style={{ marginRight: '4px' }} />
-                      置信度: {(item.a.confidence * 100).toFixed(0)}%
+                      把握度: {(item.a.confidence * 100).toFixed(0)}%
                     </div>
                   )}
                   {item.a.sources && item.a.sources.length > 0 && (
@@ -768,7 +768,7 @@ const QAPanel: React.FC<{ initialQuestion?: string; onQuestionConsumed?: () => v
           value={question}
           onChange={e => setQuestion(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="输入关于知识图谱的问题..."
+          placeholder="输入问题，例如：哪些点位受基坑开挖影响最大？"
           style={styles.input}
           disabled={loading}
         />

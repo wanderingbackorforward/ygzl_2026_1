@@ -49,9 +49,9 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                 : 'border-slate-700 bg-slate-800 hover:border-slate-600 hover:bg-slate-750'
             )}
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               {/* 左侧：通道号 */}
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <span className={cn(
                   'text-sm font-semibold',
                   isSelected ? 'text-cyan-400' : 'text-white'
@@ -70,7 +70,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
               </div>
 
               {/* 右侧：PPV + 主频 */}
-              <div className="flex items-center gap-4 text-xs">
+              <div className="flex shrink-0 items-center gap-4 text-xs">
                 {/* PPV */}
                 <div className="text-right">
                   <div className={cn(

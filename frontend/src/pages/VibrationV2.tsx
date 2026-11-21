@@ -335,9 +335,9 @@ export const VibrationV2: React.FC = () => {
       </div>
 
       {/* 主内容区域 */}
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 max-[900px]:flex-col max-[900px]:overflow-y-auto">
         {/* 左侧：PPV 趋势图（占 65%） */}
-        <div className="flex min-h-0 flex-1 flex-col border-r border-slate-700 p-6">
+        <div className="flex min-h-0 flex-1 flex-col border-r border-slate-700 p-6 max-[900px]:border-r-0 max-[900px]:border-b max-[900px]:p-3 max-[900px]:min-h-[260px]">
           <PPVTrendChart
             channelsData={channelTrendData}
             thresholds={summaryData.thresholds}
@@ -347,9 +347,9 @@ export const VibrationV2: React.FC = () => {
         </div>
 
         {/* 右侧：通道概览 + 报警记录（占 35%） */}
-        <div className="flex w-[35%] min-h-0 flex-col">
+        <div className="flex w-[35%] min-h-0 flex-col max-[900px]:w-full">
           {/* 通道概览 */}
-          <div className="flex min-h-0 flex-1 flex-col border-b border-slate-700 p-6">
+          <div className="flex min-h-0 flex-1 flex-col border-b border-slate-700 p-6 max-[900px]:p-3">
             <h3 className="mb-4 text-sm font-semibold text-white">通道概览</h3>
             <div className="min-h-0 flex-1 overflow-y-auto">
               {channels.length > 0 ? (

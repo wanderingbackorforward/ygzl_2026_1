@@ -4,6 +4,8 @@ import { apiGet } from '../../lib/api'
 
 type MetricRange = {
   max_date?: string | null
+  min_date?: string | null
+  count?: number | null
   table?: string
   analysis_updated?: string | null
   archived?: boolean
@@ -58,7 +60,12 @@ function fmt(value?: string | null): string {
   return String(value).replace('T', ' ').slice(0, 16)
 }
 
-function routeKeys(pathname: string): { key: keyof DataRange; label: string }[] {
+function fmtDay(value?: string | null): string {
+  if (!value) return '—'
+  return String(value).replace('T', ' ').slice(0, 10)
+}
+
+function routeKeys(pathname: string): { key: Exclude<keyof DataRange, 'generated_at'>; label: string }[] {
   if (pathname.startsWith('/overview')) {
     return [
       { key: 'settlement', label: '沉降' },
@@ -156,17 +163,20 @@ export default function DataCutoffBar() {
 
   return (
     <div style={barStyle}>
-      <span style={{ color: '#6b8db5' }}>数据截止</span>
+      <span style={{ color: '#6b8db5' }}>数据区间</span>
       {keys.map(({ key, label }) => {
         const item = range[key]
         const archived = !!item?.archived
+        const rangeText = item?.min_date
+          ? `${fmtDay(item.min_date)} ~ ${fmtDay(item.max_date)}`
+          : fmtDay(item?.max_date)
         return (
           <span key={key} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <span style={{ color: '#b0cfee' }}>{label}</span>
-            <span style={{ color: archived ? '#fbbf24' : '#8bb8e0' }}>{fmt(item?.max_date)}</span>
+            <span style={{ color: archived ? '#fbbf24' : '#8bb8e0' }}>{rangeText}</span>
             {archived && (
               <span style={{ fontSize: 11, color: '#fbbf24', border: '1px solid rgba(251,191,36,.5)', borderRadius: 4, padding: '0 4px' }}>
-                归档
+                非实时
               </span>
             )}
           </span>

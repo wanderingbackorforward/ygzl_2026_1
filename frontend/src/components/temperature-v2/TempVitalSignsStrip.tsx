@@ -80,7 +80,7 @@ export const TempVitalSignsStrip: React.FC<TempVitalSignsProps> = ({ stats, asse
 
   return (
     <div className="shrink-0 px-4 py-3">
-      <div className="grid grid-cols-7 gap-3">
+      <div className="ds-vitals-7">
         <VitalCard
           label="当前温度"
           value={currentAvg != null ? `${Number(currentAvg).toFixed(1)}°C` : '--'}

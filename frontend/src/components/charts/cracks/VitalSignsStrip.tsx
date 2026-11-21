@@ -100,7 +100,7 @@ export const VitalSignsStrip: React.FC = () => {
 
   return (
     <div className="shrink-0 px-4 py-3">
-      <div className="grid grid-cols-5 gap-3">
+      <div className="ds-vitals-5">
         <VitalCard label="最大宽度" {...vitals.maxWidth} />
         <VitalCard label="加速点" {...vitals.accelPoints} />
         <VitalCard label="均速率" {...vitals.avgRate} />

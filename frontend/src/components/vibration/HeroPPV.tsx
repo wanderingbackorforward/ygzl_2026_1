@@ -53,7 +53,7 @@ export const HeroPPV: React.FC<HeroPPVProps> = ({
   return (
     <div className="flex flex-col items-center justify-center py-8 space-y-4">
       {/* Hero PPV 数字 */}
-      <div className="relative">
+      <div className="relative overflow-hidden">
         {/* 呼吸动画背景（仅危险时显示） */}
         {level === 'danger' && (
           <div className="absolute inset-0 -m-8 bg-red-500/20 rounded-full animate-ping" />
@@ -61,12 +61,12 @@ export const HeroPPV: React.FC<HeroPPVProps> = ({
 
         {/* 主数字 */}
         <div className={cn(
-          'text-7xl font-bold transition-all duration-500 relative z-10',
+          'text-5xl sm:text-7xl font-bold transition-all duration-500 relative z-10 whitespace-nowrap',
           config.color,
           config.animation
         )}>
           {ppv.toFixed(2)}
-          <span className="text-3xl ml-2 text-slate-300">mm/s</span>
+          <span className="text-xl sm:text-3xl ml-2 text-slate-300">mm/s</span>
         </div>
       </div>
 
@@ -81,9 +81,9 @@ export const HeroPPV: React.FC<HeroPPVProps> = ({
       </div>
 
       {/* 内联徽章（评分/报警/超限率） */}
-      <div className="flex items-center gap-6 text-sm text-slate-200">
+      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-slate-200 px-2">
         {/* 安全评分 */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 whitespace-nowrap">
           <span className="text-slate-400">安全评分</span>
           <span className={cn(
             'font-bold text-lg',
@@ -99,7 +99,7 @@ export const HeroPPV: React.FC<HeroPPVProps> = ({
         <div className="w-px h-4 bg-slate-600" />
 
         {/* 报警次数 */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 whitespace-nowrap">
           <span className="text-slate-400">报警</span>
           <span className={cn(
             'font-bold text-lg',
@@ -115,7 +115,7 @@ export const HeroPPV: React.FC<HeroPPVProps> = ({
         <div className="w-px h-4 bg-slate-600" />
 
         {/* 超限率 */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 whitespace-nowrap">
           <span className="text-slate-400">超限率</span>
           <span className={cn(
             'font-bold text-lg',

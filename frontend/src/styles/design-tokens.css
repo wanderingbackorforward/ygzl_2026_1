@@ -17,6 +17,8 @@
   --ds-surface: rgba(11, 22, 38, 0.86);
   --ds-surface-hover: rgba(17, 33, 54, 0.92);
   --ds-surface-solid: #0c1828;
+  /* 面板内浅色小块（指标块、行动卡片） */
+  --ds-surface-flat: rgba(255, 255, 255, 0.03);
 
   /* ---- 描边 ---- */
   --ds-border: rgba(86, 148, 206, 0.2);
@@ -160,7 +162,7 @@ body {
   font-size: var(--ds-fs-h1);
   font-weight: 700;
   letter-spacing: 0.02em;
-  color: #fff;
+  color: var(--ds-text);
   line-height: var(--ds-lh-tight);
 }
 
@@ -696,9 +698,24 @@ textarea.ds-input {
     flex-wrap: wrap;
   }
 
+  .ds-page-header__meta {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
   .ds-page-header__actions {
     width: 100%;
     justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .ds-page-header__actions > * {
+    min-width: 0;
+  }
+
+  .ds-page-header__actions select.ds-input {
+    flex: 1 1 150px;
+    max-width: 100%;
   }
 
   .ds-split {
@@ -708,5 +725,101 @@ textarea.ds-input {
   .ds-split__side {
     width: 100%;
     max-height: 42%;
+  }
+}
+
+/* ── 沉降驾驶舱：窄屏改为纵向堆叠，避免 KPI 被挤成竖排文字 ── */
+.ds-vitals-7,
+.ds-vitals-5 {
+  display: grid;
+  gap: 12px;
+}
+
+.ds-vitals-7 {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.ds-vitals-5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.ds-only-narrow {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .ds-only-narrow {
+    display: block;
+  }
+}
+
+@media (max-width: 640px) {
+  .ds-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .ds-vitals-7,
+  .ds-vitals-5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ds-settlement-hero {
+  flex-shrink: 0;
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--ds-divider);
+}
+
+.ds-settlement-hero__agent {
+  flex: 0 0 260px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-right: 12px;
+  border-right: 1px solid var(--ds-divider);
+}
+
+.ds-settlement-hero__kpis {
+  flex: 1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .ds-settlement-hero {
+    flex-wrap: wrap;
+    padding: 8px 12px;
+  }
+
+  .ds-settlement-hero__agent {
+    flex: 1 0 100%;
+    padding-right: 0;
+    padding-bottom: 8px;
+    border-right: none;
+    border-bottom: 1px solid var(--ds-divider);
+  }
+
+  .ds-settlement-hero__kpis {
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ds-settlement-main {
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .ds-settlement-points {
+    width: 100% !important;
+    max-height: 190px;
+    border-right: none;
+    border-bottom: 1px solid var(--ds-border);
+  }
+
+  .ds-settlement-main > div:last-child {
+    overflow: visible;
   }
 }

@@ -66,15 +66,21 @@ export default function ModuleAdmin() {
           <StateView kind="empty" title="暂无模块配置" hint={error || 'app_modules 返回空列表'} />
         </div>
       ) : (
+      <div className="ds-only-narrow" style={{ marginTop: 8, fontSize: 11, color: 'var(--ds-text-faint)' }}>
+        手机端可左右滑动表格，查看提示文案、状态和操作
+      </div>
+      )}
+      {loading ? null : sorted.length === 0 ? null : (
       <div style={{
         marginTop: 12,
         border: '1px solid rgba(64,174,255,.25)',
         borderRadius: 8,
-        overflow: 'hidden'
+        overflowX: 'auto'
       }}>
         <div style={{
           display: 'grid',
           gridTemplateColumns: '220px 160px 1fr 140px 140px',
+          minWidth: 760,
           gap: 0,
           background: 'rgba(10,25,47,.9)',
           borderBottom: '1px solid rgba(64,174,255,.25)'
@@ -94,6 +100,7 @@ export default function ModuleAdmin() {
               style={{
                 display: 'grid',
                 gridTemplateColumns: '220px 160px 1fr 140px 140px',
+                minWidth: 760,
                 borderBottom: '1px solid rgba(64,174,255,.12)',
                 background: 'rgba(10,25,47,.55)'
               }}

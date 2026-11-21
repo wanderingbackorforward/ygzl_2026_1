@@ -128,6 +128,19 @@ body.tier-tablet [role='button'] {
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--wall-panel-border);
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+@media (max-width: 900px) {
+  .touchkit-segmented {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .touchkit-segmented > * {
+    flex: 1 1 auto;
+  }
 }
 .touchkit-segmented__item {
   display: inline-flex;
@@ -215,6 +228,13 @@ body.tier-tablet .leaflet-popup-content-wrapper {
 }
 
 /* ---- InSAR 大屏布局：手机端竖向堆叠 ---- */
+body.tier-phone {
+  overflow-x: hidden;
+}
+body.tier-phone #root {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
 body.tier-phone .insar-wall-main {
   flex-direction: column !important;
 }
@@ -227,4 +247,28 @@ body.tier-phone .touchkit-kpirail {
   border-left: none;
   border-top: 1px solid var(--wall-panel-border);
   max-height: 50vh;
+}
+
+/* 同一套产物同时服务大屏和手机：窄屏也按竖排处理 */
+@media (max-width: 900px) {
+  .insar-wall-main {
+    flex-direction: column !important;
+  }
+
+  .insar-wall-main > .insar-wall-map {
+    flex: 1 1 50%;
+    min-height: 40vh;
+  }
+
+  .touchkit-kpirail {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--wall-panel-border);
+    max-height: 50vh;
+  }
+
+  body.tier-tablet .insar-page-header,
+  .insar-page-header {
+    flex-wrap: wrap;
+  }
 }

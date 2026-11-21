@@ -28,16 +28,16 @@ const PRIMARY_TABS: AnalysisTab[] = [
 
 // 专题视图：按监测对象查看
 const TOPIC_TABS: AnalysisTab[] = [
-  { id: 'profile', label: '纵断面', icon: 'chart-line', desc: '沿线路方向展示所有点位的沉降分布，支持按时间回放' },
+  { id: 'profile', label: '纵断面', icon: 'chart-line', desc: '沿线路方向把每个点位的累计沉降画成一条剖面，可按日期回看' },
   { id: 'joint', label: '沉降 + 裂缝', icon: 'link', desc: '同时展示沉降和裂缝数据，观察两者是否联动' },
-  { id: 'events', label: '施工事件', icon: 'calendar-alt', desc: '记录和管理施工事件，为因果分析提供数据支撑' },
+  { id: 'events', label: '施工事件', icon: 'calendar-alt', desc: '记录现场施工（开挖、盾构、降水等），分析影响时直接选用' },
 ];
 
 // 实验与资料：模型实验、因素分析与文献知识，不属于日常值班主流程
 const LAB_TABS: AnalysisTab[] = [
   { id: 'explainability', label: '影响因素', icon: 'chart-bar', desc: '找出影响沉降的关键因素排序' },
   { id: 'deeplearning', label: '深度学习预测', icon: 'brain', desc: '用深度学习模型做更精准的预测（实验性）' },
-  { id: 'knowledgegraph', label: '知识库', icon: 'share-alt', desc: '上传文献/笔记，自动提取实体和关系，答案附带来源引用' },
+  { id: 'knowledgegraph', label: '知识库', icon: 'share-alt', desc: '上传文献和笔记，自动整理出人物、工程、地点之间的关系，回答时标出来源' },
 ];
 
 const ALL_TABS: AnalysisTab[] = [...PRIMARY_TABS, ...TOPIC_TABS, ...LAB_TABS];
@@ -317,14 +317,14 @@ const ProfileTab: React.FC = () => {
       <div style={styles.profileContainer}>
         <div style={styles.chartSection}>
           {dataLoading ? (
-            <div style={styles.loading}>正在加载纵断面数据...</div>
+            <div style={styles.loading}>正在加载剖面数据…</div>
           ) : profileError ? (
             <div style={styles.emptyContainer}>
               <div style={styles.emptyIcon}>
                 <i className="fas fa-exclamation-triangle" />
               </div>
-              <div style={styles.emptyTitle}>纵断面数据加载失败</div>
-              <div style={{ ...styles.emptyHint, color: '#fca5a5' }}>{profileError}</div>
+              <div style={styles.emptyTitle}>剖面数据加载失败</div>
+              <div style={{ ...styles.emptyHint, color: 'var(--ds-danger-text)' }}>{profileError}</div>
             </div>
           ) : data && data.profile && data.profile.length > 0 ? (
             <ProfileChart
@@ -337,9 +337,9 @@ const ProfileTab: React.FC = () => {
               <div style={styles.emptyIcon}>
                 <i className="fas fa-chart-line" />
               </div>
-              <div style={styles.emptyTitle}>暂无纵断面数据</div>
+              <div style={styles.emptyTitle}>这一天没有沉降测次</div>
               <div style={styles.emptyHint}>
-                请确保 processed_settlement_data 表中有沉降数据
+                沉降原始数据到 2021-12-24 为止，换一个更早的日期看看
               </div>
             </div>
           )}

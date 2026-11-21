@@ -15,6 +15,28 @@ import { TerzaghiIndicator, MoranIndicator, AnomalyConfidenceRadar } from '../co
 import { PageHeader, KpiCard, StateView } from '../components/common/ui';
 import './OverviewV2.css';
 
+// ECharts 画在 canvas 上读不到 CSS 变量，图表配色在这里集中取值（与 design-tokens 对齐），
+// 页面里不再散落十六进制色值。
+const CHART = {
+  accent: '#00e5ff',
+  text: '#eaf4ff',
+  textMuted: 'rgba(234,244,255,0.45)',
+  axis: 'rgba(234,244,255,0.12)',
+  split: 'rgba(234,244,255,0.06)',
+  tooltipBg: 'rgba(6,13,23,0.95)',
+  tooltipBorder: 'rgba(0,229,255,0.3)',
+  ok: '#22c55e',
+  warn: '#f5a623',
+  danger: '#ef4444',
+  category: {
+    settlement: '#00d8c9',
+    crack: '#f97316',
+    temperature: '#f5a623',
+    geology: '#bf5af2',
+    construction: '#ec4899',
+  } as Record<string, string>,
+};
+
 // ─────────────────────────────────────────────
 // 数据类型（与后端对齐）
 // ─────────────────────────────────────────────
@@ -81,9 +103,9 @@ function DiagnosisBanner({ result, loading }: { result: DiagnosisResult | null; 
     return (
       <div style={{
         height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(0,20,40,0.95)', borderBottom: '1px solid rgba(0,229,255,0.1)',
+        background: 'var(--ds-bg-soft)', borderBottom: '1px solid var(--ds-divider)',
       }}>
-        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>正在分析项目健康状态...</span>
+        <span style={{ color: 'var(--ds-text-muted)', fontSize: 13 }}>正在分析项目健康状态...</span>
       </div>
     );
   }
@@ -93,7 +115,7 @@ function DiagnosisBanner({ result, loading }: { result: DiagnosisResult | null; 
   return (
     <div style={{
       height: 52, display: 'flex', alignItems: 'center', gap: 14, padding: '0 24px',
-      background: 'rgba(0,20,40,0.95)', borderBottom: `2px solid ${cfg.color}`,
+      background: 'var(--ds-bg-soft)', borderBottom: `2px solid ${cfg.color}`,
     }}>
       {/* 健康色块 */}
       <div style={{
@@ -106,23 +128,23 @@ function DiagnosisBanner({ result, loading }: { result: DiagnosisResult | null; 
       </div>
 
       {/* 诊断句 */}
-      <div style={{ flex: 1, color: '#fff', fontSize: 14, fontWeight: 500 }}>
+      <div style={{ flex: 1, color: 'var(--ds-text)', fontSize: 14, fontWeight: 500 }}>
         {result.sentence}
       </div>
 
       {/* 数据质量 */}
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
         <div style={{
-          width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)',
+          width: 40, height: 4, borderRadius: 2, background: 'var(--ds-divider)',
           overflow: 'hidden',
         }}>
           <div style={{
             width: `${result.dataQuality * 100}%`, height: '100%',
-            background: result.dataQuality > 0.7 ? '#22c55e' : '#eab308',
+            background: result.dataQuality > 0.7 ? 'var(--ds-ok)' : 'var(--ds-warn)',
             borderRadius: 2,
           }} />
         </div>
-        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10 }}>
+        <span style={{ color: 'var(--ds-text-muted)', fontSize: 10 }}>
           数据 {Math.round(result.dataQuality * 100)}%
         </span>
       </div>
@@ -154,18 +176,12 @@ function EvidenceCanvas({ result }: { result: DiagnosisResult | null }) {
         graphic: [{
           type: 'text',
           left: 'center', top: 'center',
-          style: { text: '所有监测点数据正常，无异常证据', fill: '#22c55e', fontSize: 15 },
+          style: { text: '所有监测点数据正常，无异常证据', fill: CHART.ok, fontSize: 15 },
         }],
       };
     }
 
-    const catColors: Record<string, string> = {
-      settlement: '#06b6d4',
-      crack: '#f97316',
-      temperature: '#eab308',
-      geology: '#8b5cf6',
-      construction: '#ec4899',
-    };
+    const catColors = CHART.category;
     const catLabels: Record<string, string> = {
       settlement: '沉降',
       crack: '裂缝',
@@ -176,7 +192,7 @@ function EvidenceCanvas({ result }: { result: DiagnosisResult | null }) {
 
     const categories = [...new Set(result.evidenceNodes.map(n => n.category))].map(c => ({
       name: catLabels[c] || c,
-      itemStyle: { color: catColors[c] || '#06b6d4' },
+      itemStyle: { color: catColors[c] || CHART.accent },
     }));
 
     const catIndex = (cat: string) => categories.findIndex(c => c.name === (catLabels[cat] || cat));
@@ -187,13 +203,13 @@ function EvidenceCanvas({ result }: { result: DiagnosisResult | null }) {
       category: catIndex(n.category),
       symbolSize: 20 + n.severity * 35,
       value: n.detail,
-      label: { show: true, color: '#fff', fontSize: 12, fontWeight: 600 as const },
+      label: { show: true, color: CHART.text, fontSize: 12, fontWeight: 600 as const },
       itemStyle: {
-        color: catColors[n.category] || '#06b6d4',
-        borderColor: 'rgba(255,255,255,0.3)',
+        color: catColors[n.category] || CHART.accent,
+        borderColor: CHART.axis,
         borderWidth: 1,
         shadowBlur: n.severity > 0.7 ? 15 : 5,
-        shadowColor: catColors[n.category] || '#06b6d4',
+        shadowColor: catColors[n.category] || CHART.accent,
       },
     }));
 
@@ -203,13 +219,13 @@ function EvidenceCanvas({ result }: { result: DiagnosisResult | null }) {
       value: l.relation,
       lineStyle: {
         width: 1 + l.strength * 4,
-        color: 'rgba(255,255,255,0.25)',
+        color: CHART.textMuted,
         curveness: 0.2,
       },
       label: {
         show: l.strength > 0.5,
         formatter: l.relation,
-        color: 'rgba(255,255,255,0.5)',
+        color: CHART.textMuted,
         fontSize: 10,
       },
     }));
@@ -217,9 +233,9 @@ function EvidenceCanvas({ result }: { result: DiagnosisResult | null }) {
     return {
       tooltip: {
         trigger: 'item',
-        backgroundColor: 'rgba(0,20,40,0.95)',
-        borderColor: 'rgba(0,229,255,0.3)',
-        textStyle: { color: '#fff', fontSize: 12 },
+        backgroundColor: CHART.tooltipBg,
+        borderColor: CHART.tooltipBorder,
+        textStyle: { color: CHART.text, fontSize: 12 },
         formatter: (p: any) => {
           if (p.dataType === 'node') return `<b>${p.name}</b><br/>${p.value || ''}`;
           if (p.dataType === 'edge') return p.value || '';
@@ -229,7 +245,7 @@ function EvidenceCanvas({ result }: { result: DiagnosisResult | null }) {
       legend: {
         data: categories.map(c => c.name),
         bottom: 8, left: 'center',
-        textStyle: { color: '#fff', fontSize: 12 },
+        textStyle: { color: CHART.text, fontSize: 12 },
         itemWidth: 12, itemHeight: 12,
       },
       animationDuration: 800,
@@ -260,9 +276,9 @@ function EvidenceCanvas({ result }: { result: DiagnosisResult | null }) {
       <div style={{
         padding: '10px 16px 0', display: 'flex', alignItems: 'center', gap: 8,
       }}>
-        <i className="fas fa-project-diagram" style={{ color: '#06b6d4', fontSize: 13 }} />
-        <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>证据关系图</span>
-        <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, marginLeft: 'auto' }}>
+        <i className="fas fa-project-diagram" style={{ color: 'var(--ds-accent)', fontSize: 13 }} />
+        <span style={{ color: 'var(--ds-text)', fontSize: 13, fontWeight: 700 }}>证据关系图</span>
+        <span style={{ color: 'var(--ds-text-muted)', fontSize: 11, marginLeft: 'auto' }}>
           拖拽节点 / 滚轮缩放
         </span>
       </div>
@@ -272,25 +288,21 @@ function EvidenceCanvas({ result }: { result: DiagnosisResult | null }) {
       {selected && (
         <div style={{
           height: 48, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12,
-          padding: '0 16px', background: 'rgba(6,182,212,0.08)',
-          borderTop: '1px solid rgba(6,182,212,0.2)',
+          padding: '0 16px', background: 'var(--ds-accent-soft)',
+          borderTop: '1px solid var(--ds-border)',
         }}>
-          <span style={{ color: '#06b6d4', fontSize: 14, fontWeight: 700 }}>{selected.name}</span>
-          <span style={{ color: '#fff', fontSize: 12, flex: 1 }}>{selected.detail}</span>
+          <span style={{ color: 'var(--ds-accent-text)', fontSize: 14, fontWeight: 700 }}>{selected.name}</span>
+          <span style={{ color: 'var(--ds-text)', fontSize: 12, flex: 1 }}>{selected.detail}</span>
           {/^[A-Za-z]/.test(selected.name) && /^(settlement|temperature|crack)$/.test(selected.category) && (
             <button
+              className="ds-btn"
               onClick={() => navigate(`/advanced?point=${encodeURIComponent(selected.name)}&metric=${selected.category}&from=overview`)}
-              style={{
-                padding: '4px 10px', fontSize: 12, borderRadius: 4,
-                border: '1px solid rgba(0,229,255,0.5)', background: 'rgba(0,229,255,0.15)',
-                color: '#00e5ff', cursor: 'pointer', whiteSpace: 'nowrap',
-              }}
             >
               去处置 →
             </button>
           )}
           <button onClick={() => setSelected(null)} style={{
-            background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
+            background: 'none', border: 'none', color: 'var(--ds-text-muted)',
             cursor: 'pointer', fontSize: 14, padding: '4px 8px',
           }}>
             <i className="fas fa-times" />
@@ -326,32 +338,32 @@ function ManagerOverview({ points, summary }: { points: PointSummary[]; summary?
       xAxis: {
         type: 'category' as const,
         data: sorted.map(p => p.point_id),
-        axisLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 9, rotate: 45 },
-        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+        axisLabel: { color: CHART.textMuted, fontSize: 9, rotate: 45 },
+        axisLine: { lineStyle: { color: CHART.axis } },
       },
       yAxis: {
         type: 'value' as const,
         name: 'mm',
-        nameTextStyle: { color: 'rgba(255,255,255,0.4)', fontSize: 9 },
-        axisLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 9 },
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
+        nameTextStyle: { color: CHART.textMuted, fontSize: 9 },
+        axisLabel: { color: CHART.textMuted, fontSize: 9 },
+        splitLine: { lineStyle: { color: CHART.split } },
       },
       series: [{
         type: 'bar',
         data: sorted.map(p => ({
           value: p.predicted_change_30d ?? 0,
           itemStyle: {
-            color: (p.predicted_change_30d ?? 0) < -20 ? '#ef4444'
-              : (p.predicted_change_30d ?? 0) < -10 ? '#eab308' : '#22c55e',
+            color: (p.predicted_change_30d ?? 0) < -20 ? CHART.danger
+              : (p.predicted_change_30d ?? 0) < -10 ? CHART.warn : CHART.ok,
           },
         })),
         barWidth: '60%',
       }],
       tooltip: {
         trigger: 'axis' as const,
-        backgroundColor: 'rgba(0,20,40,0.95)',
-        borderColor: 'rgba(0,229,255,0.3)',
-        textStyle: { color: '#fff', fontSize: 11 },
+        backgroundColor: CHART.tooltipBg,
+        borderColor: CHART.tooltipBorder,
+        textStyle: { color: CHART.text, fontSize: 11 },
         formatter: (p: any) => {
           const d = p[0];
           return `${d.name}<br/>30天预测: ${d.value?.toFixed(1) ?? '-'}mm`;
@@ -378,22 +390,22 @@ function ManagerOverview({ points, summary }: { points: PointSummary[]; summary?
 
       {/* 关键指标 */}
       <div style={{
-        background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '8px 12px',
+        background: 'var(--ds-surface-flat)', borderRadius: 8, padding: '8px 12px',
         display: 'flex', justifyContent: 'space-between',
       }}>
         <div>
-          <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10 }}>最大沉降</div>
-          <div style={{ color: '#fff', fontSize: 14, fontWeight: 700 }}>{stats.maxSett.toFixed(1)} mm</div>
+          <div style={{ color: 'var(--ds-text-muted)', fontSize: 10 }}>最大沉降</div>
+          <div style={{ color: 'var(--ds-text)', fontSize: 14, fontWeight: 700 }}>{stats.maxSett.toFixed(1)} mm</div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10 }}>平均速率</div>
-          <div style={{ color: '#fff', fontSize: 14, fontWeight: 700 }}>{stats.avgSlope.toFixed(2)} mm/d</div>
+          <div style={{ color: 'var(--ds-text-muted)', fontSize: 10 }}>平均速率</div>
+          <div style={{ color: 'var(--ds-text)', fontSize: 14, fontWeight: 700 }}>{stats.avgSlope.toFixed(2)} mm/d</div>
         </div>
       </div>
 
       {/* 30天预测分布 */}
       <div style={{
-        background: 'rgba(255,255,255,0.03)', borderRadius: 10,
+        background: 'var(--ds-surface-flat)', borderRadius: 10,
         padding: '10px 12px', borderLeft: '3px solid var(--ds-info)',
       }}>
         <div style={{ color: 'var(--ds-text)', fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
@@ -418,9 +430,9 @@ const ROLE_TABS: { key: RoleTab; label: string; icon: string }[] = [
 ];
 
 const URGENCY_STYLE: Record<string, { label: string; color: string; bg: string }> = {
-  now:   { label: '立即', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
-  today: { label: '今日', color: '#eab308', bg: 'rgba(234,179,8,0.12)' },
-  week:  { label: '本周', color: '#3b82f6', bg: 'rgba(59,130,246,0.10)' },
+  now:   { label: '立即', color: 'var(--ds-danger)', bg: 'var(--ds-danger-soft)' },
+  today: { label: '今日', color: 'var(--ds-warn)', bg: 'var(--ds-warn-soft)' },
+  week:  { label: '本周', color: 'var(--ds-info)', bg: 'var(--ds-info-soft)' },
 };
 
 function ActionPanel({ result, points, summary }: { result: DiagnosisResult | null; points: PointSummary[]; summary?: SettlementSummary }) {
@@ -435,15 +447,15 @@ function ActionPanel({ result, points, summary }: { result: DiagnosisResult | nu
     <div className="ds-panel" style={{ width: 340, flexShrink: 0 }}>
       {/* 角色切换栏 */}
       <div style={{
-        display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)',
+        display: 'flex', borderBottom: '1px solid var(--ds-divider)',
         flexShrink: 0,
       }}>
         {ROLE_TABS.map(t => (
           <button key={t.key} onClick={() => setRole(t.key)} style={{
             flex: 1, padding: '10px 0', border: 'none', cursor: 'pointer',
-            background: role === t.key ? 'rgba(6,182,212,0.15)' : 'transparent',
-            borderBottom: role === t.key ? '2px solid #06b6d4' : '2px solid transparent',
-            color: role === t.key ? '#fff' : 'rgba(255,255,255,0.5)',
+            background: role === t.key ? 'var(--ds-accent-soft)' : 'transparent',
+            borderBottom: role === t.key ? '2px solid var(--ds-accent)' : '2px solid transparent',
+            color: role === t.key ? 'var(--ds-text)' : 'var(--ds-text-muted)',
             fontSize: 12, fontWeight: 600, transition: 'all 0.2s',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
           }}>
@@ -466,7 +478,7 @@ function ActionPanel({ result, points, summary }: { result: DiagnosisResult | nu
           /* 管理视角：趋势摘要 + 预测迷你图 */
           <ManagerOverview points={points} summary={summary} />
         ) : filtered.length === 0 ? (
-          <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, textAlign: 'center', padding: 24 }}>
+          <div style={{ color: 'var(--ds-text-muted)', fontSize: 12, textAlign: 'center', padding: 24 }}>
             当前视角暂无待办事项
           </div>
         ) : (
@@ -475,7 +487,7 @@ function ActionPanel({ result, points, summary }: { result: DiagnosisResult | nu
               const u = URGENCY_STYLE[a.urgency] || URGENCY_STYLE.week;
               return (
                 <div key={i} style={{
-                  background: 'rgba(255,255,255,0.03)', borderRadius: 8,
+                  background: 'var(--ds-surface-flat)', borderRadius: 8,
                   padding: '10px 12px', borderLeft: `3px solid ${u.color}`,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
@@ -484,16 +496,16 @@ function ActionPanel({ result, points, summary }: { result: DiagnosisResult | nu
                       background: u.bg, borderRadius: 3, padding: '1px 6px',
                     }}>{u.label}</span>
                     {a.relatedPoints.length > 0 && (
-                      <span style={{ fontSize: 10, color: '#06b6d4' }}>
+                      <span style={{ fontSize: 10, color: 'var(--ds-accent-text)' }}>
                         {a.relatedPoints.slice(0, 3).join(' ')}
                         {a.relatedPoints.length > 3 ? ` +${a.relatedPoints.length - 3}` : ''}
                       </span>
                     )}
                   </div>
-                  <div style={{ color: '#fff', fontSize: 13, fontWeight: 500, marginBottom: 3 }}>
+                  <div style={{ color: 'var(--ds-text)', fontSize: 13, fontWeight: 500, marginBottom: 3 }}>
                     {a.instruction}
                   </div>
-                  <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>
+                  <div style={{ color: 'var(--ds-text-muted)', fontSize: 11 }}>
                     {a.reason}
                   </div>
                 </div>
