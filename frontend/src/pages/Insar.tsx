@@ -447,7 +447,7 @@ function InsarNativeMap(
 
     ;(async () => {
       try {
-        const body = await fetchJson(apiUrl).catch(() => null as any)
+        const body = await fetchJson(apiUrl)
         if (body && typeof body === 'object' && body.status && body.status !== 'success') {
           const msg = body?.message || '加载失败'
           const hint = body?.hint || ''
