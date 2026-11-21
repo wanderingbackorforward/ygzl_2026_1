@@ -15,11 +15,12 @@ interface JointDashboardProps {
 }
 
 export const JointDashboard: React.FC<JointDashboardProps> = ({ onSelectSettlementPoint, metric = 'settlement' }) => {
-  const { mapping, loading: mappingLoading } = useJointMapping();
-  const { alerts, loading: alertsLoading } = useJointAlerts();
+  const { mapping, loading: mappingLoading, error: mappingError } = useJointMapping();
+  const { alerts, loading: alertsLoading, error: alertsError } = useJointAlerts();
+  const [notice, setNotice] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [selectedPoint, setSelectedPoint] = useState<string | null>(null);
-  const { data: jointData, loading: dataLoading } = useJointData(selectedPoint);
-  const { analysis: correlation, loading: correlationLoading } = useJointCorrelation(selectedPoint);
+  const { data: jointData, loading: dataLoading, error: jointError } = useJointData(selectedPoint);
+  const { analysis: correlation, loading: correlationLoading, error: correlationError } = useJointCorrelation(selectedPoint);
   const [creatingTickets, setCreatingTickets] = useState<Record<string, boolean>>({});
 
   // Get unique settlement points with crack associations
@@ -50,9 +51,9 @@ export const JointDashboard: React.FC<JointDashboardProps> = ({ onSelectSettleme
     setCreatingTickets(prev => ({ ...prev, [ticketKey]: true }));
     try {
       const result = await createJointAlertTicket(alert, sendEmail);
-      window.alert(`工单创建成功\n工单号: ${result.data?.ticket_number || 'N/A'}`);
+      setNotice({ type: 'ok', text: `工单创建成功：${result.data?.ticket_number || 'N/A'}` });
     } catch (e) {
-      window.alert(`工单创建失败: ${e instanceof Error ? e.message : '未知错误'}`);
+      setNotice({ type: 'err', text: `工单创建失败：${e instanceof Error ? e.message : '未知错误'}` });
     } finally {
       setCreatingTickets(prev => ({ ...prev, [ticketKey]: false }));
     }
@@ -68,6 +69,12 @@ export const JointDashboard: React.FC<JointDashboardProps> = ({ onSelectSettleme
           </div>
         )}
       </div>
+
+      {(mappingError || alertsError || jointError || correlationError || notice) && (
+        <div style={{ padding: '6px 12px', fontSize: 12, color: notice?.type === 'ok' ? '#86efac' : '#fca5a5', background: notice?.type === 'ok' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)' }}>
+          {[mappingError, alertsError, jointError, correlationError, notice?.text].filter(Boolean).join('；')}
+        </div>
+      )}
 
       <div style={styles.content}>
         <div style={styles.leftPanel}>

@@ -16,6 +16,7 @@ export const KnowledgeGraphDashboard: React.FC = () => {
   const [subTab, setSubTab] = useState<SubTab>('docs');
   const [stats, setStats] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState('');
   const [qaQuestion, setQaQuestion] = useState('');
 
   // Auto-insights: proactively answer key questions for the user
@@ -24,8 +25,11 @@ export const KnowledgeGraphDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchKGStats()
-      .then(data => setStats(data))
-      .catch(() => {})
+      .then(data => { setStats(data); setStatsError(''); })
+      .catch((err) => {
+        console.error('KG stats failed:', err);
+        setStatsError('图谱统计接口不可用，节点与关系数量无法展示');
+      })
       .finally(() => setStatsLoading(false));
   }, []);
 
@@ -283,8 +287,19 @@ export const KnowledgeGraphDashboard: React.FC = () => {
         </button>
       </div>
 
+      {statsError && (
+        <div style={{ margin: '8px 0', padding: '8px 12px', borderRadius: 6, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: '#fca5a5', fontSize: 12 }}>
+          {statsError}
+        </div>
+      )}
+
       {subTab === 'docs' && <DocsPanel onStatsChange={() => {
-        fetchKGStats().then(data => setStats(data)).catch(() => {});
+        fetchKGStats()
+          .then(data => { setStats(data); setStatsError(''); })
+          .catch((err) => {
+            console.error('KG stats refresh failed:', err);
+            setStatsError('图谱统计刷新失败，页面数字可能不是最新');
+          });
       }} />}
       {subTab === 'explore' && <ExplorePanel />}
       {subTab === 'risk' && <RiskPanel />}
@@ -311,7 +326,11 @@ const DocsPanel: React.FC<{ onStatsChange: () => void }> = ({ onStatsChange }) =
     try {
       const data = await fetchKGDocuments();
       setDocs(data?.documents || []);
-    } catch { /* ignore */ }
+      setError('');
+    } catch (err) {
+      console.error('KG documents failed:', err);
+      setError('文档列表接口不可用，当前列表可能不完整');
+    }
     finally { setLoading(false); }
   }, []);
 
@@ -341,7 +360,10 @@ const DocsPanel: React.FC<{ onStatsChange: () => void }> = ({ onStatsChange }) =
       await deleteKGDocument(docId);
       loadDocs();
       onStatsChange();
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error('KG document delete failed:', err);
+      setError('删除失败：文档接口不可用或文档已被删除');
+    }
     finally { setDeleting(null); }
   };
 
@@ -506,6 +528,7 @@ const ExplorePanel: React.FC = () => {
   const [selectedPoint, setSelectedPoint] = useState('S1');
   const [graphData, setGraphData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const pointIds = Array.from({ length: 25 }, (_, i) => `S${i + 1}`);
 
   const loadNeighbors = useCallback(async () => {
@@ -513,8 +536,11 @@ const ExplorePanel: React.FC = () => {
     try {
       const data = await fetchKGNeighbors(selectedPoint);
       setGraphData(data);
+      setError('');
     } catch (err) {
       console.error('KG neighbors failed:', err);
+      setGraphData(null);
+      setError('邻居数据接口不可用，图谱无法加载');
     } finally {
       setLoading(false);
     }
@@ -545,7 +571,10 @@ const ExplorePanel: React.FC = () => {
         </div>
       )}
 
-      {!loading && graphData && (!graphData.nodes || graphData.nodes.length === 0) && (
+      {error && (
+        <div style={{ ...styles.emptyHint, color: '#fca5a5' }}>{error}</div>
+      )}
+      {!loading && !error && graphData && (!graphData.nodes || graphData.nodes.length === 0) && (
         <div style={styles.emptyHint}>该点位暂无邻居数据。尝试选择其他点位，或添加更多文献丰富图谱。</div>
       )}
     </div>
@@ -557,14 +586,18 @@ const RiskPanel: React.FC = () => {
   const [severity, setSeverity] = useState('high');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const loadRiskPoints = useCallback(async () => {
     setLoading(true);
     try {
       const result = await fetchKGRiskPoints(severity);
       setData(result);
+      setError('');
     } catch (err) {
       console.error('KG risk points failed:', err);
+      setData(null);
+      setError('风险点接口不可用，无法查询');
     } finally {
       setLoading(false);
     }
@@ -585,6 +618,10 @@ const RiskPanel: React.FC = () => {
           {loading ? '查询中...' : '查询风险点'}
         </button>
       </div>
+
+      {error && (
+        <div style={{ ...styles.emptyHint, color: '#fca5a5' }}>{error}</div>
+      )}
 
       {data?.risk_points && data.risk_points.length > 0 ? (
         <div style={styles.riskList}>
@@ -642,6 +679,10 @@ const QAPanel: React.FC<{ initialQuestion?: string; onQuestionConsumed?: () => v
       setQuestion('');
     } catch (err) {
       console.error('KGQA failed:', err);
+      setHistory(prev => [...prev, {
+        q: question,
+        a: { answer: `知识问答接口不可用：${err instanceof Error ? err.message : '网络错误'}`, sources: [] },
+      }]);
     } finally {
       setLoading(false);
     }

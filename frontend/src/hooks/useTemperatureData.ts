@@ -50,10 +50,11 @@ export function useTemperatureSummary(): {
   return { data, loading, error, refetch: fetchData };
 }
 
-export function useTemperatureSensors(): { sensors: string[]; problemSensorIds: string[]; loading: boolean } {
+export function useTemperatureSensors(): { sensors: string[]; problemSensorIds: string[]; loading: boolean; error: string | null } {
   const [sensors, setSensors] = useState<string[]>([]);
   const [problemSensorIds, setProblemSensorIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchSensors = async () => {
@@ -74,6 +75,7 @@ export function useTemperatureSensors(): { sensors: string[]; problemSensorIds: 
           const cleanedProblems = Array.from(new Set(problemIds));
           setSensors(cleaned);
           setProblemSensorIds(cleanedProblems);
+          setError(null);
           return;
         }
 
@@ -90,9 +92,11 @@ export function useTemperatureSensors(): { sensors: string[]; problemSensorIds: 
         );
         setSensors(cleaned);
         setProblemSensorIds([]);
+        setError(null);
       } catch (e) {
         setSensors([]);
         setProblemSensorIds([]);
+        setError(`传感器列表接口不可用：${e instanceof Error ? e.message : '网络错误'}`);
       } finally {
         setLoading(false);
       }
@@ -100,7 +104,7 @@ export function useTemperatureSensors(): { sensors: string[]; problemSensorIds: 
     fetchSensors();
   }, []);
 
-  return { sensors, problemSensorIds, loading };
+  return { sensors, problemSensorIds, loading, error };
 }
 
 export function useTemperatureDetail(sensorId: string | null): {

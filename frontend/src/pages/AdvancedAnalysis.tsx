@@ -334,8 +334,8 @@ const KnowledgeGraphTab: React.FC = () => {
 const ProfileTab: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string | undefined>();
   const [isPlaying, setIsPlaying] = useState(false);
-  const { dates, loading: datesLoading } = useAvailableDates();
-  const { data, loading: dataLoading } = useProfileData(selectedDate);
+  const { dates, loading: datesLoading, error: datesError } = useAvailableDates();
+  const { data, loading: dataLoading, error: profileError } = useProfileData(selectedDate);
   const { statistics } = useProfileStatistics();
 
   const handleDateChange = useCallback((date: string) => {
@@ -352,6 +352,14 @@ const ProfileTab: React.FC = () => {
         <div style={styles.chartSection}>
           {dataLoading ? (
             <div style={styles.loading}>正在加载纵断面数据...</div>
+          ) : profileError ? (
+            <div style={styles.emptyContainer}>
+              <div style={styles.emptyIcon}>
+                <i className="fas fa-exclamation-triangle" />
+              </div>
+              <div style={styles.emptyTitle}>纵断面数据加载失败</div>
+              <div style={{ ...styles.emptyHint, color: '#fca5a5' }}>{profileError}</div>
+            </div>
           ) : data && data.profile && data.profile.length > 0 ? (
             <ProfileChart
               profile={data.profile}
@@ -374,6 +382,8 @@ const ProfileTab: React.FC = () => {
         <div style={styles.sliderSection}>
           {datesLoading ? (
             <div style={styles.loading}>正在加载日期...</div>
+          ) : datesError ? (
+            <div style={styles.loading}>日期加载失败：{datesError}</div>
           ) : (
             <TimeSlider
               dates={dates}

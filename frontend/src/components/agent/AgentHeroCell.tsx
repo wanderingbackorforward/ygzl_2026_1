@@ -12,7 +12,7 @@ interface AgentHeroCellProps {
  * 人格：地质直觉 — 它就是隧道的感知系统
  */
 export function AgentHeroCell({ onSelectPoint }: AgentHeroCellProps) {
-  const { latestPatrol, unreadAnomalies, loading } = useAgent()
+  const { latestPatrol, unreadAnomalies, loading, error } = useAgent()
   const [open, setOpen] = useState(false)
   const [timedOut, setTimedOut] = useState(false)
   const cellRef = useRef<HTMLDivElement>(null)
@@ -63,9 +63,9 @@ export function AgentHeroCell({ onSelectPoint }: AgentHeroCellProps) {
     ? (maxSeverity === 'critical'
       ? `${dedupedAnomalies.length}个断面变形加剧`
       : `感知到${dedupedAnomalies.length}个断面扰动`)
-    : (latestPatrol?.title || (timedOut ? '地下稳定' : '正在感知...'))
+    : (error ? '巡检数据不可用' : (latestPatrol?.title || (timedOut ? '地下稳定' : '正在感知...')))
 
-  const trustAnchor = latestPatrol?.body || (timedOut ? '数据暂不可用' : '')
+  const trustAnchor = error || latestPatrol?.body || (timedOut ? '数据暂不可用' : '')
 
   const config = {
     info:     { color: '#34d399', border: '#34d399', glow: 'rgba(52,211,153,0.08)', pulse: false },

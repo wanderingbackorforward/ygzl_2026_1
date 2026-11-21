@@ -177,16 +177,23 @@ export function useProfileData(date?: string) {
 export function useAvailableDates() {
   const [dates, setDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`${API_BASE}/advanced/profile/dates`)
-      .then(res => res.json())
-      .then(json => setDates(json.dates || []))
-      .catch(() => setDates([]))
+      .then(res => {
+        if (!res.ok) throw new Error(`横断面日期接口 ${res.status}`);
+        return res.json();
+      })
+      .then(json => { setDates(json.dates || []); setError(null); })
+      .catch((e) => {
+        setDates([]);
+        setError(e instanceof Error ? e.message : '横断面日期接口不可用');
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  return { dates, loading };
+  return { dates, loading, error };
 }
 
 // Hook: Geological Layers
@@ -209,16 +216,23 @@ export function useGeologicalLayers() {
 export function useJointMapping() {
   const [mapping, setMapping] = useState<JointMapping[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`${API_BASE}/advanced/joint/mapping`)
-      .then(res => res.json())
-      .then(json => setMapping(json))
-      .catch(() => setMapping([]))
+      .then(res => {
+        if (!res.ok) throw new Error(`接缝映射接口 ${res.status}`);
+        return res.json();
+      })
+      .then(json => { setMapping(json); setError(null); })
+      .catch((e) => {
+        setMapping([]);
+        setError(e instanceof Error ? e.message : '接缝映射接口不可用');
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  return { mapping, loading };
+  return { mapping, loading, error };
 }
 
 // Hook: Joint Data for a settlement point
@@ -249,15 +263,19 @@ export function useJointData(settlementPoint: string | null) {
 export function useJointAlerts() {
   const [alerts, setAlerts] = useState<JointAlert[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchAlerts = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/advanced/joint/alerts`);
+      if (!res.ok) throw new Error(`接缝预警接口 ${res.status}`);
       const json = await res.json();
       setAlerts(json.alerts || []);
-    } catch {
+      setError(null);
+    } catch (e) {
       setAlerts([]);
+      setError(e instanceof Error ? e.message : '接缝预警接口不可用');
     } finally {
       setLoading(false);
     }
@@ -267,7 +285,7 @@ export function useJointAlerts() {
     fetchAlerts();
   }, [fetchAlerts]);
 
-  return { alerts, loading, refetch: fetchAlerts };
+  return { alerts, loading, error, refetch: fetchAlerts };
 }
 
 export function useJointCorrelation(settlementPoint: string | null) {
@@ -300,6 +318,7 @@ export function useJointCorrelation(settlementPoint: string | null) {
 export function useConstructionEvents(filters?: { start?: string; end?: string; type?: string }) {
   const [events, setEvents] = useState<ConstructionEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchEvents = useCallback(async () => {
     setLoading(true);
@@ -311,10 +330,13 @@ export function useConstructionEvents(filters?: { start?: string; end?: string; 
 
       const url = `${API_BASE}/advanced/events?${params.toString()}`;
       const res = await fetch(url);
+      if (!res.ok) throw new Error(`施工事件接口 ${res.status}`);
       const json = await res.json();
       setEvents(json.events || []);
-    } catch {
+      setError(null);
+    } catch (e) {
       setEvents([]);
+      setError(e instanceof Error ? e.message : '施工事件接口不可用');
     } finally {
       setLoading(false);
     }
@@ -324,21 +346,28 @@ export function useConstructionEvents(filters?: { start?: string; end?: string; 
     fetchEvents();
   }, [fetchEvents]);
 
-  return { events, loading, refetch: fetchEvents };
+  return { events, loading, error, refetch: fetchEvents };
 }
 
 // Hook: Event Types
-export function useEventTypes() {
+export function useEventTypes(): { types: EventType[]; error: string | null } {
   const [types, setTypes] = useState<EventType[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`${API_BASE}/advanced/events/types`)
-      .then(res => res.json())
-      .then(json => setTypes(json))
-      .catch(() => setTypes([]));
+      .then(res => {
+        if (!res.ok) throw new Error(`事件类型接口 ${res.status}`);
+        return res.json();
+      })
+      .then(json => { setTypes(json); setError(null); })
+      .catch((e) => {
+        setTypes([]);
+        setError(e instanceof Error ? e.message : '事件类型接口不可用');
+      });
   }, []);
 
-  return types;
+  return { types, error };
 }
 
 // Hook: Event Impact Analysis

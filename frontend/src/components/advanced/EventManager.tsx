@@ -14,12 +14,13 @@ interface EventManagerProps {
 }
 
 export const EventManager: React.FC<EventManagerProps> = ({ onEventSelect }) => {
-  const { events, loading, refetch } = useConstructionEvents();
-  const eventTypes = useEventTypes();
+  const { events, loading, error: eventsError, refetch } = useConstructionEvents();
+  const { types: eventTypes, error: typesError } = useEventTypes();
+  const [notice, setNotice] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [creatingImpactTicket, setCreatingImpactTicket] = useState<string | null>(null);
-  const { analysis: impact, loading: impactLoading } = useEventImpact(selectedEventId);
+  const { analysis: impact, loading: impactLoading, error: impactError } = useEventImpact(selectedEventId);
 
   const handleEventClick = (event: ConstructionEvent) => {
     setSelectedEventId(event.event_id);
@@ -30,9 +31,11 @@ export const EventManager: React.FC<EventManagerProps> = ({ onEventSelect }) => 
     try {
       await createEvent(data);
       setShowAddForm(false);
+      setNotice({ type: 'ok', text: '施工事件已创建' });
       refetch();
     } catch (e) {
       console.error('创建事件失败：', e);
+      setNotice({ type: 'err', text: `创建事件失败：${e instanceof Error ? e.message : '未知错误'}` });
     }
   };
 
@@ -41,9 +44,11 @@ export const EventManager: React.FC<EventManagerProps> = ({ onEventSelect }) => 
     try {
       await deleteEvent(eventId);
       setSelectedEventId(null);
+      setNotice({ type: 'ok', text: '施工事件已删除' });
       refetch();
     } catch (e) {
       console.error('删除事件失败：', e);
+      setNotice({ type: 'err', text: `删除事件失败：${e instanceof Error ? e.message : '未知错误'}` });
     }
   };
 
@@ -61,9 +66,9 @@ export const EventManager: React.FC<EventManagerProps> = ({ onEventSelect }) => 
         rateChange,
         sendEmail,
       );
-      window.alert(`工单创建成功\n工单号: ${result.data?.ticket_number || 'N/A'}`);
+      setNotice({ type: 'ok', text: `工单创建成功：${result.data?.ticket_number || 'N/A'}` });
     } catch (e) {
-      window.alert(`工单创建失败: ${e instanceof Error ? e.message : '未知错误'}`);
+      setNotice({ type: 'err', text: `工单创建失败：${e instanceof Error ? e.message : '未知错误'}` });
     } finally {
       setCreatingImpactTicket(null);
     }
@@ -77,6 +82,12 @@ export const EventManager: React.FC<EventManagerProps> = ({ onEventSelect }) => 
           + 添加事件
         </button>
       </div>
+
+      {(eventsError || typesError || notice) && (
+        <div style={{ padding: '6px 12px', fontSize: 12, color: notice?.type === 'ok' ? '#86efac' : '#fca5a5', background: notice?.type === 'ok' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)' }}>
+          {[eventsError, typesError, notice?.text].filter(Boolean).join('；')}
+        </div>
+      )}
 
       <div style={styles.content}>
         <div style={styles.eventList}>
@@ -110,7 +121,7 @@ export const EventManager: React.FC<EventManagerProps> = ({ onEventSelect }) => 
                 eventKeyPrefix={selectedEventId || 'event'}
               />
             ) : (
-              <div style={styles.empty}>暂无影响数据</div>
+              <div style={styles.empty}>{impactError || '暂无影响数据'}</div>
             )
           ) : (
             <div style={styles.placeholder}>

@@ -7,7 +7,7 @@ import { apiGet } from '../lib/api'
  * 修复：立即拉已有数据展示，后台触发巡检完成后再刷新。
  */
 export function useAgent() {
-  const { fetchInsights, fetchBadge, insights, badge, loading } = useAgentStore()
+  const { fetchInsights, fetchBadge, insights, badge, loading, error } = useAgentStore()
   const patrolTriggered = useRef(false)
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export function useAgent() {
           fetchInsights()
           fetchBadge()
         })
-        .catch(() => {})
+        .catch((e) => { console.warn('[Agent] patrol trigger failed:', e) })
     }
 
     // 每 5 分钟重新巡检
@@ -37,7 +37,7 @@ export function useAgent() {
           fetchInsights()
           fetchBadge()
         })
-        .catch(() => {})
+        .catch((e) => { console.warn('[Agent] patrol trigger failed:', e) })
     }, 5 * 60_000)
 
     return () => clearInterval(timer)
@@ -48,5 +48,5 @@ export function useAgent() {
     i => i.insight_type === 'anomaly' && !i.acknowledged && !i.dismissed
   )
 
-  return { latestPatrol, unreadAnomalies, badge, loading, insights }
+  return { latestPatrol, unreadAnomalies, badge, loading, error, insights }
 }

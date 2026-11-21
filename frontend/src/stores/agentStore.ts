@@ -26,6 +26,7 @@ interface AgentState {
   insights: Insight[]
   badge: BadgeInfo
   loading: boolean
+  error: string | null
   lastFetchTime: number
 
   // 操作
@@ -39,6 +40,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   insights: [],
   badge: { has_unread: false, count: 0, max_severity: 'info' },
   loading: false,
+  error: null,
   lastFetchTime: 0,
 
   fetchInsights: async () => {
@@ -49,9 +51,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     set({ loading: true })
     try {
       const data = await apiGet<Insight[]>('/agent/insights?limit=50')
-      set({ insights: data || [], lastFetchTime: now })
+      set({ insights: data || [], lastFetchTime: now, error: null })
     } catch (e) {
       console.warn('[Agent] fetch insights failed:', e)
+      set({ error: '巡检数据接口不可用' })
     } finally {
       set({ loading: false })
     }

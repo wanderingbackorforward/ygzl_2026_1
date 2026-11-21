@@ -17,6 +17,7 @@ interface TemperatureContextValue {
 
   sensors: string[];
   sensorsLoading: boolean;
+  sensorsError: string | null;
   problemSensorIds: string[];
 
   selectedSensorId: string | null;
@@ -56,7 +57,7 @@ export const TemperatureProvider: React.FC<TemperatureProviderProps> = ({ childr
     refetch: refetchSummary,
   } = useTemperatureSummary();
 
-  const { sensors, problemSensorIds, loading: sensorsLoading } = useTemperatureSensors();
+  const { sensors, problemSensorIds, loading: sensorsLoading, error: sensorsError } = useTemperatureSensors();
 
   const {
     data: detailData,
@@ -111,6 +112,7 @@ export const TemperatureProvider: React.FC<TemperatureProviderProps> = ({ childr
     refetchSummary,
     sensors,
     sensorsLoading,
+    sensorsError,
     problemSensorIds,
     selectedSensorId,
     selectSensor,
