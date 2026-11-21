@@ -176,6 +176,7 @@ export function useTemperatureSeries(sensorId: string | null): {
       setData(arr);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load series');
+      setData(null);
     } finally {
       setLoading(false);
     }
@@ -218,6 +219,7 @@ export function useTemperatureRange(sensorId: string | null): {
         setData(arr);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load range');
+        setData(null);
       } finally {
         setLoading(false);
       }
@@ -246,6 +248,7 @@ export function useTemperatureTrends(): {
         setData({ labels, values });
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load trends');
+        setData(null);
       } finally {
         setLoading(false);
       }

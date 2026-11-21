@@ -10,10 +10,6 @@ import {
   generateMockInformerPrediction,
   generateMockSTGCNPrediction,
   generateMockCausalDiscover,
-  generateMockKGStats,
-  generateMockKGNeighbors,
-  generateMockKGRiskPoints,
-  generateMockKGQA,
   generateMockMultiFactorCorrelation,
 } from './mockData';
 
@@ -382,48 +378,32 @@ export async function fetchCausalDiscover(
  * 知识图谱统计
  */
 export async function fetchKGStats() {
-  return fetchWithFallback(
-    `${API_BASE}/ml/kg/stats`,
-    undefined,
-    () => generateMockKGStats()
-  );
+  return fetchWithFallback(`${API_BASE}/ml/kg/stats`, undefined);
 }
 
 /**
  * 知识图谱邻居查询
  */
 export async function fetchKGNeighbors(pointId: string) {
-  return fetchWithFallback(
-    `${API_BASE}/ml/kg/query/neighbors/${pointId}`,
-    undefined,
-    () => generateMockKGNeighbors(pointId)
-  );
+  return fetchWithFallback(`${API_BASE}/ml/kg/query/neighbors/${pointId}`, undefined);
 }
 
 /**
  * 知识图谱高风险点
  */
 export async function fetchKGRiskPoints(minSeverity: string = 'high') {
-  return fetchWithFallback(
-    `${API_BASE}/ml/kg/query/risk-points?min_severity=${minSeverity}`,
-    undefined,
-    () => generateMockKGRiskPoints(minSeverity)
-  );
+  return fetchWithFallback(`${API_BASE}/ml/kg/query/risk-points?min_severity=${minSeverity}`, undefined);
 }
 
 /**
  * 知识图谱问答 (KGQA)
  */
 export async function fetchKGQA(question: string) {
-  return fetchWithFallback(
-    `${API_BASE}/ml/kgqa/ask`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question }),
-    },
-    () => generateMockKGQA(question)
-  );
+  return fetchWithFallback(`${API_BASE}/ml/kgqa/ask`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question }),
+  });
 }
 
 /**

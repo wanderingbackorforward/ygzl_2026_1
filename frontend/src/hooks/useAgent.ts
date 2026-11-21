@@ -26,7 +26,10 @@ export function useAgent() {
           fetchInsights()
           fetchBadge()
         })
-        .catch((e) => { console.warn('[Agent] patrol trigger failed:', e) })
+        .catch((e) => {
+          console.warn('[Agent] patrol trigger failed:', e)
+          useAgentStore.setState({ error: '巡检接口不可用，当前展示最近一次结果' })
+        })
     }
 
     // 每 5 分钟重新巡检
@@ -37,7 +40,10 @@ export function useAgent() {
           fetchInsights()
           fetchBadge()
         })
-        .catch((e) => { console.warn('[Agent] patrol trigger failed:', e) })
+        .catch((e) => {
+          console.warn('[Agent] patrol trigger failed:', e)
+          useAgentStore.setState({ error: '巡检接口不可用，当前展示最近一次结果' })
+        })
     }, 5 * 60_000)
 
     return () => clearInterval(timer)

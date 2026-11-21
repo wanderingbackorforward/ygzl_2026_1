@@ -20,7 +20,7 @@ export const KnowledgeGraphDashboard: React.FC = () => {
   const [qaQuestion, setQaQuestion] = useState('');
 
   // Auto-insights: proactively answer key questions for the user
-  const [insights, setInsights] = useState<Array<{ q: string; a: any; loading: boolean; category?: string; icon?: string; color?: string }>>([]);
+  const [insights, setInsights] = useState<Array<{ q: string; a: any; loading: boolean; error?: boolean; category?: string; icon?: string; color?: string }>>([]);
   const insightsLoaded = useRef(false);
 
   useEffect(() => {
@@ -112,9 +112,10 @@ export const KnowledgeGraphDashboard: React.FC = () => {
               i === idx ? { ...item, a: result, loading: false } : item
             ));
           })
-          .catch(() => {
+          .catch((err) => {
+            console.error('KG insight failed:', aq.q, err);
             setInsights(prev => prev.map((item, i) =>
-              i === idx ? { ...item, a: null, loading: false } : item
+              i === idx ? { ...item, a: null, loading: false, error: true } : item
             ));
           });
       }, idx * 200); // 200ms stagger
@@ -239,6 +240,8 @@ export const KnowledgeGraphDashboard: React.FC = () => {
                         <div style={{ fontSize: '13px', color: '#e2e8f0' }}>
                           <i className="fas fa-spinner fa-spin" style={{ marginRight: '6px' }} />分析中...
                         </div>
+                      ) : insight.error ? (
+                        <div style={{ fontSize: '13px', color: '#fca5a5' }}>问答接口不可用，暂无法分析</div>
                       ) : insight.a?.answer ? (
                         <div style={{ fontSize: '13px', color: '#e2e8f0', lineHeight: '1.6', whiteSpace: 'pre-wrap', maxHeight: '72px', overflow: 'hidden' }}>
                           {insight.a.answer.split('\n').filter((l: string) => l.trim() && !l.startsWith('---')).slice(0, 2).join('\n')}
@@ -681,7 +684,7 @@ const QAPanel: React.FC<{ initialQuestion?: string; onQuestionConsumed?: () => v
       console.error('KGQA failed:', err);
       setHistory(prev => [...prev, {
         q: question,
-        a: { answer: `知识问答接口不可用：${err instanceof Error ? err.message : '网络错误'}`, sources: [] },
+        a: { answer: `知识问答接口不可用：${err instanceof Error ? err.message : '网络错误'}`, sources: [], error: true },
       }]);
     } finally {
       setLoading(false);
@@ -729,7 +732,7 @@ const QAPanel: React.FC<{ initialQuestion?: string; onQuestionConsumed?: () => v
               <div style={styles.qaAnswer}>
                 <i className="fas fa-robot" style={{ marginRight: '8px', color: '#52c41a' }} />
                 <div>
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{item.a.answer}</div>
+                  <div style={{ whiteSpace: 'pre-wrap', color: item.a.error ? '#fca5a5' : undefined }}>{item.a.answer}</div>
                   {item.a.confidence != null && (
                     <div style={{
                       ...styles.qaConfidence,
