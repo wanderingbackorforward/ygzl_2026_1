@@ -508,7 +508,7 @@ def api_batch_detect_anomalies():
         # 延迟导入（避免冷启动超时）
         from modules.ml_models.anomaly_detector import detect_anomalies_for_point
 
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         point_ids = data.get('point_ids', [])
         method = data.get('method', 'isolation_forest')
         contamination = data.get('contamination', 0.05)
@@ -634,7 +634,7 @@ def api_event_impact():
         # 延迟导入
         from modules.ml_models.causal_inference import analyze_event_impact
 
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         point_id = data.get('point_id')
         event_date = data.get('event_date')
         control_point_ids = data.get('control_point_ids')
@@ -805,7 +805,7 @@ def api_train_informer(point_id):
         if not INFORMER_AVAILABLE:
             return jsonify({'success': False, 'mock': True, 'message': 'Informer module not installed'})
 
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         seq_len = data.get('seq_len', 60)
         pred_len = data.get('pred_len', 30)
         epochs = data.get('epochs', 100)
@@ -920,7 +920,7 @@ def api_train_stgcn():
         if not STGCN_AVAILABLE:
             return jsonify({'success': False, 'mock': True, 'message': 'STGCN module not installed'})
 
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         seq_len = data.get('seq_len', 60)
         pred_len = data.get('pred_len', 30)
         epochs = data.get('epochs', 100)
@@ -1040,7 +1040,7 @@ def api_train_pinn(point_id):
         if not PINN_AVAILABLE:
             return jsonify({'success': False, 'mock': True, 'message': 'PINN module not installed'})
 
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         seq_len = data.get('seq_len', 60)
         pred_len = data.get('pred_len', 30)
         epochs = data.get('epochs', 100)
@@ -1599,7 +1599,7 @@ def api_kgqa_ask():
         }
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         question = data.get('question')
 
         if not KGQA_AVAILABLE or not NEO4J_AVAILABLE:
@@ -1655,7 +1655,7 @@ def api_kg_list_documents():
 def api_kg_add_document():
     """Add a new document to the knowledge base."""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         title = data.get('title', '').strip()
         content = data.get('content', '').strip()
         source_type = data.get('source_type', 'text')
@@ -1734,7 +1734,7 @@ def api_causal_discover():
         }
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         point_ids = data.get('point_ids', [])
         method = data.get('method', 'granger')
         max_lag = data.get('max_lag', 5)

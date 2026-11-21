@@ -206,7 +206,7 @@ def get_event(event_id):
 def create_event():
     """Create a new construction event"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({'error': 'No data provided'}), 400
 
@@ -225,7 +225,7 @@ def create_event():
 def update_event(event_id):
     """Update an existing event"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({'error': 'No data provided'}), 400
 

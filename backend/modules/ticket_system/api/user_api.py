@@ -70,7 +70,7 @@ def get_user(user_id):
 def create_user():
     """Create a new user"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         if not data:
             return create_response(None, "请求数据不能为空", False, 400)
 
@@ -109,7 +109,7 @@ def create_user():
 def update_user(user_id):
     """Update user information"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         if not data:
             return create_response(None, "请求数据不能为空", False, 400)
 
@@ -185,7 +185,7 @@ def get_notification_settings(user_id):
 def update_notification_settings(user_id):
     """Update user notification settings"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         if not data:
             return create_response(None, "请求数据不能为空", False, 400)
 

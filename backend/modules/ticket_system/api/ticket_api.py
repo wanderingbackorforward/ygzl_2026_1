@@ -152,7 +152,7 @@ def get_tickets():
 def create_ticket():
     """创建新工单"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         if not data:
             return create_response(None, "请求数据不能为空", False, 400)
 
@@ -287,7 +287,7 @@ def get_ticket_by_number(ticket_number):
 def update_ticket(ticket_id):
     """更新工单信息"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         if not data:
             return create_response(None, "请求数据不能为空", False, 400)
 
@@ -316,7 +316,7 @@ def update_ticket(ticket_id):
 def update_ticket_status(ticket_id):
     """更新工单状态"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         if not data:
             return create_response(None, "请求数据不能为空", False, 400)
 
@@ -376,7 +376,7 @@ def update_ticket_status(ticket_id):
 def assign_ticket(ticket_id):
     """分配工单"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         if not data:
             return create_response(None, "请求数据不能为空", False, 400)
 
@@ -440,7 +440,7 @@ def get_ticket_comments(ticket_id):
 def add_ticket_comment(ticket_id):
     """添加工单评论"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         if not data:
             return create_response(None, "请求数据不能为空", False, 400)
 
@@ -572,7 +572,7 @@ def get_ticket_priority_config():
 def trigger_alert_ticket():
     """通过预警自动创建工单"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         if not data:
             return create_response(None, "请求数据不能为空", False, 400)
 
@@ -658,7 +658,7 @@ def delete_ticket(ticket_id):
 def delete_tickets_batch():
     """批量删除工单"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         if not data:
             return create_response(None, "请求数据不能为空", False, 400)
 
@@ -898,7 +898,7 @@ def parse_quick_input():
     用户输入一句话（如"DB-001沉降15mm"），AI自动解析出工单字段
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         user_input = data.get('input', '').strip()
 
         if not user_input:

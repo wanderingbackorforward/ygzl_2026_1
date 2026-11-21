@@ -295,7 +295,7 @@ def create_temperature_ticket():
         from modules.ticket_system.models.ticket import TicketModel
         ticket_model = TicketModel()
 
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({'success': False, 'message': '请求数据不能为空'}), 400
 
@@ -429,7 +429,7 @@ def create_ticket_from_anomaly():
         from modules.ticket_system.models.ticket import TicketModel
         ticket_model = TicketModel()
 
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({'success': False, 'message': '请求数据不能为空'}), 400
 

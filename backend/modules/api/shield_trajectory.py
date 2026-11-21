@@ -42,7 +42,7 @@ def calculate_trajectory():
     """
     try:
         # 获取请求数据
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         if not data:
             return jsonify({'error': '请求数据为空'}), 400
 

@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
 from werkzeug.utils import secure_filename
+from werkzeug.exceptions import HTTPException
 
 # 只添加一次项目根目录到Python路径
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
@@ -210,22 +211,30 @@ app.json.default = decimal_default
 app.json.ensure_ascii = False
 
 
-@app.errorhandler(404)
-def _json_404(error):
-    """前端只会解析 JSON，/api/* 的 404 不能返回 Flask 的 HTML 错误页。"""
-    if request.path.startswith('/api/'):
-        return json_dumps_response(
-            {'success': False, 'code': 'not_found', 'message': f'接口不存在: {request.path}'}, 404
-        )
-    return error
+@app.before_request
+def _require_object_json_body():
+    """写接口只接受 JSON 对象；字符串/数组请求体统一 400，避免 dict() 抛异常变 500。"""
+    if request.method in ('POST', 'PUT', 'PATCH') and request.path.startswith('/api/'):
+        if request.is_json and request.content_length:
+            payload = request.get_json(silent=True)
+            if payload is not None and not isinstance(payload, dict):
+                return json_dumps_response(
+                    {'success': False, 'code': 'invalid_body', 'message': '请求体必须是 JSON 对象'}, 400
+                )
+    return None
 
 
-@app.errorhandler(500)
-def _json_500(error):
+@app.errorhandler(HTTPException)
+def _json_http_error(error):
+    """前端只会解析 JSON：/api/* 的 4xx/5xx 一律返回 JSON，而不是 Flask 的 HTML 错误页。"""
     if request.path.startswith('/api/'):
-        return json_dumps_response(
-            {'success': False, 'code': 'internal_error', 'message': '服务内部错误'}, 500
-        )
+        code = (error.name or 'error').lower().replace(' ', '_')
+        message = error.description or '请求处理失败'
+        if error.code == 404:
+            message = f'接口不存在: {request.path}'
+        if error.code == 500:
+            message = '服务内部错误'
+        return json_dumps_response({'success': False, 'code': code, 'message': message}, error.code or 500)
     return error
 
 # ... (文件的其余部分保持不变) ...
@@ -951,7 +960,7 @@ def process_temperature_file(task_id, file_path):
 def save_viewpoint():
     print("[API] POST /api/viewpoints")
     """保存或更新单个视角数据"""
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     if not data or 'point_id' not in data or 'position' not in data or 'target' not in data:
         return jsonify({'success': False, 'message': '缺少必要的数据 (point_id, position, target)'}), 400
 
