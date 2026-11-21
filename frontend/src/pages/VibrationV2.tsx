@@ -24,6 +24,7 @@ import type {
 } from '@/utils/vibration/types'
 import { analyzeVibration, type VibrationAnalyzeResult } from '@/lib/api'
 import { exportChannelsCSV } from '@/utils/vibration/exportUtils'
+import { PageHeader, StateView } from '../components/common/ui'
 
 type AnalyzedChannel = ChannelInfo & {
   thresholds: Thresholds
@@ -174,6 +175,9 @@ export const VibrationV2: React.FC = () => {
         )
       } catch (err) {
         if (cancelled) return
+        setAnalysis(null)
+        setChannels([])
+        setAlerts([])
         setAnalysisError(err instanceof Error ? err.message : '振动规则计算失败')
       }
     }, 300)
@@ -244,21 +248,32 @@ export const VibrationV2: React.FC = () => {
 
   return (
     <div className="flex h-screen flex-col bg-slate-950 text-white">
-      {/* 顶栏 */}
-      <div className="shrink-0 border-b border-slate-700 bg-slate-900 px-6 py-4">
-        <div className="flex items-center justify-between">
-          {/* 左侧：标题 + 选择器 */}
-          <div className="flex items-center gap-6">
-            <h1 className="text-xl font-bold text-white">振动监测</h1>
-            <span className="rounded border border-amber-500/50 bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300">
-              演示数据
-            </span>
-
-            {/* 数据集选择 */}
+      <PageHeader
+        eyebrow="VIBRATION · 振动监测"
+        title="振动监测"
+        description="施工振动是否超限、影响哪些通道"
+        meta={
+          <>
+            <span className="ds-chip ds-chip--warn">演示数据</span>
+            {analysis && (
+              <span className="ds-chip ds-chip--accent">
+                最大 PPV {summaryData.maxPPV.toFixed(1)} mm/s
+              </span>
+            )}
+            {analysis && (
+              <span className={`ds-chip ${summaryData.alertCount > 0 ? 'ds-chip--danger' : 'ds-chip--ok'}`}>
+                报警通道 {summaryData.alertCount}
+              </span>
+            )}
+          </>
+        }
+        actions={
+          <>
             <select
               value={selectedDatasetId}
               onChange={(e) => setSelectedDatasetId(e.target.value)}
-              className="rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-white focus:border-cyan-500 focus:outline-none"
+              className="ds-input"
+              title="数据集"
             >
               <option value="">选择数据集</option>
               {datasets.map((ds) => (
@@ -268,11 +283,11 @@ export const VibrationV2: React.FC = () => {
               ))}
             </select>
 
-            {/* 结构类型选择 */}
             <select
               value={structureType}
               onChange={(e) => setStructureType(e.target.value as StructureType)}
-              className="rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-white focus:border-cyan-500 focus:outline-none"
+              className="ds-input"
+              title="结构类型"
             >
               {structureTypeOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -280,12 +295,9 @@ export const VibrationV2: React.FC = () => {
                 </option>
               ))}
             </select>
-          </div>
 
-          {/* 右侧：操作按钮 */}
-          <div className="flex items-center gap-3">
             <button
-              className="rounded-md bg-cyan-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-cyan-500"
+              className="ds-btn"
               onClick={() => {
                 exportChannelsCSV(channels, summaryData.thresholds, {
                   score: summaryData.score,
@@ -297,20 +309,17 @@ export const VibrationV2: React.FC = () => {
             >
               导出
             </button>
-            <button
-              className="rounded-md bg-slate-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-600"
-              onClick={() => setIsSettingsOpen(true)}
-            >
+            <button className="ds-btn" onClick={() => setIsSettingsOpen(true)}>
               设置
             </button>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* 规则计算失败提示（不静默兜底）*/}
       {analysisError && (
         <div className="shrink-0 border-b border-red-500/40 bg-red-500/10 px-6 py-2 text-xs text-red-300">
-          振动规则计算失败：{analysisError}。请检查后端 /api/vibration/analyze，当前展示可能为上一次结果。
+          振动规则计算失败：{analysisError}。请检查后端 /api/vibration/analyze，当前不展示任何替代结果。
         </div>
       )}
 
@@ -343,11 +352,20 @@ export const VibrationV2: React.FC = () => {
           <div className="flex min-h-0 flex-1 flex-col border-b border-slate-700 p-6">
             <h3 className="mb-4 text-sm font-semibold text-white">通道概览</h3>
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <ChannelList
-                channels={channels}
-                selectedChannelId={selectedChannelId}
-                onChannelClick={handleChannelClick}
-              />
+              {channels.length > 0 ? (
+                <ChannelList
+                  channels={channels}
+                  selectedChannelId={selectedChannelId}
+                  onChannelClick={handleChannelClick}
+                />
+              ) : (
+                <StateView
+                  kind={analysisError ? 'error' : 'loading'}
+                  title={analysisError ? '振动规则计算失败' : undefined}
+                  hint={analysisError ? '后端 /api/vibration/analyze 不可用，页面不展示替代数值' : undefined}
+                  compact
+                />
+              )}
             </div>
           </div>
 

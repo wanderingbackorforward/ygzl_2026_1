@@ -23,6 +23,7 @@ import { CrackPriorityList } from '../components/charts/cracks/CrackPriorityList
 // V2 Diagnostics Drawer
 import { CrackDiagnosticsDrawer } from '../components/charts/cracks/CrackDiagnosticsDrawer';
 import type { CardConfig } from '../types/layout';
+import { PageHeader, DataPanel } from '../components/common/ui';
 import '../styles/variables.css';
 import '../styles/cards.css';
 import '../styles/grid.css';
@@ -60,13 +61,9 @@ const SectionCard: React.FC<{
   children: React.ReactNode;
   className?: string;
 }> = ({ title, icon, children, className = '' }) => (
-  <div className={`rounded-xl border border-slate-700/60 bg-slate-800/40 backdrop-blur-sm overflow-hidden ${className}`}>
-    <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-700/40 bg-slate-800/60">
-      <i className={`fas ${icon} text-cyan-400 text-sm`} />
-      <h3 className="text-sm font-semibold text-white">{title}</h3>
-    </div>
+  <DataPanel title={title} icon={icon} className={className} scroll>
     <div className="relative" style={{ minHeight: 200 }}>{children}</div>
-  </div>
+  </DataPanel>
 );
 
 /* ── Main Dashboard ── */
@@ -74,7 +71,26 @@ const CracksDashboard: React.FC = () => {
   const [showV1, setShowV1] = useState(false);
   const [fullscreenCard, setFullscreenCard] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { selectedPointId } = useCracks();
+  const {
+    selectedPointId,
+    points,
+    pointsLoading,
+    overviewError,
+    trendError,
+    dailyHistogramError,
+    slopeError,
+    rateError,
+    correlationError,
+  } = useCracks();
+
+  const failedParts = [
+    overviewError ? '概览' : null,
+    dailyHistogramError ? '日变化' : null,
+    slopeError ? '斜率' : null,
+    rateError ? '速率' : null,
+    correlationError ? '相关性' : null,
+    trendError ? '趋势' : null,
+  ].filter(Boolean) as string[];
 
   const handleCardFullscreen = useCallback((cardId: string) => setFullscreenCard(cardId), []);
   const handleCloseFullscreen = useCallback(() => setFullscreenCard(null), []);
@@ -96,6 +112,31 @@ const CracksDashboard: React.FC = () => {
 
   return (
     <div className="cracks-page flex flex-col h-full">
+      <PageHeader
+        eyebrow="CRACKS · 裂缝监测"
+        title="裂缝"
+        description="裂缝是否在扩展、哪些点位需要先处置"
+        meta={
+          <>
+            {pointsLoading ? (
+              <span className="ds-chip">监测点加载中</span>
+            ) : points.length === 0 ? (
+              <span className="ds-chip ds-chip--warn">监测点接口无数据</span>
+            ) : (
+              <span className="ds-chip ds-chip--info">监测点 {points.length}</span>
+            )}
+            {selectedPointId && <span className="ds-chip ds-chip--accent">当前点位 {selectedPointId}</span>}
+          </>
+        }
+      />
+
+      {failedParts.length > 0 && (
+        <div className="shrink-0 border-b border-amber-500/20 bg-amber-500/10 px-6 py-2 text-sm text-amber-200">
+          <i className="fas fa-exclamation-triangle mr-2" />
+          以下接口不可用：{failedParts.join('、')}。对应图表不参与判断。
+        </div>
+      )}
+
       {/* ════════ Layer 0: Master Caution — 0.5s decision ════════ */}
       <MasterCautionBar />
 
