@@ -7,6 +7,8 @@ from modules.db.http_compat import requests as _local_requests
 class MySQLRepo(SupabaseHttpRepo):
     # 未在本类实现的工单/用户/模块接口，走 MySQL 兼容层
     http = _local_requests
+    # 盾构相关表结构只需建一次，避免每个请求都跑一遍 DDL
+    _tunnel_schema_ready = False
 
     def get_all_points(self):
         conn = mysql_connect()
@@ -68,6 +70,30 @@ class MySQLRepo(SupabaseHttpRepo):
         cur.close()
         conn.close()
         return rows
+
+    def get_settlement_window(self, days=30):
+        """近 N 天沉降明细（相对库内最新日期，而不是“今天”），供 /api/summary?days=N 使用。"""
+        days = max(1, int(days or 30))
+        conn = mysql_connect()
+        try:
+            df = pd.read_sql(
+                """
+                SELECT point_id, measurement_date, value, daily_change, cumulative_change
+                FROM processed_settlement_data
+                WHERE measurement_date >= DATE_SUB(
+                    (SELECT MAX(measurement_date) FROM processed_settlement_data),
+                    INTERVAL %s DAY
+                )
+                ORDER BY measurement_date
+                """,
+                conn,
+                params=(days,),
+            )
+        finally:
+            conn.close()
+        if 'measurement_date' in df.columns:
+            df['measurement_date'] = pd.to_datetime(df['measurement_date']).dt.strftime('%Y-%m-%d %H:%M:%S')
+        return df.replace({np.nan: None}).to_dict('records')
 
     def crack_get_monitoring_points(self):
         conn = mysql_connect()
@@ -262,6 +288,8 @@ class MySQLRepo(SupabaseHttpRepo):
         return stats
 
     def tunnel_ensure_schema(self):
+        if MySQLRepo._tunnel_schema_ready:
+            return
         conn = mysql_connect()
         cur = conn.cursor()
         cur.execute(
@@ -342,6 +370,7 @@ class MySQLRepo(SupabaseHttpRepo):
         conn.commit()
         cur.close()
         conn.close()
+        MySQLRepo._tunnel_schema_ready = True
 
     def tunnel_projects_list(self):
         self.tunnel_ensure_schema()

@@ -4,6 +4,7 @@
 提供沉降监测、裂缝监测、温度监测、振动监测及视角数据管理等API接口
 """
 import json
+import math
 # =========================================================
 # 导入部分：将所有导入聚合到文件顶部
 # =========================================================
@@ -158,23 +159,74 @@ processing_tasks = {}
 # --- 导入 datetime (如果尚未导入) ---
 from datetime import date, datetime # 确保导入了 date 和 datetime
 
-# --- 辅助函数：扩展 Decimal 类型转换器 ---
+# --- 辅助函数：扩展 Decimal / numpy / pandas 类型转换器 ---
 def decimal_default(obj):
+    """兜底序列化：pandas/numpy 标量不处理会直接抛 TypeError 变成 500。"""
     if isinstance(obj, Decimal):
-        # 处理 Decimal 类型
         return float(round(obj, 3))
-    elif isinstance(obj, (datetime, date)): # 新增：处理 datetime 和 date 对象
-        # 将日期时间对象转换为 ISO 8601 格式的字符串
+    if isinstance(obj, (datetime, date)):
         return obj.isoformat()
-    # 如果遇到其他无法处理的类型，则抛出错误
+    if obj is pd.NaT:
+        return None
+    if isinstance(obj, np.bool_):
+        return bool(obj)
+    if isinstance(obj, np.integer):
+        return int(obj)
+    if isinstance(obj, np.floating):
+        value = float(obj)
+        return None if (math.isnan(value) or math.isinf(value)) else value
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, (set, tuple)):
+        return list(obj)
     raise TypeError(f"类型 {type(obj)} 不能被序列化为 JSON")
+
+
+def _json_sanitize(obj):
+    """把 NaN/Infinity 换成 null —— 它们不是合法 JSON，浏览器解析会直接失败。"""
+    if isinstance(obj, float):
+        return None if (math.isnan(obj) or math.isinf(obj)) else obj
+    if isinstance(obj, dict):
+        return {str(k): _json_sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple, set)):
+        return [_json_sanitize(v) for v in obj]
+    return obj
+
+
+def dumps_json(payload):
+    return json.dumps(_json_sanitize(payload), ensure_ascii=False, default=decimal_default)
+
 
 def json_dumps_response(payload, status_code=200):
     return app.response_class(
-        json.dumps(payload, default=decimal_default),
+        dumps_json(payload),
         status=status_code,
         mimetype='application/json'
     )
+
+
+# jsonify 也走同一套兜底，避免 numpy/NaN 从其它蓝图漏出来
+app.json.default = decimal_default
+app.json.ensure_ascii = False
+
+
+@app.errorhandler(404)
+def _json_404(error):
+    """前端只会解析 JSON，/api/* 的 404 不能返回 Flask 的 HTML 错误页。"""
+    if request.path.startswith('/api/'):
+        return json_dumps_response(
+            {'success': False, 'code': 'not_found', 'message': f'接口不存在: {request.path}'}, 404
+        )
+    return error
+
+
+@app.errorhandler(500)
+def _json_500(error):
+    if request.path.startswith('/api/'):
+        return json_dumps_response(
+            {'success': False, 'code': 'internal_error', 'message': '服务内部错误'}, 500
+        )
+    return error
 
 # ... (文件的其余部分保持不变) ...
 
@@ -306,31 +358,15 @@ def get_summary():
     def _respond(rows):
         enriched = [settlement_rules.enrich_point(row) for row in (rows or [])]
         if with_summary:
-            return json.dumps(
-                {'points': enriched, 'summary': settlement_rules.summarize_points(enriched)},
-                default=decimal_default,
+            return json_dumps_response(
+                {'points': enriched, 'summary': settlement_rules.summarize_points(enriched)}
             )
-        return json.dumps(enriched, default=decimal_default)
+        return json_dumps_response(enriched)
 
     if days and days > 0:
-        # 按时间范围从原始数据动态计算
+        # 按时间范围从加工表动态计算（走 repo，MySQL/Supabase 都能用）
         try:
-            from datetime import datetime, timedelta
-            import numpy as np
-            cutoff = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%dT00:00:00')
-            sb_url = os.environ.get('SUPABASE_URL', '').rstrip('/')
-            sb_key = os.environ.get('SUPABASE_ANON_KEY', '')
-            sb_headers = {'apikey': sb_key, 'Authorization': f'Bearer {sb_key}', 'Accept': 'application/json'}
-            r = requests.get(
-                f'{sb_url}/rest/v1/processed_settlement_data'
-                f'?select=point_id,measurement_date,value,daily_change,cumulative_change'
-                f'&measurement_date=gte.{cutoff}'
-                f'&order=measurement_date.asc',
-                headers=sb_headers,
-                timeout=15,
-            )
-            r.raise_for_status()
-            raw = r.json()
+            raw = repo.get_settlement_window(days)
             if not raw:
                 return _respond([])
 
@@ -415,7 +451,7 @@ def get_prediction(point_id):
         if prediction is None:
             return jsonify({'error': f'未找到监测点 {point_id} 的数据或数据不足'}), 404
 
-        return json.dumps(prediction, default=decimal_default)
+        return json_dumps_response(prediction)
     except Exception as e:
         print(f"获取预测数据失败: {str(e)}")
         return jsonify({'error': f'获取预测数据失败: {str(e)}'}), 500
@@ -426,7 +462,7 @@ def get_predictions_summary():
     """获取所有监测点的预测汇总和风险评估"""
     try:
         summary = get_all_predictions_summary()
-        return json.dumps(summary, default=decimal_default)
+        return json_dumps_response(summary)
     except Exception as e:
         print(f"获取预测汇总失败: {str(e)}")
         return jsonify({'error': f'获取预测汇总失败: {str(e)}'}), 500
@@ -455,10 +491,10 @@ def get_risk_alerts():
             'total': len(summary)
         }
 
-        return json.dumps({
+        return json_dumps_response({
             'alerts': alerts,
             'stats': stats
-        }, default=decimal_default)
+        })
     except Exception as e:
         print(f"获取风险预警失败: {str(e)}")
         return jsonify({'error': f'获取风险预警失败: {str(e)}'}), 500
@@ -726,7 +762,7 @@ def get_crack_monitoring_points():
 def get_crack_data():
     print("[API] GET /api/crack/data")
     result = repo.crack_get_data()
-    return json.dumps({'status': 'success', 'data': result, 'message': f'成功获取{len(result)}行裂缝数据'}, default=str)
+    return dumps_json({'status': 'success', 'data': result, 'message': f'成功获取{len(result)}行裂缝数据'})
 
 @crack_api.route('/crack/analysis_results', methods=['GET'])
 def get_crack_analysis_results():
@@ -738,7 +774,7 @@ def get_crack_analysis_results():
 def get_crack_trend_data():
     print("[API] GET /api/crack/trend_data")
     trend_data = repo.crack_get_trend_data()
-    return json.dumps({'status': 'success','data': trend_data,'message': '成功获取裂缝趋势数据'}, default=str)
+    return dumps_json({'status': 'success','data': trend_data,'message': '成功获取裂缝趋势数据'})
 
 @crack_api.route('/crack/stats_overview', methods=['GET'])
 def get_crack_stats_overview():
@@ -1063,8 +1099,9 @@ def get_overview_summary():
             temp_trends = repo.temperature_get_trends()
             
             total_sensors = len(temp_points) if temp_points else 0
-            temperature_info = temperature_rules.summarize_points(temp_points or [])
-            avg_temp = min_temp = max_temp = 0
+            # 分级必须基于 analysis 行的 alert_level，点位台账本身没有结论
+            temperature_info = temperature_rules.summarize_points(temp_summary or [])
+            avg_temp = min_temp = max_temp = None
             
             if temp_summary:
                 # temperature_analysis 字段：avg_temperature / min_temperature / max_temperature
@@ -1123,7 +1160,7 @@ def get_overview_summary():
         score = max(0, min(100, score))
         result['safety_score'] = round(score, 1)
         
-        return json.dumps(result, default=decimal_default), 200, {'Content-Type': 'application/json'}
+        return dumps_json(result), 200, {'Content-Type': 'application/json'}
     
     except Exception as e:
         print(f"[Overview] 汇总数据获取失败: {e}")
@@ -1148,7 +1185,7 @@ def get_status_summary():
         errors['settlement'] = str(e)
 
     try:
-        temperature_info = temperature_rules.summarize_points(repo.temperature_get_points() or [])
+        temperature_info = temperature_rules.summarize_points(repo.temperature_get_summary() or [])
         if not temperature_info.get('total_points'):
             temperature_info = {}
             errors['temperature'] = '无有效温度点位'
@@ -1186,7 +1223,7 @@ def get_status_summary():
     )
     if errors:
         payload['errors'] = errors
-    return json.dumps(payload, ensure_ascii=False, default=decimal_default), 200, {
+    return dumps_json(payload), 200, {
         'Content-Type': 'application/json'
     }
 
@@ -1238,7 +1275,7 @@ def get_data_range():
     cached_at = _DATA_RANGE_CACHE.get('at')
     if cached_at is not None and (datetime.now() - cached_at).total_seconds() < _DATA_RANGE_TTL_SECONDS:
         payload = _DATA_RANGE_CACHE['payload']
-        return json.dumps(payload, ensure_ascii=False, default=decimal_default), 200, {'Content-Type': 'application/json'}
+        return dumps_json(payload), 200, {'Content-Type': 'application/json'}
 
     payload = {
         'success': True,
@@ -1277,7 +1314,7 @@ def get_data_range():
     }
     _DATA_RANGE_CACHE['at'] = datetime.now()
     _DATA_RANGE_CACHE['payload'] = payload
-    return json.dumps(payload, ensure_ascii=False, default=decimal_default), 200, {'Content-Type': 'application/json'}
+    return dumps_json(payload), 200, {'Content-Type': 'application/json'}
 
 
 def _point_kind(point_id):
@@ -1382,7 +1419,7 @@ def get_point_metrics(point_id):
         else:
             data['note'] = 'point_sensor_map 中无此点（未建立点→传感器映射）'
 
-    return json.dumps({'success': True, 'data': data}, ensure_ascii=False, default=decimal_default), 200, {'Content-Type': 'application/json'}
+    return dumps_json({'success': True, 'data': data}), 200, {'Content-Type': 'application/json'}
 
 
 @app.after_request

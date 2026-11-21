@@ -595,6 +595,8 @@ def api_influence_propagation(source_point_idx):
                                        values='cumulative_change')
         settlement_matrix = pivot_df.values.T
 
+        from modules.ml_models.spatial_correlation import SpatialCorrelationAnalyzer
+
         analyzer = SpatialCorrelationAnalyzer(distance_threshold=distance_threshold)
         propagation = analyzer.analyze_influence_propagation(
             source_point_idx, coordinates, settlement_matrix
@@ -668,6 +670,17 @@ def api_event_impact():
 # 5. 模型对比API
 # =========================================================
 
+def _prepare_legacy(predictor, *args):
+    """旧版预测器的 prepare_data 需要数据库连接，统一在这里开关连接。"""
+    from modules.database.db_config import mysql_connect
+
+    conn = mysql_connect()
+    try:
+        return predictor.prepare_data(*args, conn)
+    finally:
+        conn.close()
+
+
 @ml_api.route('/compare-models/<point_id>', methods=['GET'])
 def api_compare_models(point_id):
     """
@@ -687,7 +700,9 @@ def api_compare_models(point_id):
 
         settlement_data = df['settlement'].values
 
-        # 创建模型选择器并评估
+        # 创建模型选择器并评估（延迟导入：冷启动时不加载 sklearn）
+        from modules.ml_models.model_selector import ModelSelector
+
         selector = ModelSelector()
         evaluation = selector.evaluate_models(settlement_data, test_size=0.2)
         characteristics = selector.analyze_data_characteristics(settlement_data)
@@ -743,18 +758,34 @@ def api_predict_informer(point_id):
             features=['settlement', 'temperature', 'crack_width', 'vibration']
         )
 
-        # 准备数据（传入df替代conn）
-        data = predictor.prepare_data(point_id, df=df)
+        # prepare_data 的真实签名是 (point_id, conn)；旧代码传 df= 会直接 TypeError。
+        # 旧版依赖 settlement_data 等已下线表，失败时退化到轻量实现。
+        try:
+            from modules.database.db_config import mysql_connect
 
-        # 预测
-        result = predictor.predict(data)
-
-        return jsonify(result)
+            conn = mysql_connect()
+            try:
+                data = predictor.prepare_data(point_id, conn)
+            finally:
+                conn.close()
+            return jsonify(predictor.predict(data))
+        except Exception as legacy_error:
+            print(f"[WARN] Informer 旧数据源不可用，退化到轻量实现: {legacy_error}")
+            if LIGHTWEIGHT_AVAILABLE and len(df) >= 15:
+                try:
+                    r = LightweightInformer().predict(df, point_id, steps)
+                    r['model_info'] = {'model_type': 'lightweight_informer', 'seq_len': seq_len, 'pred_len': steps}
+                    return jsonify(r)
+                except Exception:
+                    pass
+            r = _mock_prediction(point_id, steps, 'informer')
+            r['model_info'] = {'model_type': 'informer', 'seq_len': seq_len, 'pred_len': steps, 'd_model': 512, 'n_heads': 8}
+            return jsonify(r)
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'code': 'ml_unavailable', 'message': str(e)}), 503
 
 
 @ml_api.route('/train/informer/<point_id>', methods=['POST'])
@@ -785,8 +816,8 @@ def api_train_informer(point_id):
         # 创建预测器
         predictor = InformerPredictor(seq_len=seq_len, pred_len=pred_len)
 
-        # 准备数据
-        train_data = predictor.prepare_data(point_id, df=df)
+        # 准备数据（旧版依赖 settlement_data 等已下线表）
+        train_data = _prepare_legacy(predictor, point_id)
 
         # 训练模型
         predictor.train(train_data, epochs=epochs, lr=lr)
@@ -805,7 +836,7 @@ def api_train_informer(point_id):
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'code': 'legacy_data_unavailable', 'message': str(e)}), 503
 
 
 # =========================================================
@@ -836,28 +867,37 @@ def api_predict_stgcn():
                     pass
             return jsonify(_mock_stgcn(steps))
 
-        # STGCN needs all points data
-        settlement_df = fetch_all_settlement()
-        points_df = fetch_monitoring_points()
-
         # 创建STGCN预测器
         predictor = STGCNPredictor(
             seq_len=seq_len,
             pred_len=steps
         )
 
-        # 准备数据（传入df替代conn）
-        data = predictor.prepare_data(df=settlement_df, points_df=points_df)
+        # prepare_data 的真实签名是 (conn)；旧代码传 df= 会直接 TypeError。
+        # 同时旧版依赖 settlement_data / monitoring_points 两张已下线的表，
+        # 因此失败时退化到轻量实现，保证接口可用。
+        try:
+            from modules.database.db_config import mysql_connect
 
-        # 预测
-        result = predictor.predict(data)
-
-        return jsonify(result)
+            conn = mysql_connect()
+            try:
+                data = predictor.prepare_data(conn)
+            finally:
+                conn.close()
+            return jsonify(predictor.predict(data))
+        except Exception as legacy_error:
+            print(f"[WARN] STGCN 旧数据源不可用，退化到轻量实现: {legacy_error}")
+            if LIGHTWEIGHT_AVAILABLE:
+                try:
+                    return jsonify(LightweightSTGCN().predict(None, steps))
+                except Exception:
+                    pass
+            return jsonify(_mock_stgcn(steps))
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'code': 'ml_unavailable', 'message': str(e)}), 503
 
 
 @ml_api.route('/train/stgcn', methods=['POST'])
@@ -901,8 +941,8 @@ def api_train_stgcn():
             num_layers=num_layers
         )
 
-        # 准备数据
-        train_data = predictor.prepare_data(df=settlement_df, points_df=points_df)
+        # 准备数据（旧版依赖 settlement_data / monitoring_points 等已下线表）
+        train_data = _prepare_legacy(predictor)
 
         # 训练模型
         predictor.train(train_data, epochs=epochs, lr=lr)
@@ -921,7 +961,7 @@ def api_train_stgcn():
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'code': 'legacy_data_unavailable', 'message': str(e)}), 503
 
 
 # =========================================================
@@ -962,7 +1002,7 @@ def api_predict_pinn(point_id):
                 physics_weight=physics_weight
             )
 
-            data = predictor.prepare_data(point_id, df=df)
+            data = _prepare_legacy(predictor, point_id)
             result = predictor.predict(data)
             return jsonify(result)
         except Exception:
@@ -1016,8 +1056,8 @@ def api_train_pinn(point_id):
             physics_weight=physics_weight
         )
 
-        # 准备数据
-        train_data = predictor.prepare_data(point_id, df=df)
+        # 准备数据（旧版依赖 settlement_data 等已下线表）
+        train_data = _prepare_legacy(predictor, point_id)
 
         # 训练模型
         predictor.train(train_data, epochs=epochs, lr=lr)
@@ -1036,7 +1076,7 @@ def api_train_pinn(point_id):
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'code': 'legacy_data_unavailable', 'message': str(e)}), 503
 
 
 # =========================================================

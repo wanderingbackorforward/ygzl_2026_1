@@ -78,6 +78,33 @@ class SupabaseHttpRepo:
             cnt[t] = cnt.get(t, 0) + 1
         return [{'trend_type': k, 'count': v} for k, v in cnt.items()]
 
+    def get_settlement_window(self, days=30):
+        days = max(1, int(days or 30))
+        latest = self.http.get(
+            _url('/rest/v1/processed_settlement_data?select=measurement_date&order=measurement_date.desc&limit=1'),
+            headers=_headers(),
+        )
+        latest.raise_for_status()
+        rows = latest.json()
+        if not rows:
+            return []
+        max_date = str(rows[0].get('measurement_date') or '')
+        try:
+            anchor = datetime.datetime.fromisoformat(max_date.replace('Z', '+00:00'))
+        except ValueError:
+            anchor = datetime.datetime.now()
+        cutoff = (anchor - datetime.timedelta(days=days)).strftime('%Y-%m-%dT%H:%M:%S')
+        r = self.http.get(
+            _url(
+                '/rest/v1/processed_settlement_data'
+                '?select=point_id,measurement_date,value,daily_change,cumulative_change'
+                f'&measurement_date=gte.{cutoff}&order=measurement_date.asc'
+            ),
+            headers=_headers(),
+        )
+        r.raise_for_status()
+        return r.json()
+
     def crack_get_monitoring_points(self):
         r = self.http.get(_url('/rest/v1/crack_monitoring_points?select=*&status=eq.active'), headers=_headers())
         r.raise_for_status()

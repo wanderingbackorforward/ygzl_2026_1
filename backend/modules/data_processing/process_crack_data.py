@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
 import mysql.connector
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
+import math
 import os
 import sys
 import datetime
@@ -187,20 +188,30 @@ def analyze_trends(df):
     return trends
 
 
+def _clean(value):
+    """numpy/pandas 的 NaN/inf 不能直接进 MySQL，统一转成 NULL。"""
+    if value is None or value is pd.NaT:
+        return None
+    if isinstance(value, (np.floating, float)):
+        v = float(value)
+        return None if (math.isnan(v) or math.isinf(v)) else v
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, pd.Timestamp):
+        return value.to_pydatetime()
+    return value
+
+
 def update_monitoring_points(df, engine):
-    """更新裂缝监测点表"""
-    conn = engine.connect()
-
-    # 将DataFrame转置，让每个point_id成为行索引
-    df_transposed = df.transpose()
-
-    # 逐行处理每个监测点
+    """更新裂缝监测点表（SQLAlchemy 2.x：必须用 text() 并显式提交事务）"""
     for point_id in df.index:
         try:
             # 检查该监测点是否已存在
-            check_sql = f"SELECT COUNT(*) FROM crack_monitoring_points WHERE point_id = '{point_id}'"
-            result = conn.execute(check_sql)
-            exists = result.fetchone()[0] > 0
+            with engine.begin() as conn:
+                exists = conn.execute(
+                    text("SELECT COUNT(*) FROM crack_monitoring_points WHERE point_id = :pid"),
+                    {'pid': point_id},
+                ).scalar() > 0
 
             # 准备数据
             data = {
@@ -222,52 +233,32 @@ def update_monitoring_points(df, engine):
                 'status': 'active'
             }
 
-            # 构建SQL查询
-            if exists:
-                # 更新现有记录
-                set_parts = []
-                params = []
+            data = {k: _clean(v) for k, v in data.items()}
 
-                for key, value in data.items():
-                    if key != 'point_id':
-                        # 处理带反引号的key
-                        if key.startswith('`') and key.endswith('`'):
-                            set_parts.append(f"{key} = %s")
-                        else:
-                            set_parts.append(f"{key} = %s")
-                        params.append(value)
-
-                params.append(point_id)  # WHERE条件的参数
-
-                update_sql = f"UPDATE crack_monitoring_points SET {', '.join(set_parts)} WHERE point_id = %s"
-                conn.execute(update_sql, params)
-                print(f"更新了监测点: {point_id}")
-            else:
-                # 插入新记录
-                columns = []
-                for key in data.keys():
-                    # 处理带反引号的key
-                    if key.startswith('`') and key.endswith('`'):
-                        columns.append(key)
-                    else:
-                        columns.append(key)
-
-                placeholders = ['%s'] * len(columns)
-
-                insert_sql = f"INSERT INTO crack_monitoring_points ({', '.join(columns)}) VALUES ({', '.join(placeholders)})"
-                conn.execute(insert_sql, list(data.values()))
-                print(f"添加了新监测点: {point_id}")
+            with engine.begin() as conn:
+                if exists:
+                    set_parts = [f"{key} = :{key.strip('`')}" for key in data if key != 'point_id']
+                    update_sql = text(
+                        f"UPDATE crack_monitoring_points SET {', '.join(set_parts)} WHERE point_id = :point_id"
+                    )
+                    conn.execute(update_sql, data)
+                    print(f"更新了监测点: {point_id}")
+                else:
+                    columns = list(data.keys())
+                    params = ', '.join(f":{key.strip('`')}" for key in columns)
+                    insert_sql = text(
+                        f"INSERT INTO crack_monitoring_points ({', '.join(columns)}) VALUES ({params})"
+                    )
+                    conn.execute(insert_sql, data)
+                    print(f"添加了新监测点: {point_id}")
         except Exception as e:
             print(f"处理监测点 {point_id} 时出错: {str(e)}")
 
-    conn.close()
     print(f"更新了 {len(df)} 个裂缝监测点")
 
 
 def update_analysis_results(stats_df, engine):
-    """更新裂缝分析结果表"""
-    conn = engine.connect()
-
+    """更新裂缝分析结果表（SQLAlchemy 2.x：text() + 显式事务）"""
     # 添加最新的分析结果
     for point_id in stats_df.index:
         try:
@@ -288,17 +279,17 @@ def update_analysis_results(stats_df, engine):
                 'anomaly_count': 0  # 这里可以添加异常值检测的逻辑
             }
 
-            # 构建SQL查询
-            columns = list(data.keys())
-            placeholders = ['%s'] * len(columns)
-
-            insert_sql = f"INSERT INTO crack_analysis_results ({', '.join(columns)}) VALUES ({', '.join(placeholders)})"
-            conn.execute(insert_sql, list(data.values()))
+            data = {k: _clean(v) for k, v in data.items()}
+            params = ', '.join(f":{key}" for key in data)
+            insert_sql = text(
+                f"INSERT INTO crack_analysis_results ({', '.join(data.keys())}) VALUES ({params})"
+            )
+            with engine.begin() as conn:
+                conn.execute(insert_sql, data)
             print(f"添加了分析结果: {point_id}")
         except Exception as e:
             print(f"添加分析结果 {point_id} 时出错: {str(e)}")
 
-    conn.close()
     print(f"添加了 {len(stats_df)} 条裂缝分析结果")
 
 

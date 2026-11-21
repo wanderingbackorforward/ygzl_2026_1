@@ -94,10 +94,10 @@ def calculate_prediction(valid_days, valid_values, slope, intercept, prediction_
     elif daily_rate > settlement_rules.THRESHOLDS['rate_warning'] or total_predicted_change > settlement_rules.THRESHOLDS['cumulative_warning']:
         risk_level = "high"  # 高风险
         risk_score = 70
-    elif daily_rate > settlement_rules.THRESHOLDS['rate_notice'] or total_predicted_change > 1.5:
+    elif daily_rate > settlement_rules.THRESHOLDS['rate_notice'] or total_predicted_change > settlement_rules.THRESHOLDS['prediction_notice']:
         risk_level = "medium"  # 中等风险
         risk_score = 50
-    elif daily_rate > 0.01 or total_predicted_change > 0.5:
+    elif daily_rate > settlement_rules.THRESHOLDS['rate_observe'] or total_predicted_change > settlement_rules.THRESHOLDS['prediction_observe']:
         risk_level = "low"  # 低风险
         risk_score = 30
     else:
@@ -109,7 +109,7 @@ def calculate_prediction(valid_days, valid_values, slope, intercept, prediction_
     alert_threshold = -settlement_rules.THRESHOLDS['cumulative_alert']  # mm, 累计沉降报警值
 
     warnings = []
-    if slope < -0.1:
+    if slope < -settlement_rules.THRESHOLDS['rate_fast']:
         warnings.append("沉降速率过快")
     if end_prediction < warning_threshold:
         warnings.append("预测将超过警戒阈值")
@@ -518,6 +518,37 @@ def get_point_prediction(point_id, prediction_days=30):
     }
 
 
+def _build_prediction_row(row):
+    """预测汇总行的唯一构造：两个数据源分支共用，避免各写一份分档。"""
+    slope = float(row.get('trend_slope') or 0)
+    risk_level, risk_score = settlement_rules.risk_from_rate(slope)
+    predicted_change_30d = slope * 30
+
+    warnings = []
+    if slope < -settlement_rules.THRESHOLDS['rate_fast']:
+        warnings.append("沉降速率过快")
+    if predicted_change_30d < -settlement_rules.THRESHOLDS['cumulative_warning']:
+        warnings.append("预测将超过警戒阈值")
+
+    try:
+        avg_value = float(row.get('avg_value') or 0.0)
+    except (TypeError, ValueError):
+        avg_value = 0.0
+
+    return {
+        'point_id': row.get('point_id'),
+        'trend_slope': slope,
+        'r_squared': float(row.get('r_squared') or 0),
+        'trend_type': str(row.get('trend_type') or '未知'),
+        'alert_level': str(row.get('alert_level') or '正常'),
+        'risk_score': risk_score,
+        'risk_level': risk_level,
+        'predicted_change_30d': predicted_change_30d,
+        'predicted_value_30d': avg_value + predicted_change_30d,
+        'warnings': str(warnings),
+    }
+
+
 def get_all_predictions_summary():
     """
     获取所有监测点的预测汇总数据（向后兼容旧数据库结构）
@@ -534,54 +565,7 @@ def get_all_predictions_summary():
         if not rows:
             return []
 
-        results = []
-        for row in rows:
-            slope = float(row.get('trend_slope') or 0)
-
-            daily_rate = abs(slope)
-            if daily_rate > 0.15:
-                risk_level = "critical"
-                risk_score = 90
-            elif daily_rate > 0.08:
-                risk_level = "high"
-                risk_score = 70
-            elif daily_rate > 0.03:
-                risk_level = "medium"
-                risk_score = 50
-            elif daily_rate > 0.01:
-                risk_level = "low"
-                risk_score = 30
-            else:
-                risk_level = "normal"
-                risk_score = 10
-
-            predicted_change_30d = slope * 30
-
-            warnings = []
-            if slope < -0.1:
-                warnings.append("沉降速率过快")
-            if predicted_change_30d < -3.0:
-                warnings.append("预测将超过警戒阈值")
-
-            avg_value = row.get('avg_value')
-            try:
-                avg_value = float(avg_value) if avg_value is not None else 0.0
-            except Exception:
-                avg_value = 0.0
-
-            results.append({
-                'point_id': row.get('point_id'),
-                'trend_slope': slope,
-                'r_squared': float(row.get('r_squared') or 0),
-                'trend_type': str(row.get('trend_type') or '未知'),
-                'alert_level': str(row.get('alert_level') or '正常'),
-                'risk_score': risk_score,
-                'risk_level': risk_level,
-                'predicted_change_30d': predicted_change_30d,
-                'predicted_value_30d': avg_value + predicted_change_30d,
-                'warnings': str(warnings)
-            })
-
+        results = [_build_prediction_row(row) for row in rows]
         results.sort(key=lambda x: x['risk_score'], reverse=True)
         return results
 
@@ -605,51 +589,7 @@ def get_all_predictions_summary():
     if not rows:
         return []
 
-    results = []
-    for row in rows:
-        slope = float(row['trend_slope']) if row.get('trend_slope') else 0
-
-        # 基于斜率动态计算风险等级
-        daily_rate = abs(slope)
-        if daily_rate > 0.15:
-            risk_level = "critical"
-            risk_score = 90
-        elif daily_rate > 0.08:
-            risk_level = "high"
-            risk_score = 70
-        elif daily_rate > 0.03:
-            risk_level = "medium"
-            risk_score = 50
-        elif daily_rate > 0.01:
-            risk_level = "low"
-            risk_score = 30
-        else:
-            risk_level = "normal"
-            risk_score = 10
-
-        # 预测30天变化量
-        predicted_change_30d = slope * 30
-
-        # 生成预警信息
-        warnings = []
-        if slope < -0.1:
-            warnings.append("沉降速率过快")
-        if predicted_change_30d < -3.0:
-            warnings.append("预测将超过警戒阈值")
-
-        results.append({
-            'point_id': row['point_id'],
-            'trend_slope': slope,
-            'r_squared': float(row['r_squared']) if row.get('r_squared') else 0,
-            'trend_type': str(row.get('trend_type') or '未知'),
-            'alert_level': str(row.get('alert_level') or '正常'),
-            'risk_score': risk_score,
-            'risk_level': risk_level,
-            'predicted_change_30d': predicted_change_30d,
-            'predicted_value_30d': float(row.get('avg_value') or 0) + predicted_change_30d,
-            'warnings': str(warnings)
-        })
-
+    results = [_build_prediction_row(row) for row in rows]
     # 按风险分数降序排列
     results.sort(key=lambda x: x['risk_score'], reverse=True)
     return results

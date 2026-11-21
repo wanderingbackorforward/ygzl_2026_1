@@ -18,9 +18,31 @@ THRESHOLDS = {
     'rate_alert': 0.15,
     'rate_warning': 0.08,
     'rate_notice': 0.03,
+    'rate_observe': 0.01,
+    'rate_fast': 0.10,
     'prediction_30d_alert': 5.0,
     'prediction_30d_warning': 3.0,
+    'prediction_notice': 1.5,
+    'prediction_observe': 0.5,
 }
+
+# 速率 -> 风险等级/分值，唯一实现（门面查询与预测汇总共用）
+_RISK_TIERS = (
+    ('rate_alert', 'critical', 90),
+    ('rate_warning', 'high', 70),
+    ('rate_notice', 'medium', 50),
+    ('rate_observe', 'low', 30),
+)
+
+
+def risk_from_rate(slope: Any, thresholds: Optional[Dict[str, float]] = None) -> tuple:
+    """按日沉降速率映射 (risk_level, risk_score)，保持既有分档不变。"""
+    limits = thresholds or THRESHOLDS
+    rate = abs(_to_float(slope) or 0.0)
+    for key, level, score in _RISK_TIERS:
+        if rate > limits[key]:
+            return level, score
+    return 'normal', 10
 
 
 def _to_float(value: Any) -> Optional[float]:
