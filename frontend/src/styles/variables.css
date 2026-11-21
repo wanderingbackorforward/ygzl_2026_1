@@ -1,43 +1,43 @@
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap');
+/* 字体在 design-tokens.css 统一引入；本文件只做旧变量到 ds 令牌的映射 */
 
-/* CSS Variables - Cyberpunk Theme */
+/* CSS Variables - 旧页面兼容层（值全部指向 design-tokens.css） */
 :root {
   /* Primary Colors */
-  --primary-color: #00e5ff;
-  --secondary-color: #00aaff;
-  --accent-color: #00d8c9;
-  --warning-color: #ff3e5f;
-  --success-color: #00e676;
+  --primary-color: var(--ds-accent);
+  --secondary-color: var(--ds-accent-text);
+  --accent-color: var(--ds-accent);
+  --warning-color: var(--ds-danger);
+  --success-color: var(--ds-ok);
 
   /* Background Colors */
-  --background-color: #03060a;
-  --panel-bg: rgba(10, 18, 30, 0.9);
-  --panel-bg-hover: rgba(15, 25, 40, 0.95);
-  --card-bg: rgba(10, 18, 30, 0.85);
+  --background-color: var(--ds-bg-deep);
+  --panel-bg: var(--ds-surface);
+  --panel-bg-hover: var(--ds-surface-hover);
+  --card-bg: var(--ds-surface);
 
   /* Borders and Effects */
-  --panel-border: 1px solid rgba(0, 229, 255, 0.25);
-  --panel-border-hover: 1px solid rgba(0, 229, 255, 0.4);
-  --panel-glow: 0 0 8px rgba(0, 229, 255, 0.08);
-  --panel-glow-hover: 0 0 15px rgba(0, 229, 255, 0.15);
+  --panel-border: 1px solid var(--ds-border);
+  --panel-border-hover: 1px solid var(--ds-border-strong);
+  --panel-glow: 0 0 8px var(--ds-accent-soft);
+  --panel-glow-hover: 0 0 15px var(--ds-accent-soft);
 
   /* Text Colors */
-  --text-color: #ffffff;
-  --text-secondary: #cccccc;
-  --text-muted: #888888;
+  --text-color: var(--ds-text);
+  --text-secondary: var(--ds-text-secondary);
+  --text-muted: var(--ds-text-muted);
 
   /* Sizing */
-  --border-radius: 4px;
-  --border-radius-lg: 8px;
-  --header-height: 60px;
+  --border-radius: var(--ds-radius-sm);
+  --border-radius-lg: var(--ds-radius);
+  --header-height: var(--ds-header-h);
   --card-header-height: 40px;
 
   /* Spacing */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 12px;
-  --spacing-lg: 16px;
-  --spacing-xl: 24px;
+  --spacing-xs: var(--ds-space-1);
+  --spacing-sm: var(--ds-space-2);
+  --spacing-md: var(--ds-space-3);
+  --spacing-lg: var(--ds-space-4);
+  --spacing-xl: var(--ds-space-5);
 
   /* Transitions */
   --transition-fast: 150ms ease;

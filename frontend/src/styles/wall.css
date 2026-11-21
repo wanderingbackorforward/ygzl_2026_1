@@ -21,13 +21,14 @@
   --wall-gap: 18px;
   --wall-tile-radius: 14px;
 
-  --wall-danger: #ff3e5f;
-  --wall-warning: #ff9e0d;
-  --wall-normal: #00e676;
-  --wall-info: #00e5ff;
+  /* 语义色统一引用 ds 令牌：大屏只放大尺寸与密度，不改色义 */
+  --wall-danger: var(--ds-danger);
+  --wall-warning: var(--ds-warn);
+  --wall-normal: var(--ds-ok);
+  --wall-info: var(--ds-info);
 
-  --wall-panel: rgba(10, 18, 30, 0.92);
-  --wall-panel-border: rgba(0, 229, 255, 0.28);
+  --wall-panel: var(--ds-surface);
+  --wall-panel-border: var(--ds-border);
 }
 
 /* ---- 全局：大屏档字号放大 ---- */
