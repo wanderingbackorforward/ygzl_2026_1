@@ -1,0 +1,470 @@
+/*
+ * insar.css —— InSAR 页专用定位与排版
+ *
+ * 只做布局/尺寸，不新增颜色语义：所有颜色引用 design-tokens.css 的 ds 令牌。
+ * 颜色映射（沉降红/抬升紫等）仍由页面与 lib/insar 决定，这里只承接外框。
+ */
+
+/* ---- 页面骨架 ---- */
+.insar-page-header {
+  flex-wrap: wrap;
+  row-gap: var(--ds-space-2);
+}
+
+.insar-page-header .ds-page-header__actions {
+  flex-wrap: wrap;
+}
+
+/* ---- 地图容器 ---- */
+.insar-map-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.insar-map-canvas {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--ds-border);
+}
+
+/* 地图四态遮罩：不拦截地图拖拽，只让状态卡可点 */
+.insar-map-state {
+  position: absolute;
+  inset: 0;
+  z-index: 480;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ds-space-4);
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(3, 7, 13, 0.24), rgba(3, 7, 13, 0.62));
+}
+
+.insar-map-state .ds-state {
+  flex: 0 0 auto;
+  max-width: 440px;
+  pointer-events: auto;
+  background: var(--ds-surface-solid);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius);
+  box-shadow: var(--ds-shadow-panel);
+}
+
+/* ---- 图层与图例 ---- */
+.insar-layer-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 520;
+  width: 280px;
+  max-width: calc(100% - 24px);
+  max-height: calc(100% - 24px);
+}
+
+.insar-layer-panel .ds-panel__body {
+  overflow-y: auto;
+}
+
+.insar-layer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.insar-layer-section__title {
+  font-size: var(--ds-fs-caption);
+  letter-spacing: 0.04em;
+  color: var(--ds-text-muted);
+}
+
+.insar-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.insar-hint {
+  font-size: var(--ds-fs-caption);
+  color: var(--ds-text-faint);
+}
+
+.insar-error-text {
+  font-size: var(--ds-fs-small);
+  color: var(--ds-danger-text);
+  white-space: pre-wrap;
+}
+
+.insar-select {
+  width: 100%;
+  min-height: var(--ds-control-h);
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: var(--ds-fs-small);
+  color: var(--ds-text);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+}
+
+.insar-legend-bar {
+  height: 10px;
+  border-radius: 6px;
+  border: 1px solid var(--ds-border);
+}
+
+.insar-legend-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: var(--ds-fs-caption);
+  color: var(--ds-text-muted);
+}
+
+.insar-legend-list {
+  display: grid;
+  gap: 6px;
+}
+
+.insar-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--ds-fs-small);
+  color: var(--ds-text-secondary);
+}
+
+.insar-swatch {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.insar-fit-btn {
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* ---- 危险区详情 ---- */
+.insar-zone-panel {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 540;
+  width: 360px;
+  max-width: calc(100% - 24px);
+  max-height: 40%;
+}
+
+.insar-zone-panel .ds-panel__body {
+  overflow-y: auto;
+}
+
+.insar-zone-rows {
+  display: grid;
+  gap: 4px;
+  font-size: var(--ds-fs-small);
+  color: var(--ds-text-secondary);
+}
+
+.insar-zone-rows b {
+  margin-right: 8px;
+  font-weight: 600;
+  color: var(--ds-text);
+}
+
+.insar-zone-tag {
+  font-weight: 900;
+}
+
+.insar-zone-tag--subsidence { color: #ff3e5f; }
+.insar-zone-tag--uplift { color: #a855f7; }
+.insar-zone-tag--danger { color: #ff3e5f; }
+.insar-zone-tag--warning { color: #ff9e0d; }
+.insar-zone-tag--uplift-warning { color: #3b82f6; }
+
+.insar-zone-status {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 560;
+  max-width: 360px;
+}
+
+/* ---- 高风险点列表（KpiRail 底部） ---- */
+.insar-risk-head {
+  margin-bottom: 10px;
+  font-size: var(--wall-font-lg);
+  font-weight: 700;
+  color: #fff;
+}
+
+.insar-risk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.insar-risk-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: var(--wall-min-target);
+  padding: 12px 14px;
+  text-align: left;
+  color: #fff;
+  background: rgba(10, 18, 30, 0.85);
+  border: 1px solid var(--ds-border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.insar-risk-item--danger { border-color: rgba(239, 68, 68, 0.4); }
+.insar-risk-item--warning { border-color: rgba(245, 166, 35, 0.4); }
+
+.insar-risk-item__bar {
+  width: 5px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+
+.insar-risk-item__bar--danger { background: var(--ds-danger); }
+.insar-risk-item__bar--warning { background: var(--ds-warn); }
+
+.insar-risk-item__id {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+}
+
+.insar-risk-item__value {
+  flex-shrink: 0;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-danger-text);
+}
+
+.insar-risk-item--warning .insar-risk-item__value {
+  color: var(--ds-warn-text);
+}
+
+/* ---- 点位卡 ---- */
+.insar-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 20px;
+  height: 100%;
+}
+
+.insar-detail-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  overflow: auto;
+}
+
+.insar-point-card {
+  border-left: 4px solid var(--ds-ok);
+}
+
+.insar-point-card--warning { border-left-color: var(--ds-warn); }
+.insar-point-card--danger { border-left-color: var(--ds-danger); }
+
+.insar-point-id {
+  margin-top: 4px;
+  font-size: 24px;
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.insar-point-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
+  margin-top: 14px;
+  font-size: 16px;
+}
+
+.insar-point-meta__label { opacity: 0.6; }
+
+.insar-point-meta__value {
+  font-family: monospace;
+}
+
+.insar-point-meta__value--normal { color: var(--ds-ok-text); font-weight: 700; }
+.insar-point-meta__value--warning { color: var(--ds-warn-text); font-weight: 700; }
+.insar-point-meta__value--danger { color: var(--ds-danger-text); font-weight: 700; }
+
+.insar-measure-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.insar-measure {
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.insar-measure__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.insar-measure__index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #7df0ff;
+  background: rgba(0, 229, 255, 0.18);
+  border-radius: 999px;
+}
+
+.insar-measure__title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.insar-measure__detail {
+  margin: 4px 0 0 36px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(230, 247, 255, 0.7);
+}
+
+.insar-risk-text--normal { color: var(--ds-ok-text); }
+.insar-risk-text--warning { color: var(--ds-warn-text); }
+.insar-risk-text--danger { color: var(--ds-danger-text); }
+
+/* ---- 时序面板 ---- */
+.insar-series-panel {
+  min-height: 0;
+}
+
+.insar-series-panel .ds-panel__body {
+  min-height: 0;
+}
+
+/* ---- 趋势全屏 ---- */
+.insar-trend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.insar-trend-panel {
+  min-height: 260px;
+}
+
+.insar-trend-panel--wide {
+  grid-column: 1 / -1;
+}
+
+.insar-trend-chart { height: 220px; }
+.insar-trend-chart--tall { height: 260px; }
+
+/* ---- 设置全屏 ---- */
+.insar-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 760px;
+}
+
+.insar-settings__block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.insar-settings__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.insar-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 15px;
+  color: rgba(230, 247, 255, 0.8);
+}
+
+.insar-input {
+  width: 150px;
+  min-height: var(--wall-min-target);
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 18px;
+  color: #e6f7ff;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--ds-border);
+  border-radius: 10px;
+}
+
+.insar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--wall-min-target);
+  padding: 0 18px;
+  font-size: 17px;
+  color: #7df0ff;
+  text-decoration: none;
+  background: rgba(0, 229, 255, 0.1);
+  border: 1px solid var(--ds-border);
+  border-radius: 12px;
+}
+
+/* ---- 手机档：详情改为纵向，图层面板贴边 ---- */
+body.tier-tablet .insar-settings .insar-select,
+body.tier-tablet .insar-settings .insar-input {
+  min-height: var(--wall-min-target);
+  font-size: 18px;
+}
+
+body.tier-tablet .insar-settings .insar-select { padding: 10px 14px; border-radius: 12px; }
+body.tier-tablet .insar-settings .insar-input { padding: 8px 12px; border-radius: 10px; }
+
+body.tier-phone .insar-detail-grid {
+  grid-template-columns: 1fr;
+  height: auto;
+}
+
+body.tier-phone .insar-page-header {
+  padding: 8px 10px;
+  gap: 8px;
+}
+
+body.tier-phone .insar-layer-panel {
+  top: 8px;
+  right: 8px;
+  max-height: 42%;
+}
+
+body.tier-phone .insar-zone-panel {
+  left: 8px;
+  width: calc(100% - 16px);
+}

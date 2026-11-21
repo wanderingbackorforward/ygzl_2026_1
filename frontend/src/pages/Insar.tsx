@@ -9,6 +9,11 @@ import { kmlToBestLineStringFeature } from '../lib/kml'
 import { createBuiltInBaseLayers, createRasterLayer, loadOpticalRasterLayers } from '../lib/mapLayers'
 import { extractInsarContext } from '../utils/contextExtractors/insarExtractor'
 import { SegmentedControl, LargeIconButton, StatusTile, KpiRail, FullscreenFocus, TourControl } from '../components/touchkit'
+import { PageHeader, DataPanel, StateView } from '../components/common/ui'
+import { LayerControlPanel } from '../components/insar/LayerControlPanel'
+import { SeriesPanel } from '../components/insar/SeriesPanel'
+import { PointCard } from '../components/insar/PointCard'
+import '../styles/insar.css'
 
 type FeatureCollection = { type: 'FeatureCollection', features: any[] }
 type InsarMeta = { dataset?: string, cached?: boolean, feature_count?: number, total_feature_count?: number, value_field?: string, args?: Record<string, any> }
@@ -1150,92 +1155,84 @@ function InsarNativeMap(
     }
   }, [series?.id, series?.series, selected?.id])
 
-  return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
-      <div ref={mapContainerRef} style={{ position: 'absolute', inset: 0, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(64,174,255,.3)' }} />
-      <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 500, padding: 10, borderRadius: 8, background: 'rgba(10,25,47,.78)', border: '1px solid rgba(64,174,255,.25)', color: '#aaddff', width: 280, maxWidth: 'calc(100% - 24px)' }}>
-        <div style={{ fontWeight: 700, marginBottom: 6 }}>原生图层</div>
-        <div style={{ fontSize: 12, opacity: 1, marginBottom: 10 }}>
-          <div style={{ marginBottom: 6 }}>底图/影像</div>
-          <select
-            value={baseLayerName}
-            onChange={(e) => setBaseLayerName(e.target.value)}
-            style={{ width: '100%', background: 'rgba(0,0,0,.25)', color: '#aaddff', border: '1px solid rgba(64,174,255,.35)', borderRadius: 6, padding: '4px 6px' }}
-          >
-            {baseLayers.map((x) => (
-              <option key={x.name} value={x.name}>{x.name}</option>
-            ))}
-          </select>
-          <div style={{ marginTop: 6, opacity: 1 }}>光学配置：{opticalCount} 层（来自 /static/data/optical/layers.json）</div>
-          {baseLayerError ? <div style={{ marginTop: 6, color: '#ff8b8b', opacity: 15, whiteSpace: 'pre-wrap' }}>{baseLayerError}</div> : null}
-        </div>
-        <div style={{ fontSize: 12, opacity: 1, marginBottom: 6 }}>点数：{featureCount}{meta?.total_feature_count ? ` / ${meta.total_feature_count}` : ''}{meta?.cached ? '（缓存）' : ''}</div>
-          <div style={{ fontSize: 12, opacity: 1, marginBottom: 6 }}>字段：{resolvedValueField}{unit ? `（${unit}）` : ''}</div>
-        <div style={{ fontSize: 12, fontWeight: 700, marginTop: 4, marginBottom: 6 }}>图例（颜色点含义）</div>
-        {indicator !== 'threshold' ? (
-          <>
-            <div style={{ fontSize: 12, opacity: 1, marginBottom: 8 }}>色标范围：±{maxAbs}</div>
-            <div style={{ fontSize: 12, opacity: 1, marginBottom: 6 }}>左红=沉降（负），中白=0，右蓝=抬升（正）</div>
-            <div style={{ height: 10, borderRadius: 6, border: '1px solid rgba(64,174,255,.25)', background: `linear-gradient(90deg, ${legendLeft || '#7c8a9a'} 0%, #ffffff 50%, ${legendRight || '#7c8a9a'} 100%)` }} />
-            <div style={{ display: 'flex', alignItems: 'center', marginTop: 6, fontSize: 12, opacity: 1 }}>
-              <span>-{maxAbs}</span>
-              <span style={{ flex: 1, textAlign: 'center' }}>0</span>
-              <span>{maxAbs}</span>
-            </div>
-          </>
-        ) : (
-          <>
-            <div style={{ fontSize: 12, opacity: 1, marginBottom: 8 }}>阈值分级（单位：mm/年，负=沉降）</div>
-            <div style={{ display: 'grid', gap: 6 }}>
-              {thresholdLegendItems.map((x) => (
-                <div key={`${x.label}-${x.color}`} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 14, height: 14, borderRadius: 3, background: x.color, border: '1px solid rgba(255,255,255,.15)' }} />
-                  <span style={{ fontSize: 12, opacity: 15 }}>{x.label}</span>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-        <button
-          type="button"
-          disabled={!lastBoundsRef.current}
-          onClick={() => {
-            const map = mapRef.current
-            const b = lastBoundsRef.current
-            if (map && b && b.isValid()) map.fitBounds(b.pad(0.1))
-          }}
-          style={{
-            marginTop: 8,
-            width: '100%',
-            padding: '7px 10px',
-            borderRadius: 8,
-            border: '1px solid rgba(64,174,255,.35)',
-            background: lastBoundsRef.current ? 'rgba(64,174,255,.12)' : 'rgba(255,255,255,.05)',
-            color: '#aaddff',
-            cursor: lastBoundsRef.current ? 'pointer' : 'not-allowed',
-          }}
-        >
-          定位到数据范围
-        </button>
-        {loading ? <div style={{ marginTop: 8, fontSize: 12, opacity: 1 }}>加载中…</div> : null}
-        {error ? <div style={{ marginTop: 8, fontSize: 12, color: '#ff8b8b', whiteSpace: 'pre-wrap' }}>{error}</div> : null}
-      </div>
+  const mapState = loading && !data
+    ? { kind: 'loading' as const, title: '正在加载 InSAR 点位…', hint: '首次加载会拉取全部形变点，切换数据集或字段后自动刷新' }
+    : error
+      ? { kind: 'error' as const, title: '点位接口不可用', hint: error, onRetry: () => setBboxToken((t) => t + 1) }
+      : !loading && data && featureCount === 0
+        ? { kind: 'empty' as const, title: '当前范围没有点位', hint: '接口已返回，但该数据集 / 字段在视窗内没有记录' }
+        : null
 
+  return (
+    <div className="insar-map-root">
+      <div ref={mapContainerRef} className="insar-map-canvas" />
+
+      <LayerControlPanel
+        indicator={indicator}
+        baseLayerName={baseLayerName}
+        baseLayers={baseLayers}
+        onBaseLayerChange={setBaseLayerName}
+        opticalCount={opticalCount}
+        baseLayerError={baseLayerError}
+        featureCount={featureCount}
+        totalFeatureCount={meta?.total_feature_count}
+        cached={meta?.cached}
+        valueField={resolvedValueField}
+        unit={unit}
+        maxAbs={maxAbs}
+        legendLeft={legendLeft}
+        legendRight={legendRight}
+        thresholdLegendItems={thresholdLegendItems}
+        canFitBounds={!!lastBoundsRef.current}
+        onFitBounds={() => {
+          const map = mapRef.current
+          const b = lastBoundsRef.current
+          if (map && b && b.isValid()) map.fitBounds(b.pad(0.1))
+        }}
+        loading={loading}
+        error={error}
+        onRetry={() => setBboxToken((t) => t + 1)}
+      />
 
       {selectedZone ? (
-        <div style={{ position: 'absolute', bottom: 12, left: 12, zIndex: 540, width: 360, maxWidth: 'calc(100% - 24px)', maxHeight: '40%', overflow: 'auto', padding: 12, borderRadius: 10, background: 'rgba(10,25,47,.86)', border: '1px solid rgba(64,174,255,.25)', color: '#aaddff' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <div style={{ fontWeight: 800, flex: 1 }}>危险区详情</div>
-            <button type="button" onClick={() => setSelectedZone(null)} style={{ border: '1px solid rgba(64,174,255,.35)', background: 'rgba(64,174,255,.15)', color: '#aaddff', borderRadius: 8, padding: '6px 10px', cursor: 'pointer' }}>关闭</button>
+        <DataPanel
+          className="insar-zone-panel"
+          title="危险区详情"
+          icon="fa-draw-polygon"
+          pad
+          extra={
+            <button type="button" className="ds-btn" onClick={() => setSelectedZone(null)}>
+              关闭
+            </button>
+          }
+        >
+          <div className="insar-zone-rows">
+            <div><b>ID</b>{selectedZone.id}</div>
+            <div>
+              <b>方向</b>
+              <span className={`insar-zone-tag insar-zone-tag--${selectedZone.direction}`}>
+                {selectedZone.direction === 'uplift' ? '抬升' : '沉降'}
+              </span>
+            </div>
+            <div>
+              <b>等级</b>
+              <span
+                className={`insar-zone-tag insar-zone-tag--${
+                  selectedZone.direction === 'uplift'
+                    ? selectedZone.level === 'danger' ? 'uplift' : 'uplift-warning'
+                    : selectedZone.level
+                }`}
+              >
+                {selectedZone.level === 'danger' ? '显著' : '轻微'}
+              </span>
+            </div>
+            <div><b>点数</b>{selectedZone.point_count}</div>
+            <div><b>min速度</b>{selectedZone.min_velocity === null ? '—' : String(selectedZone.min_velocity)} mm/年</div>
+            <div><b>p95速度</b>{selectedZone.p95_velocity === null ? '—' : String(selectedZone.p95_velocity)} mm/年</div>
           </div>
-          <div style={{ fontSize: 12, opacity: 15, marginBottom: 6 }}>ID：{selectedZone.id}</div>
-          <div style={{ fontSize: 12, opacity: 15, marginBottom: 6 }}>方向：<span style={{ color: selectedZone.direction === 'uplift' ? '#a855f7' : '#ff3e5f', fontWeight: 900 }}>{selectedZone.direction === 'uplift' ? '抬升' : '沉降'}</span></div>
-          <div style={{ fontSize: 12, opacity: 15, marginBottom: 6 }}>等级：<span style={{ color: selectedZone.direction === 'uplift' ? (selectedZone.level === 'danger' ? '#a855f7' : '#3b82f6') : (selectedZone.level === 'danger' ? '#ff3e5f' : '#ff9e0d'), fontWeight: 900 }}>{selectedZone.level === 'danger' ? '显著' : '轻微'}</span></div>
-          <div style={{ fontSize: 12, opacity: 15, marginBottom: 6 }}>点数：{selectedZone.point_count}</div>
-          <div style={{ fontSize: 12, opacity: 15, marginBottom: 6 }}>min速度：{selectedZone.min_velocity === null ? '—' : String(selectedZone.min_velocity)} mm/年</div>
-          <div style={{ fontSize: 12, opacity: 15, marginBottom: 6 }}>p95速度：{selectedZone.p95_velocity === null ? '—' : String(selectedZone.p95_velocity)} mm/年</div>
           <button
             type="button"
+            className="ds-btn ds-btn--primary insar-fit-btn"
             onClick={() => {
               const map = mapRef.current
               const l = zonesLayerByIdRef.current.get(String(selectedZone.id))
@@ -1246,24 +1243,28 @@ function InsarNativeMap(
               } catch {
               }
             }}
-            style={{
-              marginTop: 6,
-              width: '100%',
-              padding: '7px 10px',
-              borderRadius: 8,
-              border: '1px solid rgba(64,174,255,.35)',
-              background: 'rgba(64,174,255,.12)',
-              color: '#aaddff',
-              cursor: 'pointer',
-            }}
           >
             定位到该区
           </button>
+        </DataPanel>
+      ) : null}
+
+      {showZones && zonesLoading ? (
+        <div className="insar-zone-status">
+          <span className="ds-chip ds-chip--info">危险区计算中…</span>
+        </div>
+      ) : null}
+      {showZones && zonesError ? (
+        <div className="insar-zone-status">
+          <span className="ds-chip ds-chip--danger">{zonesError}</span>
         </div>
       ) : null}
 
-      {showZones && zonesLoading ? <div style={{ position: 'absolute', bottom: 12, right: 12, zIndex: 560, fontSize: 12, opacity: 15, padding: '6px 10px', borderRadius: 8, background: 'rgba(10,25,47,.78)', border: '1px solid rgba(64,174,255,.25)', color: '#aaddff' }}>危险区计算中…</div> : null}
-      {showZones && zonesError ? <div style={{ position: 'absolute', bottom: 12, right: 12, zIndex: 560, fontSize: 12, padding: '6px 10px', borderRadius: 8, background: 'rgba(10,25,47,.78)', border: '1px solid rgba(255,139,139,.35)', color: '#ff8b8b', whiteSpace: 'pre-wrap', maxWidth: 360 }}>{zonesError}</div> : null}
+      {mapState ? (
+        <div className="insar-map-state">
+          <StateView kind={mapState.kind} title={mapState.title} hint={mapState.hint} onRetry={mapState.onRetry} />
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -1350,6 +1351,7 @@ export default function Insar() {
   const [patrolIndex, setPatrolIndex] = useState(0)
   const patrolAbortRef = useRef<AbortController | null>(null)
   const [showTrends, setShowTrends] = useState(false)
+  const [seriesToken, setSeriesToken] = useState(0)
 
   useEffect(() => {
     try {
@@ -1390,7 +1392,7 @@ export default function Insar() {
       }
     })()
     return () => { mounted = false; controller.abort() }
-  }, [dataset, selectedPoint?.id])
+  }, [dataset, selectedPoint?.id, seriesToken])
 
   // 主组件：时序图表选项
   const panelSeriesOption = useMemo((): EChartsOption => {
@@ -1739,33 +1741,45 @@ export default function Insar() {
 
     return (
       <div className="flex h-screen flex-col bg-slate-950 text-white">
-        {/* CommandBar */}
-        <div style={{ flexShrink: 0, padding: '12px 16px', borderBottom: '1px solid var(--wall-panel-border)', background: 'rgba(10,18,30,0.92)', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 'auto' }}>
-            <i className="fas fa-satellite" style={{ fontSize: 28, color: 'var(--wall-info)' }} />
-            <span style={{ fontSize: 'var(--wall-font-title)', fontWeight: 700 }}>InSAR 监测</span>
-          </div>
-          <SegmentedControl
-            ariaLabel="风险筛选"
-            value={riskFilter}
-            onChange={(k) => setRiskFilter(k as RiskFilter)}
-            items={[
-              { key: 'all', label: '全部', count: riskSummary.total },
-              { key: 'danger', label: '危险', count: riskSummary.danger, tone: 'danger', icon: 'fas fa-exclamation-triangle' },
-              { key: 'warning', label: '预警', count: riskSummary.warning, tone: 'warning' },
-              { key: 'normal', label: '正常', count: riskSummary.normal, tone: 'normal' },
-            ]}
-          />
-          <LargeIconButton icon="fas fa-th" label="风险分区" active={showRiskGrid} onClick={() => setShowRiskGrid(v => !v)} />
-          <TourControl
-            active={patrolActive}
-            index={patrolIndex}
-            total={patrolTotal}
-            onToggle={patrolActive ? stopPatrol : startPatrol}
-            disabled={!topList.length}
-          />
-          <LargeIconButton icon="fas fa-cog" label="设置" active={showSettings} onClick={() => setShowSettings(true)} />
-        </div>
+        {/* 页头：本页只回答“大范围形变在哪” */}
+        <PageHeader
+          className="insar-page-header"
+          eyebrow="大范围形变在哪"
+          title="InSAR 监测"
+          description={`数据集 ${dataset} · 字段 ${valueField}（${indicator === 'velocity' || indicator === 'threshold' ? 'mm/年' : 'mm'}）`}
+          meta={
+            <>
+              {fieldsLoading ? <span className="ds-chip ds-chip--info">字段加载中</span> : null}
+              {fieldsError ? <span className="ds-chip ds-chip--warn" title={fieldsError}>字段接口异常</span> : null}
+              {riskSummary.danger > 0 ? <span className="ds-chip ds-chip--danger">危险 {riskSummary.danger} 处</span> : null}
+              {riskSummary.warning > 0 ? <span className="ds-chip ds-chip--warn">预警 {riskSummary.warning} 处</span> : null}
+            </>
+          }
+          actions={
+            <>
+              <SegmentedControl
+                ariaLabel="风险筛选"
+                value={riskFilter}
+                onChange={(k) => setRiskFilter(k as RiskFilter)}
+                items={[
+                  { key: 'all', label: '全部', count: riskSummary.total },
+                  { key: 'danger', label: '危险', count: riskSummary.danger, tone: 'danger', icon: 'fas fa-exclamation-triangle' },
+                  { key: 'warning', label: '预警', count: riskSummary.warning, tone: 'warning' },
+                  { key: 'normal', label: '正常', count: riskSummary.normal, tone: 'normal' },
+                ]}
+              />
+              <LargeIconButton icon="fas fa-th" label="风险分区" active={showRiskGrid} onClick={() => setShowRiskGrid(v => !v)} />
+              <TourControl
+                active={patrolActive}
+                index={patrolIndex}
+                total={patrolTotal}
+                onToggle={patrolActive ? stopPatrol : startPatrol}
+                disabled={!topList.length}
+              />
+              <LargeIconButton icon="fas fa-cog" label="设置" active={showSettings} onClick={() => setShowSettings(true)} />
+            </>
+          }
+        />
 
         {/* 主区：地图 + KpiRail */}
         <div className="min-h-0 flex-1 flex overflow-hidden insar-wall-main">
@@ -1797,39 +1811,24 @@ export default function Insar() {
             title="风险概览"
             footer={
               <div>
-                <div style={{ fontSize: 'var(--wall-font-lg)', fontWeight: 700, color: '#fff', marginBottom: 10 }}>
-                  高风险点（{filteredTop.length}）
-                </div>
+                <div className="insar-risk-head">高风险点（{filteredTop.length}）</div>
                 {filteredTop.length ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {filteredTop.slice(0, 20).map(p => {
-                      const isDanger = p.risk === 'danger'
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => focusTopPoint(p)}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-                            padding: '12px 14px', borderRadius: 12, textAlign: 'left',
-                            background: 'rgba(10,18,30,0.85)',
-                            border: `1px solid ${isDanger ? 'rgba(255,62,95,0.4)' : 'rgba(255,158,13,0.4)'}`,
-                            color: '#fff', cursor: 'pointer', minHeight: 'var(--wall-min-target)',
-                          }}
-                        >
-                          <span style={{ width: 5, height: 28, borderRadius: 3, flexShrink: 0, background: isDanger ? 'var(--wall-danger)' : 'var(--wall-warning)' }} />
-                          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 16 }}>
-                            {p.id || '未命名'}
-                          </span>
-                          <span style={{ flexShrink: 0, fontSize: 16, fontVariantNumeric: 'tabular-nums', color: isDanger ? '#ff8b9a' : '#ffc24d' }}>
-                            {p.velocity.toFixed(1)}
-                          </span>
-                        </button>
-                      )
-                    })}
+                  <div className="insar-risk-list">
+                    {filteredTop.slice(0, 20).map(p => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={`insar-risk-item insar-risk-item--${p.risk}`}
+                        onClick={() => focusTopPoint(p)}
+                      >
+                        <span className={`insar-risk-item__bar insar-risk-item__bar--${p.risk}`} />
+                        <span className="insar-risk-item__id">{p.id || '未命名'}</span>
+                        <span className="insar-risk-item__value">{p.velocity.toFixed(1)}</span>
+                      </button>
+                    ))}
                   </div>
                 ) : (
-                  <div style={{ padding: 20, textAlign: 'center', color: 'rgba(230,247,255,0.5)' }}>暂无高风险点</div>
+                  <StateView kind="empty" compact title="暂无高风险点" hint="当前阈值下没有危险 / 预警点" />
                 )}
               </div>
             }
@@ -1853,91 +1852,68 @@ export default function Insar() {
           nextDisabled={currentIdx < 0 || currentIdx >= topList.length - 1}
         >
           {selectedPoint && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.2fr)', gap: 20, height: '100%' }}>
-              {/* 左：读数 + 建议 */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, overflow: 'auto', minWidth: 0 }}>
-                <div className="touchkit-tile" style={{ minHeight: 0 }}>
-                  <span className={`touchkit-tile__bar touchkit-tile__bar--${selRisk}`} />
-                  <div className="touchkit-label">点位 ID</div>
-                  <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4, wordBreak: 'break-all' }}>{selectedPoint.id || '未命名'}</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 20px', marginTop: 14, fontSize: 16 }}>
-                    <div><div style={{ opacity: 0.6 }}>经度</div><div style={{ fontFamily: 'monospace' }}>{selectedPoint.lng.toFixed(6)}</div></div>
-                    <div><div style={{ opacity: 0.6 }}>纬度</div><div style={{ fontFamily: 'monospace' }}>{selectedPoint.lat.toFixed(6)}</div></div>
-                    {selVelocity !== null && (
-                      <>
-                        <div><div style={{ opacity: 0.6 }}>速度</div><div style={{ fontFamily: 'monospace' }}>{selVelocity.toFixed(2)} mm/年</div></div>
-                        <div><div style={{ opacity: 0.6 }}>风险</div><div style={{ color: selRiskLabel.color, fontWeight: 700 }}>{selRiskLabel.label}</div></div>
-                      </>
-                    )}
-                  </div>
-                </div>
-                {selVelocity !== null && (() => {
-                  const measures = expertMeasuresForRisk(selRisk)
-                  if (!measures.length) return null
-                  return (
-                    <div className="touchkit-tile" style={{ minHeight: 0 }}>
-                      <div className="touchkit-label" style={{ marginBottom: 10 }}>
-                        <i className="fas fa-clipboard-list" style={{ marginRight: 8 }} />
-                        施工建议 <span style={{ color: selRiskLabel.color }}>({selRiskLabel.label})</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {measures.map((m, idx) => (
-                          <div key={m.key} style={{ padding: 12, borderRadius: 10, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                              <span style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 999, background: 'rgba(0,229,255,0.18)', color: '#7df0ff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14 }}>{idx + 1}</span>
-                              <div style={{ fontSize: 16, fontWeight: 600 }}>{m.title}</div>
-                            </div>
-                            <div style={{ marginLeft: 36, marginTop: 4, fontSize: 14, color: 'rgba(230,247,255,0.7)', lineHeight: 1.5 }}>{m.detail}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })()}
+            <div className="insar-detail-grid">
+              <div className="insar-detail-col">
+                <PointCard
+                  pointId={selectedPoint.id}
+                  lat={selectedPoint.lat}
+                  lng={selectedPoint.lng}
+                  velocity={selVelocity}
+                  risk={selRisk}
+                  riskText={selRiskLabel.label}
+                  measures={selVelocity !== null ? expertMeasuresForRisk(selRisk) : []}
+                />
               </div>
-              {/* 右：时序图 */}
-              <div className="touchkit-tile" style={{ minHeight: 0, padding: 0, overflow: 'hidden' }}>
-                <div style={{ padding: '16px 20px', fontSize: 'var(--wall-font-lg)', fontWeight:600, flexShrink: 0 }}>时序变化</div>
-                <div style={{ flex: 1, minHeight: 0, padding: 12 }}>
-                  {panelSeriesLoading ? (
-                    <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: 'rgba(230,247,255,0.6)' }}><i className="fas fa-spinner fa-spin" style={{ marginRight: 8 }} />加载中…</div>
-                  ) : panelSeriesError ? (
-                    <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: '#ff8b9a' }}>{panelSeriesError}</div>
-                  ) : panelSeries?.series?.length ? (
-                    <EChartsWrapper option={panelSeriesOption} style={{ height: '100%' }} />
-                  ) : (
-                    <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: 'rgba(230,247,255,0.5)' }}>暂无时序数据</div>
-                  )}
-                </div>
-              </div>
+              <SeriesPanel
+                option={panelSeriesOption}
+                loading={panelSeriesLoading}
+                error={panelSeriesError}
+                hasData={!!panelSeries?.series?.length}
+                onRetry={() => setSeriesToken(t => t + 1)}
+              />
             </div>
           )}
         </FullscreenFocus>
 
         {/* 趋势全屏：饼图 + 直方图 + 里程分段 */}
         <FullscreenFocus isOpen={showTrends} onClose={() => setShowTrends(false)} title="风险分布趋势">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
-            <div className="touchkit-tile" style={{ minHeight: 260 }}>
-              <div className="touchkit-label" style={{ marginBottom: 8 }}>风险占比</div>
-              {riskSummary.total > 0 ? <div style={{ height: 220 }}><EChartsWrapper option={riskPieOption} /></div> : <div style={{ color: 'rgba(230,247,255,0.5)' }}>暂无数据</div>}
-            </div>
-            <div className="touchkit-tile" style={{ minHeight: 260 }}>
-              <div className="touchkit-label" style={{ marginBottom: 8 }}>速度分布（mm/年）</div>
-              {riskStats?.velocityHist ? <div style={{ height: 220 }}><EChartsWrapper option={velocityHistOption} /></div> : <div style={{ color: 'rgba(230,247,255,0.5)' }}>暂无数据</div>}
-            </div>
-            <div className="touchkit-tile" style={{ minHeight: 260, gridColumn: '1 / -1' }}>
-              <div className="touchkit-label" style={{ marginBottom: 8 }}>沿隧道里程风险分布</div>
-              {riskStats?.chainage ? <div style={{ height: 260 }}><EChartsWrapper option={chainageChartOption} /></div> : <div style={{ color: 'rgba(230,247,255,0.5)' }}>暂无数据</div>}
-            </div>
+          <div className="insar-trend-grid">
+            <DataPanel
+              className="insar-trend-panel"
+              title="风险占比"
+              icon="fa-chart-pie"
+              pad
+              state={riskSummary.total > 0 ? 'ready' : 'nodata'}
+            >
+              <div className="insar-trend-chart"><EChartsWrapper option={riskPieOption} /></div>
+            </DataPanel>
+            <DataPanel
+              className="insar-trend-panel"
+              title="速度分布（mm/年）"
+              icon="fa-chart-bar"
+              pad
+              state={riskStats?.velocityHist ? 'ready' : 'nodata'}
+            >
+              <div className="insar-trend-chart"><EChartsWrapper option={velocityHistOption} /></div>
+            </DataPanel>
+            <DataPanel
+              className="insar-trend-panel insar-trend-panel--wide"
+              title="沿隧道里程风险分布"
+              icon="fa-route"
+              pad
+              state={riskStats?.chainage ? 'ready' : 'nodata'}
+            >
+              <div className="insar-trend-chart insar-trend-chart--tall"><EChartsWrapper option={chainageChartOption} /></div>
+            </DataPanel>
           </div>
         </FullscreenFocus>
 
         {/* 设置全屏（与桌面设置等价的完整能力） */}
         <FullscreenFocus isOpen={showSettings} onClose={() => setShowSettings(false)} title="设置">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 760 }}>
+          <div className="insar-settings">
             {/* 显示模式 */}
-            <div>
-              <div className="touchkit-label" style={{ marginBottom: 10 }}>显示模式</div>
+            <div className="insar-settings__block">
+              <div className="touchkit-label">显示模式</div>
               <SegmentedControl
                 ariaLabel="显示模式"
                 value={indicator}
@@ -1948,66 +1924,67 @@ export default function Insar() {
                   ...(fieldsInfo?.d_fields?.length ? [{ key: 'keyDate', label: '关键日期' }] : []),
                 ]}
               />
+              {fieldsError ? <div className="insar-error-text">字段接口：{fieldsError}</div> : null}
               {indicator === 'keyDate' && fieldsInfo?.d_fields?.length ? (
-                <div style={{ marginTop: 12 }}>
-                  <div className="touchkit-label" style={{ marginBottom: 8 }}>关键日期字段</div>
-                  <select value={keyDateField} onChange={e => setKeyDateField(e.target.value)} style={{ width: '100%', minHeight: 'var(--wall-min-target)', fontSize: 18, padding: '10px 14px', borderRadius: 12, background: 'rgba(0,0,0,0.3)', color: '#e6f7ff', border: '1px solid var(--wall-panel-border)' }}>
+                <div className="insar-settings__block" style={{ marginTop: 12 }}>
+                  <div className="touchkit-label">关键日期字段</div>
+                  <select className="insar-select" value={keyDateField} onChange={e => setKeyDateField(e.target.value)}>
                     {fieldsInfo.d_fields.map(f => <option key={f} value={f}>{formatKeyDateField(f)}</option>)}
                   </select>
                 </div>
               ) : null}
             </div>
             {/* 阈值 */}
-            <div>
-              <div className="touchkit-label" style={{ marginBottom: 10 }}>阈值（mm/年，负=沉降）</div>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div className="insar-settings__block">
+              <div className="touchkit-label">阈值（mm/年，负=沉降）</div>
+              <div className="insar-settings__row">
                 <LargeIconButton icon="fas fa-shield-alt" label="保守" active={thresholds.strong === 6} onClick={() => setThresholds({ strong: 6, mild: 1.5 })} />
                 <LargeIconButton icon="fas fa-balance-scale" label="标准" active={thresholds.strong === 10} onClick={() => setThresholds({ strong: 10, mild: 2 })} />
                 <LargeIconButton icon="fas fa-feather" label="宽松" active={thresholds.strong === 15} onClick={() => setThresholds({ strong: 15, mild: 3 })} />
               </div>
-              <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap' }}>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 15, color: 'rgba(230,247,255,0.8)' }}>
+              <div className="insar-settings__row" style={{ marginTop: 12, gap: 16 }}>
+                <label className="insar-field">
                   危险阈值
-                  <input type="number" value={thresholds.strong} step="0.5" min="0" onChange={e => setThresholds(t => ({ ...t, strong: Number(e.target.value) || 0 }))} style={{ width: 150, minHeight: 'var(--wall-min-target)', fontSize: 18, padding: '8px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.3)', color: '#e6f7ff', border: '1px solid var(--wall-panel-border)' }} />
+                  <input className="insar-input" type="number" value={thresholds.strong} step="0.5" min="0" onChange={e => setThresholds(t => ({ ...t, strong: Number(e.target.value) || 0 }))} />
                 </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 15, color: 'rgba(230,247,255,0.8)' }}>
+                <label className="insar-field">
                   预警阈值
-                  <input type="number" value={thresholds.mild} step="0.5" min="0" onChange={e => setThresholds(t => ({ ...t, mild: Number(e.target.value) || 0 }))} style={{ width: 150, minHeight: 'var(--wall-min-target)', fontSize: 18, padding: '8px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.3)', color: '#e6f7ff', border: '1px solid var(--wall-panel-border)' }} />
+                  <input className="insar-input" type="number" value={thresholds.mild} step="0.5" min="0" onChange={e => setThresholds(t => ({ ...t, mild: Number(e.target.value) || 0 }))} />
                 </label>
               </div>
             </div>
             {/* 图层 */}
-            <div>
-              <div className="touchkit-label" style={{ marginBottom: 10 }}>图层</div>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div className="insar-settings__block">
+              <div className="touchkit-label">图层</div>
+              <div className="insar-settings__row">
                 <LargeIconButton icon="fas fa-th" label="风险分区" active={showRiskGrid} onClick={() => setShowRiskGrid(v => !v)} />
                 <LargeIconButton icon="fas fa-object-group" label="危险区" active={showZones} onClick={() => setShowZones(v => !v)} />
                 <LargeIconButton icon="fas fa-crop" label={useBbox ? '视窗裁剪 开' : '视窗裁剪 关'} active={useBbox} onClick={() => setUseBbox(v => !v)} />
               </div>
               {showZones ? (
-                <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap' }}>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 15, color: 'rgba(230,247,255,0.8)' }}>
+                <div className="insar-settings__row" style={{ marginTop: 12, gap: 16 }}>
+                  <label className="insar-field">
                     聚类半径 eps（米）
-                    <input type="number" value={zoneEpsM} step="10" min="10" onChange={e => setZoneEpsM(Number(e.target.value) || 0)} style={{ width: 150, minHeight: 'var(--wall-min-target)', fontSize: 18, padding: '8px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.3)', color: '#e6f7ff', border: '1px solid var(--wall-panel-border)' }} />
+                    <input className="insar-input" type="number" value={zoneEpsM} step="10" min="10" onChange={e => setZoneEpsM(Number(e.target.value) || 0)} />
                   </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 15, color: 'rgba(230,247,255,0.8)' }}>
+                  <label className="insar-field">
                     最小点数 minPts
-                    <input type="number" value={zoneMinPts} step="1" min="1" onChange={e => setZoneMinPts(Math.max(1, Math.round(Number(e.target.value) || 0)))} style={{ width: 150, minHeight: 'var(--wall-min-target)', fontSize: 18, padding: '8px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.3)', color: '#e6f7ff', border: '1px solid var(--wall-panel-border)' }} />
+                    <input className="insar-input" type="number" value={zoneMinPts} step="1" min="1" onChange={e => setZoneMinPts(Math.max(1, Math.round(Number(e.target.value) || 0)))} />
                   </label>
                 </div>
               ) : null}
             </div>
             {/* 数据集 */}
-            <div>
-              <div className="touchkit-label" style={{ marginBottom: 10 }}>数据集</div>
-              <select value={dataset} onChange={e => setDataset(e.target.value)} style={{ width: '100%', minHeight: 'var(--wall-min-target)', fontSize: 18, padding: '10px 14px', borderRadius: 12, background: 'rgba(0,0,0,0.3)', color: '#e6f7ff', border: '1px solid var(--wall-panel-border)' }}>
+            <div className="insar-settings__block">
+              <div className="touchkit-label">数据集</div>
+              <select className="insar-select" value={dataset} onChange={e => setDataset(e.target.value)}>
                 {datasets.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
             {/* 外链地图 */}
-            <div>
-              <div className="touchkit-label" style={{ marginBottom: 10 }}>外部地图</div>
-              <a href="http://47.96.7.238:38089/mapLayer" target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minHeight: 'var(--wall-min-target)', padding: '0 18px', borderRadius: 12, background: 'rgba(0,229,255,.1)', border: '1px solid var(--wall-panel-border)', color: '#7df0ff', fontSize: 17, textDecoration: 'none' }}>
+            <div className="insar-settings__block">
+              <div className="touchkit-label">外部地图</div>
+              <a className="insar-link" href="http://47.96.7.238:38089/mapLayer" target="_blank" rel="noreferrer">
                 <i className="fas fa-external-link-alt" /> 在新窗口打开外链地图
               </a>
             </div>
