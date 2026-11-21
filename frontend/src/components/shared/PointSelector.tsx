@@ -7,6 +7,8 @@ interface PointSelectorProps extends CardComponentProps {
   onSelectPoint: (pointId: string) => void;
   loading?: boolean;
   problemPointIds?: string[];
+  /** 编号 → 展示名（如 55 → DL003-1） */
+  labelMap?: Record<string, string>;
   itemStatusMap?: Record<string, {
     status?: 'normal' | 'watch' | 'warning' | 'critical';
     score?: number;
@@ -20,6 +22,7 @@ export const PointSelector: React.FC<PointSelectorProps> = ({
   onSelectPoint,
   loading = false,
   problemPointIds,
+  labelMap,
   itemStatusMap,
 }) => {
   if (loading) {
@@ -53,7 +56,7 @@ export const PointSelector: React.FC<PointSelectorProps> = ({
             onClick={() => onSelectPoint(pointId)}
           >
             <i className="fas fa-map-marker-alt" />
-            <span>{pointId || '未知传感器'}</span>
+            <span>{labelMap?.[pointId] || pointId || '未知传感器'}</span>
             {itemStatus && (
               <div className="point-selector__meta">
                 <span className={`point-selector__badge point-selector__badge--${itemStatus.status || 'normal'}`}>

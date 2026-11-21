@@ -25,6 +25,7 @@ export const TemperatureV2Cockpit: React.FC = () => {
   const [actionPlans, setActionPlans] = useState<any[]>([]);
   const [sensors, setSensors] = useState<string[]>([]);
   const [problemIds, setProblemIds] = useState<string[]>([]);
+  const [sensorNames, setSensorNames] = useState<Record<string, string>>({});
   const [selectedSensor, setSelectedSensor] = useState<string | null>(pointParam);
   const [seriesData, setSeriesData] = useState<any>(null);
   const [seriesLoading, setSeriesLoading] = useState(false);
@@ -39,11 +40,20 @@ export const TemperatureV2Cockpit: React.FC = () => {
       setOverview(payload);
       const summary = payload?.summary || [];
       const ids: string[] = summary.map((r: any) => String(r.sensor_id || r.SID || '')).filter((s: string) => s);
-      const problems: string[] = summary.filter((r: any) => {
-        const a = r.alert_level || r.alert_status || '';
-        return a && a !== 'normal' && a !== 'ok';
-      }).map((r: any) => String(r.sensor_id || r.SID || ''));
+      // 后端 alert_level 为中文（正常 / 需关注），旧逻辑把"正常"也当成异常
+      const names: Record<string, string> = {};
+      summary.forEach((r: any) => {
+        const id = String(r.sensor_id || r.SID || '');
+        if (id) names[id] = String(r.sensor_name || r.point_name || id);
+      });
+      const problems: string[] = summary
+        .filter((r: any) => {
+          const a = String(r.alert_level || r.alert_status || '');
+          return ['需关注', '预警', 'warning', 'alert', '高风险', '中风险'].includes(a);
+        })
+        .map((r: any) => String(r.sensor_id || r.SID || ''));
       setSensors([...new Set(ids)] as string[]);
+      setSensorNames(names);
       setProblemIds([...new Set(problems)] as string[]);
       if (ids.length > 0 && !selectedSensor) setSelectedSensor(ids[0]);
     } catch { /* ignore */ }
@@ -134,10 +144,10 @@ export const TemperatureV2Cockpit: React.FC = () => {
       <PageHeader
         eyebrow="温度 · 哪个点不对"
         title="温度监测"
-        description="选中传感器查看时间序列；异常点可进入高级分析并建单"
+        description="台账 320 个传感器，251 个有分析数据；选中后查看时间序列，异常点可进入高级分析"
         meta={
           <span className={`ds-chip ${problemIds.length > 0 ? 'ds-chip--warn' : 'ds-chip--ok'}`}>
-            {problemIds.length} 个需关注 / 共 {sensors.length} 个
+            {problemIds.length} 个需关注 / 有数据 {sensors.length} 个
           </span>
         }
         actions={
@@ -145,10 +155,11 @@ export const TemperatureV2Cockpit: React.FC = () => {
             type="button"
             className="ds-btn ds-btn--primary"
             disabled={!selectedSensor}
-            onClick={() =>
-              selectedSensor &&
-              navigate(`/advanced?point=${encodeURIComponent(selectedSensor)}&metric=temperature&from=temperature`)
-            }
+            onClick={() => {
+              if (!selectedSensor) return;
+              const pointId = sensorNames[selectedSensor] || selectedSensor;
+              navigate(`/advanced?point=${encodeURIComponent(pointId)}&metric=temperature&from=temperature`);
+            }}
           >
             分析该点 →
           </button>
@@ -174,6 +185,7 @@ export const TemperatureV2Cockpit: React.FC = () => {
             onSelectPoint={setSelectedSensor}
             loading={false}
             problemPointIds={problemIds}
+            labelMap={sensorNames}
             itemStatusMap={riskStatusMap}
           />
         </div>

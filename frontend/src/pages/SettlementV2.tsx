@@ -44,15 +44,29 @@ interface ProfileData {
 // ─────────────────────────────────────────────
 // 工具函数
 // ─────────────────────────────────────────────
+// 后端 settlement_analysis 的 alert_level 是中文（低风险/正常），
+// 旧代码按英文 alert/warning 判断，导致 12 个低风险点全部显示为正常。
+function normalizeAlert(level: string): 'alert' | 'warning' | 'normal' {
+  const l = (level || '').trim();
+  if (l === 'alert' || l === '高风险' || l === '报警') return 'alert';
+  if (l === 'warning' || l === '中风险' || l === '低风险' || l === '预警' || l === '需关注') return 'warning';
+  return 'normal';
+}
+
+const CN_ALERT_LEVELS = ['高风险', '中风险', '低风险', '正常', '需关注'];
+
 function alertColor(level: string): string {
-  if (level === 'alert') return '#f87171';
-  if (level === 'warning') return '#fbbf24';
+  const l = normalizeAlert(level);
+  if (l === 'alert') return '#f87171';
+  if (l === 'warning') return '#fbbf24';
   return '#34d399';
 }
 
 function alertLabel(level: string): string {
-  if (level === 'alert') return '报警';
-  if (level === 'warning') return '预警';
+  if (CN_ALERT_LEVELS.includes(level)) return level;
+  const l = normalizeAlert(level);
+  if (l === 'alert') return '报警';
+  if (l === 'warning') return '预警';
   return '正常';
 }
 
@@ -68,8 +82,10 @@ function valueColor(totalChange: number): string {
 
 // 细粒度状态标签（让列表有层次感）
 function fineLabel(level: string, totalChange: number): string {
-  if (level === 'alert') return '报警';
-  if (level === 'warning') return '预警';
+  if (CN_ALERT_LEVELS.includes(level)) return level;
+  const l = normalizeAlert(level);
+  if (l === 'alert') return '报警';
+  if (l === 'warning') return '预警';
   const abs = Math.abs(totalChange);
   if (abs >= 2) return '留意';
   if (abs >= 1) return '轻微';
@@ -77,8 +93,9 @@ function fineLabel(level: string, totalChange: number): string {
 }
 
 function fineLabelColor(level: string, totalChange: number): string {
-  if (level === 'alert') return '#f87171';
-  if (level === 'warning') return '#fbbf24';
+  const l = normalizeAlert(level);
+  if (l === 'alert') return '#f87171';
+  if (l === 'warning') return '#fbbf24';
   const abs = Math.abs(totalChange);
   if (abs >= 2) return '#fb923c';
   if (abs >= 1) return '#a3e635';
@@ -129,8 +146,8 @@ function HeroBar({ points, loading, days, onDaysChange, onSelectPoint, selectedI
     );
   }
 
-  const alertCount = points.filter(p => p.alert_level === 'alert').length;
-  const warnCount = points.filter(p => p.alert_level === 'warning').length;
+  const alertCount = points.filter(p => normalizeAlert(p.alert_level) === 'alert').length;
+  const warnCount = points.filter(p => normalizeAlert(p.alert_level) === 'warning').length;
   const maxSettlement = points.length > 0 ? Math.min(...points.map(p => p.total_change ?? 0)) : 0;
   const maxPoint = points.find(p => p.total_change === maxSettlement);
   const avgRate = points.length > 0 ? points.reduce((s, p) => s + (p.trend_slope ?? 0), 0) / points.length : 0;
@@ -174,7 +191,7 @@ function HeroBar({ points, loading, days, onDaysChange, onSelectPoint, selectedI
         title="沉降监测"
         description="按风险排序的点位；选中后查看纵断面、多点对比与裂缝联动"
         meta={
-          <span className={`ds-chip ${alertCount > 0 ? 'ds-chip--danger' : 'ds-chip--ok'}`}>
+          <span className={`ds-chip ${alertCount + warnCount > 0 ? 'ds-chip--warn' : 'ds-chip--ok'}`}>
             {alertCount + warnCount} 个异常点 / 共 {points.length} 点
           </span>
         }
@@ -247,8 +264,8 @@ function PointList({ points, loading, selectedId, onSelect }: PointListProps) {
   // 按风险排序：alert > warning > normal，同级按沉降量绝对值排
   const sorted = [...points].sort((a, b) => {
     const order = { alert: 0, warning: 1, normal: 2 };
-    const ao = order[a.alert_level as keyof typeof order] ?? 2;
-    const bo = order[b.alert_level as keyof typeof order] ?? 2;
+    const ao = order[normalizeAlert(a.alert_level)];
+    const bo = order[normalizeAlert(b.alert_level)];
     if (ao !== bo) return ao - bo;
     return Math.abs(b.total_change ?? 0) - Math.abs(a.total_change ?? 0);
   });
@@ -384,7 +401,7 @@ function TunnelProfileChart({ profileData, selectedId, points, loading, events, 
     const scatterData = profile.map(p => {
       const summary = points.find(s => s.point_id === p.point_id);
       const isSelected = p.point_id === selectedId;
-      const alert = summary?.alert_level ?? 'normal';
+      const alert = normalizeAlert(summary?.alert_level ?? 'normal');
       const color = alert === 'alert' ? '#f87171' : alert === 'warning' ? '#fbbf24'
         : valueColor(p.cumulative_change);
       return {
@@ -430,7 +447,7 @@ function TunnelProfileChart({ profileData, selectedId, points, loading, events, 
         formatter: (params: any) => {
           if (params.seriesIndex === 1 && params.data) {
             const d = params.data;
-            const alert = d.alertLevel === 'alert' ? '报警' : d.alertLevel === 'warning' ? '预警' : '正常';
+            const alert = alertLabel(d.alertLevel);
             return `<b>${d.name}</b><br/>` +
               `里程: ${d.value[0].toFixed(1)} m<br/>` +
               `累计沉降: ${d.value[1].toFixed(2)} mm<br/>` +
@@ -951,7 +968,11 @@ export default function SettlementV2() {
       if (data && data.length > 0) {
         setSelectedId(prev => {
           if (prev && data.some(p => p.point_id === prev)) return prev;
-          return (data.find(p => p.alert_level === 'alert') ?? data[0]).point_id;
+          return (
+            data.find(p => normalizeAlert(p.alert_level) === 'alert') ??
+            data.find(p => normalizeAlert(p.alert_level) === 'warning') ??
+            data[0]
+          ).point_id;
         });
       }
     } catch (e) {
