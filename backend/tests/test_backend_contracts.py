@@ -169,6 +169,7 @@ def client():
     '/api/risk/alerts',
     '/api/summary?days=5&with_summary=1',
     '/api/metrics/point/S1',
+    '/api/points/ledger',
 ])
 def test_get_endpoints_never_500(client, path):
     resp = client.get(path)

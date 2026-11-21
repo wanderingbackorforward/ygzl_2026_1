@@ -350,6 +350,46 @@ def get_all_points():
     points = repo.get_all_points()
     return _deprecated_alias('/api/summary', jsonify(points))
 
+@app.route('/api/points/ledger')
+def get_points_ledger():
+    """点位台账：布设信息 + 最新实测。
+
+    坐标来自 monitoring_points，但该表坐标是 update_monitoring_points()
+    按编号生成的规则网格，不是现场实测值，因此统一标注 coord_source=schematic，
+    不把它当实测坐标展示。
+    """
+    rows = _query_rows("""
+        SELECT mp.point_id, mp.x_coord, mp.y_coord, mp.z_coord, mp.description,
+               sa.alert_level, sa.total_change, sa.trend_slope, sa.trend_type,
+               sa.avg_daily_rate, sa.last_updated AS analysis_updated,
+               (SELECT ps.value FROM processed_settlement_data ps
+                 WHERE ps.point_id = mp.point_id
+                 ORDER BY ps.measurement_date DESC LIMIT 1) AS latest_value,
+               (SELECT ps.daily_change FROM processed_settlement_data ps
+                 WHERE ps.point_id = mp.point_id
+                 ORDER BY ps.measurement_date DESC LIMIT 1) AS latest_daily_change,
+               (SELECT MAX(ps.measurement_date) FROM processed_settlement_data ps
+                 WHERE ps.point_id = mp.point_id) AS last_date,
+               (SELECT COUNT(*) FROM processed_settlement_data ps
+                 WHERE ps.point_id = mp.point_id) AS record_count
+        FROM monitoring_points mp
+        LEFT JOIN settlement_analysis sa ON sa.point_id = mp.point_id
+        ORDER BY CAST(REGEXP_REPLACE(mp.point_id, '[^0-9]+', '') AS UNSIGNED)
+    """)
+
+    points = [settlement_rules.enrich_point(row) for row in rows]
+    return json_dumps_response({
+        'success': True,
+        'data': {
+            'points': points,
+            'count': len(points),
+            'coord_source': 'schematic',
+            'coord_note': '布设坐标为按点位编号生成的示意布局，非现场实测坐标；布设说明为空表示未登记',
+            'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        },
+    })
+
+
 @app.route('/api/point/<point_id>')
 def get_point_data(point_id):
     print(f"[API] GET /api/point/{point_id}")
@@ -1282,17 +1322,23 @@ def get_data_range():
             },
             'settlement': {
                 'max_date': _text(_query_value("SELECT MAX(measurement_date) FROM processed_settlement_data")),
+                'min_date': _text(_query_value("SELECT MIN(measurement_date) FROM processed_settlement_data")),
+                'count': _query_value("SELECT COUNT(*) FROM processed_settlement_data"),
                 'table': 'processed_settlement_data',
                 'analysis_updated': _text(_query_value("SELECT MAX(last_updated) FROM settlement_analysis")),
                 'archived': True,
             },
             'temperature': {
                 'max_date': _text(_query_value("SELECT MAX(measurement_date) FROM processed_temperature_data")),
+                'min_date': _text(_query_value("SELECT MIN(measurement_date) FROM processed_temperature_data")),
+                'count': _query_value("SELECT COUNT(*) FROM processed_temperature_data"),
                 'table': 'processed_temperature_data',
                 'analysis_updated': _text(_query_value("SELECT MAX(last_updated) FROM temperature_analysis")),
             },
             'crack': {
                 'max_date': _text(_query_value("SELECT MAX(measurement_date) FROM raw_crack_data")),
+                'min_date': _text(_query_value("SELECT MIN(measurement_date) FROM raw_crack_data")),
+                'count': _query_value("SELECT COUNT(*) FROM raw_crack_data"),
                 'table': 'raw_crack_data',
                 'archived': True,
             },
