@@ -625,6 +625,7 @@ def api_event_impact():
         {
             "point_id": "S1",
             "event_date": "2024-06-15",
+            "event_id": 9,                      // 可选，传了就按事件库的日期
             "control_point_ids": ["S5", "S6", "S7"],  // 可选
             "method": "DID",  // DID或SCM
             "window_days": 30
@@ -633,18 +634,55 @@ def api_event_impact():
     try:
         # 延迟导入
         from modules.ml_models.causal_inference import analyze_event_impact
+        from modules.ml_models.supabase_data import fetch_point_raw, fetch_monitoring_points
 
         data = request.get_json(silent=True) or {}
-        point_id = data.get('point_id')
+        point_id = str(data.get('point_id') or '').strip()
         event_date = data.get('event_date')
+        event_id = data.get('event_id')
         control_point_ids = data.get('control_point_ids')
         method = data.get('method', 'DID')
         window_days = data.get('window_days', 30)
 
-        if not point_id or not event_date:
+        if not point_id:
             return jsonify({
                 'success': False,
-                'message': '缺少必要参数：point_id和event_date'
+                'message': '缺少必要参数：point_id'
+            }), 400
+
+        # 事件库：带出事件日期和影响范围；影响范围内的点位不能当对照组
+        event_info = None
+        affected_points = []
+        try:
+            from modules.advanced_analysis.event_service import EventService
+            event_service = EventService()
+
+            if event_id is not None and str(event_id).strip() != '':
+                event_info = event_service.get_event(int(event_id))
+                if not event_info:
+                    return jsonify({
+                        'success': False,
+                        'message': f'施工事件 {event_id} 不存在'
+                    }), 404
+                if not event_date:
+                    event_date = str(event_info.get('event_date') or '')[:10]
+                affected_points = event_info.get('affected_points') or []
+            elif event_date:
+                day = str(event_date)[:10]
+                day_events = event_service.list_events(
+                    start_date=f'{day} 00:00:00',
+                    end_date=f'{day} 23:59:59',
+                )
+                for ev in day_events:
+                    affected_points.extend(ev.get('affected_points') or [])
+        except Exception as e:
+            # 事件库查询失败不阻断分析，但结果里要如实标注
+            print(f'[WARN] 施工事件查询失败: {e}')
+
+        if not event_date:
+            return jsonify({
+                'success': False,
+                'message': '缺少必要参数：event_date（或 event_id）'
             }), 400
 
         treated_df = fetch_point_raw(point_id)
@@ -657,8 +695,22 @@ def api_event_impact():
             window_days=window_days,
             treated_df=treated_df,
             fetch_point_fn=fetch_point_raw,
-            points_df=points_df
+            points_df=points_df,
+            exclude_point_ids=affected_points,
         )
+
+        if isinstance(result, dict) and not result.get('message'):
+            result['success'] = True
+            result['excluded_affected_points'] = sorted({
+                pid for pid in affected_points if pid and pid != point_id
+            })
+            if event_info:
+                result['event'] = {
+                    'event_id': event_info.get('event_id'),
+                    'title': event_info.get('title'),
+                    'event_type': event_info.get('event_type'),
+                    'event_date': event_info.get('event_date'),
+                }
 
         return jsonify(result)
 

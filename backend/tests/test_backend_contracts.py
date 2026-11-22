@@ -112,6 +112,24 @@ def test_crack_clean_converts_nan_to_none():
     assert isinstance(_clean(pd.Timestamp('2024-08-10')), dt.datetime)
 
 
+def test_did_paired_standard_error_is_not_understated():
+    # 同一组数据：旧算法把前后样本合并后除以总样本量，标准误算成 0.22，
+    # 会把这个案例误判成“影响明确”。按逐日差值算应为 0.36 左右，区间跨 0。
+    from modules.ml_models.causal_inference import CausalInference
+
+    result = CausalInference().difference_in_differences(
+        [-0.598, -1.195, -1.316, -2.884, -2.733, -3.091, -1.426, -2.375, -2.955],
+        [-2.303, -2.332, -2.672, -3.537, -2.440, -3.081, -3.475, -2.988, -3.392],
+        [-1.306, -1.518, -1.544, -0.814, -1.354, -1.756, -1.513, -1.454, -1.796],
+        [-1.808, -1.492, -1.113, -1.837, -1.789, -1.902, -1.446, -1.765, -2.300],
+        paired=True,
+    )
+
+    assert result['treatment_effect'] == pytest.approx(-0.5833, abs=1e-3)
+    assert result['standard_error'] == pytest.approx(0.3623, abs=1e-3)
+    assert result['confidence_interval'][0] < 0 < result['confidence_interval'][1]
+
+
 # ---------------- 导入幂等 ----------------
 
 def test_import_is_idempotent():
