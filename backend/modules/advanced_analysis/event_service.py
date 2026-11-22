@@ -49,12 +49,13 @@ class EventService:
 
     # Event types
     EVENT_TYPES = [
-        {'value': 'pile', 'label': 'Pile Driving', 'label_cn': 'Pile Driving'},
-        {'value': 'excavation', 'label': 'Excavation', 'label_cn': 'Excavation'},
-        {'value': 'grouting', 'label': 'Grouting', 'label_cn': 'Grouting'},
-        {'value': 'dewatering', 'label': 'Dewatering', 'label_cn': 'Dewatering'},
-        {'value': 'loading', 'label': 'Surface Loading', 'label_cn': 'Surface Loading'},
-        {'value': 'other', 'label': 'Other', 'label_cn': 'Other'},
+        {'value': 'pile', 'label': 'Pile Driving', 'label_cn': '打桩'},
+        {'value': 'excavation', 'label': 'Excavation', 'label_cn': '基坑开挖'},
+        {'value': 'shield', 'label': 'Shield Tunnelling', 'label_cn': '盾构穿越'},
+        {'value': 'grouting', 'label': 'Grouting', 'label_cn': '注浆加固'},
+        {'value': 'dewatering', 'label': 'Dewatering', 'label_cn': '降水施工'},
+        {'value': 'loading', 'label': 'Surface Loading', 'label_cn': '地面堆载'},
+        {'value': 'other', 'label': 'Other', 'label_cn': '其他'},
     ]
 
     # Impact analysis window (hours after event)
