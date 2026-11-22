@@ -22,6 +22,7 @@ export const PredictionDashboard: React.FC<PredictionDashboardProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showComparison, setShowComparison] = useState(false);
   const [comparisonData, setComparisonData] = useState<any>(null);
+  const [comparisonError, setComparisonError] = useState<string | null>(null);
   const abortRef = useRef(false);
 
   const isFullyLoaded = loadedCount >= pointIds.length;
@@ -78,12 +79,15 @@ export const PredictionDashboard: React.FC<PredictionDashboardProps> = ({
   }, [pointIds]);
 
   const fetchModelComparisonData = async (pointId: string) => {
+    setComparisonError(null);
     try {
       const data = await fetchModelComparison(pointId);
       setComparisonData(data);
       setShowComparison(true);
     } catch (err) {
-      console.error('模型对比失败:', err);
+      setComparisonData(null);
+      setShowComparison(false);
+      setComparisonError(err instanceof Error ? err.message : '模型对比暂不可用');
     }
   };
 
@@ -259,6 +263,13 @@ export const PredictionDashboard: React.FC<PredictionDashboardProps> = ({
         )}
       </div>
 
+      {comparisonError && (
+        <div style={styles.comparisonError}>
+          <i className="fas fa-exclamation-circle" style={{ marginRight: '6px' }} />
+          模型对比暂不可用：{comparisonError}
+        </div>
+      )}
+
       {/* 预测图表 */}
       {selectedPrediction && (
         <div style={styles.chartSection}>
@@ -431,6 +442,15 @@ const styles: Record<string, React.CSSProperties> = {
     borderColor: 'rgba(255, 77, 79, 0.4)',
     color: '#ff4d4f',
     cursor: 'default',
+  },
+  comparisonError: {
+    marginBottom: '12px',
+    padding: '10px 14px',
+    backgroundColor: 'rgba(255, 77, 79, 0.12)',
+    border: '1px solid rgba(255, 77, 79, 0.4)',
+    borderRadius: '8px',
+    fontSize: '13px',
+    color: '#ffd6d6',
   },
   compareButton: {
     padding: '8px 16px',

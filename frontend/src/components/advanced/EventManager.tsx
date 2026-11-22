@@ -94,7 +94,9 @@ export const EventManager: React.FC<EventManagerProps> = ({ onEventSelect }) => 
           {loading ? (
             <div style={styles.loading}>正在加载事件...</div>
           ) : events.length === 0 ? (
-            <div style={styles.empty}>暂无事件记录</div>
+            <div style={styles.empty}>
+              还没有登记施工事件。点右上角「添加事件」记录一次施工，分析影响时就能直接选用。
+            </div>
           ) : (
             events.map(event => (
               <EventCard

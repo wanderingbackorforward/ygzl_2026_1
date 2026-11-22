@@ -1,6 +1,6 @@
-// Mock 模式指示器组件
+// 数据接口异常提示：接口失败时如实告知，绝不显示模拟数据
 import React from 'react';
-import { isMockMode, setMockMode, getFailedEndpointCount } from '../../utils/apiClient';
+import { getFailedEndpointCount } from '../../utils/apiClient';
 
 export const MockModeIndicator: React.FC = () => {
   const [showIndicator, setShowIndicator] = React.useState(false);
@@ -9,19 +9,18 @@ export const MockModeIndicator: React.FC = () => {
 
   React.useEffect(() => {
     const checkInterval = setInterval(() => {
-      setShowIndicator(isMockMode());
-      setCount(getFailedEndpointCount());
+      const n = getFailedEndpointCount();
+      setCount(n);
+      setShowIndicator(n > 0);
     }, 1000);
 
     return () => clearInterval(checkInterval);
   }, []);
 
-  const handleExit = (e: React.MouseEvent) => {
+  const handleRetry = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setMockMode(false);
     setShowIndicator(false);
     setShowTooltip(false);
-    // 刷新页面以重新请求真实 API
     window.location.reload();
   };
 
@@ -33,24 +32,24 @@ export const MockModeIndicator: React.FC = () => {
         style={styles.badge}
         onClick={() => setShowTooltip(!showTooltip)}
       >
-        <i className="fas fa-flask" style={styles.icon} />
-        <span style={styles.text}>演示数据 ({count})</span>
+        <i className="fas fa-exclamation-circle" style={styles.icon} />
+        <span style={styles.text}>{count} 个接口暂不可用</span>
       </div>
       {showTooltip && (
         <div style={styles.tooltipVisible}>
           <div style={{ marginBottom: '8px' }}>
-            当前有 {count} 个接口降级为模拟数据。
+            有 {count} 个数据接口请求失败。
             <br />
-            点击下方按钮尝试重新连接真实服务。
+            相关卡片会显示“暂不可用”，不会用模拟数据代替。
           </div>
           <button
-            onClick={handleExit}
+            onClick={handleRetry}
             style={styles.exitButton}
             onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#0e7490')}
             onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#0891b2')}
           >
             <i className="fas fa-sync-alt" style={{ marginRight: '6px' }} />
-            退出演示模式
+            重新连接
           </button>
         </div>
       )}

@@ -54,16 +54,19 @@ const SHAPPanel: React.FC = () => {
   const [selectedPoint, setSelectedPoint] = useState('S1');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointIds = Array.from({ length: 25 }, (_, i) => `S${i + 1}`);
 
   const loadSHAP = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const result = await fetchSHAPExplanation(selectedPoint);
       setData(result);
     } catch (err) {
-      console.error('SHAP failed:', err);
+      setData(null);
+      setError(err instanceof Error ? err.message : 'SHAP 分析暂不可用');
     } finally {
       setLoading(false);
     }
@@ -125,20 +128,21 @@ const SHAPPanel: React.FC = () => {
 
   return (
     <div style={styles.panelContent}>
-      {/* SHAP 演示模式提示 */}
-      {data?.mock && (
+      {/* 接口失败时如实说明，不显示模拟数据 */}
+      {error && (
         <div style={{
           display: 'flex', alignItems: 'flex-start', gap: '10px',
           padding: '12px 16px', marginBottom: '14px',
-          backgroundColor: 'rgba(255, 169, 64, 0.12)',
-          border: '1px solid rgba(255, 169, 64, 0.4)',
+          backgroundColor: 'rgba(255, 77, 79, 0.12)',
+          border: '1px solid rgba(255, 77, 79, 0.4)',
           borderRadius: '8px', fontSize: '13px', lineHeight: '1.5',
         }}>
-          <i className="fas fa-info-circle" style={{ color: '#ffa940', fontSize: '16px', marginTop: '2px', flexShrink: 0 }} />
+          <i className="fas fa-exclamation-circle" style={{ color: '#ff7875', fontSize: '16px', marginTop: '2px', flexShrink: 0 }} />
           <div style={{ color: '#e2e8f0' }}>
-            <span style={{ fontWeight: 'bold', color: '#fff' }}>演示模式：</span>
-            SHAP 可解释性分析需要较大算力（依赖 shap 库），当前云端环境暂未部署，显示的是模拟数据。
-            Granger 因果检验使用真实监测数据，请切换到"因果发现"标签页查看。
+            <span style={{ fontWeight: 'bold', color: '#fff' }}>暂不可用：</span>
+            {error}
+            <br />
+            这一页不会用模拟数据代替，请稍后重试。
           </div>
         </div>
       )}
@@ -209,6 +213,7 @@ const CausalDiscoverPanel: React.FC = () => {
   const [maxLag, setMaxLag] = useState(5);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const pointIds = Array.from({ length: 25 }, (_, i) => `S${i + 1}`);
 
   const togglePoint = (pid: string) => {
@@ -220,11 +225,13 @@ const CausalDiscoverPanel: React.FC = () => {
   const runDiscover = useCallback(async () => {
     if (selectedPoints.length < 2) return;
     setLoading(true);
+    setError(null);
     try {
       const result = await fetchCausalDiscover(selectedPoints, maxLag);
       setData(result);
     } catch (err) {
-      console.error('Causal discover failed:', err);
+      setData(null);
+      setError(err instanceof Error ? err.message : '因果检验暂不可用');
     } finally {
       setLoading(false);
     }
@@ -272,6 +279,23 @@ const CausalDiscoverPanel: React.FC = () => {
       </div>
 
       {/* Results */}
+      {error && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: '10px',
+          padding: '12px 16px', marginBottom: '14px',
+          backgroundColor: 'rgba(255, 77, 79, 0.12)',
+          border: '1px solid rgba(255, 77, 79, 0.4)',
+          borderRadius: '8px', fontSize: '13px', lineHeight: '1.5',
+        }}>
+          <i className="fas fa-exclamation-circle" style={{ color: '#ff7875', fontSize: '16px', marginTop: '2px', flexShrink: 0 }} />
+          <div style={{ color: '#e2e8f0' }}>
+            <span style={{ fontWeight: 'bold', color: '#fff' }}>暂不可用：</span>
+            {error}
+            <br />
+            这里不会用模拟数据代替，请稍后重试。
+          </div>
+        </div>
+      )}
       {data && (
         <div style={styles.section}>
           {/* Summary cards */}
