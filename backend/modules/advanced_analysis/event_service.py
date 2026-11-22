@@ -44,51 +44,6 @@ def _safe_request(url, headers):
     return r.json()
 
 
-# Demo construction events
-DEMO_EVENTS = [
-    {
-        'event_id': 1,
-        'event_date': '2019-01-10 08:00',
-        'event_type': 'pile',
-        'title': 'S5-S8 Pile driving',
-        'description': 'Pile driving construction near S5-S8 settlement monitoring points',
-        'intensity': 'high',
-        'location_chainage_start': 100,
-        'location_chainage_end': 180,
-    },
-    {
-        'event_id': 2,
-        'event_date': '2019-01-15 10:00',
-        'event_type': 'excavation',
-        'title': 'Foundation excavation',
-        'description': 'Foundation excavation at tunnel entrance',
-        'intensity': 'medium',
-        'location_chainage_start': 0,
-        'location_chainage_end': 50,
-    },
-    {
-        'event_id': 3,
-        'event_date': '2019-01-20 14:00',
-        'event_type': 'grouting',
-        'title': 'Grouting reinforcement',
-        'description': 'Grouting reinforcement for subsidence control',
-        'intensity': 'low',
-        'location_chainage_start': 200,
-        'location_chainage_end': 250,
-    },
-    {
-        'event_id': 4,
-        'event_date': '2019-01-25 09:00',
-        'event_type': 'dewatering',
-        'title': 'Dewatering operation',
-        'description': 'Groundwater level control',
-        'intensity': 'medium',
-        'location_chainage_start': 300,
-        'location_chainage_end': 400,
-    },
-]
-
-
 class EventService:
     """Service for construction event management and causal analysis"""
 
@@ -127,9 +82,9 @@ class EventService:
 
         events = _safe_request(_url(query), _headers())
 
-        # Return demo events if table is empty
+        # 没有登记过施工事件就返回空，不用演示事件冒充
         if not events:
-            return DEMO_EVENTS
+            return []
 
         # Format dates
         for e in events:
@@ -148,10 +103,6 @@ class EventService:
         )
         if events:
             return events[0]
-        # Fall back to demo events
-        for e in DEMO_EVENTS:
-            if e['event_id'] == event_id:
-                return e
         return None
 
     def create_event(self, event_data: Dict) -> Dict:
@@ -374,9 +325,7 @@ class EventService:
             _headers()
         )
 
-        # Use demo events if empty
-        if not events:
-            events = DEMO_EVENTS
+        # 没有登记过施工事件时就是 0 条，不补演示数据
 
         # Count by type
         type_counts = {}
