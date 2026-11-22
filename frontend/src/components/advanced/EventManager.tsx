@@ -154,6 +154,7 @@ const EventCard: React.FC<{
   const typeColors: Record<string, string> = {
     pile: '#ff6b6b',
     excavation: '#ffa94d',
+    shield: '#b197fc',
     grouting: '#74c0fc',
     dewatering: '#69db7c',
     loading: '#da77f2',
@@ -162,6 +163,7 @@ const EventCard: React.FC<{
   const typeLabels: Record<string, string> = {
     pile: '打桩',
     excavation: '开挖',
+    shield: '盾构',
     grouting: '注浆',
     dewatering: '降水',
     loading: '加载',
