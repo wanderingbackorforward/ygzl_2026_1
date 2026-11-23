@@ -75,10 +75,10 @@ export default function LoginPage() {
             <i className="fas fa-shield-alt" style={{ fontSize: 28, color: '#64ffda' }} />
           </div>
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#e6f7ff', marginBottom: 8 }}>
-            数字孪生沉降监测系统
+            杨高中路隧道监测数字孪生系统
           </h1>
           <p style={{ margin: 0, fontSize: 14, color: '#8ba0b6' }}>
-            Digital Twin Terrain Settlement Monitoring
+            Yanggao Middle Road Tunnel Monitoring Digital Twin System
           </p>
         </div>
 
