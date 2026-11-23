@@ -49,10 +49,10 @@ export default function Cover() {
       <div className="touchkit-tile" style={{ padding: '36px 40px' }}>
         <span className={`touchkit-tile__bar touchkit-tile__bar--${statusTone}`} />
         <div style={{ fontSize: 14, color: 'rgba(230,247,255,0.6)', letterSpacing: 3 }}>
-          DIGITAL TWIN · 安全监测管控平台
+          DIGITAL TWIN · 隧道安全监测
         </div>
         <h1 style={{ fontSize: 'clamp(30px, 4.5vw, 56px)', fontWeight: 800, margin: '10px 0 8px', lineHeight: 1.1 }}>
-          隧道工程安全监测数字孪生
+          杨高中路隧道监测数字孪生系统
         </h1>
         <div style={{ fontSize: 'clamp(16px, 1.6vw, 20px)', color: 'rgba(230,247,255,0.78)' }}>
           实时形变 · 多源传感 · 风险预警 · 智能研判
